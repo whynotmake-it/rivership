@@ -408,8 +408,13 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     setState(() {
       _own = item;
       _ownFlight = flight;
-      // The item's slot becomes the gap, so nothing moves.
-      _gapIndex = slot.itemIndex;
+      // The item's slot becomes the gap, so nothing moves: the gap goes
+      // after the shown items that came before it.
+      final shown = {for (final other in _shown()) _keyOf(other)};
+      _gapIndex = widget.items
+          .takeWhile((other) => !_isSame(other, item))
+          .where((other) => shown.contains(_keyOf(other)))
+          .length;
       _gapSize = flight.feedbackRect.size;
     });
   }
@@ -524,17 +529,31 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
 
   /// Each laid-out slot with where layout puts it and where it was last
   /// painted, in slot order. Measured once per update.
+  ///
+  /// Slots describe the last build, which can lag behind the zone's state:
+  /// right after an item is picked up, its slot is still laid out where the
+  /// gap is about to open. [_indexAt] places slots by their items, never by
+  /// their indices.
   List<_Measured> _measure() => [
     for (final slot in _slots)
       if (slot.attached && slot.hasSize) slot.measure(),
   ]..sort((a, b) => a.slot.index.compareTo(b.slot.index));
 
-  /// The insertion index for [probe]: the count of shown items whose
-  /// painted center comes before it, within its line.
+  /// The insertion index for [probe] among the shown items.
+  ///
+  /// The slots are grouped into lines by where they are laid out, and the
+  /// probe picks the nearest line. The index is the count of shown items
+  /// before that line, plus those in it whose painted center the probe has
+  /// passed. Past the gap, an item's center must be passed by a band, so the
+  /// gap holds still while the probe wobbles. Slots of items that aren't
+  /// shown, and the gap, only shape the lines.
   int _indexAt(Offset probe, List<_Measured> slots) {
-    final shown = _shown().length;
+    final shown = _shown();
+    final order = {for (final (i, item) in shown.indexed) _keyOf(item): i};
+    int? orderOf(_Measured m) =>
+        m.slot.isGap ? null : order[_keyOf(m.slot.item! as T)];
+    if (!slots.any((m) => orderOf(m) != null)) return 0;
     final gap = _gapIndex;
-    if (!slots.any((m) => !m.slot.isGap)) return 0;
     final flow = _flow = _flowOf(slots);
 
     // Lines: runs of consecutive slots that overlap across the flow.
@@ -555,9 +574,9 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
 
     // The line the probe is in, else the nearest one.
     final cross = flow.cross(probe);
-    List<_Measured>? line;
+    var line = 0;
     var distance = double.infinity;
-    for (final candidate in lines) {
+    for (final (i, candidate) in lines.indexed) {
       var start = double.infinity;
       var end = double.negativeInfinity;
       for (final m in candidate) {
@@ -572,26 +591,35 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
           : 0.0;
       if (d < distance) {
         distance = d;
-        line = candidate;
+        line = i;
       }
     }
 
-    var index = line!.first.slot.itemIndex;
+    // The shown items before the line: the order of its first item, else
+    // of the first item after it, else all of them. Items before the
+    // first laid-out slot, scrolled away, count too.
+    var index = shown.length;
+    for (final candidate in lines.skip(line)) {
+      final first = candidate.map(orderOf).nonNulls.firstOrNull;
+      if (first != null) {
+        index = first;
+        break;
+      }
+    }
     final along = flow.along(probe);
-    for (final m in line) {
-      final slot = m.slot;
-      if (slot.isGap) continue;
-      final rect = m.painted;
-      final center = flow.along(rect.center);
-      final band = _band(flow.extent(rect));
-      final before = switch (gap) {
+    for (final m in lines[line]) {
+      final itemOrder = orderOf(m);
+      if (itemOrder == null) continue;
+      final center = flow.along(m.painted.center);
+      final band = _band(flow.extent(m.painted));
+      final passed = switch (gap) {
         null => along > center,
-        _ when slot.itemIndex < gap => along > center - band,
+        _ when itemOrder < gap => along > center - band,
         _ => along > center + band,
       };
-      if (before) index++;
+      if (passed) index++;
     }
-    return index.clamp(0, shown);
+    return index.clamp(0, shown.length);
   }
 
   static bool _overlaps((double, double) a, (double, double) b) =>
@@ -797,7 +825,6 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     child: _DropSlot(
       zone: this,
       index: index,
-      itemIndex: itemIndex,
       item: item,
       isGap: false,
       child: Builder(
@@ -820,7 +847,6 @@ class _MotionDropZoneState<T extends Object> extends State<MotionDropZone<T>>
     child: _DropSlot(
       zone: this,
       index: index,
-      itemIndex: index,
       item: null,
       isGap: true,
       child: _DropGap(zone: this, size: _gapSize),
@@ -864,7 +890,6 @@ class _DropSlot extends SingleChildRenderObjectWidget {
   const _DropSlot({
     required this.zone,
     required this.index,
-    required this.itemIndex,
     required this.item,
     required this.isGap,
     super.child,
@@ -872,7 +897,6 @@ class _DropSlot extends SingleChildRenderObjectWidget {
 
   final _MotionDropZoneState<Object> zone;
   final int index;
-  final int itemIndex;
   final Object? item;
   final bool isGap;
 
@@ -880,7 +904,6 @@ class _DropSlot extends SingleChildRenderObjectWidget {
   _RenderDropSlot createRenderObject(BuildContext context) => _RenderDropSlot(
     zone: zone,
     index: index,
-    itemIndex: itemIndex,
     item: item,
     isGap: isGap,
     element: context,
@@ -891,7 +914,6 @@ class _DropSlot extends SingleChildRenderObjectWidget {
     renderObject
       ..zone = zone
       ..index = index
-      ..itemIndex = itemIndex
       ..item = item
       ..isGap = isGap
       ..element = context;
@@ -902,7 +924,6 @@ class _RenderDropSlot extends RenderProxyBox {
   _RenderDropSlot({
     required _MotionDropZoneState<Object> zone,
     required this.index,
-    required this.itemIndex,
     required this.item,
     required this.isGap,
     required this.element,
@@ -920,9 +941,6 @@ class _RenderDropSlot extends RenderProxyBox {
   /// The slot's index among all slots, the gap included.
   int index;
 
-  /// The item's index among the shown items; for the gap, the index it
-  /// inserts at.
-  int itemIndex;
   Object? item;
   bool isGap;
   BuildContext element;

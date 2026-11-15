@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -482,6 +483,37 @@ void main() {
       expect(_painted(tester, 'b1').top, 120);
     });
 
+    for (var i = 0; i < 5; i++) {
+      for (final (edge, dy) in [('top', 2.0), ('bottom', 38.0)]) {
+        testWidgets('b$i picked up by its $edge edge moves nothing', (
+          tester,
+        ) async {
+          await tester.pumpWidget(_app(const _Board()));
+          final others = [
+            for (var j = 0; j < 5; j++)
+              if (j != i) 'b$j',
+          ];
+          final before = {for (final id in others) id: _painted(tester, id)};
+          // Held still, every frame.
+          final gesture = await tester.startGesture(Offset(450, 40.0 * i + dy));
+          for (var frameIndex = 0; frameIndex < 10; frameIndex++) {
+            await tester.pump(frame);
+            expect(_board(tester).gapB, i);
+            for (final MapEntry(:key, :value) in before.entries) {
+              expect(
+                _painted(tester, key),
+                value,
+                reason: '$key, frame $frameIndex',
+              );
+            }
+          }
+          await gesture.up();
+          await tester.pumpAndSettle();
+          expect(_board(tester).b, ['b0', 'b1', 'b2', 'b3', 'b4']);
+        });
+      }
+    }
+
     testWidgets('a rejected drop brings it back and lands on it', (
       tester,
     ) async {
@@ -692,6 +724,67 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
     });
+  });
+
+  testWidgets('after shuffles while scrolled, opens the gap where the card '
+      'is picked up', (tester) async {
+    final items = [for (var i = 0; i < 30; i++) 'i$i'];
+    final random = math.Random(1);
+    final controller = ScrollController(initialScrollOffset: 600);
+    addTearDown(controller.dispose);
+    late StateSetter setState;
+    int? gap;
+    await tester.pumpWidget(
+      _app(
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 200,
+            height: 400,
+            child: StatefulBuilder(
+              builder: (context, set) {
+                setState = set;
+                return MotionDropZone<String>(
+                  items: items,
+                  onInsert: (id, index) => set(() {
+                    items
+                      ..remove(id)
+                      ..insert(index, id);
+                  }),
+                  builder: (context, slots) {
+                    gap = slots.gapIndex;
+                    return ListView.builder(
+                      controller: controller,
+                      itemCount: slots.length,
+                      findChildIndexCallback: slots.indexOfKey,
+                      itemBuilder: (context, i) =>
+                          slots.build(i, (context, id) => _card(id)),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    // The cards in the cache extent, above and below the viewport, fly
+    // unseen.
+    for (var i = 0; i < 6; i++) {
+      setState(() => items.shuffle(random));
+      await tester.pump(frame);
+      await tester.pump(frame);
+    }
+    await tester.pumpAndSettle();
+    // Each card, held still, opens the gap where it is.
+    for (final y in [20.0, 100.0, 220.0, 300.0, 380.0]) {
+      final index = (600 + y) ~/ 40;
+      final gesture = await _pickUp(tester, Offset(50, y));
+      await tester.pump(frame);
+      expect(gap, index, reason: 'at $y');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
   });
 
   group('MotionDropZone in a wrap', () {
