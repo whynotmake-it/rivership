@@ -1,0 +1,28 @@
+name: merging_dots
+description: Gooey, merging dots for Flutter - on a grid or freeform, animated with motor and rendered by fragment shaders. Built for loading indicators and dot-matrix icons.
+version: 0.1.0
+resolution: workspace
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/merging_dots
+homepage: https://whynotmake.it
+
+topics: [animation, shader, metaballs, loading, icons]
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.38.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ">=1.15.0 <2.0.0"
+  motor: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+
+flutter:
+  shaders:
+    - shaders/dot_grid.frag
+    - shaders/dot_cloud.frag

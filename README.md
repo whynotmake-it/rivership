@@ -9,7 +9,7 @@ Rivership is a set of opinionated tools that will get you shipping your Flutter 
 
 This monorepo contains Rivership, and all its associated packages. Check out the `packages/` directory to explore them, or jump straight to the [Rivership README](./packages/rivership/README.md).
 
-Try the examples of Heroine, Motor, coil and Stupid Simple Sheet in your browser at [whynotmake-it.github.io/rivership](https://whynotmake-it.github.io/rivership/).
+Try the examples of Heroine, Motor, coil, Merging Dots and Stupid Simple Sheet in your browser at [whynotmake-it.github.io/rivership](https://whynotmake-it.github.io/rivership/).
 
 ## Package overview
 
@@ -21,6 +21,7 @@ Try the examples of Heroine, Motor, coil and Stupid Simple Sheet in your browser
 | [motor_widgets](./packages/motor_widgets) | Not published yet | Spring-driven versions of Flutter's implicit animation widgets, built on Motor. Retargeting keeps velocity instead of restarting. |  |
 | [motor_devtools](./packages/motor_devtools) | Not published yet | Lightweight in-app inspection and motion tuning tools for Motor. |  |
 | [heroine](./packages/heroine) | [![Pub Version](https://img.shields.io/pub/v/heroine)](https://pub.dev/packages/heroine) | The queen of hero transitions. Flutter's most addictive interactions. | [Open Example](https://whynotmake-it.github.io/rivership/#/heroine) |
+| [merging_dots](./packages/merging_dots) | Not published yet | Dots that merge into each other, for loading indicators, dot-matrix icons and characters. Rendered by fragment shaders, animated with Motor. | [Open Example](https://whynotmake-it.github.io/rivership/#/merging_dots) |
 | [stupid_simple_sheet](./packages/stupid_simple_sheet) | [![Pub Version](https://img.shields.io/pub/v/stupid_simple_sheet)](https://pub.dev/packages/stupid_simple_sheet) | A simple sheet widget for Flutter. | [Open Example](https://whynotmake-it.github.io/rivership/#/stupid_simple_sheet) |
 | [scroll_drag_detector](./packages/scroll_drag_detector) | [![Pub Version](https://img.shields.io/pub/v/scroll_drag_detector)](https://pub.dev/packages/scroll_drag_detector) | A drag gesture detector that can deal with scroll views inside of it. |  |
 | [snaptest](./packages/snaptest) | [![Pub Version](https://img.shields.io/pub/v/snaptest)](https://pub.dev/packages/snaptest) | Snap photos in your widget tests. |  |
