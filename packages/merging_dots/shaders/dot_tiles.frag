@@ -98,7 +98,9 @@ float cellBody(
     float beside,
     float above,
     float diagonal) {
-  if (v <= 0.002) {
+  // A cell at a sliver of a value, like a spring's last fraction, would
+  // only show as a stray speck.
+  if (v <= 0.03) {
     return 1e4;
   }
   float extent = 0.5 * v;

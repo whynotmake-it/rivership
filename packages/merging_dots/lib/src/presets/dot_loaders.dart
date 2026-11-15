@@ -2,6 +2,7 @@ import 'package:merging_dots/src/presets/cloud_loaders.dart';
 import 'package:merging_dots/src/presets/cloud_progress_loaders.dart';
 import 'package:merging_dots/src/presets/dot_loader.dart';
 import 'package:merging_dots/src/presets/dot_presets.dart';
+import 'package:merging_dots/src/presets/goo_loaders.dart';
 import 'package:merging_dots/src/presets/grid_progress_loaders.dart';
 import 'package:merging_dots/src/presets/tiles_loaders.dart';
 import 'package:merging_dots/src/rendering/dot_styles.dart';
@@ -9,7 +10,7 @@ import 'package:merging_dots/src/rendering/dot_styles.dart';
 /// Every ready-made loader, by family.
 ///
 /// Each family is also its own class, for picking one by name:
-/// [TilesLoaders], [CloudLoaders], [GridProgressLoaders] and
+/// [TilesLoaders], [GooLoaders], [CloudLoaders], [GridProgressLoaders] and
 /// [CloudProgressLoaders]. Show any loader with `DotLoaderView`.
 abstract final class DotLoaders {
   /// The original [DotPresets], as loaders.
@@ -57,6 +58,7 @@ abstract final class DotLoaders {
   /// Every family with its loaders, in a sensible order to browse.
   static List<(String, List<DotLoader>)> get families => [
     ('Tiles', TilesLoaders.all),
+    ('Goo', GooLoaders.all),
     ('Freeform', CloudLoaders.all),
     ('Progress on a grid', GridProgressLoaders.all),
     ('Freeform progress', CloudProgressLoaders.all),
