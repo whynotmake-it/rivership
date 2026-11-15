@@ -18,6 +18,7 @@ class MotionEdgeScrollSettings {
     this.motion = const CupertinoMotion.smooth(
       duration: Duration(milliseconds: 200),
     ),
+    this.outside = true,
   }) : assert(extent > 0, 'extent must be positive'),
        assert(maxSpeed >= 0, 'maxSpeed must not be negative');
 
@@ -27,9 +28,23 @@ class MotionEdgeScrollSettings {
   /// length.
   final double extent;
 
-  /// The speed at the edge itself, and beyond it however far, in logical
-  /// pixels per second.
+  /// The speed at the edge itself, and past it, in logical pixels per
+  /// second.
   final double maxSpeed;
+
+  /// Whether a drag outside the viewport keeps scrolling it.
+  ///
+  /// When true, a drag past an edge scrolls at [maxSpeed] however far it
+  /// goes, and a viewport that is already scrolling keeps scrolling while
+  /// the drag stays past the edge it scrolls toward, also beside the
+  /// viewport. A drag beside a viewport that isn't scrolling never starts
+  /// it.
+  ///
+  /// When false, it scrolls only while the drag is over the viewport, or
+  /// at most one band past its ends, and stops once the drag leaves.
+  ///
+  /// Defaults to true.
+  final bool outside;
 
   /// Maps how deep the probe is in a band, from 0 at its inner edge to 1 at
   /// the viewport's edge, to the share of [maxSpeed] to scroll at.
@@ -55,10 +70,11 @@ class MotionEdgeScrollSettings {
       other.extent == extent &&
       other.maxSpeed == maxSpeed &&
       other.curve == curve &&
-      other.motion == motion;
+      other.motion == motion &&
+      other.outside == outside;
 
   @override
-  int get hashCode => Object.hash(extent, maxSpeed, curve, motion);
+  int get hashCode => Object.hash(extent, maxSpeed, curve, motion, outside);
 }
 
 /// Scrolls the [Scrollable]s around it while a [MotionDraggable] is dragged
@@ -364,13 +380,18 @@ abstract final class EdgeScroller {
       final (along, cross) = vertical
           ? (probe.dy, probe.dx)
           : (probe.dx, probe.dy);
-      // A drag over this viewport scrolls it, also past its ends, however
-      // far. Once it scrolls, a drag past the edge it scrolls toward keeps
-      // it scrolling even when it leaves the viewport sideways.
+      // A drag over this viewport scrolls it, also past its ends: however
+      // far when it scrolls outside, else up to one band. Outside, once it
+      // scrolls, a drag past the edge it scrolls toward keeps it scrolling
+      // even when it leaves the viewport sideways.
       if (cross < crossStart || cross > crossEnd) {
         final keeps =
-            (along > end && current > 0) || (along < start && current < 0);
+            settings.outside &&
+            ((along > end && current > 0) || (along < start && current < 0));
         if (!keeps) continue;
+      }
+      if (!settings.outside && (along < start - band || along > end + band)) {
+        continue;
       }
       // Positive toward the screen's bottom or right.
       final double screen;

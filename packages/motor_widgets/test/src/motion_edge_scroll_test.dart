@@ -224,6 +224,24 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('with outside off, a drag that leaves the viewport stops '
+      'scrolling it', (tester) async {
+    await tester.pumpWidget(
+      _list(
+        controller,
+        settings: const MotionEdgeScrollSettings(outside: false),
+      ),
+    );
+    final gesture = await _dragTo(tester, const Offset(300, 395));
+    expect(await _scrolled(tester, controller), greaterThan(0));
+    // Far below the list: it springs to a stop.
+    await gesture.moveTo(const Offset(300, 550));
+    await _scrolled(tester, controller, frames: 30);
+    expect(await _scrolled(tester, controller), lessThan(0.5));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   group('probe', () {
     // The card is grabbed 15 px from its top, so its center is 5 px below
     // the pointer.
