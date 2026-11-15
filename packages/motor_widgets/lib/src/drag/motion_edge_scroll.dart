@@ -27,8 +27,8 @@ class MotionEdgeScrollSettings {
   /// length.
   final double extent;
 
-  /// The speed at the edge itself, and beyond it, in logical pixels per
-  /// second.
+  /// The speed at the edge itself, and beyond it however far, in logical
+  /// pixels per second.
   final double maxSpeed;
 
   /// Maps how deep the probe is in a band, from 0 at its inner edge to 1 at
@@ -356,14 +356,22 @@ abstract final class EdgeScroller {
         ? (viewport.left, viewport.right)
         : (viewport.top, viewport.bottom);
     final band = settings.extent.clamp(0.0, (end - start) / 3);
+    final reversed = axisDirectionIsReversed(direction);
+    // How it scrolls now, positive toward the screen's bottom or right.
+    final current = (reversed ? -1 : 1) * (_lanes[scrollable]?.speed ?? 0);
     var best = 0.0;
     for (final probe in probes) {
       final (along, cross) = vertical
           ? (probe.dy, probe.dx)
           : (probe.dx, probe.dy);
-      // Only a drag over this viewport, or just past its ends.
-      if (cross < crossStart || cross > crossEnd) continue;
-      if (along < start - band || along > end + band) continue;
+      // A drag over this viewport scrolls it, also past its ends, however
+      // far. Once it scrolls, a drag past the edge it scrolls toward keeps
+      // it scrolling even when it leaves the viewport sideways.
+      if (cross < crossStart || cross > crossEnd) {
+        final keeps =
+            (along > end && current > 0) || (along < start && current < 0);
+        if (!keeps) continue;
+      }
       // Positive toward the screen's bottom or right.
       final double screen;
       if (along < start + band) {
@@ -375,7 +383,7 @@ abstract final class EdgeScroller {
       }
       if (screen.abs() > best.abs()) best = screen;
     }
-    return axisDirectionIsReversed(direction) ? -best : best;
+    return reversed ? -best : best;
   }
 
   static double _speed(MotionEdgeScrollSettings settings, double depth) =>
