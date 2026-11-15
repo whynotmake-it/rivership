@@ -113,7 +113,10 @@ float cellBody(
   // side, which every pixel sharing that side agrees on.
   float stretch = smoothstep(0.2, 0.8, min(v, 1.0));
   vec2 toward = vec2(smoothstep(0.3, 0.8, beside), smoothstep(0.3, 0.8, above));
-  vec2 extents = vec2(extent) + (vec2(0.52) - extent) * toward * stretch;
+  // The overlap is at least the anti-aliased edge, so small cells don't
+  // show seams either.
+  float reach = 0.5 + max(0.02, uAa / uCell);
+  vec2 extents = vec2(extent) + (vec2(reach) - extent) * toward * stretch;
   return roundedBox(p, center, max(extents, vec2(extent)), radius);
 }
 
