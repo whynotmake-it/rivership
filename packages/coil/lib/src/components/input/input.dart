@@ -8,7 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilInput], as Motor tracks. Use them as keys of
-/// [CoilInput.motions] or [CoilThemeData.trackMotions].
+/// [CoilInput.motions] or [CoilInputStyle.motions].
 final class CoilInputTrack<T extends Object> extends Track<T> {
   CoilInputTrack._(super.converter, {required String super.debugLabel});
 
@@ -191,7 +191,7 @@ class CoilInput extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this field, keyed by [CoilInputTrack]s. They win
-  /// over [CoilThemeData.trackMotions] and [motion].
+  /// over the style's [CoilInputStyle.motions] and [motion].
   final Map<CoilInputTrack<Object>, Motion>? motions;
 
   /// Overrides for this field's look.
@@ -255,14 +255,6 @@ class _CoilInputState extends State<CoilInput> {
     if (_focusNode.canRequestFocus) _focusNode.requestFocus();
   }
 
-  Motion _colorMotion(CoilInputTrack<Object> track) => CoilTheme.trackMotionOf(
-    context,
-    track,
-    instance: widget.motions,
-    token: CoilTheme.motionOf(context, override: widget.motion).fade,
-    spatial: false,
-  );
-
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -271,6 +263,15 @@ class _CoilInputState extends State<CoilInput> {
       theme,
       sizes,
     ).merge(CoilTheme.styleOf<CoilInputStyle>(context)).merge(widget.style);
+    final fade = CoilTheme.motionOf(context, override: widget.motion).fade;
+    Motion colorMotion(CoilInputTrack<Object> track) => CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: widget.motions,
+      styled: look.motions,
+      token: fade,
+      spatial: false,
+    );
     final multiline = widget._multiline;
     final textStyle = look.textStyle!;
     final radius = BorderRadius.circular(
@@ -324,10 +325,10 @@ class _CoilInputState extends State<CoilInput> {
           ],
           animations: [
             CoilInputTrack.border([
-              .to(border, motion: _colorMotion(CoilInputTrack.border)),
+              .to(border, motion: colorMotion(CoilInputTrack.border)),
             ]),
             CoilInputTrack.fill([
-              .to(fill, motion: _colorMotion(CoilInputTrack.fill)),
+              .to(fill, motion: colorMotion(CoilInputTrack.fill)),
             ]),
           ],
           // A minimum height plus symmetric padding: the line box sits

@@ -198,43 +198,87 @@ void main() {
     }
   });
 
-  testWidgets('theme-level track motions apply; the instance map wins', (
+  testWidgets('a theme style motions entry applies; style: and motions: win', (
     tester,
   ) async {
     Widget host({
       required bool value,
+      CoilSwitchStyle? style,
       Map<CoilSwitchTrack<Object>, Motion>? instance,
     }) => WidgetsApp(
       color: const Color(0xFF000000),
       builder: (context, _) => CoilTheme(
-        data: CoilThemeData.light.copyWith(
-          tier: CoilTier.pointer,
-          motion: _linear(1000),
-          trackMotions: {
-            CoilSwitchTrack.thumb: const Motion.linear(
-              Duration(milliseconds: 400),
+        data: CoilThemeData.light
+            .copyWith(tier: CoilTier.pointer, motion: _linear(1000))
+            .withComponentStyle(
+              CoilSwitchStyle(
+                motions: {
+                  CoilSwitchTrack.thumb: const Motion.linear(
+                    Duration(milliseconds: 400),
+                  ),
+                },
+              ),
             ),
-          },
-        ),
         child: Center(
-          child: CoilSwitch(value: value, onChanged: (_) {}, motions: instance),
+          child: CoilSwitch(
+            value: value,
+            onChanged: (_) {},
+            style: style,
+            motions: instance,
+          ),
         ),
       ),
     );
+    // The theme's style beats the 1000 ms token: halfway at 200 ms.
     await tester.pumpWidget(host(value: false));
     await tester.pumpWidget(host(value: true));
     await tester.pump(const Duration(milliseconds: 200));
     expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
     await tester.pumpAndSettle();
 
+    // The widget's style: merges over the theme's, key by key.
+    final fastStyle = CoilSwitchStyle(
+      motions: {
+        CoilSwitchTrack.thumb: const Motion.linear(Duration(milliseconds: 200)),
+      },
+    );
+    await tester.pumpWidget(host(value: false, style: fastStyle));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+    await tester.pumpAndSettle();
+
+    // The widget's motions: beat both.
     await tester.pumpWidget(
       host(
-        value: false,
+        value: true,
+        style: fastStyle,
         instance: {.thumb: const .linear(Duration(milliseconds: 100))},
       ),
     );
     await tester.pump(const Duration(milliseconds: 50));
     expect(_thumbX(tester), moreOrLessEquals(9, epsilon: 0.5));
+  });
+
+  test('style motions merge key by key and compare by value', () {
+    const slow = Motion.linear(Duration(milliseconds: 400));
+    const fast = Motion.linear(Duration(milliseconds: 100));
+    final base = CoilSwitchStyle(
+      motions: {CoilSwitchTrack.thumb: slow, CoilSwitchTrack.tint: slow},
+    );
+    final merged = base.merge(
+      CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: fast}),
+    );
+    expect(merged.motions, {
+      CoilSwitchTrack.thumb: fast,
+      CoilSwitchTrack.tint: slow,
+    });
+    expect(base.merge(const CoilSwitchStyle()).motions, base.motions);
+    // A rebuilt literal is equal, so a theme rebuild is no change.
+    final again = CoilSwitchStyle(
+      motions: {CoilSwitchTrack.tint: slow, CoilSwitchTrack.thumb: slow},
+    );
+    expect(again, base);
+    expect(again.hashCode, base.hashCode);
   });
 
   testWidgets('a rebuilt motions literal does not redirect the animation', (

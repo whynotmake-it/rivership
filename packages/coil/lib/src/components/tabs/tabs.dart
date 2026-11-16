@@ -19,7 +19,7 @@ enum CoilTabLabels {
 }
 
 /// The animated parts of [CoilTabs], as keys of [CoilTabs.motions] and
-/// [CoilThemeData.trackMotions].
+/// [CoilTabsStyle.motions].
 ///
 /// A custom motion replaces both the enter and the exit of its part.
 final class CoilTabsTrack<T extends Object> extends Track<T> {
@@ -141,7 +141,8 @@ class CoilTabs<T> extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-part motions for these tabs, keyed by [CoilTabsTrack]s:
-  /// `motions: {.selected: const .bouncySpring()}`.
+  /// `motions: {.selected: const .bouncySpring()}`. They win over the
+  /// style's [CoilTabsStyle.motions] and the tokens.
   final Map<CoilTabsTrack<Object>, Motion>? motions;
 
   /// Overrides for these tabs' look, on top of the theme's [CoilTabsStyle]
@@ -154,7 +155,7 @@ class CoilTabs<T> extends StatefulWidget {
 
 class _CoilTabsState<T> extends State<CoilTabs<T>>
     with TickerProviderStateMixin {
-  /// The enter and exit motions of [track]: the instance's or the theme's
+  /// The enter and exit motions of [track]: the instance's or the style's
   /// override for both, else the tokens.
   ({Motion enter, Motion exit}) _motionFor(
     CoilTabsTrack<Object> track,
@@ -162,10 +163,14 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
     Motion exit, {
     bool spatial = true,
   }) {
+    final styled =
+        CoilTheme.styleOf<CoilTabsStyle>(context)?.merge(widget.style) ??
+        widget.style;
     final resolved = CoilTheme.trackMotionOf(
       context,
       track,
       instance: widget.motions,
+      styled: styled?.motions,
       token: enter,
       spatial: spatial,
     );

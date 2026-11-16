@@ -1,6 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/banner/banner.dart' show CoilBannerTrack;
 import 'package:coil/src/components/banner/banner_kinds.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilBanner` looks. Unset fields come from
 /// [CoilBannerStyle.fallback], which derives them from the theme's tokens.
@@ -16,6 +18,7 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
     this.gap,
     this.actionSpacing,
     this.iconSize,
+    this.motions,
   });
 
   /// The defaults for a banner with [status], [variant] and [placement],
@@ -92,6 +95,12 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
   /// The icon slot's size, before text scaling.
   final double? iconSize;
 
+  /// Springs for the banner's animated parts, keyed by [CoilBannerTrack]s:
+  /// `{CoilBannerTrack.row: const Motion.bouncySpring()}`. A banner's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilBannerTrack<Object>, Motion>? motions;
+
   @override
   CoilBannerStyle merge(CoilBannerStyle? other) => other == null
       ? this
@@ -107,6 +116,9 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
           gap: other.gap ?? gap,
           actionSpacing: other.actionSpacing ?? actionSpacing,
           iconSize: other.iconSize ?? iconSize,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -120,5 +132,6 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
     gap,
     actionSpacing,
     iconSize,
+    motions,
   ];
 }

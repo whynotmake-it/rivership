@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/radio_group/radio_group.dart'
+    show CoilRadioGroupTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilRadioGroup` looks. Unset fields come from
 /// [CoilRadioGroupStyle.fallback], derived from the theme's tokens. Set a
@@ -23,6 +26,7 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     this.dot,
     this.dotRatio,
     this.dotScale,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -91,6 +95,12 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
   /// The scale the dot grows from when it appears.
   final double? dotScale;
 
+  /// Springs for the radios' animated parts, keyed by [CoilRadioGroupTrack]s:
+  /// `{CoilRadioGroupTrack.dot: const Motion.bouncySpring()}`. A group's or
+  /// radio's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
+  final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
+
   @override
   CoilRadioGroupStyle merge(CoilRadioGroupStyle? other) => other == null
       ? this
@@ -106,6 +116,9 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
           dot: other.dot ?? dot,
           dotRatio: other.dotRatio ?? dotRatio,
           dotScale: other.dotScale ?? dotScale,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -121,5 +134,6 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     dot,
     dotRatio,
     dotScale,
+    motions,
   ];
 }

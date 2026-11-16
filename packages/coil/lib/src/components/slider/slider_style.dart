@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/slider/slider.dart' show CoilSliderTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilSlider` looks; unset fields come from
 /// [CoilSliderStyle.fallback].
@@ -32,6 +34,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.dotGrowth,
     this.handleWidth,
     this.handleInset,
+    this.motions,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -161,6 +164,12 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// How far the handle line stops short of the row's top and bottom.
   final double? handleInset;
 
+  /// Springs for the slider's animated parts, keyed by [CoilSliderTrack]s:
+  /// `{CoilSliderTrack.thumb: const Motion.bouncySpring()}`. A slider's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilSliderTrack<Object>, Motion>? motions;
+
   @override
   CoilSliderStyle merge(CoilSliderStyle? other) => other == null
       ? this
@@ -188,6 +197,9 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           dotGrowth: other.dotGrowth ?? dotGrowth,
           handleWidth: other.handleWidth ?? handleWidth,
           handleInset: other.handleInset ?? handleInset,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -215,5 +227,6 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     dotGrowth,
     handleWidth,
     handleInset,
+    motions,
   ];
 }

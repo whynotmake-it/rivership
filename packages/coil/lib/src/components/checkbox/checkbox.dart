@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a checkbox, as Motor tracks. Use them as keys of
-/// `motions` or [CoilThemeData.trackMotions].
+/// [CoilCheckbox.motions] or [CoilCheckboxStyle.motions].
 final class CoilCheckboxTrack<T extends Object> extends Track<T> {
   CoilCheckboxTrack._(super.converter, {required String super.debugLabel});
 
@@ -81,7 +81,8 @@ class CoilCheckbox extends StatelessWidget {
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCheckboxTrack]s.
+  /// Per-track motions, keyed by [CoilCheckboxTrack]s. They win over the
+  /// style's [CoilCheckboxStyle.motions] and the tokens.
   final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
   /// Overrides for this checkbox's look, on top of the theme's
@@ -222,7 +223,8 @@ class CoilCheckboxIndicator extends StatefulWidget {
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCheckboxTrack]s.
+  /// Per-track motions, keyed by [CoilCheckboxTrack]s. They win over the
+  /// style's [CoilCheckboxStyle.motions] and the tokens.
   final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
   /// Overrides for this indicator's look, on top of the theme's
@@ -285,6 +287,7 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
           context,
           track,
           instance: widget.motions,
+          styled: style.motions,
           token: token,
           spatial: false,
         );

@@ -5,12 +5,13 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/reveal/reveal_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilReveal]. Use them as keys of
-/// [CoilReveal.motions] or [CoilThemeData.trackMotions].
+/// [CoilReveal.motions] or [CoilRevealStyle.motions].
 final class CoilRevealTrack<T extends Object> extends Track<T> {
   CoilRevealTrack._(
     super.converter, {
@@ -101,6 +102,7 @@ class CoilReveal extends StatelessWidget {
     this.steps = CoilRevealSteps.blocks,
     this.motion,
     this.motions,
+    this.style,
   });
 
   /// The children, in the order they arrive.
@@ -124,8 +126,12 @@ class CoilReveal extends StatelessWidget {
   /// Overrides the theme's motion tokens, including `stagger`.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilRevealTrack]s.
+  /// Per-track motions for this reveal, keyed by [CoilRevealTrack]s. They
+  /// win over the style's [CoilRevealStyle.motions] and the tokens.
   final Map<CoilRevealTrack<Object>, Motion>? motions;
+
+  /// Overrides for this reveal, on top of the theme's [CoilRevealStyle].
+  final CoilRevealStyle? style;
 
   /// The landing preset's rise.
   static const _landingRise = 12.0;
@@ -143,10 +149,12 @@ class CoilReveal extends StatelessWidget {
     final (enter, exit) = landing && !reduced
         ? (tokens.gentle, tokens.gentleExit)
         : (tokens.fade, tokens.fadeExit);
+    final look = CoilTheme.styleOf<CoilRevealStyle>(context)?.merge(style);
     Motion presence(Motion token) => CoilTheme.trackMotionOf(
       context,
       CoilRevealTrack.presence,
       instance: motions,
+      styled: (look ?? style)?.motions,
       token: token,
       spatial: false,
     );

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/input/input.dart' show CoilInputTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilInput` looks, single-line or multi-line. Unset
 /// fields come from [CoilInputStyle.fallback]. Set a style app-wide or for a
@@ -23,6 +25,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     this.radius,
     this.multilineRadius,
     this.minHeight,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -88,6 +91,12 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
   /// The minimum height. The field grows with its text.
   final double? minHeight;
 
+  /// Springs for the field's animated parts, keyed by [CoilInputTrack]s:
+  /// `{CoilInputTrack.border: const Motion.smoothSpring()}`. A field's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilInputTrack<Object>, Motion>? motions;
+
   @override
   CoilInputStyle merge(CoilInputStyle? other) => other == null
       ? this
@@ -102,6 +111,9 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
           radius: other.radius ?? radius,
           multilineRadius: other.multilineRadius ?? multilineRadius,
           minHeight: other.minHeight ?? minHeight,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -116,5 +128,6 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     radius,
     multilineRadius,
     minHeight,
+    motions,
   ];
 }

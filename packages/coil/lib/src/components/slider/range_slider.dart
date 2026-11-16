@@ -158,7 +158,8 @@ class CoilRangeSlider extends StatelessWidget {
   final CoilMotion? motion;
 
   /// Per-part motions for this instance. [CoilSliderTrack.thumb] moves both
-  /// thumbs.
+  /// thumbs. They win over the style's [CoilSliderStyle.motions] and the
+  /// tokens.
   final Map<CoilSliderTrack<Object>, Motion>? motions;
 
   /// Overrides for this slider's look.

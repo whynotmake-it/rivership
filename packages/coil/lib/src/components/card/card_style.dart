@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/card/card.dart' show CoilCardTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilCard` and a `CoilCardGroup` look. Unset fields
 /// come from [CoilCardStyle.fallback], derived from the theme's tokens. Set
@@ -31,6 +33,7 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     this.titleStyle,
     this.descriptionStyle,
     this.contentStyle,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens. The fill and shadow are left
@@ -129,6 +132,12 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
   /// The default text style of the content.
   final TextStyle? contentStyle;
 
+  /// Springs for the animated parts of cards and card groups, keyed by
+  /// [CoilCardTrack]s: `{CoilCardTrack.overlay: const Motion.bouncySpring()}`.
+  /// A card's or group's own `motions:` win over these; these win over the
+  /// motion tokens. [merge] combines the maps key by key.
+  final Map<CoilCardTrack<Object>, Motion>? motions;
+
   @override
   CoilCardStyle merge(CoilCardStyle? other) => other == null
       ? this
@@ -156,6 +165,9 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
               other.descriptionStyle,
           contentStyle:
               contentStyle?.merge(other.contentStyle) ?? other.contentStyle,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -180,5 +192,6 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     titleStyle,
     descriptionStyle,
     contentStyle,
+    motions,
   ];
 }

@@ -93,7 +93,7 @@ class CoilTable<T> extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this table, keyed by [CoilTableTrack]s. They win
-  /// over the theme's [CoilThemeData.trackMotions] and the tokens.
+  /// over the style's [CoilTableStyle.motions] and the tokens.
   final Map<CoilTableTrack<Object>, Motion>? motions;
 
   /// Overrides for this table's look, on top of the theme's
@@ -174,18 +174,6 @@ class _CoilTableState<T> extends State<CoilTable<T>>
     }
   }
 
-  Motion _track(
-    CoilTableTrack<Object> track,
-    Motion token, {
-    bool spatial = true,
-  }) => CoilTheme.trackMotionOf(
-    context,
-    track,
-    instance: widget.motions,
-    token: token,
-    spatial: spatial,
-  );
-
   /// Scrolls one line step toward the end ([steps] 1) or the start (-1).
   void _scrollLine(int steps) {
     if (!_scroll.hasClients) return;
@@ -249,16 +237,28 @@ class _CoilTableState<T> extends State<CoilTable<T>>
       highContrast: MediaQuery.maybeHighContrastOf(context) ?? false,
     ).merge(CoilTheme.styleOf<CoilTableStyle>(context)).merge(widget.style);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
+    Motion motionFor(
+      CoilTableTrack<Object> track,
+      Motion token, {
+      bool spatial = true,
+    }) => CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: widget.motions,
+      styled: style.motions,
+      token: token,
+      spatial: spatial,
+    );
     final rowMotions = (
-      press: _track(CoilTableTrack.rowPress, motion.fade, spatial: false),
-      pressExit: _track(
+      press: motionFor(CoilTableTrack.rowPress, motion.fade, spatial: false),
+      pressExit: motionFor(
         CoilTableTrack.rowPress,
         motion.fadeExit,
         spatial: false,
       ),
-      rule: _track(CoilTableTrack.rule, motion.fade, spatial: false),
-      ruleExit: _track(CoilTableTrack.rule, motion.fadeExit, spatial: false),
-      label: _track(CoilTableTrack.rowLabel, motion.fade, spatial: false),
+      rule: motionFor(CoilTableTrack.rule, motion.fade, spatial: false),
+      ruleExit: motionFor(CoilTableTrack.rule, motion.fadeExit, spatial: false),
+      label: motionFor(CoilTableTrack.rowLabel, motion.fade, spatial: false),
     );
     final rows = widget.rows;
 
@@ -270,7 +270,7 @@ class _CoilTableState<T> extends State<CoilTable<T>>
       color: style.selection!,
       radius: style.radius!,
       motion: motion.copyWith(
-        standard: _track(CoilTableTrack.selection, motion.standard),
+        standard: motionFor(CoilTableTrack.selection, motion.standard),
       ),
     );
 
@@ -295,8 +295,11 @@ class _CoilTableState<T> extends State<CoilTable<T>>
               focusNode: _focusNode,
               selection: selection,
               motion: motion,
-              highlightMotion: _track(CoilTableTrack.highlight, motion.quick),
-              ringMotion: _track(CoilTableTrack.ring, motion.quick),
+              highlightMotion: motionFor(
+                CoilTableTrack.highlight,
+                motion.quick,
+              ),
+              ringMotion: motionFor(CoilTableTrack.ring, motion.quick),
               rowMotions: rowMotions,
               onTap: widget.onRowActivated == null && widget.onChanged == null
                   ? null
@@ -318,12 +321,12 @@ class _CoilTableState<T> extends State<CoilTable<T>>
                 metrics: metrics,
                 style: style,
                 labels: widget.labels,
-                fillMotion: _track(
+                fillMotion: motionFor(
                   CoilTableTrack.headerFill,
                   motion.fade,
                   spatial: false,
                 ),
-                labelMotion: _track(
+                labelMotion: motionFor(
                   CoilTableTrack.headerLabel,
                   motion.fade,
                   spatial: false,

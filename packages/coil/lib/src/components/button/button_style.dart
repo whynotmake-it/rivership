@@ -1,6 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/button/button.dart' show CoilButtonTrack;
 import 'package:coil/src/components/button/button_variant.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilButton` looks. Every field is optional; unset
 /// fields come from [CoilButtonStyle.fallback], derived from the theme's
@@ -20,6 +22,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
     this.textStyle,
     this.iconSize,
     this.minHeight,
+    this.motions,
   });
 
   /// The defaults for [variant] from [theme]'s tokens at [metrics].
@@ -116,6 +119,12 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
   /// The minimum height (the button grows with text).
   final double? minHeight;
 
+  /// Springs for the button's animated parts, keyed by [CoilButtonTrack]s:
+  /// `{CoilButtonTrack.collapse: const Motion.bouncySpring()}`. A button's
+  /// own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
+  final Map<CoilButtonTrack<Object>, Motion>? motions;
+
   @override
   CoilButtonStyle merge(CoilButtonStyle? other) => other == null
       ? this
@@ -127,6 +136,9 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           iconSize: other.iconSize ?? iconSize,
           minHeight: other.minHeight ?? minHeight,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -138,5 +150,6 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
     textStyle,
     iconSize,
     minHeight,
+    motions,
   ];
 }

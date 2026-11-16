@@ -33,7 +33,7 @@ class CoilCrumb {
 }
 
 /// The animated parts of a [CoilBreadcrumb]. Use them as keys of
-/// [CoilBreadcrumb.motions] or [CoilThemeData.trackMotions].
+/// [CoilBreadcrumb.motions] or [CoilBreadcrumbStyle.motions].
 final class CoilBreadcrumbTrack<T extends Object> extends Track<T> {
   CoilBreadcrumbTrack._(super.converter, {required String super.debugLabel});
 
@@ -127,8 +127,8 @@ class CoilBreadcrumb extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this breadcrumb, keyed by
-  /// [CoilBreadcrumbTrack]s. They win over the theme's
-  /// [CoilThemeData.trackMotions] and [motion].
+  /// [CoilBreadcrumbTrack]s. They win over the style's
+  /// [CoilBreadcrumbStyle.motions] and [motion].
   final Map<CoilBreadcrumbTrack<Object>, Motion>? motions;
 
   /// Overrides for this breadcrumb's look.
@@ -184,12 +184,14 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
 
   Motion _motionFor(
     BuildContext context,
+    CoilBreadcrumbStyle style,
     CoilBreadcrumbTrack<Object> track,
     Motion token,
   ) => CoilTheme.trackMotionOf(
     context,
     track,
     instance: widget.motions,
+    styled: style.motions,
     token: token,
     spatial: track == CoilBreadcrumbTrack.highlight,
   );
@@ -276,13 +278,24 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
     final style = _style(context, metrics);
     final tokens = CoilTheme.motionOf(context, override: widget.motion);
     final motions = CrumbMotions(
-      pressIn: _motionFor(context, CoilBreadcrumbTrack.press, tokens.fade),
+      pressIn: _motionFor(
+        context,
+        style,
+        CoilBreadcrumbTrack.press,
+        tokens.fade,
+      ),
       pressOut: _motionFor(
         context,
+        style,
         CoilBreadcrumbTrack.press,
         tokens.fadeExit,
       ),
-      label: _motionFor(context, CoilBreadcrumbTrack.label, tokens.fade),
+      label: _motionFor(
+        context,
+        style,
+        CoilBreadcrumbTrack.label,
+        tokens.fade,
+      ),
     );
     final phone =
         CoilTheme.tierOf(context) == CoilTier.touch &&
@@ -313,6 +326,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
             motion: widget.motion,
             glideMotion: _motionFor(
               context,
+              style,
               CoilBreadcrumbTrack.highlight,
               tokens.quick,
             ),

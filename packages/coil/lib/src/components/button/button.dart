@@ -9,7 +9,7 @@ import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
 /// The animated parts of a [CoilButton], as Motor tracks. Use them as keys
-/// of [CoilButton.motions] or [CoilThemeData.trackMotions].
+/// of [CoilButton.motions] or [CoilButtonStyle.motions].
 final class CoilButtonTrack<T extends Object> extends Track<T> {
   CoilButtonTrack._(super.converter, {required String super.debugLabel});
 
@@ -140,7 +140,7 @@ class CoilButton extends StatefulWidget {
 
   /// Per-track motions for this instance, keyed by [CoilButtonTrack]s:
   /// `motions: {.collapse: const .snappySpring()}`. They win over the
-  /// theme's [CoilThemeData.trackMotions] and the tokens.
+  /// style's [CoilButtonStyle.motions] and the tokens.
   final Map<CoilButtonTrack<Object>, Motion>? motions;
 
   /// Overrides for this button's look, on top of the theme's
@@ -193,6 +193,10 @@ class _CoilButtonState extends State<CoilButton> {
     context,
     track,
     instance: widget.motions,
+    styled:
+        (CoilTheme.styleOf<CoilButtonStyle>(context)?.merge(widget.style) ??
+                widget.style)
+            ?.motions,
     token: token,
     spatial: spatial,
   );

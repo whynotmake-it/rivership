@@ -90,7 +90,7 @@ High contrast is driven by `MediaQuery.highContrastOf` and applied last (`CoilTh
 - **Tuned presets:** `CoilTypography.allo()` (the catalog's look) and `CoilTypography.inter()`. The app bundles the font itself, under the family the preset names. In debug builds coil reports a family that the app's font manifest doesn't declare, since Flutter would silently fall back to the platform font.
 - **Any other font:** `CoilTypography.from(TextStyle(fontFamily: 'Brand'))` puts the scale on top of a base style. The base carries the family, axes and features; each role adds its size, line height and weight.
 
-**Optical size follows the font size.** Every role sets `opsz` to its font size, as CSS `font-optical-sizing: auto` does, unless the base style sets `opsz`. Allo's axis runs 9–32: it opens up small text and tightens titles. Fonts without the axis ignore it.
+**Optical size follows the font size.** Every role sets `opsz` to its font size, as CSS `font-optical-sizing: auto` does, unless the base style sets `opsz`. Fonts without the axis ignore it. **Allo is the exception:** its axis runs 9–32 and its headline design tightens faster than Inter's, so `CoilTypography.allo` follows the size up to 14 and rises half as fast above (display 28 uses 21), and adds a little letter spacing (+0.005em at 13, +0.006em at 14–18, tapering to +0.002em at display). Every role then sets within about ±0.5% of Inter's width, which the scale was tuned on.
 
 **Weights are plain `FontWeight`s.** A `FontWeight(550)` sets a variable font's `wght` axis, and `TextStyle.lerp` animates it. `CoilTextTheme.emphasis`, the title's weight, marks titles, selected items and buttons:
 
@@ -249,7 +249,8 @@ Named holds that aren't tokens:
 ### 7.3 Customizing
 
 - Tokens are runtime theme data. Set them app-wide on `CoilThemeData.motion`, per subtree with `CoilTheme.override`, or per instance with a component's `motion:`.
-- Multi-part components expose typed tracks, such as `CoilSwitchTrack.thumb`, `.squish` and `.tint`. Override them per instance with `motions: {.thumb: …}` or app-wide with `CoilThemeData.trackMotions`.
+- Multi-part components expose typed tracks, such as `CoilSwitchTrack.thumb`, `.squish` and `.tint`. Their springs belong to the component's style, next to the rest of its look: set them app-wide or per subtree with `CoilThemeData.withComponentStyle(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: …}))`, per instance with `style:`, or per instance directly with `motions: {.thumb: …}`.
+- A component's `motions:` wins, then its style (its `style:` merged over the theme's entry, key by key), then the tokens.
 - Components read the motion on every animation, so a change applies to the next animation.
 
 ### 7.4 Reduced motion

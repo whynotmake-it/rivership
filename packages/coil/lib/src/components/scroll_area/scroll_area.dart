@@ -11,7 +11,7 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilScrollArea]. Use them as keys of
-/// [CoilScrollArea.motions] or [CoilThemeData.trackMotions].
+/// [CoilScrollArea.motions] or [CoilScrollAreaStyle.motions].
 final class CoilScrollAreaTrack<T extends Object> extends Track<T> {
   CoilScrollAreaTrack._(super.converter, {required String super.debugLabel});
 
@@ -122,7 +122,8 @@ class CoilScrollArea extends StatefulWidget {
   /// Overrides the theme's motion tokens for keyboard scrolling.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilScrollAreaTrack].
+  /// Per-track motions, keyed by [CoilScrollAreaTrack]. They win over the
+  /// style's [CoilScrollAreaStyle.motions] and the tokens.
   final Map<CoilScrollAreaTrack<Object>, Motion>? motions;
 
   final bool _wrapsScrollable;
@@ -174,7 +175,8 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       return KeyEventResult.ignored;
     }
     if (!_controller.hasClients) return KeyEventResult.ignored;
-    final line = _style(context).lineStep!;
+    final style = _style(context);
+    final line = style.lineStep!;
     final position = _controller.position;
     final from = CoilScrollSpring.targetOf(_controller);
     final page = math.max(position.viewportDimension - line, line);
@@ -204,6 +206,7 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
         context,
         CoilScrollAreaTrack.scroll,
         instance: widget.motions,
+        styled: style.motions,
         token: CoilTheme.motionOf(context, override: widget.motion).standard,
       ),
     );

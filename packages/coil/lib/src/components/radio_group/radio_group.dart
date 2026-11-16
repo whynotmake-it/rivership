@@ -11,7 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilRadioGroup], as Motor tracks. Use them as
-/// keys of [CoilRadioGroup.motions] or [CoilThemeData.trackMotions].
+/// keys of [CoilRadioGroup.motions] or [CoilRadioGroupStyle.motions].
 final class CoilRadioGroupTrack<T extends Object> extends Track<T> {
   CoilRadioGroupTrack._(super.converter, {required String super.debugLabel});
 
@@ -130,7 +130,8 @@ class CoilRadioGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilRadioGroupTrack]s.
+  /// Per-track motions, keyed by [CoilRadioGroupTrack]s. They win over the
+  /// style's [CoilRadioGroupStyle.motions] and the tokens.
   final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
 
   /// Overrides for this group's look, on top of the theme's
@@ -159,6 +160,7 @@ class CoilRadioGroup<T> extends StatelessWidget {
       context,
       track,
       instance: motions,
+      styled: look.motions,
       token: token,
       spatial: spatial,
     );

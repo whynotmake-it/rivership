@@ -93,7 +93,7 @@ class CoilTableLabels {
 }
 
 /// The animated parts of a `CoilTable`. Use them as keys of
-/// `CoilTable.motions` or `CoilThemeData.trackMotions`.
+/// `CoilTable.motions` or `CoilTableStyle.motions`.
 final class CoilTableTrack<T extends Object> extends Track<T> {
   CoilTableTrack._(super.converter, {required String super.debugLabel});
 

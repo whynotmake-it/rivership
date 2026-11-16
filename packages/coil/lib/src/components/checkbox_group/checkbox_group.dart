@@ -8,7 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilCheckboxGroup], as Motor tracks. Use them as
-/// keys of [CoilCheckboxGroup.motions] or [CoilThemeData.trackMotions].
+/// keys of [CoilCheckboxGroup.motions] or [CoilCheckboxGroupStyle.motions].
 final class CoilCheckboxGroupTrack<T extends Object> extends Track<T> {
   CoilCheckboxGroupTrack._(super.converter, {required String super.debugLabel});
 
@@ -77,7 +77,8 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCheckboxGroupTrack]s.
+  /// Per-track motions, keyed by [CoilCheckboxGroupTrack]s. They win over the
+  /// style's [CoilCheckboxGroupStyle.motions] and the tokens.
   final Map<CoilCheckboxGroupTrack<Object>, Motion>? motions;
 
   /// Overrides for this group's look, on top of the theme's
@@ -104,6 +105,7 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
       context,
       track,
       instance: motions,
+      styled: look.motions,
       token: token,
       spatial: spatial,
     );

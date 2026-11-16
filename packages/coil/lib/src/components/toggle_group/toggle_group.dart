@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilToggleGroup], as Motor tracks. Use them as
-/// keys of [CoilToggleGroup.motions] or [CoilThemeData.trackMotions].
+/// keys of [CoilToggleGroup.motions] or [CoilToggleGroupStyle.motions].
 final class CoilToggleGroupTrack<T extends Object> extends Track<T> {
   CoilToggleGroupTrack._(super.converter, {required String super.debugLabel});
 
@@ -70,7 +70,9 @@ class CoilToggleGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilToggleGroupTrack]s.
+  /// Per-track motions for this group, keyed by [CoilToggleGroupTrack]s.
+  /// They win over the style's [CoilToggleGroupStyle.motions] and the
+  /// tokens.
   final Map<CoilToggleGroupTrack<Object>, Motion>? motions;
 
   /// Overrides for this group's look, on top of the theme's
@@ -97,6 +99,7 @@ class CoilToggleGroup<T> extends StatelessWidget {
       context,
       track,
       instance: motions,
+      styled: look.motions,
       token: token,
       spatial: spatial,
     );

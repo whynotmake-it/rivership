@@ -11,7 +11,7 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilChatMessage]. Use them as keys of
-/// [CoilChatMessage.motions] or [CoilThemeData.trackMotions].
+/// [CoilChatMessage.motions] or [CoilChatMessageStyle.motions].
 final class CoilChatMessageTrack<T extends Object> extends Track<T> {
   CoilChatMessageTrack._(super.converter, {required String super.debugLabel});
 
@@ -162,7 +162,7 @@ class CoilChatMessage extends StatelessWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this message, keyed by [CoilChatMessageTrack]s.
-  /// They win over the theme's [CoilThemeData.trackMotions] and [motion].
+  /// They win over the style's [CoilChatMessageStyle.motions] and [motion].
   final Map<CoilChatMessageTrack<Object>, Motion>? motions;
 
   /// Overrides for this message's look, on top of the theme's
@@ -174,20 +174,21 @@ class CoilChatMessage extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: size);
     final tokens = CoilTheme.motionOf(context, override: motion);
+    final style = CoilChatMessageStyle.fallback(
+      theme,
+      metrics,
+    ).merge(CoilTheme.styleOf<CoilChatMessageStyle>(context)).merge(this.style);
     Motion motionOf(CoilChatMessageTrack<Object> track, Motion token) =>
         CoilTheme.trackMotionOf(
           context,
           track,
           instance: motions,
+          styled: style.motions,
           token: token,
           spatial:
               track != CoilChatMessageTrack.opacity &&
               track != CoilChatMessageTrack.meta,
         );
-    final style = CoilChatMessageStyle.fallback(
-      theme,
-      metrics,
-    ).merge(CoilTheme.styleOf<CoilChatMessageStyle>(context)).merge(this.style);
     final user = sender == CoilChatSender.user;
     final name = user ? labels.userLabel : labels.assistantLabel;
 

@@ -14,7 +14,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilSidebarScaffold]. Use them as keys of
-/// [CoilSidebarScaffold.motions] or [CoilThemeData.trackMotions].
+/// [CoilSidebarScaffold.motions] or [CoilSidebarStyle.motions].
 final class CoilSidebarTrack<T extends Object> extends Track<T> {
   CoilSidebarTrack._(super.converter, {required String super.debugLabel});
 
@@ -174,6 +174,7 @@ class CoilSidebarScaffold extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this instance, keyed by [CoilSidebarTrack]s.
+  /// They win over the style's [CoilSidebarStyle.motions] and the tokens.
   final Map<CoilSidebarTrack<Object>, Motion>? motions;
 
   /// The controller of the nearest scaffold.
@@ -388,11 +389,18 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   // Build ------------------------------------------------------------------
 
+  /// The styled motions: the theme's sidebar style under [widget]'s.
+  Map<CoilSidebarTrack<Object>, Motion>? get _styledMotions =>
+      (CoilTheme.styleOf<CoilSidebarStyle>(context)?.merge(widget.style) ??
+              widget.style)
+          ?.motions;
+
   Motion _motionFor(CoilSidebarTrack<Object> track, Motion token) =>
       CoilTheme.trackMotionOf(
         context,
         track,
         instance: widget.motions,
+        styled: _styledMotions,
         token: token,
       );
 

@@ -1,6 +1,9 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/scroll_area/scroll_area.dart'
+    show CoilScrollAreaTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilScrollArea` looks. Unset fields come from
 /// [CoilScrollAreaStyle.fallback], derived from the theme's tokens. Set a
@@ -20,6 +23,7 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     this.fadeExtent,
     this.fadeColor,
     this.lineStep,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -79,6 +83,13 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// How far an arrow key scrolls: about three lines of body text.
   final double? lineStep;
 
+  /// Springs for the scroll area's animated parts, keyed by
+  /// [CoilScrollAreaTrack]s:
+  /// `{CoilScrollAreaTrack.scroll: const Motion.smoothSpring()}`. A scroll
+  /// area's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
+  final Map<CoilScrollAreaTrack<Object>, Motion>? motions;
+
   /// The scrollbar look this style describes. Call it on a resolved style.
   CoilScrollbarLook get scrollbarLook => CoilScrollbarLook(
     color: thumb!,
@@ -106,6 +117,9 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
           fadeExtent: other.fadeExtent ?? fadeExtent,
           fadeColor: other.fadeColor ?? fadeColor,
           lineStep: other.lineStep ?? lineStep,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -121,5 +135,6 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     fadeExtent,
     fadeColor,
     lineStep,
+    motions,
   ];
 }

@@ -91,7 +91,7 @@ class CoilAccordion<T> extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this accordion, keyed by [CoilAccordionTrack]s.
-  /// They win over the theme's [CoilThemeData.trackMotions] and the tokens.
+  /// They win over the style's [CoilAccordionStyle.motions] and the tokens.
   final Map<CoilAccordionTrack<Object>, Motion>? motions;
 
   /// Overrides for this accordion's look, on top of the theme's

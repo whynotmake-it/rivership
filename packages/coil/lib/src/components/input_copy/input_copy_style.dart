@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/input_copy/input_copy.dart'
+    show CoilInputCopyTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilInputCopy` looks. Unset fields come from
 /// [CoilInputCopyStyle.fallback]. Set a style app-wide or for a subtree with
@@ -22,6 +25,7 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
     this.minHeight,
     this.iconSize,
     this.actionGap,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -106,6 +110,12 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
   /// The space between the action's icon and its text.
   final double? actionGap;
 
+  /// Springs for the row's animated parts, keyed by [CoilInputCopyTrack]s:
+  /// `{CoilInputCopyTrack.swap: const Motion.bouncySpring()}`. A row's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilInputCopyTrack<Object>, Motion>? motions;
+
   @override
   CoilInputCopyStyle merge(CoilInputCopyStyle? other) => other == null
       ? this
@@ -123,6 +133,9 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
           minHeight: other.minHeight ?? minHeight,
           iconSize: other.iconSize ?? iconSize,
           actionGap: other.actionGap ?? actionGap,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -139,5 +152,6 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
     minHeight,
     iconSize,
     actionGap,
+    motions,
   ];
 }

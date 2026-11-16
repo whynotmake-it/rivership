@@ -54,7 +54,7 @@ class CoilAccordionItem<T> {
 }
 
 /// The animated parts of a `CoilAccordion`. Use them as keys of
-/// `CoilAccordion.motions` or `CoilThemeData.trackMotions`.
+/// `CoilAccordion.motions` or `CoilAccordionStyle.motions`.
 final class CoilAccordionTrack<T extends Object> extends Track<T> {
   CoilAccordionTrack._(super.converter, {required String super.debugLabel});
 

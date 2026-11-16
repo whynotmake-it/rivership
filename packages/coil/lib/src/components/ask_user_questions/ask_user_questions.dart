@@ -19,7 +19,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 
 /// The animated parts of a [CoilAskUserQuestions], as Motor tracks. Use
 /// them as keys of [CoilAskUserQuestions.motions] or
-/// [CoilThemeData.trackMotions].
+/// [CoilAskUserQuestionsStyle.motions].
 final class CoilAskUserQuestionsTrack<T extends Object> extends Track<T> {
   CoilAskUserQuestionsTrack._(
     super.converter, {
@@ -201,7 +201,8 @@ class CoilAskUserQuestions<T> extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilAskUserQuestionsTrack]s.
+  /// Per-track motions, keyed by [CoilAskUserQuestionsTrack]s. They win over
+  /// the style's [CoilAskUserQuestionsStyle.motions] and the tokens.
   final Map<CoilAskUserQuestionsTrack<Object>, Motion>? motions;
 
   /// Overrides for this card's look.
@@ -452,6 +453,12 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
     context,
     track,
     instance: widget.motions,
+    styled:
+        (CoilTheme.styleOf<CoilAskUserQuestionsStyle>(
+                  context,
+                )?.merge(widget.style) ??
+                widget.style)
+            ?.motions,
     token: token,
     spatial: spatial,
   );

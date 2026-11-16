@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/tabs/tabs.dart' show CoilTabsTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilTabs` looks. Unset fields come from
 /// [CoilTabsStyle.fallback], derived from the theme's tokens. Set a
@@ -18,6 +20,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     this.radius,
     this.minHeight,
     this.edgeFade,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -58,6 +61,12 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// How far an edge fades when more tabs are scrolled out behind it.
   final double? edgeFade;
 
+  /// Springs for the tabs' animated parts, keyed by [CoilTabsTrack]s:
+  /// `{CoilTabsTrack.selected: const Motion.bouncySpring()}`. A tab bar's
+  /// own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
+  final Map<CoilTabsTrack<Object>, Motion>? motions;
+
   @override
   CoilTabsStyle merge(CoilTabsStyle? other) => other == null
       ? this
@@ -69,6 +78,9 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
           radius: other.radius ?? radius,
           minHeight: other.minHeight ?? minHeight,
           edgeFade: other.edgeFade ?? edgeFade,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -80,5 +92,6 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     radius,
     minHeight,
     edgeFade,
+    motions,
   ];
 }

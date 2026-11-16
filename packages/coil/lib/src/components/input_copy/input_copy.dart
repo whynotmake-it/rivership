@@ -14,7 +14,7 @@ import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
 /// The animated parts of a [CoilInputCopy], as Motor tracks. Use them as
-/// keys of [CoilInputCopy.motions] or [CoilThemeData.trackMotions].
+/// keys of [CoilInputCopy.motions] or [CoilInputCopyStyle.motions].
 final class CoilInputCopyTrack<T extends Object> extends Track<T> {
   CoilInputCopyTrack._(super.converter, {required String super.debugLabel});
 
@@ -203,7 +203,7 @@ class CoilInputCopy extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this row, keyed by [CoilInputCopyTrack]s. They
-  /// win over [CoilThemeData.trackMotions] and [motion].
+  /// win over the style's [CoilInputCopyStyle.motions] and [motion].
   final Map<CoilInputCopyTrack<Object>, Motion>? motions;
 
   /// Overrides for this row's look.
@@ -232,18 +232,6 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
     _reset?.cancel();
     super.dispose();
   }
-
-  Motion _motionFor(
-    CoilInputCopyTrack<Object> track,
-    Motion token, {
-    bool spatial = true,
-  }) => CoilTheme.trackMotionOf(
-    context,
-    track,
-    instance: widget.motions,
-    token: token,
-    spatial: spatial,
-  );
 
   Future<void> _copy() async {
     var status = _Status.copied;
@@ -295,6 +283,18 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
       sizes,
     ).merge(CoilTheme.styleOf<CoilInputCopyStyle>(context)).merge(widget.style);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
+    Motion motionFor(
+      CoilInputCopyTrack<Object> track,
+      Motion token, {
+      bool spatial = true,
+    }) => CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: widget.motions,
+      styled: style.motions,
+      token: token,
+      spatial: spatial,
+    );
     final radius = BorderRadius.circular(style.radius!);
     final inField = CoilFieldScope.maybeOf(context) != null;
     final onCopy = widget.enabled ? _copy : null;
@@ -328,7 +328,7 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
                 ? CoilIconWeight.emphasis
                 : CoilIconWeight.rest;
             Motion fade(CoilInputCopyTrack<Object> track) =>
-                _motionFor(track, motion.fade, spatial: false);
+                motionFor(track, motion.fade, spatial: false);
 
             return Opacity(
               opacity: widget.enabled ? 1 : sizes.disabledOpacity,
@@ -377,11 +377,11 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
                         style: style,
                         color: value(CoilInputCopyTrack.action),
                         weight: value(CoilInputCopyTrack.weight),
-                        swapIn: _motionFor(
+                        swapIn: motionFor(
                           CoilInputCopyTrack.swap,
                           motion.quick,
                         ),
-                        swapOut: _motionFor(
+                        swapOut: motionFor(
                           CoilInputCopyTrack.swap,
                           motion.quickExit,
                         ),

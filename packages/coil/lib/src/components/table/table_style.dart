@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/table/table_column.dart'
+    show CoilTableTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilTable` looks. Unset fields come from
 /// [CoilTableStyle.fallback], derived from the theme's tokens. Set a style
@@ -31,6 +34,7 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     this.headerIconSize,
     this.sortIndicatorGap,
     this.ringInset,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens. Pointer rows rest muted and turn
@@ -113,6 +117,12 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
   /// table's clip doesn't cut them.
   final double? ringInset;
 
+  /// Springs for the table's animated parts, keyed by [CoilTableTrack]s:
+  /// `{CoilTableTrack.highlight: const Motion.smoothSpring()}`. A table's
+  /// own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
+  final Map<CoilTableTrack<Object>, Motion>? motions;
+
   @override
   CoilTableStyle merge(CoilTableStyle? other) => other == null
       ? this
@@ -131,6 +141,9 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
           headerIconSize: other.headerIconSize ?? headerIconSize,
           sortIndicatorGap: other.sortIndicatorGap ?? sortIndicatorGap,
           ringInset: other.ringInset ?? ringInset,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -148,5 +161,6 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     headerIconSize,
     sortIndicatorGap,
     ringInset,
+    motions,
   ];
 }

@@ -155,7 +155,7 @@ previous one when a component builds:
    flows through.
 5. Per-component-type: the theme's style for the component's style type
    (`CoilThemeData.components`, set with `withComponentStyle`, which merges
-   onto an existing entry) and its `trackMotions`.
+   onto an existing entry), springs included (the style's `motions`).
 6. Per instance: the component's `style:`, `motion:` and `motions:`
    parameters.
 7. High contrast (`MediaQuery.highContrastOf`): applied by `CoilTheme.of`.
@@ -213,11 +213,14 @@ Multi-part components declare a track class and take per-track motions
   ```dart
   CoilSwitch(value: on, onChanged: setOn, motions: {.thumb: const .bouncySpring()})
   ```
-- Theme-level per-component overrides use the same keys in
-  `CoilThemeData.trackMotions` (`{CoilSwitchTrack.thumb: …}`).
+- Theme-level overrides live in the component's style, next to the rest of
+  its look, under the same keys:
+  `CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: …})`, set with
+  `withComponentStyle` or per instance with `style:`. `merge` combines the
+  maps key by key, the upper style's entries winning.
 - Resolution for one track, through `CoilTheme.trackMotionOf`: the
-  instance's `motions` entry, else the theme's `trackMotions` entry, else
-  the token the component maps the track to (`thumb` → `standard`,
+  instance's `motions` entry, else the resolved style's `motions` entry
+  (the instance's `style:` merged over the theme's), else the token the component maps the track to (`thumb` → `standard`,
   `squish` → `quick`, `tint` → `fade`). Reduced motion still makes spatial
   tracks instant.
 - Maps compare by value, so a literal rebuilt every frame never redirects a
@@ -307,7 +310,7 @@ Look:
 | 2026-11-14 | `expectCoilPattern` and `CoilPattern` are public in `package:coil_cli/testing.dart`; coil_cli is a dev dependency that also holds the eject tools | apps check ejected copies with it, and coil keeps `flutter_test` out of its dependencies; supersedes the 2026-11-13 "internal" entry |
 | 2026-11-13 | Every component has a style class (§6) | landed together before the waves |
 | 2026-11-13 | Tabs and groups are generic in `T`; choices are `CoilOption<T>` (§7) | indexes leak layout into app state |
-| 2026-11-13 | Theme-level track motions stay one flat `trackMotions` map | tracks are unique objects; revisit only if per-type styles need it |
+| 2026-11-16 | Theme-level springs live in each component's style as a typed `motions` map, not in one flat theme map | springs are part of a component's look, and typed keys only accept that component's tracks; supersedes the 2026-11-13 flat-map entry |
 | 2026-11-13 | No per-kind presentation pin | YAGNI; a component's `presentation:` covers the exceptions |
 | 2026-11-13 | `CoilPopupController`, like `MenuController`; `open()` resolves once with a `CoilPopupCloseReason` (§7) | overlay acceptance tests |
 | 2026-11-13 | `CoilButton.selected` (was `active`) | matches `WidgetState.selected` |

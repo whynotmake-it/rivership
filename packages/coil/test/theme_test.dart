@@ -76,6 +76,37 @@ void main() {
     expect(style.fontFamily, isNull);
   });
 
+  group('typography', () {
+    double? opsz(TextStyle style) =>
+        style.fontVariations?.where((axis) => axis.axis == 'opsz').single.value;
+
+    test('roles of a custom font set opsz to their size', () {
+      final text = CoilTypography.from(
+        const TextStyle(fontFamily: 'Brand'),
+      ).pointer;
+      expect(opsz(text.body), 13);
+      expect(opsz(text.display), 28);
+      expect(text.display.letterSpacing, 0);
+    });
+
+    test('Allo rises in opsz half as fast above 14, with letter spacing', () {
+      final text = CoilTypography.allo().pointer;
+      expect(opsz(text.micro), 11);
+      expect(opsz(text.title), 15);
+      expect(opsz(text.display), 21);
+      expect(text.micro.letterSpacing, 0);
+      expect(text.body.letterSpacing, closeTo(13 * 0.005, 1e-9));
+      expect(text.title.letterSpacing, closeTo(16 * 0.006, 1e-9));
+      expect(text.display.letterSpacing, closeTo(28 * 0.002, 1e-9));
+    });
+
+    test('a pinned optical size holds at every size', () {
+      final text = CoilTypography.allo(opticalSize: 14).pointer;
+      expect(opsz(text.micro), 14);
+      expect(opsz(text.display), 14);
+    });
+  });
+
   test('focus rings keep following the brand after a theme lerp', () {
     final theme = CoilThemeData.lerp(
       CoilThemeData.light,

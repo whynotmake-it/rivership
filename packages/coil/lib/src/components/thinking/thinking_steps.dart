@@ -39,7 +39,7 @@ class CoilThinkingStep {
 }
 
 /// The animated parts of a [CoilThinkingSteps]. Use them as keys of
-/// [CoilThinkingSteps.motions] or [CoilThemeData.trackMotions].
+/// [CoilThinkingSteps.motions] or [CoilThinkingStepsStyle.motions].
 final class CoilThinkingStepsTrack<T extends Object> extends Track<T> {
   CoilThinkingStepsTrack._(super.converter, {required String super.debugLabel});
 
@@ -158,8 +158,8 @@ class CoilThinkingSteps extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this component, keyed by
-  /// [CoilThinkingStepsTrack]s. They win over the theme's
-  /// [CoilThemeData.trackMotions] and the tokens.
+  /// [CoilThinkingStepsTrack]s. They win over the style's
+  /// [CoilThinkingStepsStyle.motions] and the tokens.
   final Map<CoilThinkingStepsTrack<Object>, Motion>? motions;
 
   /// Overrides for this component's look, on top of the theme's
@@ -173,18 +173,6 @@ class CoilThinkingSteps extends StatefulWidget {
 class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
   /// Steps at or past this index arrived after the first build.
   late final int _firstNew = widget.steps.length;
-
-  Motion _track(
-    CoilThinkingStepsTrack<Object> track,
-    Motion token, {
-    bool spatial = true,
-  }) => CoilTheme.trackMotionOf(
-    context,
-    track,
-    instance: widget.motions,
-    token: token,
-    spatial: spatial,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -200,16 +188,28 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
             )
             .merge(CoilTheme.styleOf<CoilThinkingStepsStyle>(context))
             .merge(widget.style);
+    Motion motionFor(
+      CoilThinkingStepsTrack<Object> track,
+      Motion token, {
+      bool spatial = true,
+    }) => CoilTheme.trackMotionOf(
+      context,
+      track,
+      instance: widget.motions,
+      styled: style.motions,
+      token: token,
+      spatial: spatial,
+    );
     final onChanged = widget.onChanged;
     final expanded = widget.expanded;
     final stepMotions = (
-      height: _track(CoilThinkingStepsTrack.stepHeight, motion.gentle),
-      opacity: _track(
+      height: motionFor(CoilThinkingStepsTrack.stepHeight, motion.gentle),
+      opacity: motionFor(
         CoilThinkingStepsTrack.stepOpacity,
         motion.fade,
         spatial: false,
       ),
-      sourcePop: _track(
+      sourcePop: motionFor(
         CoilThinkingStepsTrack.sourcePop,
         reduced ? motion.fade : motion.standard,
         spatial: false,
@@ -248,26 +248,26 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
               // fades further.
               disabledOpacity: metrics.disabledRowOpacity,
               focusRingOffset: style.focusRingOffset,
-              chevronMotion: _track(
+              chevronMotion: motionFor(
                 CoilThinkingStepsTrack.chevron,
                 expanded ? motion.quick : motion.quickExit,
               ),
-              fillMotion: _track(
+              fillMotion: motionFor(
                 CoilThinkingStepsTrack.fill,
                 motion.fade,
                 spatial: false,
               ),
-              fillExitMotion: _track(
+              fillExitMotion: motionFor(
                 CoilThinkingStepsTrack.fill,
                 motion.fadeExit,
                 spatial: false,
               ),
-              labelMotion: _track(
+              labelMotion: motionFor(
                 CoilThinkingStepsTrack.label,
                 motion.fade,
                 spatial: false,
               ),
-              weightMotion: _track(
+              weightMotion: motionFor(
                 CoilThinkingStepsTrack.weight,
                 motion.fade,
                 spatial: false,
@@ -275,11 +275,11 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
             ),
             CoilCollapsible(
               expanded: expanded,
-              heightMotion: _track(
+              heightMotion: motionFor(
                 CoilThinkingStepsTrack.height,
                 expanded ? motion.standard : motion.standardExit,
               ),
-              opacityMotion: _track(
+              opacityMotion: motionFor(
                 CoilThinkingStepsTrack.opacity,
                 expanded ? motion.fade : motion.fadeExit,
                 spatial: false,

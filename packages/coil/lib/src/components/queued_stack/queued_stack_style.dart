@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/queued_stack/queued_stack.dart'
+    show CoilQueuedStackTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilQueuedStack` looks. Unset fields come from
 /// [CoilQueuedStackStyle.fallback], derived from the theme's tokens.
@@ -14,6 +17,7 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
     this.cardMinHeight,
     this.shadowLevel,
     this.gutterWidth,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -60,6 +64,12 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
   /// holds the queue icon and count.
   final double? gutterWidth;
 
+  /// Springs for the stack's animated parts, keyed by
+  /// [CoilQueuedStackTrack]s: `{CoilQueuedStackTrack.expand: const
+  /// Motion.bouncySpring()}`. A stack's own `motions:` win over these; these
+  /// win over the motion tokens. [merge] combines the maps key by key.
+  final Map<CoilQueuedStackTrack<Object>, Motion>? motions;
+
   @override
   CoilQueuedStackStyle merge(CoilQueuedStackStyle? other) => other == null
       ? this
@@ -72,6 +82,9 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
           cardMinHeight: other.cardMinHeight ?? cardMinHeight,
           shadowLevel: other.shadowLevel ?? shadowLevel,
           gutterWidth: other.gutterWidth ?? gutterWidth,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -84,5 +97,6 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
     cardMinHeight,
     shadowLevel,
     gutterWidth,
+    motions,
   ];
 }

@@ -191,6 +191,12 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   bool get _rtl => Directionality.of(context) == TextDirection.rtl;
   SliderScale get _scale => widget.scale;
 
+  /// The styled motions: the theme's slider style under the widget's.
+  Map<CoilSliderTrack<Object>, Motion>? get _styledMotions =>
+      (CoilTheme.styleOf<CoilSliderStyle>(context)?.merge(widget.style) ??
+              widget.style)
+          ?.motions;
+
   /// The motions of one part: a custom one replaces enter and exit.
   ({Motion enter, Motion exit}) _motionFor(
     CoilSliderTrack<Object> track,
@@ -218,6 +224,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       context,
       track,
       instance: widget.motions,
+      styled: _styledMotions,
       token: enter,
       spatial: spatial,
     );

@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/sidebar/sidebar_scaffold.dart'
+    show CoilSidebarTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilSidebarScaffold` and its parts look; unset
 /// fields come from [CoilSidebarStyle.fallback].
@@ -16,6 +19,7 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     this.actionGap,
     this.labelStyle,
     this.labelColor,
+    this.motions,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -71,6 +75,12 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
   /// [WidgetState.focused].
   final WidgetStateProperty<Color?>? labelColor;
 
+  /// Springs for the sidebar's animated parts, keyed by [CoilSidebarTrack]s:
+  /// `{CoilSidebarTrack.fold: const Motion.bouncySpring()}`. A scaffold's,
+  /// menu's or callout's own `motions:` win over these; these win over the
+  /// motion tokens. [merge] combines the maps key by key.
+  final Map<CoilSidebarTrack<Object>, Motion>? motions;
+
   @override
   CoilSidebarStyle merge(CoilSidebarStyle? other) => other == null
       ? this
@@ -85,6 +95,9 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
           actionGap: other.actionGap ?? actionGap,
           labelStyle: labelStyle?.merge(other.labelStyle) ?? other.labelStyle,
           labelColor: other.labelColor ?? labelColor,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -99,5 +112,6 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     actionGap,
     labelStyle,
     labelColor,
+    motions,
   ];
 }

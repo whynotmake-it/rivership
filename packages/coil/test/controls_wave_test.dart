@@ -858,14 +858,16 @@ void main() {
   });
 
   group('motions', () {
-    // Each case builds its component in an "off" and an "on" state and
-    // names the track that animates the change.
+    // Each case builds its component in an "off" and an "on" state, and
+    // themes the track that animates the change through its style.
+    CoilThemeData styled<S extends CoilComponentStyle<S>>(S style) =>
+        CoilThemeData.light.withComponentStyle(style);
     final cases =
         <
           String,
           ({
             Widget Function({required bool on, Motion? instance}) build,
-            Track<Object> track,
+            CoilThemeData Function(Motion motion) theme,
           })
         >{
           'checkbox glyph': (
@@ -876,7 +878,9 @@ void main() {
                   ? null
                   : {CoilCheckboxTrack.glyph: instance},
             ),
-            track: CoilCheckboxTrack.glyph,
+            theme: (m) => styled(
+              CoilCheckboxStyle(motions: {CoilCheckboxTrack.glyph: m}),
+            ),
           ),
           'switch thumb': (
             build: ({required on, instance}) => CoilSwitch(
@@ -886,7 +890,8 @@ void main() {
                   ? null
                   : {CoilSwitchTrack.thumb: instance},
             ),
-            track: CoilSwitchTrack.thumb,
+            theme: (m) =>
+                styled(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: m})),
           ),
           'switch label': (
             build: ({required on, instance}) => CoilSwitch(
@@ -897,7 +902,8 @@ void main() {
                   ? null
                   : {CoilSwitchTrack.label: instance},
             ),
-            track: CoilSwitchTrack.label,
+            theme: (m) =>
+                styled(CoilSwitchStyle(motions: {CoilSwitchTrack.label: m})),
           ),
           'radio dot': (
             build: ({required on, instance}) => CoilRadioGroup<int>(
@@ -908,7 +914,9 @@ void main() {
                   ? null
                   : {CoilRadioGroupTrack.dot: instance},
             ),
-            track: CoilRadioGroupTrack.dot,
+            theme: (m) => styled(
+              CoilRadioGroupStyle(motions: {CoilRadioGroupTrack.dot: m}),
+            ),
           ),
           'checkbox group selection': (
             build: ({required on, instance}) => CoilCheckboxGroup<int>(
@@ -919,7 +927,11 @@ void main() {
                   ? null
                   : {CoilCheckboxGroupTrack.selection: instance},
             ),
-            track: CoilCheckboxGroupTrack.selection,
+            theme: (m) => styled(
+              CoilCheckboxGroupStyle(
+                motions: {CoilCheckboxGroupTrack.selection: m},
+              ),
+            ),
           ),
           'toggle group selection': (
             build: ({required on, instance}) => CoilToggleGroup<int>(
@@ -930,7 +942,11 @@ void main() {
                   ? null
                   : {CoilToggleGroupTrack.selection: instance},
             ),
-            track: CoilToggleGroupTrack.selection,
+            theme: (m) => styled(
+              CoilToggleGroupStyle(
+                motions: {CoilToggleGroupTrack.selection: m},
+              ),
+            ),
           ),
           'button fill': (
             build: ({required on, instance}) => CoilButton(
@@ -942,16 +958,15 @@ void main() {
                   : {CoilButtonTrack.fill: instance},
               child: const Text('Open'),
             ),
-            track: CoilButtonTrack.fill,
+            theme: (m) =>
+                styled(CoilButtonStyle(motions: {CoilButtonTrack.fill: m})),
           ),
         };
 
     for (final MapEntry(key: name, value: c) in cases.entries) {
       testWidgets('$name: instance beats theme beats token', (tester) async {
         Future<Duration> flip({Motion? theme, Motion? instance}) async {
-          final data = CoilThemeData.light.copyWith(
-            trackMotions: {if (theme != null) c.track: theme},
-          );
+          final data = theme == null ? CoilThemeData.light : c.theme(theme);
           await _pump(
             tester,
             c.build(on: false, instance: instance),
@@ -999,8 +1014,8 @@ void main() {
     });
 
     testWidgets('a skeleton fades in on its track motion', (tester) async {
-      final data = CoilThemeData.light.copyWith(
-        trackMotions: {CoilSkeletonTrack.appear: _linear(3000)},
+      final data = CoilThemeData.light.withComponentStyle(
+        CoilSkeletonStyle(motions: {CoilSkeletonTrack.appear: _linear(3000)}),
       );
       Future<void> show() => _pump(
         tester,

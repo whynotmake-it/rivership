@@ -27,7 +27,7 @@ class _Host extends StatefulWidget {
     this.states,
     this.motion,
     this.motions,
-    this.trackMotions = const {},
+    this.themeMotions,
     this.reduceMotion = false,
     this.label = const Text('Volume'),
   });
@@ -44,7 +44,7 @@ class _Host extends StatefulWidget {
   final WidgetStatesController? states;
   final CoilMotion? motion;
   final Map<CoilSliderTrack<Object>, Motion>? motions;
-  final Map<Track<Object>, Motion> trackMotions;
+  final Map<CoilSliderTrack<Object>, Motion>? themeMotions;
   final bool reduceMotion;
   final Widget? label;
 
@@ -68,12 +68,15 @@ class _HostState extends State<_Host> {
           textDirection: widget.textDirection,
           child: CoilTheme(
             // Geometry is measured on a real font.
-            data: CoilThemeData.light.copyWith(
-              tier: widget.tier,
-              typography: CoilTypography.allo(),
-              motion: widget.motion,
-              trackMotions: widget.trackMotions,
-            ),
+            data: CoilThemeData.light
+                .copyWith(
+                  tier: widget.tier,
+                  typography: CoilTypography.allo(),
+                  motion: widget.motion,
+                )
+                .withComponentStyle(
+                  CoilSliderStyle(motions: widget.themeMotions),
+                ),
             child: Overlay.wrap(
               child: FocusScope(
                 autofocus: true,
@@ -749,14 +752,14 @@ void main() {
     Widget host({
       CoilMotion? motion,
       Map<CoilSliderTrack<Object>, Motion>? motions,
-      Map<Track<Object>, Motion> trackMotions = const {},
+      Map<CoilSliderTrack<Object>, Motion>? themeMotions,
       bool reduce = false,
     }) => _Host(
       variant: CoilSliderVariant.pill,
       divisions: 10,
       motion: motion,
       motions: motions,
-      trackMotions: trackMotions,
+      themeMotions: themeMotions,
       reduceMotion: reduce,
     );
 
@@ -804,11 +807,11 @@ void main() {
       expect(fast, closeTo(1, .01));
     });
 
-    testWidgets('a theme track motion reaches the thumb', (tester) async {
+    testWidgets('a theme style motion reaches the thumb', (tester) async {
       final slow = await travelled(
         tester,
         host(
-          trackMotions: {
+          themeMotions: {
             CoilSliderTrack.thumb: const Motion.linear(Duration(seconds: 2)),
           },
         ),

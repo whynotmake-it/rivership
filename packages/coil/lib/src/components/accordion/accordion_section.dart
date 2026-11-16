@@ -72,6 +72,7 @@ class AccordionSection<T> extends StatelessWidget {
       context,
       track,
       instance: motions,
+      styled: style.motions,
       token: token,
       spatial: spatial,
     );

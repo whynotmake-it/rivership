@@ -2,3 +2,4 @@
 library;
 
 export 'src/components/reveal/reveal.dart';
+export 'src/components/reveal/reveal_style.dart';

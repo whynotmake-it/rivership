@@ -16,7 +16,7 @@ class _Host extends StatefulWidget {
     this.textDirection = TextDirection.ltr,
     this.tier = CoilTier.pointer,
     this.motions,
-    this.trackMotions = const {},
+    this.themeMotions,
     this.solid = false,
   });
 
@@ -24,7 +24,7 @@ class _Host extends StatefulWidget {
   final TextDirection textDirection;
   final CoilTier tier;
   final Map<CoilTabsTrack<Object>, Motion>? motions;
-  final Map<Track<Object>, Motion> trackMotions;
+  final Map<CoilTabsTrack<Object>, Motion>? themeMotions;
 
   /// Tabs are solid black blocks, to read the edge fades from pixels.
   final bool solid;
@@ -43,11 +43,9 @@ class _HostState extends State<_Host> {
       textDirection: widget.textDirection,
       child: CoilTheme(
         // Tab widths are measured on a real font.
-        data: CoilThemeData.light.copyWith(
-          tier: widget.tier,
-          typography: CoilTypography.allo(),
-          trackMotions: widget.trackMotions,
-        ),
+        data: CoilThemeData.light
+            .copyWith(tier: widget.tier, typography: CoilTypography.allo())
+            .withComponentStyle(CoilTabsStyle(motions: widget.themeMotions)),
         child: FocusScope(
           autofocus: true,
           child: Align(
@@ -222,10 +220,10 @@ void main() {
       );
     });
 
-    testWidgets('a theme track motion reaches the scroll', (tester) async {
+    testWidgets('a theme style motion reaches the scroll', (tester) async {
       await tester.pumpWidget(
         _Host(
-          trackMotions: {CoilTabsTrack.reveal: slow[CoilTabsTrack.reveal]!},
+          themeMotions: {CoilTabsTrack.reveal: slow[CoilTabsTrack.reveal]!},
         ),
       );
       await tester.pump();

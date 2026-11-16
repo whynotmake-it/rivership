@@ -247,9 +247,13 @@ class CoilTypography with Diagnosticable {
   ///
   /// * [roundness] is the `ROND` axis: 0 sharp, 50 friendly, 100 round.
   /// * [opticalSize] pins the `opsz` axis (9–32). By default it follows the
-  ///   font size: between 9 and 14 Allo opens its spacing up for small
-  ///   text, and toward 32 it is drawn and spaced for headlines. Pin it to
-  ///   14 for the text cut everywhere.
+  ///   font size up to 14, where Allo opens its spacing up for small text,
+  ///   and rises half as fast above, since Allo's headline design tightens
+  ///   quickly. Pin it to 14 for the text cut everywhere.
+  ///
+  /// Each role also gets a little letter spacing (up to 0.006em, none
+  /// below 13), so Allo sets as evenly across the scale as the Inter it was
+  /// tuned on.
   /// * [singleStoryA] (`ss01`) draws a single-story a.
   /// * [disambiguate] (`ss02`) draws a serifed I, a tailed l, a footed 1 and
   ///   a slashed zero, so they can't be mistaken for each other.
@@ -273,7 +277,7 @@ class CoilTypography with Diagnosticable {
         package: package,
         fontVariations: [
           FontVariation('ROND', roundness),
-          if (opticalSize != null) FontVariation.opticalSize(opticalSize),
+          FontVariation.opticalSize(opticalSize ?? 14),
         ],
         fontFeatures: [
           if (singleStoryA) const FontFeature.enable('ss01'),
@@ -281,7 +285,17 @@ class CoilTypography with Diagnosticable {
           if (openFigures) const FontFeature.enable('ss03'),
         ],
       ),
-    );
+    ).map((role) {
+      final size = role.fontSize ?? 14;
+      return role.copyWith(
+        letterSpacing: _alloTracking(size) * size,
+        fontVariations: [
+          for (final axis in [...?role.fontVariations])
+            if (axis.axis != 'opsz') axis,
+          FontVariation.opticalSize(opticalSize ?? _alloOpticalSize(size)),
+        ],
+      );
+    });
   }
 
   /// [Inter](https://rsms.me/inter), a neutral variable sans for screens.
@@ -489,6 +503,24 @@ class CoilTypography with Diagnosticable {
       StringProperty('fontFamily', pointer.body.fontFamily, defaultValue: null),
     );
   }
+}
+
+/// Allo's optical size for [size]: the size itself up to 14, where Allo
+/// opens its spacing for small text, then half as fast. Allo's display
+/// design tightens faster than Inter's, so following the size all the way
+/// would set titles and display text noticeably tighter than the body.
+double _alloOpticalSize(double size) =>
+    size <= 14 ? size : 14 + (size - 14) / 2;
+
+/// Allo's letter spacing for [size], in em. Even at its text size Allo runs
+/// about 2% narrower than Inter, the font coil's scale was tuned on; this
+/// opens it up so every role sets within about ±0.5% of Inter's width.
+double _alloTracking(double size) {
+  if (size < 13) return 0;
+  if (size < 14) return 0.005;
+  if (size <= 18) return 0.006;
+  if (size <= 24) return 0.003;
+  return 0.002;
 }
 
 /// [role] on top of [base]: the role's size, line height and weight over

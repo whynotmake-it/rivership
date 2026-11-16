@@ -503,8 +503,8 @@ void main() {
       expect(
         await labelMidway(
           tester,
-          theme: CoilThemeData.light.copyWith(
-            trackMotions: {CoilBreadcrumbTrack.label: slow},
+          theme: CoilThemeData.light.withComponentStyle(
+            CoilBreadcrumbStyle(motions: {CoilBreadcrumbTrack.label: slow}),
           ),
         ),
         isNot(lit),

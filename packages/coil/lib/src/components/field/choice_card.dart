@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilChoiceCard], as Motor tracks. Use them as
-/// keys of `motions` or [CoilThemeData.trackMotions].
+/// keys of [CoilChoiceCard.motions] or [CoilChoiceCardStyle.motions].
 final class CoilChoiceCardTrack<T extends Object> extends Track<T> {
   CoilChoiceCardTrack._(super.converter, {required String super.debugLabel});
 
@@ -81,7 +81,8 @@ class CoilChoiceCard extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Overrides single tracks' motions.
+  /// Overrides single tracks' motions. They win over the style's
+  /// [CoilChoiceCardStyle.motions] and the tokens.
   final Map<CoilChoiceCardTrack<Object>, Motion>? motions;
 
   /// Overrides for this card's look.
@@ -101,15 +102,6 @@ class _CoilChoiceCardState extends State<CoilChoiceCard> {
     super.dispose();
   }
 
-  Motion _motionFor(CoilChoiceCardTrack<Object> track, Motion token) =>
-      CoilTheme.trackMotionOf(
-        context,
-        track,
-        instance: widget.motions,
-        token: token,
-        spatial: false,
-      );
-
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -117,6 +109,15 @@ class _CoilChoiceCardState extends State<CoilChoiceCard> {
     final style = CoilChoiceCardStyle.fallback(theme, metrics)
         .merge(CoilTheme.styleOf<CoilChoiceCardStyle>(context))
         .merge(widget.style);
+    Motion motionFor(CoilChoiceCardTrack<Object> track, Motion token) =>
+        CoilTheme.trackMotionOf(
+          context,
+          track,
+          instance: widget.motions,
+          styled: style.motions,
+          token: token,
+          spatial: false,
+        );
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final radius = BorderRadius.circular(style.radius!);
     final description = widget.description;
@@ -153,11 +154,11 @@ class _CoilChoiceCardState extends State<CoilChoiceCard> {
       return MotionBuilder<Color>(
         value: border,
         converter: MotionConverter.colorRgb,
-        motion: _motionFor(CoilChoiceCardTrack.border, motion.fade),
+        motion: motionFor(CoilChoiceCardTrack.border, motion.fade),
         builder: (context, border, child) => MotionBuilder<Color>(
           value: fill,
           converter: MotionConverter.colorRgb,
-          motion: _motionFor(
+          motion: motionFor(
             CoilChoiceCardTrack.fill,
             hovered || pressed ? motion.fade : motion.fadeExit,
           ),

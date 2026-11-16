@@ -12,7 +12,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 
 /// The animated parts of a [CoilCard] and a `CoilCardGroup`. Use them as
 /// keys of [CoilCard.motions], `CoilCardGroup.motions` or
-/// [CoilThemeData.trackMotions].
+/// [CoilCardStyle.motions].
 final class CoilCardTrack<T extends Object> extends Track<T> {
   CoilCardTrack._(super.converter, {required String super.debugLabel});
 
@@ -144,7 +144,7 @@ class CoilCard extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this card, keyed by [CoilCardTrack]s. They win
-  /// over the theme's [CoilThemeData.trackMotions] and the tokens.
+  /// over the style's [CoilCardStyle.motions] and the tokens.
   final Map<CoilCardTrack<Object>, Motion>? motions;
 
   /// Overrides for this card's look, on top of the theme's [CoilCardStyle]
@@ -188,6 +188,10 @@ class _CoilCardState extends State<CoilCard> {
     context,
     track,
     instance: widget.motions,
+    styled:
+        (CoilTheme.styleOf<CoilCardStyle>(context)?.merge(widget.style) ??
+                widget.style)
+            ?.motions,
     token: token,
     spatial: spatial,
   );

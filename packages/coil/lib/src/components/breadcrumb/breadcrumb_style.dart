@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/breadcrumb/breadcrumb.dart'
+    show CoilBreadcrumbTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilBreadcrumb` and its "…" menu look. Unset fields
 /// come from [CoilBreadcrumbStyle.fallback], which derives them from the
@@ -24,6 +27,7 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
     this.separatorGap,
     this.focusRingOffset,
     this.menuMaxHeight,
+    this.motions,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -96,6 +100,13 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   /// The tallest the "…" popover gets before it scrolls.
   final double? menuMaxHeight;
 
+  /// Springs for the breadcrumb's animated parts, keyed by
+  /// [CoilBreadcrumbTrack]s:
+  /// `{CoilBreadcrumbTrack.highlight: const Motion.bouncySpring()}`. A
+  /// breadcrumb's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
+  final Map<CoilBreadcrumbTrack<Object>, Motion>? motions;
+
   @override
   CoilBreadcrumbStyle merge(CoilBreadcrumbStyle? other) => other == null
       ? this
@@ -113,6 +124,9 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
           separatorGap: other.separatorGap ?? separatorGap,
           focusRingOffset: other.focusRingOffset ?? focusRingOffset,
           menuMaxHeight: other.menuMaxHeight ?? menuMaxHeight,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -130,5 +144,6 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
     separatorGap,
     focusRingOffset,
     menuMaxHeight,
+    motions,
   ];
 }

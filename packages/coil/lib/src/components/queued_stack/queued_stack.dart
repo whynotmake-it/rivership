@@ -13,7 +13,7 @@ import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
 /// The animated parts of a [CoilQueuedStack]. Use them as keys of
-/// [CoilQueuedStack.motions] or [CoilThemeData.trackMotions].
+/// [CoilQueuedStack.motions] or [CoilQueuedStackStyle.motions].
 final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
   CoilQueuedStackTrack._(
     super.converter, {
@@ -221,7 +221,8 @@ class CoilQueuedStack extends StatefulWidget {
   /// Overrides the theme's motion tokens for this stack.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilQueuedStackTrack]s.
+  /// Per-track motions, keyed by [CoilQueuedStackTrack]s. They win over the
+  /// style's [CoilQueuedStackStyle.motions] and the tokens.
   final Map<CoilQueuedStackTrack<Object>, Motion>? motions;
 
   /// Overrides for this stack's look.
@@ -386,6 +387,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       context,
       track,
       instance: widget.motions,
+      styled: look.motions,
       token: token,
       spatial: spatial,
     );

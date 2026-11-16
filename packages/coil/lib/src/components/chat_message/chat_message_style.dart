@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/chat_message/chat_message.dart'
+    show CoilChatMessageTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilChatMessage` looks. Unset fields come from
 /// [CoilChatMessageStyle.fallback], derived from the theme's tokens. Set a
@@ -19,6 +22,7 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
     this.metaGap,
     this.actionGap,
     this.menuMinWidth,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -83,6 +87,12 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
   /// The narrowest the long-press menu gets as a popover.
   final double? menuMinWidth;
 
+  /// Springs for the message's animated parts, keyed by
+  /// [CoilChatMessageTrack]s: `{CoilChatMessageTrack.height: const
+  /// Motion.bouncySpring()}`. A message's own `motions:` win over these;
+  /// these win over the motion tokens. [merge] combines the maps key by key.
+  final Map<CoilChatMessageTrack<Object>, Motion>? motions;
+
   @override
   CoilChatMessageStyle merge(CoilChatMessageStyle? other) => other == null
       ? this
@@ -98,6 +108,9 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
           metaGap: other.metaGap ?? metaGap,
           actionGap: other.actionGap ?? actionGap,
           menuMinWidth: other.menuMinWidth ?? menuMinWidth,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -113,5 +126,6 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
     metaGap,
     actionGap,
     menuMinWidth,
+    motions,
   ];
 }

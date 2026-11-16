@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/ask_user_questions/ask_user_questions.dart'
+    show CoilAskUserQuestionsTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilAskUserQuestions` looks. Unset fields come from
 /// [CoilAskUserQuestionsStyle.fallback], derived from the theme's tokens.
@@ -31,6 +34,7 @@ class CoilAskUserQuestionsStyle
     this.keyRadius,
     this.fieldFocusFill,
     this.fieldFocusBorder,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens: a hairline card on the
@@ -138,6 +142,13 @@ class CoilAskUserQuestionsStyle
   /// The outline of an empty "other" field while it has focus.
   final Color? fieldFocusBorder;
 
+  /// Springs for the questions' animated parts, keyed by
+  /// [CoilAskUserQuestionsTrack]s:
+  /// `{CoilAskUserQuestionsTrack.height: const Motion.bouncySpring()}`. A
+  /// `CoilAskUserQuestions`'s own `motions:` win over these; these win over
+  /// the motion tokens. [merge] combines the maps key by key.
+  final Map<CoilAskUserQuestionsTrack<Object>, Motion>? motions;
+
   @override
   CoilAskUserQuestionsStyle merge(CoilAskUserQuestionsStyle? other) =>
       other == null
@@ -167,6 +178,9 @@ class CoilAskUserQuestionsStyle
           keyRadius: other.keyRadius ?? keyRadius,
           fieldFocusFill: other.fieldFocusFill ?? fieldFocusFill,
           fieldFocusBorder: other.fieldFocusBorder ?? fieldFocusBorder,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -193,5 +207,6 @@ class CoilAskUserQuestionsStyle
     keyRadius,
     fieldFocusFill,
     fieldFocusBorder,
+    motions,
   ];
 }

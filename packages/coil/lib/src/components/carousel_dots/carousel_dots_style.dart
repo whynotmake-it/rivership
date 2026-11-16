@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/carousel_dots/carousel_dots_track.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilCarouselDots` looks. Unset fields come from
 /// [CoilCarouselDotsStyle.fallback], derived from the theme's tokens. Set a
@@ -16,6 +18,7 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
     this.targetSize,
     this.radius,
     this.ringOffset,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -66,6 +69,13 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
   /// The gap between the targets and the keyboard focus ring.
   final double? ringOffset;
 
+  /// Springs for the dots' animated parts, keyed by
+  /// [CoilCarouselDotsTrack]s:
+  /// `{CoilCarouselDotsTrack.pill: const Motion.bouncySpring()}`. The dots'
+  /// own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
+  final Map<CoilCarouselDotsTrack<Object>, Motion>? motions;
+
   @override
   CoilCarouselDotsStyle merge(CoilCarouselDotsStyle? other) => other == null
       ? this
@@ -78,6 +88,9 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
           targetSize: other.targetSize ?? targetSize,
           radius: other.radius ?? radius,
           ringOffset: other.ringOffset ?? ringOffset,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -90,5 +103,6 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
     targetSize,
     radius,
     ringOffset,
+    motions,
   ];
 }

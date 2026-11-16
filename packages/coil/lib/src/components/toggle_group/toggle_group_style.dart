@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/toggle_group/toggle_group.dart'
+    show CoilToggleGroupTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilToggleGroup` looks. Unset fields come from
 /// [CoilToggleGroupStyle.fallback], derived from the theme's tokens. Set a
@@ -16,6 +19,7 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     this.label,
     this.textStyle,
     this.radius,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -56,6 +60,13 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
   /// The corner radius of blocks and the highlight.
   final double? radius;
 
+  /// Springs for the group's animated parts, keyed by
+  /// [CoilToggleGroupTrack]s:
+  /// `{CoilToggleGroupTrack.selection: const Motion.bouncySpring()}`. A
+  /// group's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
+  final Map<CoilToggleGroupTrack<Object>, Motion>? motions;
+
   @override
   CoilToggleGroupStyle merge(CoilToggleGroupStyle? other) => other == null
       ? this
@@ -65,8 +76,18 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
           label: other.label ?? label,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
-  List<Object?> get props => [selection, highlight, label, textStyle, radius];
+  List<Object?> get props => [
+    selection,
+    highlight,
+    label,
+    textStyle,
+    radius,
+    motions,
+  ];
 }

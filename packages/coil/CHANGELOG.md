@@ -20,6 +20,13 @@ Milestone M0, unreleased.
 - `CoilFocusRingTheme` holds the focus ring's width, gap and color.
   Breaking: it replaces `CoilThemeData.focusRingWidth` and
   `CoilColors.focusRingColor`.
+- Springs live in component styles. Every animated component's style
+  has a typed `motions` map, such as
+  `CoilSwitchStyle.motions: Map<CoilSwitchTrack<Object>, Motion>?`, which
+  merges key by key. A component's `motions:` still wins, then its style,
+  then the tokens. `CoilRevealStyle` is new, and `CoilReveal` takes
+  `style:`. Breaking: `CoilThemeData.trackMotions` is removed, and
+  `CoilTheme.trackMotionOf` takes the resolved style's map as `styled:`.
 
 - Surfaces follow the surface scope. A card, a dropdown or breadcrumb
   menu and the command menu take their level from the surface they sit

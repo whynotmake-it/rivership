@@ -32,7 +32,6 @@ class CoilThemeData with Diagnosticable {
     this.focusRing = const CoilFocusRingTheme(),
     this.haptics,
     this.controlCursor = SystemMouseCursors.basic,
-    this.trackMotions = const {},
     this.components = const {},
   });
 
@@ -78,15 +77,15 @@ class CoilThemeData with Diagnosticable {
   /// and disabled controls the cursor beneath them.
   final MouseCursor controlCursor;
 
-  /// Theme-level per-track motions for any component, keyed by the
-  /// component's track class (`CoilSwitchTrack.thumb`, …). A component's own
-  /// `motions:` win over these; these win over the tokens.
-  final Map<Track<Object>, Motion> trackMotions;
-
   /// Per-component-type style overrides, keyed by style type:
   /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
   /// [withComponentStyle], which merges with an existing entry. Components
   /// read them with [CoilTheme.styleOf].
+  ///
+  /// A style's `motions` sets springs for that component's animated parts
+  /// app-wide: `CoilSwitchStyle(motions: {CoilSwitchTrack.thumb:
+  /// const Motion.bouncySpring()})`. A component's own `motions:` win over
+  /// them; they win over the tokens.
   final Map<Type, CoilComponentStyle<dynamic>> components;
 
   /// The style override for type [S], if any.
@@ -136,7 +135,6 @@ class CoilThemeData with Diagnosticable {
     CoilFocusRingTheme? focusRing,
     Object? haptics = _keep,
     MouseCursor? controlCursor,
-    Map<Track<Object>, Motion>? trackMotions,
     Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
     colors: colors ?? this.colors,
@@ -148,7 +146,6 @@ class CoilThemeData with Diagnosticable {
     focusRing: focusRing ?? this.focusRing,
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     controlCursor: controlCursor ?? this.controlCursor,
-    trackMotions: trackMotions ?? this.trackMotions,
     components: components ?? this.components,
   );
 
@@ -168,7 +165,6 @@ class CoilThemeData with Diagnosticable {
         focusRing: CoilFocusRingTheme.lerp(a.focusRing, b.focusRing, t),
         haptics: t < 0.5 ? a.haptics : b.haptics,
         controlCursor: t < 0.5 ? a.controlCursor : b.controlCursor,
-        trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
         components: t < 0.5 ? a.components : b.components,
       );
 
@@ -184,7 +180,6 @@ class CoilThemeData with Diagnosticable {
       other.focusRing == focusRing &&
       other.haptics == haptics &&
       other.controlCursor == controlCursor &&
-      mapEquals(other.trackMotions, trackMotions) &&
       mapEquals(other.components, components);
 
   @override
@@ -198,9 +193,6 @@ class CoilThemeData with Diagnosticable {
     focusRing,
     haptics,
     controlCursor,
-    Object.hashAllUnordered(
-      trackMotions.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
     Object.hashAllUnordered(
       components.entries.map((e) => Object.hash(e.key, e.value)),
     ),
@@ -313,19 +305,21 @@ class CoilTheme extends StatelessWidget {
       of(context).componentStyle<S>();
 
   /// The motion for one [track] of a component at [context]: the
-  /// component's [instance] map entry, else the theme's
-  /// [CoilThemeData.trackMotions] entry, else [token] (already resolved
-  /// through [motionOf]). Maps compare by value, so a rebuilt literal never
-  /// redirects an animation. Under reduced motion a [spatial] track is
-  /// instant whatever was configured.
+  /// component's own `motions:` entry ([instance]), else its resolved
+  /// style's `motions` entry ([styled]: the component's `style:` merged
+  /// over the theme's [CoilThemeData.components] entry), else [token]
+  /// (already resolved through [motionOf]). Maps compare by value, so a
+  /// rebuilt literal never redirects an animation. Under reduced motion a
+  /// [spatial] track is instant whatever was configured.
   static Motion trackMotionOf(
     BuildContext context,
     Track<Object> track, {
     required Map<Track<Object>, Motion>? instance,
+    required Map<Track<Object>, Motion>? styled,
     required Motion token,
     bool spatial = true,
   }) {
-    final custom = instance?[track] ?? of(context).trackMotions[track];
+    final custom = instance?[track] ?? styled?[track];
     if (custom == null) return token;
     final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return reduced && spatial ? const Motion.instant() : custom;

@@ -5,7 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// The animated parts of a [CoilSkeleton].
+/// The animated parts of a [CoilSkeleton]. Use them as keys of
+/// [CoilSkeleton.motions] or [CoilSkeletonStyle.motions].
 final class CoilSkeletonTrack<T extends Object> extends Track<T> {
   CoilSkeletonTrack._(
     super.converter, {
@@ -125,6 +126,7 @@ class CoilSkeleton extends StatelessWidget {
       context,
       CoilSkeletonTrack.appear,
       instance: motions,
+      styled: look.motions,
       token: tokens.fade,
       spatial: false,
     );
@@ -132,6 +134,7 @@ class CoilSkeleton extends StatelessWidget {
       context,
       CoilSkeletonTrack.pulse,
       instance: motions,
+      styled: look.motions,
       token: _pulseCurve,
       spatial: false,
     );
@@ -358,10 +361,13 @@ class _CoilSkeletonSwitcherState extends State<CoilSkeletonSwitcher> {
   @override
   Widget build(BuildContext context) {
     final tokens = CoilTheme.motionOf(context, override: widget.motion);
+    // No `style:` of its own: the theme's skeleton style is the styled one.
+    final styled = CoilTheme.styleOf<CoilSkeletonStyle>(context)?.motions;
     Motion swap(Motion token) => CoilTheme.trackMotionOf(
       context,
       CoilSkeletonTrack.swap,
       instance: widget.motions,
+      styled: styled,
       token: token,
       spatial: false,
     );

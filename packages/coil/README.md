@@ -133,7 +133,8 @@ so the interaction rules hold in ejected copies too.
 Every token is a Motor spring, exits included, so an interrupted transition
 keeps its velocity. Tokens are theme data: change them app-wide, per
 subtree (`CoilTheme.override`), per component (`motion:`) or per track
-(`motions: {.thumb: …}`, or `CoilThemeData.trackMotions` app-wide). Reduced motion is applied last: spatial springs become
+(`motions: {.thumb: …}`, or a style's `motions` app-wide, such as
+`CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: …})`). Reduced motion is applied last: spatial springs become
 instant, fades stay.
 
 | Token | Default (`CupertinoMotion`) | Moves |

@@ -13,7 +13,7 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilBanner]. Use them as keys of
-/// [CoilBanner.motions] or [CoilThemeData.trackMotions].
+/// [CoilBanner.motions] or [CoilBannerStyle.motions].
 final class CoilBannerTrack<T extends Object> extends Track<T> {
   CoilBannerTrack._(super.converter, {required String super.debugLabel});
 
@@ -125,7 +125,7 @@ class CoilBanner extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this banner, keyed by [CoilBannerTrack]s. They
-  /// win over the theme's [CoilThemeData.trackMotions] and the tokens.
+  /// win over the style's [CoilBannerStyle.motions] and the tokens.
   final Map<CoilBannerTrack<Object>, Motion>? motions;
 
   /// Overrides for this banner's look.
@@ -173,6 +173,10 @@ class _CoilBannerState extends State<CoilBanner>
     context,
     track,
     instance: widget.motions,
+    styled:
+        (CoilTheme.styleOf<CoilBannerStyle>(context)?.merge(widget.style) ??
+                widget.style)
+            ?.motions,
     token: token,
     spatial: spatial,
   );

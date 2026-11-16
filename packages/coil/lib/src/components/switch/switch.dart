@@ -11,7 +11,7 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilSwitch], as Motor tracks. Use them as keys
-/// of [CoilSwitch.motions] or [CoilThemeData.trackMotions].
+/// of [CoilSwitch.motions] or [CoilSwitchStyle.motions].
 final class CoilSwitchTrack<T extends Object> extends Track<T> {
   CoilSwitchTrack._(super.converter, {required String super.debugLabel});
 
@@ -96,8 +96,8 @@ class CoilSwitch extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this instance, keyed by [CoilSwitchTrack]s:
-  /// `motions: {.thumb: const .bouncySpring()}`. They win over the theme's
-  /// [CoilThemeData.trackMotions] and the tokens; reduced motion still makes
+  /// `motions: {.thumb: const .bouncySpring()}`. They win over the style's
+  /// [CoilSwitchStyle.motions] and the tokens; reduced motion still makes
   /// the thumb and squish instant.
   final Map<CoilSwitchTrack<Object>, Motion>? motions;
 
@@ -141,12 +141,19 @@ class _CoilSwitchState extends State<CoilSwitch>
   final _squish = CoilSwitchTrack.squish;
   final _tint = CoilSwitchTrack.tint;
 
+  /// The styled motions: the theme's switch style under [CoilSwitch.style].
+  Map<CoilSwitchTrack<Object>, Motion>? get _styledMotions =>
+      (CoilTheme.styleOf<CoilSwitchStyle>(context)?.merge(widget.style) ??
+              widget.style)
+          ?.motions;
+
   /// The motion for [track], per doc/api_guide.md §6.
   Motion _motionFor(CoilSwitchTrack<Object> track, Motion token) =>
       CoilTheme.trackMotionOf(
         context,
         track,
         instance: widget.motions,
+        styled: _styledMotions,
         token: token,
         spatial:
             track != CoilSwitchTrack.tint && track != CoilSwitchTrack.label,

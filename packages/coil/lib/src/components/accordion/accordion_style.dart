@@ -1,6 +1,7 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/accordion/accordion_item.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilAccordion` looks. Unset fields come from
 /// [CoilAccordionStyle.fallback], which derives them from the theme. Set a
@@ -24,6 +25,7 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
     this.radius,
     this.groupWidth,
     this.focusRingOffset,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens. Pointer triggers rest at
@@ -103,6 +105,12 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
   /// How far outside a trigger its focus ring sits.
   final double? focusRingOffset;
 
+  /// Springs for the accordion's animated parts, keyed by
+  /// [CoilAccordionTrack]s: `{CoilAccordionTrack.height: const
+  /// Motion.bouncySpring()}`. An accordion's own `motions:` win over these;
+  /// these win over the motion tokens. [merge] combines the maps key by key.
+  final Map<CoilAccordionTrack<Object>, Motion>? motions;
+
   @override
   CoilAccordionStyle merge(CoilAccordionStyle? other) => other == null
       ? this
@@ -120,6 +128,9 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
           radius: other.radius ?? radius,
           groupWidth: other.groupWidth ?? groupWidth,
           focusRingOffset: other.focusRingOffset ?? focusRingOffset,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -135,5 +146,6 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
     radius,
     groupWidth,
     focusRingOffset,
+    motions,
   ];
 }

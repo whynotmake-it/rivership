@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/checkbox/checkbox.dart'
+    show CoilCheckboxTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilCheckbox` looks; unset fields come from
 /// [CoilCheckboxStyle.fallback].
@@ -14,6 +17,7 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
     this.glyphColor,
     this.size,
     this.radius,
+    this.motions,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -51,6 +55,12 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
   /// The box's corner radius before text scaling.
   final double? radius;
 
+  /// Springs for the checkbox's animated parts, keyed by
+  /// [CoilCheckboxTrack]s: `{CoilCheckboxTrack.glyph: const
+  /// Motion.bouncySpring()}`. A checkbox's own `motions:` win over these;
+  /// these win over the motion tokens. [merge] combines the maps key by key.
+  final Map<CoilCheckboxTrack<Object>, Motion>? motions;
+
   @override
   CoilCheckboxStyle merge(CoilCheckboxStyle? other) => other == null
       ? this
@@ -60,8 +70,18 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
           glyphColor: other.glyphColor ?? glyphColor,
           size: other.size ?? size,
           radius: other.radius ?? radius,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
-  List<Object?> get props => [border, borderWidth, glyphColor, size, radius];
+  List<Object?> get props => [
+    border,
+    borderWidth,
+    glyphColor,
+    size,
+    radius,
+    motions,
+  ];
 }

@@ -73,7 +73,8 @@ class CoilCarouselDots extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for these dots, keyed by [CoilCarouselDotsTrack]s.
-  /// They win over the theme's [CoilThemeData.trackMotions] and the tokens.
+  /// They win over the style's [CoilCarouselDotsStyle.motions] and the
+  /// tokens.
   final Map<CoilCarouselDotsTrack<Object>, Motion>? motions;
 
   /// Overrides for these dots' look, on top of the theme's
@@ -155,13 +156,17 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
     }
   }
 
-  Motion _motionFor(CoilCarouselDotsTrack<Object> track, Motion token) =>
-      CoilTheme.trackMotionOf(
-        context,
-        track,
-        instance: widget.motions,
-        token: token,
-      );
+  Motion _motionFor(
+    CoilCarouselDotsStyle style,
+    CoilCarouselDotsTrack<Object> track,
+    Motion token,
+  ) => CoilTheme.trackMotionOf(
+    context,
+    track,
+    instance: widget.motions,
+    styled: style.motions,
+    token: token,
+  );
 
   @override
   void dispose() {
@@ -178,7 +183,7 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
     final style = CoilCarouselDotsStyle.fallback(theme, metrics)
         .merge(CoilTheme.styleOf<CoilCarouselDotsStyle>(context))
         .merge(widget.style);
-    final pill = _motionFor(CoilCarouselDotsTrack.pill, tokens.standard);
+    final pill = _motionFor(style, CoilCarouselDotsTrack.pill, tokens.standard);
     final enabled = _enabled;
     final touch = metrics.tier == CoilTier.touch;
 
@@ -191,6 +196,7 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
           radius: style.radius,
           motion: widget.motion,
           glideMotion: _motionFor(
+            style,
             CoilCarouselDotsTrack.highlight,
             tokens.quick,
           ),

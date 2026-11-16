@@ -57,6 +57,7 @@ class CoilRadioIndicator extends StatelessWidget {
       context,
       track,
       instance: motions,
+      styled: look.motions,
       token: token,
       spatial: spatial,
     );

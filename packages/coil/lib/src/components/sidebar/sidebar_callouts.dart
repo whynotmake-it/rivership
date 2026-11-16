@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/sidebar/sidebar_scaffold.dart';
+import 'package:coil/src/components/sidebar/sidebar_style.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -48,6 +49,7 @@ class CoilSidebarCalloutStack extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this instance, keyed by [CoilSidebarTrack]s.
+  /// They win over the theme's [CoilSidebarStyle.motions] and the tokens.
   final Map<CoilSidebarTrack<Object>, Motion>? motions;
 
   /// How far each card behind the front one peeks out, at rest.
@@ -85,10 +87,12 @@ class _CoilSidebarCalloutStackState extends State<CoilSidebarCalloutStack> {
 
   void _rebuild() => setState(() {});
 
+  // No `style:` of its own: the theme's sidebar style is the styled one.
   Motion _motionFor(Motion token) => CoilTheme.trackMotionOf(
     context,
     CoilSidebarTrack.callouts,
     instance: widget.motions,
+    styled: CoilTheme.styleOf<CoilSidebarStyle>(context)?.motions,
     token: token,
   );
 

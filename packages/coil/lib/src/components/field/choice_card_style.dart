@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/field/choice_card.dart'
+    show CoilChoiceCardTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilChoiceCard` looks. Unset fields come from
 /// [CoilChoiceCardStyle.fallback]. Set a style app-wide or for a subtree with
@@ -18,6 +21,7 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
     this.textGap,
     this.titleStyle,
     this.descriptionStyle,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens: a hairline at the container
@@ -72,6 +76,12 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
   /// The description's text style.
   final TextStyle? descriptionStyle;
 
+  /// Springs for the card's animated parts, keyed by [CoilChoiceCardTrack]s:
+  /// `{CoilChoiceCardTrack.fill: const Motion.smoothSpring()}`. A card's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilChoiceCardTrack<Object>, Motion>? motions;
+
   @override
   CoilChoiceCardStyle merge(CoilChoiceCardStyle? other) => other == null
       ? this
@@ -86,6 +96,9 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
           descriptionStyle:
               descriptionStyle?.merge(other.descriptionStyle) ??
               other.descriptionStyle,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -98,5 +111,6 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
     textGap,
     titleStyle,
     descriptionStyle,
+    motions,
   ];
 }

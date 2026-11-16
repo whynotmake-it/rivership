@@ -1,5 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/thinking/thinking_steps.dart'
+    show CoilThinkingStepsTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilThinkingSteps` looks. Unset fields come from
 /// [CoilThinkingStepsStyle.fallback], which derives them from the theme.
@@ -35,6 +38,7 @@ class CoilThinkingStepsStyle
     this.imageMaxWidth,
     this.dotSize,
     this.focusRingOffset,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens. Pointer triggers rest at
@@ -155,6 +159,13 @@ class CoilThinkingStepsStyle
   /// How far outside the trigger its focus ring sits.
   final double? focusRingOffset;
 
+  /// Springs for the component's animated parts, keyed by
+  /// [CoilThinkingStepsTrack]s:
+  /// `{CoilThinkingStepsTrack.stepHeight: const Motion.smoothSpring()}`. A
+  /// component's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
+  final Map<CoilThinkingStepsTrack<Object>, Motion>? motions;
+
   @override
   CoilThinkingStepsStyle merge(CoilThinkingStepsStyle? other) => other == null
       ? this
@@ -184,6 +195,9 @@ class CoilThinkingStepsStyle
           imageMaxWidth: other.imageMaxWidth ?? imageMaxWidth,
           dotSize: other.dotSize ?? dotSize,
           focusRingOffset: other.focusRingOffset ?? focusRingOffset,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -210,5 +224,6 @@ class CoilThinkingStepsStyle
     imageMaxWidth,
     dotSize,
     focusRingOffset,
+    motions,
   ];
 }

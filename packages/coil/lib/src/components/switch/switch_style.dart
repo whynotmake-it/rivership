@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/switch/switch.dart' show CoilSwitchTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how a `CoilSwitch` looks; unset fields come from
 /// [CoilSwitchStyle.fallback].
@@ -15,6 +17,7 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
     this.label,
     this.textStyle,
     this.radius,
+    this.motions,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -58,6 +61,12 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
   /// The track's corner radius. The thumb is always a pill.
   final double? radius;
 
+  /// Springs for the switch's animated parts, keyed by [CoilSwitchTrack]s:
+  /// `{CoilSwitchTrack.thumb: const Motion.bouncySpring()}`. A switch's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilSwitchTrack<Object>, Motion>? motions;
+
   @override
   CoilSwitchStyle merge(CoilSwitchStyle? other) => other == null
       ? this
@@ -67,8 +76,11 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
           label: other.label ?? label,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
-  List<Object?> get props => [track, thumb, label, textStyle, radius];
+  List<Object?> get props => [track, thumb, label, textStyle, radius, motions];
 }

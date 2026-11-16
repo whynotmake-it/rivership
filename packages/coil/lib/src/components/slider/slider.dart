@@ -8,7 +8,7 @@ import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilSlider] or a [CoilRangeSlider], as Motor
 /// tracks. Use them as keys of their `motions` or of
-/// [CoilThemeData.trackMotions].
+/// [CoilSliderStyle.motions].
 ///
 /// A custom motion replaces both the enter and the exit of its part.
 final class CoilSliderTrack<T extends Object> extends Track<T> {
@@ -232,7 +232,8 @@ class CoilSlider extends StatelessWidget {
   /// instance.
   final CoilMotion? motion;
 
-  /// Per-part motions for this instance, keyed by [CoilSliderTrack]s.
+  /// Per-part motions for this instance, keyed by [CoilSliderTrack]s. They
+  /// win over the style's [CoilSliderStyle.motions] and the tokens.
   final Map<CoilSliderTrack<Object>, Motion>? motions;
 
   /// Overrides for this slider's look.

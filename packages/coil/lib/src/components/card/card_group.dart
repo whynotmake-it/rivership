@@ -48,7 +48,7 @@ class CoilCardGroup extends StatefulWidget {
 
   /// Per-track motions for the group, keyed by [CoilCardTrack]s. Only
   /// [CoilCardTrack.highlight] applies to the group; the cards take their
-  /// own.
+  /// own. They win over the style's [CoilCardStyle.motions] and the tokens.
   final Map<CoilCardTrack<Object>, Motion>? motions;
 
   /// Overrides for the group's look, on top of the theme's [CoilCardStyle]
@@ -133,6 +133,7 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
           context,
           CoilCardTrack.highlight,
           instance: widget.motions,
+          styled: style.motions,
           token: CoilTheme.motionOf(context, override: widget.motion).quick,
         ),
         background: [surfaces],

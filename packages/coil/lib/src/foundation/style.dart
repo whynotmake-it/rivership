@@ -13,7 +13,8 @@ import 'package:flutter/foundation.dart';
 /// 3. the component's own `style:` parameter.
 ///
 /// Each layer is [merge]d onto the one below: the other style's non-null
-/// fields win. Styles compare by value through [props].
+/// fields win; a `motions` map merges key by key. Styles compare by value
+/// through [props], maps included, so a rebuilt map literal is equal.
 @immutable
 abstract class CoilComponentStyle<S extends CoilComponentStyle<S>>
     with Diagnosticable {
@@ -28,11 +29,29 @@ abstract class CoilComponentStyle<S extends CoilComponentStyle<S>>
   List<Object?> get props;
 
   @override
-  bool operator ==(Object other) =>
-      other.runtimeType == runtimeType &&
-      other is CoilComponentStyle<S> &&
-      listEquals(other.props, props);
+  bool operator ==(Object other) {
+    if (other.runtimeType != runtimeType || other is! CoilComponentStyle<S>) {
+      return false;
+    }
+    final a = props;
+    final b = other.props;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final (x, y) = (a[i], b[i]);
+      if (x is Map && y is Map ? !mapEquals(x, y) : x != y) return false;
+    }
+    return true;
+  }
 
   @override
-  int get hashCode => Object.hashAll([runtimeType, ...props]);
+  int get hashCode => Object.hashAll([
+    runtimeType,
+    for (final prop in props)
+      if (prop is Map)
+        Object.hashAllUnordered(
+          prop.entries.map((e) => Object.hash(e.key, e.value)),
+        )
+      else
+        prop,
+  ]);
 }

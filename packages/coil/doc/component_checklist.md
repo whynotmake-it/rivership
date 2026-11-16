@@ -66,8 +66,11 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
     Track<T>` with a private constructor and `static final` tracks (with
     `debugLabel`s) on it.
   - Take `motions: Map<Coil<Name>Track<Object>, Motion>?`.
-  - Resolve each track with `CoilTheme.trackMotionOf`, which applies
-    instance, then theme `trackMotions`, then the token.
+  - Give the style class `motions: Map<Coil<Name>Track<Object>, Motion>?`,
+    merged key by key.
+  - Resolve each track with `CoilTheme.trackMotionOf`, passing the
+    resolved style's `motions` as `styled:`. It applies instance, then
+    style, then the token.
 - No `AnimationController`, `Tween` or implicit `Animated*`. Use
   `motor_widgets` for in-place switches and size changes, and `CoilBlurFade`
   for enter/exit. Give `debugLabel`s and wrap internals in
