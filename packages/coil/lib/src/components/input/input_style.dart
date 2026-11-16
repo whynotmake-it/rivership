@@ -40,7 +40,10 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
         WidgetState.error: c.destructive.withValues(alpha: 0.5),
         WidgetState.any: c.border,
       }),
-      textStyle: theme.typography.style(metrics.field, color: c.foreground),
+      textStyle: theme.typography
+          .resolve(metrics.tier, metrics.size)
+          .field
+          .copyWith(color: c.foreground),
       placeholder: c.mutedForeground,
       cursorColor: c.foreground,
       cursorWidth: 1,

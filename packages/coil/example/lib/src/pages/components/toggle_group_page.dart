@@ -2,7 +2,6 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const toggleGroupEntry = CatalogEntry(
@@ -26,9 +25,8 @@ class _ToggleGroupPageState extends State<ToggleGroupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final style = TypeRole.subtitle.styleOf(
-      context,
-      weight: _format.contains('bold') ? CoilWeight.bold : CoilWeight.normal,
+    final style = CoilTheme.textOf(context).subtitle.copyWith(
+      fontWeight: _format.contains('bold') ? FontWeight.w700 : FontWeight.w400,
     );
     return CatalogPage(
       title: 'ToggleGroup',

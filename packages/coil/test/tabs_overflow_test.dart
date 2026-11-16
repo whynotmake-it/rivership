@@ -42,8 +42,10 @@ class _HostState extends State<_Host> {
     builder: (context, _) => Directionality(
       textDirection: widget.textDirection,
       child: CoilTheme(
+        // Tab widths are measured on a real font.
         data: CoilThemeData.light.copyWith(
           tier: widget.tier,
+          typography: CoilTypography.allo(),
           trackMotions: widget.trackMotions,
         ),
         child: FocusScope(

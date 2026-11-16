@@ -438,7 +438,7 @@ class _DropHighlight extends StatelessWidget {
       visible: active,
       color: theme.colors.brand,
       borderRadius: borderRadius,
-      offset: -theme.focusRingWidth,
+      offset: -theme.focusRing.width,
       child: MotionBuilder<Color>(
         value: active
             ? theme.colors.hover
@@ -475,6 +475,10 @@ class _LaneHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final text = theme.typography.resolve(
+      CoilTheme.tierOf(context),
+      CoilSize.compact,
+    );
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: metrics.controlHeight),
       child: Row(
@@ -485,9 +489,8 @@ class _LaneHeader extends StatelessWidget {
             child: Semantics(
               header: true,
               child: DefaultTextStyle(
-                style: theme.typography.style(
-                  metrics.body,
-                  weight: CoilWeight.semibold,
+                style: text.body.copyWith(
+                  fontWeight: text.emphasis,
                   color: theme.colors.foreground,
                 ),
                 maxLines: 1,
@@ -527,7 +530,10 @@ class _EmptyLane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final metrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final text = theme.typography.resolve(
+      CoilTheme.tierOf(context),
+      CoilSize.compact,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: _BoardMetrics.cardPadding,
@@ -536,10 +542,7 @@ class _EmptyLane extends StatelessWidget {
       child: Text(
         'Drop a card here',
         textAlign: TextAlign.center,
-        style: theme.typography.style(
-          metrics.caption,
-          color: theme.colors.mutedForeground,
-        ),
+        style: text.caption.copyWith(color: theme.colors.mutedForeground),
       ),
     );
   }
@@ -809,7 +812,7 @@ class _GridTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     final motion = CoilTheme.motionOf(context);
     final tile = SizedBox.square(
       dimension: extent,
@@ -822,13 +825,10 @@ class _GridTile extends StatelessWidget {
         child: Center(
           child: Text(
             '$item',
-            style: theme.typography
-                .style(
-                  metrics.body,
-                  weight: CoilWeight.semibold,
-                  color: theme.colors.foreground,
-                )
-                .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: text.body.copyWith(
+              fontWeight: text.emphasis,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ),
       ),
@@ -1058,8 +1058,8 @@ class _ChecklistDemoState extends State<_ChecklistDemo> {
     List<_Task> tasks, {
     required bool done,
   }) {
-    final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1071,11 +1071,7 @@ class _ChecklistDemoState extends State<_ChecklistDemo> {
               header: true,
               child: Text(
                 title,
-                style: theme.typography.style(
-                  metrics.body,
-                  weight: CoilWeight.semibold,
-                  color: theme.colors.foreground,
-                ),
+                style: text.body.copyWith(fontWeight: text.emphasis),
               ),
             ),
           ),
@@ -1099,12 +1095,7 @@ class _ChecklistDemoState extends State<_ChecklistDemo> {
                       task.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.typography.style(
-                        metrics.body,
-                        color: done
-                            ? theme.colors.mutedForeground
-                            : theme.colors.foreground,
-                      ),
+                      style: (done ? text.muted : text).body,
                     ),
                   ),
                 ],
@@ -1638,10 +1629,13 @@ class _InteropDemoState extends State<_InteropDemo> {
                       ),
                       Text(
                         'Trash',
-                        style: theme.typography.style(
-                          metrics.caption,
-                          color: theme.colors.mutedForeground,
-                        ),
+                        style: theme.typography
+                            .resolve(
+                              CoilTheme.tierOf(context),
+                              CoilSize.compact,
+                            )
+                            .caption
+                            .copyWith(color: theme.colors.mutedForeground),
                       ),
                     ],
                   ),

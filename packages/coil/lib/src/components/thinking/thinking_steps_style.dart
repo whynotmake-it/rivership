@@ -46,12 +46,12 @@ class CoilThinkingStepsStyle
     bool highContrast = false,
   }) {
     final c = theme.colors;
-    final type = theme.typography;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     final rest = metrics.tier == CoilTier.touch || highContrast
         ? c.foreground
         : c.mutedForeground;
     // Badges don't grow on touch (DESIGN.md §14.1 Badge).
-    final badge = theme.metrics.resolve(CoilTier.pointer, metrics.size);
+    final badge = theme.typography.resolve(CoilTier.pointer, metrics.size);
     final padX = metrics.controlPaddingX;
     return CoilThinkingStepsStyle(
       // A mouse press keeps the hover look; a touch press fills.
@@ -65,15 +65,15 @@ class CoilThinkingStepsStyle
         WidgetState.any: rest,
       }),
       expandedLabel: WidgetStatePropertyAll(c.foreground),
-      textStyle: type.style(metrics.body),
-      titleStyle: type.style(metrics.body, color: c.foreground),
-      detailStyle: type.style(metrics.caption, color: c.mutedForeground),
+      textStyle: text.body,
+      titleStyle: text.body.copyWith(color: c.foreground),
+      detailStyle: text.caption.copyWith(color: c.mutedForeground),
       glyphColor: c.mutedForeground,
       // High contrast pushes `accent` toward the text color, so badges
       // switch to a quiet fill with a visible outline there.
       sourceFill: highContrast ? c.muted : c.accent,
       sourceBorder: highContrast ? c.border : null,
-      sourceTextStyle: type.style(badge.caption, color: c.foreground),
+      sourceTextStyle: badge.caption.copyWith(color: c.foreground),
       radius: theme.shape.radii(metrics.tier).item,
       maxWidth: 320,
       panelPadding: EdgeInsetsDirectional.fromSTEB(padX, 0, padX, 12),

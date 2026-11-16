@@ -39,7 +39,10 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
         WidgetState.hovered: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),
-      textStyle: theme.typography.style(metrics.body, color: c.foreground),
+      textStyle: theme.typography
+          .resolve(metrics.tier, metrics.size)
+          .body
+          .copyWith(color: c.foreground),
       placeholder: c.mutedForeground,
       radius: theme.shape.radii(metrics.tier).item,
       selectedFill: c.active,

@@ -92,8 +92,7 @@ void main() {
     ];
 
     const colors = CoilColors.light;
-    final caption = const CoilTypography().style(
-      CoilMetrics.pointer.caption,
+    final caption = goldenTypography.pointer.caption.copyWith(
       color: colors.mutedForeground,
     );
     final sheet = SheetPanel(

@@ -89,7 +89,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
           ? c.border
           : const Color(0x00000000),
       radius: theme.shape.radii(metrics.tier).item,
-      textStyle: theme.typography.style(metrics.body),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       iconSize: metrics.iconSize,
       minHeight: metrics.controlHeight,
     );

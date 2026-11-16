@@ -30,9 +30,3 @@ dev_dependencies:
   lintervention: ^0.3.1
   snaptest:
     path: ../snaptest
-
-flutter:
-  fonts:
-    - family: Inter
-      fonts:
-        - asset: fonts/InterVariable.ttf

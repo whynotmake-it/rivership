@@ -1,5 +1,7 @@
 import 'package:coil/src/foundation/adaptive.dart';
+import 'package:coil/src/foundation/color_mix.dart';
 import 'package:coil/src/foundation/colors.dart';
+import 'package:coil/src/foundation/focus_ring_theme.dart';
 import 'package:coil/src/foundation/haptics.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
@@ -26,8 +28,8 @@ class CoilThemeData with Diagnosticable {
     this.metrics = const CoilMetricsTable(),
     this.tier,
     this.motion = const CoilMotion(),
-    this.typography = const CoilTypography(),
-    this.focusRingWidth = 1,
+    this.typography = CoilTypography.platform,
+    this.focusRing = const CoilFocusRingTheme(),
     this.haptics,
     this.controlCursor = SystemMouseCursors.basic,
     this.trackMotions = const {},
@@ -58,11 +60,12 @@ class CoilThemeData with Diagnosticable {
   /// change applies to the next one.
   final CoilMotion motion;
 
-  /// The font family and its weights.
+  /// The text roles for every tier and size step. Read them with
+  /// [CoilTheme.textOf]. Defaults to the platform font; coil bundles none.
   final CoilTypography typography;
 
-  /// The focus ring's thickness: 1, or 2 in high contrast.
-  final double focusRingWidth;
+  /// How focus rings look.
+  final CoilFocusRingTheme focusRing;
 
   /// Which haptic each event plays, or null for the platform's conventions
   /// ([CoilHaptics.platform]). [CoilHaptics.none] turns them off.
@@ -99,11 +102,24 @@ class CoilThemeData with Diagnosticable {
     },
   );
 
-  /// This theme for high contrast ([CoilColors.highContrast] plus a 2 px
-  /// focus ring). [CoilTheme.of] applies it when
-  /// `MediaQuery.highContrastOf` is true.
-  CoilThemeData highContrast() =>
-      copyWith(colors: colors.highContrast(), focusRingWidth: 2);
+  /// This theme for high contrast: [CoilColors.highContrast], and a 2 px
+  /// focus ring in a color with at least 3:1 contrast against the
+  /// background. [CoilTheme.of] applies it when `MediaQuery.highContrastOf`
+  /// is true.
+  CoilThemeData highContrast() {
+    final contrasted = colors.highContrast();
+    return copyWith(
+      colors: contrasted,
+      focusRing: focusRing.copyWith(
+        width: 2,
+        color: CoilColorMix.ensureContrast(
+          focusRing.colorOf(contrasted),
+          contrasted.background,
+          3,
+        ),
+      ),
+    );
+  }
 
   /// Light or dark.
   Brightness get brightness => colors.brightness;
@@ -117,7 +133,7 @@ class CoilThemeData with Diagnosticable {
     Object? tier = _keep,
     CoilMotion? motion,
     CoilTypography? typography,
-    double? focusRingWidth,
+    CoilFocusRingTheme? focusRing,
     Object? haptics = _keep,
     MouseCursor? controlCursor,
     Map<Track<Object>, Motion>? trackMotions,
@@ -129,15 +145,16 @@ class CoilThemeData with Diagnosticable {
     tier: identical(tier, _keep) ? this.tier : tier as CoilTier?,
     motion: motion ?? this.motion,
     typography: typography ?? this.typography,
-    focusRingWidth: focusRingWidth ?? this.focusRingWidth,
+    focusRing: focusRing ?? this.focusRing,
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     controlCursor: controlCursor ?? this.controlCursor,
     trackMotions: trackMotions ?? this.trackMotions,
     components: components ?? this.components,
   );
 
-  /// Interpolates two themes, for animated theme changes. Colors and the
-  /// ring width blend; everything else switches at the midpoint.
+  /// Interpolates two themes, for animated theme changes. Colors, text
+  /// styles, motion and the focus ring blend; everything else switches at
+  /// the midpoint.
   // A static lerp, like Color.lerp and TextStyle.lerp.
   // ignore: prefer_constructors_over_static_methods
   static CoilThemeData lerp(CoilThemeData a, CoilThemeData b, double t) =>
@@ -147,9 +164,8 @@ class CoilThemeData with Diagnosticable {
         metrics: t < 0.5 ? a.metrics : b.metrics,
         tier: t < 0.5 ? a.tier : b.tier,
         motion: CoilMotion.lerp(a.motion, b.motion, t),
-        typography: t < 0.5 ? a.typography : b.typography,
-        focusRingWidth:
-            a.focusRingWidth + (b.focusRingWidth - a.focusRingWidth) * t,
+        typography: CoilTypography.lerp(a.typography, b.typography, t),
+        focusRing: CoilFocusRingTheme.lerp(a.focusRing, b.focusRing, t),
         haptics: t < 0.5 ? a.haptics : b.haptics,
         controlCursor: t < 0.5 ? a.controlCursor : b.controlCursor,
         trackMotions: t < 0.5 ? a.trackMotions : b.trackMotions,
@@ -165,7 +181,7 @@ class CoilThemeData with Diagnosticable {
       other.tier == tier &&
       other.motion == motion &&
       other.typography == typography &&
-      other.focusRingWidth == focusRingWidth &&
+      other.focusRing == focusRing &&
       other.haptics == haptics &&
       other.controlCursor == controlCursor &&
       mapEquals(other.trackMotions, trackMotions) &&
@@ -179,7 +195,7 @@ class CoilThemeData with Diagnosticable {
     tier,
     motion,
     typography,
-    focusRingWidth,
+    focusRing,
     haptics,
     controlCursor,
     Object.hashAllUnordered(
@@ -315,6 +331,23 @@ class CoilTheme extends StatelessWidget {
     return reduced && spatial ? const Motion.instant() : custom;
   }
 
+  /// The text roles at [context]: the theme's typography for [tierOf] and
+  /// the size step of the nearest [CoilAdaptiveScope], in the foreground
+  /// color, with `muted`, `brand` and `destructive` variants.
+  ///
+  /// ```dart
+  /// final text = CoilTheme.textOf(context);
+  /// Text('Synced 2 min ago', style: text.muted.caption);
+  /// ```
+  static CoilTextTheme textOf(BuildContext context) {
+    final theme = of(context);
+    return theme.typography.colored(
+      tierOf(context),
+      CoilAdaptiveScope.maybeSizeOf(context) ?? CoilSize.regular,
+      theme.colors,
+    );
+  }
+
   /// The corner radii at [context]: the theme's shape at [tierOf].
   static CoilRadii radiiOf(BuildContext context) =>
       of(context).shape.radii(tierOf(context));
@@ -347,12 +380,8 @@ class CoilTheme extends StatelessWidget {
       child: Builder(
         builder: (context) {
           final theme = of(context);
-          final metrics = metricsOf(context);
           return DefaultTextStyle(
-            style: theme.typography.style(
-              metrics.body,
-              color: theme.colors.foreground,
-            ),
+            style: textOf(context).body,
             child: DefaultSelectionStyle(
               cursorColor: theme.colors.foreground,
               selectionColor: theme.colors.brand.withValues(alpha: 0.3),

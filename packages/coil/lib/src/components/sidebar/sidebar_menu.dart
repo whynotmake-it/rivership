@@ -373,13 +373,13 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
                   exitMotion: motion.fadeExit,
                   exitTravelMotion: motion.quick,
                   fade: motion.fade,
-                  inflate: 1 + theme.focusRingWidth,
+                  inflate: 1 + theme.focusRing.width,
                   decoration: ShapeDecoration(
                     shape: RoundedSuperellipseBorder(
                       borderRadius: BorderRadius.circular(radii.focusRing),
                       side: BorderSide(
-                        color: colors.focusRing,
-                        width: theme.focusRingWidth,
+                        color: theme.focusRing.colorOf(colors),
+                        width: theme.focusRing.width,
                       ),
                     ),
                   ),
@@ -567,6 +567,7 @@ class _Row extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     final tokens = CoilTheme.motionOf(context, override: motion);
     final look = CoilSidebarStyle.fallback(
       theme,
@@ -619,11 +620,8 @@ class _Row extends StatelessWidget {
                   ?leading,
                   Expanded(
                     child: DefaultTextStyle(
-                      style: theme.typography.style(
-                        metrics.body,
-                        weight: item._selected
-                            ? CoilWeight.semibold
-                            : CoilWeight.normal,
+                      style: text.body.copyWith(
+                        fontWeight: item._selected ? text.emphasis : null,
                         color: color,
                       ),
                       maxLines: 1,
@@ -676,10 +674,7 @@ class _Row extends StatelessWidget {
                       child: Center(
                         widthFactor: 1,
                         child: DefaultTextStyle(
-                          style: theme.typography.style(
-                            metrics.caption,
-                            color: colors.mutedForeground,
-                          ),
+                          style: text.muted.caption,
                           child: IconTheme.merge(
                             data: IconThemeData(color: colors.mutedForeground),
                             child: trailing,

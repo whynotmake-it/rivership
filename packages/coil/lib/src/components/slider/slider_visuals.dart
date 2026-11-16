@@ -69,9 +69,10 @@ class SliderRow extends StatelessWidget {
                           : CoilMotionTarget(
                               index: SliderTarget.label,
                               child: DefaultTextStyle(
-                                style: text.copyWith(
-                                  color: labelColor,
-                                  fontVariations: sliderWeight(emphasis),
+                                style: sliderWeight(
+                                  context,
+                                  text.copyWith(color: labelColor),
+                                  emphasis,
                                 ),
                                 maxLines: 1,
                                 softWrap: false,
@@ -189,9 +190,10 @@ class SliderPill extends StatelessWidget {
       label: label == null
           ? null
           : DefaultTextStyle(
-              style: text.copyWith(
-                color: labelColor,
-                fontVariations: sliderWeight(emphasis),
+              style: sliderWeight(
+                context,
+                text.copyWith(color: labelColor),
+                emphasis,
               ),
               maxLines: 1,
               softWrap: false,

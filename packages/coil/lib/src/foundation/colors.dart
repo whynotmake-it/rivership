@@ -37,7 +37,6 @@ class CoilColors with Diagnosticable {
     required this.redLabel,
     required this.shadowColor,
     this.borderAlpha = 0.12,
-    this.focusRingColor,
   });
 
   /// A full palette from a [brand] color and a neutral tone, for
@@ -239,12 +238,6 @@ class CoilColors with Diagnosticable {
   /// The one brand color (switch track, focus rings).
   final Color brand;
 
-  /// `--focus-ring`: [focusRingColor] if set, else [brand].
-  Color get focusRing => focusRingColor ?? brand;
-
-  /// Overrides the focus ring color (high contrast derives one).
-  final Color? focusRingColor;
-
   /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
   final double borderAlpha;
 
@@ -306,11 +299,6 @@ class CoilColors with Diagnosticable {
       redLabel: c(a.redLabel, b.redLabel),
       shadowColor: c(a.shadowColor, b.shadowColor),
       borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
-      // Stays null when neither side overrides it, so the ring keeps
-      // following the brand color.
-      focusRingColor: a.focusRingColor == null && b.focusRingColor == null
-          ? null
-          : c(a.focusRing, b.focusRing),
     );
   }
 
@@ -340,7 +328,6 @@ class CoilColors with Diagnosticable {
     Color? redLabel,
     Color? shadowColor,
     double? borderAlpha,
-    Color? focusRingColor,
   }) => CoilColors(
     brightness: brightness ?? this.brightness,
     surfaces: surfaces ?? this.surfaces,
@@ -365,7 +352,6 @@ class CoilColors with Diagnosticable {
     redLabel: redLabel ?? this.redLabel,
     shadowColor: shadowColor ?? this.shadowColor,
     borderAlpha: borderAlpha ?? this.borderAlpha,
-    focusRingColor: focusRingColor ?? this.focusRingColor,
   );
 
   /// The surface at [level] (1–8, clamped): `--surface-N`. Popups sit one
@@ -433,14 +419,12 @@ class CoilColors with Diagnosticable {
       const [1.0, 3.0, 6.0, 12.0, 24.0, 48.0, 96.0][i - 1];
 
   /// These colors resolved for high contrast
-  /// (`MediaQuery.highContrastOf`): borders at foreground 40%, a stronger
-  /// off-state track ([accent] pushed toward the foreground), and a focus
-  /// ring derived from [brand] with at least 3:1 contrast against the
-  /// background.
+  /// (`MediaQuery.highContrastOf`): borders at foreground 40% and a
+  /// stronger off-state track ([accent] pushed toward the foreground). The
+  /// theme's high contrast also strengthens the focus ring.
   CoilColors highContrast() => copyWith(
     accent: CoilColorMix.oklab(accent, foreground, 0.7),
     borderAlpha: 0.4,
-    focusRingColor: CoilColorMix.ensureContrast(brand, background, 3),
   );
 
   @override
@@ -468,8 +452,7 @@ class CoilColors with Diagnosticable {
       other.red == red &&
       other.redLabel == redLabel &&
       other.shadowColor == shadowColor &&
-      other.borderAlpha == borderAlpha &&
-      other.focusRingColor == focusRingColor;
+      other.borderAlpha == borderAlpha;
 
   @override
   int get hashCode => Object.hashAll([

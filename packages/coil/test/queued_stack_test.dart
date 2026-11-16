@@ -157,8 +157,7 @@ void main() {
       children: [
         Text(
           label,
-          style: const CoilTypography().style(
-            CoilMetrics.pointer.caption,
+          style: goldenTypography.pointer.caption.copyWith(
             color: const Color(0xFF737373),
           ),
         ),

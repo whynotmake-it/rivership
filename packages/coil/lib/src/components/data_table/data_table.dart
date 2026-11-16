@@ -134,8 +134,8 @@ class CoilDataTable<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
+    final caption = CoilTheme.textOf(context).muted.caption;
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
@@ -187,10 +187,7 @@ class CoilDataTable<T> extends StatelessWidget {
                   child: Semantics(
                     liveRegion: true,
                     child: DefaultTextStyle(
-                      style: theme.typography.style(
-                        metrics.caption,
-                        color: theme.colors.mutedForeground,
-                      ),
+                      style: caption,
                       child: labels.count(
                         selected: controller.selected.length,
                         total: controller.matching.length,
@@ -200,10 +197,7 @@ class CoilDataTable<T> extends StatelessWidget {
                 ),
                 if (pages > 1) ...[
                   DefaultTextStyle(
-                    style: theme.typography.style(
-                      metrics.caption,
-                      color: theme.colors.mutedForeground,
-                    ),
+                    style: caption,
                     child: labels.page(controller.page + 1, pages),
                   ),
                   SizedBox(width: metrics.gap),

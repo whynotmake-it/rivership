@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
-import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -54,10 +53,6 @@ class CoilSheetPanel extends StatefulWidget {
       CoilTheme.of(context).brightness == Brightness.dark
       ? const Color(0x80000000)
       : const Color(0x66000000);
-
-  /// The heading's type step: one step above touch body (16/22), the size
-  /// of an iOS headline, at semibold.
-  static const titleStep = CoilTypeStep(17, 22);
 
   /// The widest a sheet gets; wider windows center it.
   static const maxWidth = 560.0;
@@ -149,11 +144,11 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
                       child: Semantics(
                         header: true,
                         child: DefaultTextStyle(
-                          style: theme.typography.style(
-                            CoilSheetPanel.titleStep,
-                            weight: .semibold,
-                            color: colors.foreground,
-                          ),
+                          // The touch title, the size of an iOS headline.
+                          style: theme.typography
+                              .resolve(metrics.tier, metrics.size)
+                              .title
+                              .copyWith(color: colors.foreground),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           child: title,

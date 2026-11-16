@@ -35,11 +35,11 @@ void main() {
     await tester.pump();
     final editable = tester.allRenderObjects.whereType<RenderEditable>().first;
     final caret = editable.getLocalRectForCaret(const TextPosition(offset: 0));
-    final metrics = CoilTheme.metricsOf(
+    final field = CoilTheme.textOf(
       tester.element(find.byType(EditableText)),
-    );
-    expect(caret.height, greaterThanOrEqualTo(metrics.field.fontSize));
-    expect(caret.height, lessThan(metrics.field.lineHeight));
+    ).field;
+    expect(caret.height, greaterThanOrEqualTo(field.fontSize!));
+    expect(caret.height, lessThan(field.lineHeight));
   });
 
   group('CoilInput.multiline', () {

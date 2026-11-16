@@ -218,7 +218,7 @@ void main() {
 
     final theme = CoilTheme.of(home);
     expect(theme.colors.brand, CatalogBrand.violet.color);
-    expect(theme.colors.focusRing, CatalogBrand.violet.color);
+    expect(theme.focusRing.colorOf(theme.colors), CatalogBrand.violet.color);
     expect(
       theme.colors,
       CoilColors.fromSeed(
@@ -233,7 +233,7 @@ void main() {
     expect(CoilTheme.radiiOf(home).container, 8);
     expect(CoilTheme.metricsOf(home).controlHeight, 40);
     expect(theme.motion, CatalogMotion.bouncy.motion);
-    expect(theme.focusRingWidth, 2);
+    expect(theme.focusRing.width, 2);
     expect(theme.haptics, CoilHaptics.none);
   });
 

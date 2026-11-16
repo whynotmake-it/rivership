@@ -432,7 +432,7 @@ class _Row extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: sizes.controlPaddingX,
-            vertical: sizes.controlPaddingY(sizes.body),
+            vertical: sizes.controlPaddingY(style.valueStyle!),
           ),
           child: Row(
             spacing: sizes.gap,

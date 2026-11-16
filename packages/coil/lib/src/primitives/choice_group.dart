@@ -201,15 +201,15 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
       exitMotion: widget.ringMotion,
       exitTravelMotion: widget.ringMotion,
       fade: widget.fadeMotion,
-      inflate: 1 + theme.focusRingWidth,
+      inflate: 1 + theme.focusRing.width,
       decoration: ShapeDecoration(
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(
             theme.shape.radii(CoilTheme.tierOf(context)).focusRing,
           ),
           side: BorderSide(
-            color: theme.colors.focusRing,
-            width: theme.focusRingWidth,
+            color: theme.focusRing.colorOf(theme.colors),
+            width: theme.focusRing.width,
           ),
         ),
       ),

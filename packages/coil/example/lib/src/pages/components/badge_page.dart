@@ -1,7 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const badgeEntry = CatalogEntry(
@@ -42,7 +41,9 @@ class _BadgePageState extends State<BadgePage> {
             ])
               Row(
                 children: [
-                  Expanded(child: RoleText(name, role: TypeRole.body)),
+                  Expanded(
+                    child: Text(name, style: CoilTheme.textOf(context).body),
+                  ),
                   CoilBadge(
                     variant: CoilBadgeVariant.dot,
                     color: color,

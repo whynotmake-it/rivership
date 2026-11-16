@@ -15,20 +15,26 @@ class CoilKbdStyle extends CoilComponentStyle<CoilKbdStyle> {
     this.gap,
   });
 
-  /// The defaults from [theme]'s tokens, with [text] the ambient text
-  /// color: the keys take it, and the fill is a faint wash of it, so the
-  /// caps fit any surface, an inverted tooltip bubble included.
-  factory CoilKbdStyle.fallback(CoilThemeData theme, Color text) =>
-      CoilKbdStyle(
-        fill: text.withValues(alpha: text.a * 0.15),
-        textStyle: theme.typography
-            .style(const CoilTypeStep(11, 14), color: text)
-            .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-        radius: theme.shape == CoilShape.sharp ? 0 : 3,
-        size: 18,
-        paddingX: 4,
-        gap: 2,
-      );
+  /// The defaults from [theme]'s tokens at [metrics]' tier and size, with
+  /// [text] the ambient text color: the keys take it, and the fill is a
+  /// faint wash of it, so the caps fit any surface, an inverted tooltip
+  /// bubble included.
+  factory CoilKbdStyle.fallback(
+    CoilThemeData theme,
+    CoilMetrics metrics,
+    Color text,
+  ) => CoilKbdStyle(
+    fill: text.withValues(alpha: text.a * 0.15),
+    textStyle: theme.typography
+        .resolve(metrics.tier, metrics.size)
+        .micro
+        .copyWith(color: text)
+        .tabular,
+    radius: theme.shape == CoilShape.sharp ? 0 : 3,
+    size: 18,
+    paddingX: 4,
+    gap: 2,
+  );
 
   /// The cap's fill.
   final Color? fill;
@@ -159,6 +165,7 @@ class CoilKbd extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final look = CoilKbdStyle.fallback(
       theme,
+      CoilTheme.metricsOf(context),
       DefaultTextStyle.of(context).style.color ?? theme.colors.mutedForeground,
     ).merge(CoilTheme.styleOf<CoilKbdStyle>(context)).merge(style);
     final size = MediaQuery.textScalerOf(context).scale(look.size!);

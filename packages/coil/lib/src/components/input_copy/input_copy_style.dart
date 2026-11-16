@@ -26,26 +26,28 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
 
   /// The defaults from the theme's tokens.
   ///
-  /// coil bundles no monospace font, so the value uses Inter with tabular
-  /// figures and a slashed zero. Set [valueStyle] to use your own mono font.
+  /// coil bundles no monospace font, so the value uses the body role with
+  /// tabular figures and a slashed zero. Set [valueStyle] to use your own
+  /// mono font.
   factory CoilInputCopyStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics,
   ) {
     final c = theme.colors;
-    final t = theme.typography;
+    final body = theme.typography.resolve(metrics.tier, metrics.size).body;
     final transparent = c.foreground.withValues(alpha: 0);
     final mark = c.brand.withValues(alpha: 0.2);
     return CoilInputCopyStyle(
-      valueStyle: t
-          .style(metrics.body, color: c.foreground)
-          .copyWith(
-            fontFeatures: const [
-              FontFeature.tabularFigures(),
-              FontFeature.slashedZero(),
-            ],
-          ),
-      actionStyle: t.style(metrics.body),
+      valueStyle: body.copyWith(
+        color: c.foreground,
+        fontFeatures: [
+          for (final feature in [...?body.fontFeatures])
+            if (feature.feature != 'tnum' && feature.feature != 'zero') feature,
+          const FontFeature.tabularFigures(),
+          const FontFeature.slashedZero(),
+        ],
+      ),
+      actionStyle: body,
       actionColor: WidgetStateProperty<Color?>.fromMap({
         WidgetState.hovered: c.foreground,
         WidgetState.any: c.mutedForeground,

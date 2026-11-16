@@ -51,7 +51,8 @@ then this guide, and FF's web names last.
 | Interaction states for one control | `CoilInteraction` (widget), `CoilInteractionDetector` (lower level) | `FluidPressable`, 03 `FluidInteraction` |
 | Popover vs sheet | `CoilPresentation { popover, sheet }` | none |
 | Corner family | `CoilShape` (`.rounded`, `.pill`, `.sharp` or your own `CoilRadii` per tier) | none |
-| Type | `CoilTypography`, `CoilTypeStep`, `CoilWeight` | `FluidTypographyThemeData`, `FluidTypeRole` |
+| Type | `CoilTypography` (roles per tier and size), `CoilTextTheme` (the roles as `TextStyle`s), `CoilTheme.textOf` | `FluidTypographyThemeData`, `FluidTypeRole` |
+| Focus ring | `CoilFocusRingTheme` (width, gap, color) | none |
 
 Rules:
 

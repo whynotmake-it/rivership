@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -115,6 +114,7 @@ class _Profile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -129,23 +129,21 @@ class _Profile extends StatelessWidget {
                 ),
               ),
             ),
-            child: const Center(child: RoleText('AL', role: TypeRole.body)),
+            child: Center(child: Text('AL', style: text.body)),
           ),
         ),
         const SizedBox(width: 12),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RoleText(
+              Text(
                 'Ada Lovelace',
-                role: TypeRole.body,
-                weight: CoilWeight.semibold,
+                style: text.body.copyWith(fontWeight: text.emphasis),
               ),
-              RoleText(
+              Text(
                 'Writes the first published algorithm for a machine.',
-                role: TypeRole.body,
-                muted: true,
+                style: text.muted.body,
               ),
             ],
           ),

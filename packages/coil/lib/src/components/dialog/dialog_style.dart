@@ -36,17 +36,18 @@ class CoilDialogStyle extends CoilComponentStyle<CoilDialogStyle> {
   /// coil's defaults at [metrics].
   factory CoilDialogStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
-    final touch = metrics.tier == CoilTier.touch;
+    final typography = theme.typography;
     return CoilDialogStyle(
-      titleStyle: theme.typography.style(
-        touch ? const CoilTypeStep(17, 22) : const CoilTypeStep(16, 22),
-        weight: CoilWeight.semibold,
-        color: c.foreground,
-      ),
-      descriptionStyle: theme.typography.style(
-        metrics.body,
-        color: c.mutedForeground,
-      ),
+      // A dialog's title keeps the regular step's title role: it doesn't
+      // shrink in a compact scope.
+      titleStyle: typography
+          .resolve(metrics.tier, CoilSize.regular)
+          .title
+          .copyWith(color: c.foreground),
+      descriptionStyle: typography
+          .resolve(metrics.tier, metrics.size)
+          .body
+          .copyWith(color: c.mutedForeground),
       padding: 24,
       radius: theme.shape.radii(metrics.tier).container,
       headerGap: 6,

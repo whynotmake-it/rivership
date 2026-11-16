@@ -1,7 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const inputCopyEntry = CatalogEntry(
@@ -83,10 +82,9 @@ class _InputCopyPageState extends State<InputCopyPage> {
           ],
         ),
       ),
-      RoleText(
+      Text(
         'Copied $_copies ${_copies == 1 ? 'time' : 'times'} on this page.',
-        role: TypeRole.caption,
-        muted: true,
+        style: CoilTheme.textOf(context).muted.caption,
       ),
     ],
   );

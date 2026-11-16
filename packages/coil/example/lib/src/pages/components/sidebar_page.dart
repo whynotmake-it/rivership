@@ -4,7 +4,6 @@ import 'package:coil_example/src/pages/components/sidebar_demo.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const sidebarEntry = CatalogEntry(
@@ -130,20 +129,20 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description = this.description;
+    final text = CoilTheme.textOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
           header: true,
-          child: RoleText(
+          child: Text(
             title,
-            role: TypeRole.subtitle,
-            weight: CoilWeight.semibold,
+            style: text.subtitle.copyWith(fontWeight: text.emphasis),
           ),
         ),
         if (description != null) ...[
           const SizedBox(height: 4),
-          RoleText(description, role: TypeRole.caption, muted: true),
+          Text(description, style: text.muted.caption),
         ],
         const SizedBox(height: 12),
         DemoStage(padding: 0, child: child),

@@ -2,6 +2,25 @@
 
 Milestone M0, unreleased.
 
+- coil bundles no font. Breaking: the default typography is the
+  platform's UI font, and apps that want Allo or Inter bundle it
+  themselves and pick the tuned preset, `CoilTypography.allo()` or
+  `CoilTypography.inter()`. In debug builds coil reports a typography
+  whose font the app doesn't bundle.
+  - `CoilTypography` holds the seven text roles of DESIGN.md §3.1 as
+    plain `TextStyle`s for every tier and size step. `CoilTypography.from`
+    puts the type scale on any base style. Each role sets the optical size
+    to its font size.
+  - `CoilTheme.textOf(context)` returns the roles for a widget's place in
+    the foreground color, with `muted`, `brand` and `destructive`
+    variants. `CoilTextTheme.emphasis` is the weight of titles and
+    selected labels.
+  - Breaking: `CoilWeight`, `CoilTypeStep` and `CoilMetrics.body`,
+    `.field` and `.caption` are removed. Weights are plain `FontWeight`s.
+- `CoilFocusRingTheme` holds the focus ring's width, gap and color.
+  Breaking: it replaces `CoilThemeData.focusRingWidth` and
+  `CoilColors.focusRingColor`.
+
 - Surfaces follow the surface scope. A card, a dropdown or breadcrumb
   menu and the command menu take their level from the surface they sit
   on, so a card on a raised surface is lighter than it, and a menu opened

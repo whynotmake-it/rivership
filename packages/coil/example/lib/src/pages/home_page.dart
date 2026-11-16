@@ -6,7 +6,6 @@ import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/nav_row.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 /// Every foundation and component, grouped as in DESIGN.md §14. Components
@@ -52,23 +51,22 @@ class _GroupList extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = CoilTheme.metricsOf(context);
     final builtCount = rows.where((r) => r.$2 != null).length;
+    final text = CoilTheme.textOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
           header: true,
-          child: RoleText(
+          child: Text(
             group.title,
-            role: TypeRole.subtitle,
-            weight: CoilWeight.semibold,
+            style: text.subtitle.copyWith(fontWeight: text.emphasis),
           ),
         ),
         if (group != CatalogGroup.foundations) ...[
           const SizedBox(height: 2),
-          RoleText(
+          Text(
             '$builtCount of ${rows.length} built',
-            role: TypeRole.caption,
-            muted: true,
+            style: text.muted.caption,
           ),
         ],
         const SizedBox(height: 8),

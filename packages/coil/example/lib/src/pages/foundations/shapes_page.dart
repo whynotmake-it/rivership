@@ -115,7 +115,8 @@ class _ShapeRow extends StatelessWidget {
     final tier = CoilTheme.tierOf(context);
     final radii = shape.radii(tier);
     final metrics = CoilTheme.metricsOf(context);
-    final colors = CoilTheme.of(context).colors;
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
     // A pill's item radius is half the control height.
     final item = radii.item.clamp(0, metrics.controlHeight / 2).toDouble();
     return Labeled(
@@ -135,7 +136,7 @@ class _ShapeRow extends StatelessWidget {
             decoration: ShapeDecoration(
               shape: RoundedSuperellipseBorder(
                 borderRadius: BorderRadius.circular(item + 2),
-                side: BorderSide(color: colors.focusRing),
+                side: BorderSide(color: theme.focusRing.colorOf(colors)),
               ),
             ),
             child: Padding(

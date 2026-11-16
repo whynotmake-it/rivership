@@ -117,12 +117,13 @@ class _CoilSidebarRailState extends State<CoilSidebarRail> {
       CoilTheme.metricsOf(context),
     ).merge(CoilTheme.styleOf<CoilSidebarStyle>(context));
     final motion = CoilTheme.motionOf(context);
+    final emphasis = CoilTheme.textOf(context).emphasis;
     Widget hint(String verb, String rest) => Text.rich(
       TextSpan(
         children: [
           TextSpan(
             text: verb,
-            style: TextStyle(fontVariations: CoilWeight.semibold.variations),
+            style: TextStyle(fontWeight: emphasis),
           ),
           TextSpan(text: rest),
         ],

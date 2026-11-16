@@ -67,8 +67,10 @@ class _HostState extends State<_Host> {
         child: Directionality(
           textDirection: widget.textDirection,
           child: CoilTheme(
+            // Geometry is measured on a real font.
             data: CoilThemeData.light.copyWith(
               tier: widget.tier,
+              typography: CoilTypography.allo(),
               motion: widget.motion,
               trackMotions: widget.trackMotions,
             ),

@@ -1,6 +1,5 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -27,6 +26,7 @@ class NavRow extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     final radius = BorderRadius.circular(CoilTheme.radiiOf(context).item);
     final enabled = onPressed != null;
     return CoilInteraction(
@@ -79,19 +79,13 @@ class NavRow extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TypeRole.body.styleOf(
-                          context,
-                          weight: CoilWeight.semibold,
-                        ),
+                        style: text.body.copyWith(fontWeight: text.emphasis),
                       ),
                       Text(
                         summary,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TypeRole.caption.styleOf(
-                          context,
-                          color: colors.mutedForeground,
-                        ),
+                        style: text.muted.caption,
                       ),
                     ],
                   ),
@@ -107,11 +101,7 @@ class NavRow extends StatelessWidget {
                     child: const CatalogIcon(Glyph.forward),
                   )
                 else
-                  const RoleText(
-                    'Planned',
-                    role: TypeRole.caption,
-                    muted: true,
-                  ),
+                  Text('Planned', style: text.muted.caption),
               ],
             ),
           ),

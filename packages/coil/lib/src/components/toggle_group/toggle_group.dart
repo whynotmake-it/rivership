@@ -163,7 +163,7 @@ class CoilToggleGroup<T> extends StatelessWidget {
                   child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: sizes.controlPaddingX,
-                      vertical: sizes.controlPaddingY(sizes.body),
+                      vertical: sizes.controlPaddingY(look.textStyle!),
                     ),
                     child: Center(
                       widthFactor: 1,

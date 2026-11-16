@@ -302,13 +302,13 @@ class QuestionStepState<T> extends State<QuestionStep<T>> {
       exitMotion: widget.motions.ring,
       exitTravelMotion: widget.motions.ring,
       fade: widget.motions.tokens.fade,
-      inflate: 1 + theme.focusRingWidth,
+      inflate: 1 + theme.focusRing.width,
       decoration: ShapeDecoration(
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(look.itemRadius! + 2),
           side: BorderSide(
-            color: theme.colors.focusRing,
-            width: theme.focusRingWidth,
+            color: theme.focusRing.colorOf(theme.colors),
+            width: theme.focusRing.width,
           ),
         ),
       ),

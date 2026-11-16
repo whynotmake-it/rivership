@@ -139,7 +139,7 @@ void main() {
   // The select goldens cover the popover and both themes; this one shows
   // a long list scrolling in a sheet.
   for (final (name, theme, tier, width) in [
-    ('sheet_light', CoilThemeData.light, CoilTier.touch, 390.0),
+    ('sheet_light', goldenLight, CoilTier.touch, 390.0),
   ]) {
     testWidgets('breadcrumb menu golden: $name', (tester) async {
       tester.view

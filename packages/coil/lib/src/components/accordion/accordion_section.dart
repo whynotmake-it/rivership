@@ -94,7 +94,7 @@ class AccordionSection<T> extends StatelessWidget {
       minHeight: metrics.controlHeight,
       padding: EdgeInsets.symmetric(
         horizontal: metrics.controlPaddingX,
-        vertical: metrics.controlPaddingY(metrics.body),
+        vertical: metrics.controlPaddingY(style.textStyle!),
       ),
       gap: metrics.gap,
       iconSize: metrics.iconSize,

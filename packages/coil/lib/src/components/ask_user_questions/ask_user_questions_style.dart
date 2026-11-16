@@ -40,7 +40,7 @@ class CoilAskUserQuestionsStyle
     CoilMetrics metrics,
   ) {
     final c = theme.colors;
-    final t = theme.typography;
+    final t = theme.typography.resolve(metrics.tier, metrics.size);
     final radii = theme.shape.radii(metrics.tier);
     final light = c.brightness == Brightness.light;
     final compact = metrics.size == CoilSize.compact;
@@ -49,16 +49,12 @@ class CoilAskUserQuestionsStyle
       border: BorderSide(color: c.border),
       radius: radii.container,
       maxWidth: 520,
-      stepStyle: t.style(metrics.caption, color: c.mutedForeground),
-      titleStyle: t.style(
-        _title(metrics),
-        weight: CoilWeight.semibold,
-        color: c.foreground,
-      ),
-      labelStyle: t.style(metrics.body),
-      descriptionStyle: t.style(metrics.body),
-      keyStyle: t.style(const CoilTypeStep(11, 14)),
-      errorStyle: t.style(metrics.caption, color: c.destructive),
+      stepStyle: t.caption.copyWith(color: c.mutedForeground),
+      titleStyle: t.title.copyWith(color: c.foreground),
+      labelStyle: t.body,
+      descriptionStyle: t.body,
+      keyStyle: t.micro,
+      errorStyle: t.caption.copyWith(color: c.destructive),
       label: c.foreground,
       description: c.mutedForeground,
       keyColor: c.mutedForeground,
@@ -199,12 +195,3 @@ class CoilAskUserQuestionsStyle
     fieldFocusBorder,
   ];
 }
-
-/// The title role (DESIGN §3.1), which `CoilMetrics` doesn't carry.
-CoilTypeStep _title(CoilMetrics metrics) =>
-    switch ((metrics.tier, metrics.size)) {
-      (CoilTier.pointer, CoilSize.regular) => const CoilTypeStep(16, 22),
-      (CoilTier.pointer, CoilSize.compact) => const CoilTypeStep(14, 20),
-      (CoilTier.touch, CoilSize.regular) => const CoilTypeStep(17, 22),
-      (CoilTier.touch, CoilSize.compact) => const CoilTypeStep(16, 22),
-    };

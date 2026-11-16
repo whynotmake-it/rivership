@@ -28,6 +28,7 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
     CoilMetrics metrics,
   ) {
     final c = theme.colors;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilChoiceCardStyle(
       fill: WidgetStateProperty.fromMap({
         WidgetState.pressed: c.active,
@@ -42,11 +43,8 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
       padding: metrics.controlPaddingX,
       gap: metrics.gap,
       textGap: 4,
-      titleStyle: theme.typography.style(metrics.body, color: c.foreground),
-      descriptionStyle: theme.typography.style(
-        metrics.caption,
-        color: c.mutedForeground,
-      ),
+      titleStyle: text.body.copyWith(color: c.foreground),
+      descriptionStyle: text.caption.copyWith(color: c.mutedForeground),
     );
   }
 

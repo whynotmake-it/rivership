@@ -45,7 +45,11 @@ class _HostState extends State<_Host> {
     builder: (context, _) => Directionality(
       textDirection: widget.textDirection,
       child: CoilTheme(
-        data: CoilThemeData.light.copyWith(tier: widget.tier),
+        // Geometry is measured on a real font.
+        data: CoilThemeData.light.copyWith(
+          tier: widget.tier,
+          typography: CoilTypography.allo(),
+        ),
         child: Overlay.wrap(
           child: FocusScope(
             autofocus: true,

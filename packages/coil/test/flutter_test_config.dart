@@ -6,18 +6,26 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
 
-/// Loads real fonts so goldens show Inter instead of Ahem boxes.
+/// Loads real fonts so goldens and text measurements use Allo and Inter
+/// instead of Ahem boxes.
 ///
-/// When this package is the root package its FontManifest declares the font
-/// without a package prefix, but components ask for
-/// `packages/coil/Inter`, so that name is loaded explicitly.
+/// coil bundles no font, so the catalog's fonts are loaded from the example
+/// under the family names [CoilTypography.allo] and [CoilTypography.inter]
+/// use. The asset manifest doesn't know fonts loaded this way, so the
+/// typography's bundled-font check is off.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   await loadFonts();
-  final bytes = File('fonts/InterVariable.ttf').readAsBytesSync();
-  await (FontLoader(
-    'packages/coil/Inter',
-  )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+  await _load('Allo', 'example/fonts/allo/AlloVariable.ttf');
+  await _load('Inter', 'example/fonts/inter/InterVariable.ttf');
+  CoilTypography.debugCheckFonts = false;
   // Fresh input-modality tracking (keyboard vs pointer) for every test.
   setUp(CoilInputModality.debugReset);
   await testMain();
+}
+
+Future<void> _load(String family, String path) async {
+  final bytes = File(path).readAsBytesSync();
+  await (FontLoader(
+    family,
+  )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
 }

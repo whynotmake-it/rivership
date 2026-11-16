@@ -136,8 +136,7 @@ void main() {
         Builder(
           builder: (context) => Text(
             label,
-            style: const CoilTypography().style(
-              CoilMetrics.pointer.caption,
+            style: goldenTypography.pointer.caption.copyWith(
               color: CoilTheme.of(context).colors.mutedForeground,
             ),
           ),

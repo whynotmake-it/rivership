@@ -101,6 +101,7 @@ class Glyph {
   );
   static const bell = Glyph(LucideIcons300.bell, LucideIcons400.bell);
   static const palette = Glyph(LucideIcons300.palette, LucideIcons400.palette);
+  static const type = Glyph(LucideIcons300.type, LucideIcons400.type);
   static const shield = Glyph(LucideIcons300.shield, LucideIcons400.shield);
   static const users = Glyph(LucideIcons300.users, LucideIcons400.users);
   static const chevronsUpDown = Glyph(

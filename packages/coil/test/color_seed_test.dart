@@ -18,7 +18,6 @@ Map<String, Color> _tokens(CoilColors c) => {
   'success': c.success,
   'warning': c.warning,
   'brand': c.brand,
-  'focusRing': c.focusRing,
   'overlay': c.overlay,
   'hover': c.hover,
   'active': c.active,
@@ -139,8 +138,12 @@ void main() {
           test('high contrast still layers on top', () {
             final high = colors.highContrast();
             expect(high.borderAlpha, 0.4);
+            final theme = CoilThemeData(colors: colors).highContrast();
             expect(
-              _ratio(high.focusRing, high.background),
+              _ratio(
+                theme.focusRing.colorOf(theme.colors),
+                theme.colors.background,
+              ),
               greaterThanOrEqualTo(3),
             );
             expect(high.surfaces, colors.surfaces);
@@ -157,7 +160,7 @@ void main() {
       brand: teal,
     );
     expect(colors.brand, teal);
-    expect(colors.focusRing, teal);
+    expect(const CoilFocusRingTheme().colorOf(colors), teal);
   });
 
   test('oklch maps out-of-gamut colors at the same lightness and hue', () {

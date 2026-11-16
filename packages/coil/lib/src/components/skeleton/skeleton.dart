@@ -146,7 +146,7 @@ class CoilSkeleton extends StatelessWidget {
         alignment: AlignmentDirectional.centerStart,
         children: [
           CoilLineBox(
-            style: theme.typography.style(sizes.body),
+            style: theme.typography.resolve(sizes.tier, sizes.size).body,
             child: const SizedBox.shrink(),
           ),
           Positioned.fill(

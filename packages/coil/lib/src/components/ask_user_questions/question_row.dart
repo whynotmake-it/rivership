@@ -137,7 +137,7 @@ class QuestionOptionRow<T> extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: metrics.controlPaddingX,
-              vertical: metrics.controlPaddingY(metrics.body),
+              vertical: metrics.controlPaddingY(look.labelStyle!),
             ),
             child: Row(
               crossAxisAlignment: stacked
@@ -199,7 +199,10 @@ class _Body<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
     final base = look.labelStyle!.copyWith(color: look.label);
+    final normal = base.fontWeight ?? FontWeight.w400;
+    final ghost = base.copyWith(fontWeight: text.emphasis);
     final description = option.description;
     return SingleMotionBuilder(
       value: selected ? 1 : 0,
@@ -207,12 +210,8 @@ class _Body<T> extends StatelessWidget {
       debugLabel: 'CoilAskUserQuestions label weight',
       builder: (context, t, _) {
         final weighted = base.copyWith(
-          fontVariations: [
-            FontVariation('wght', _lerp(_normal.wght, _semibold.wght, t)),
-            FontVariation('opsz', _lerp(_normal.opsz, _semibold.opsz, t)),
-          ],
+          fontWeight: FontWeight.lerp(normal, text.emphasis, t),
         );
-        final ghost = base.copyWith(fontVariations: _semibold.variations);
         final lines = stacked ? null : 1;
         // A hidden semibold copy holds the label's semibold width (and its
         // widest wrap), so picking a row never reflows it. At opacity 0 it
@@ -244,9 +243,7 @@ class _Body<T> extends StatelessWidget {
               label,
               if (description != null)
                 DefaultTextStyle(
-                  style: CoilTheme.of(
-                    context,
-                  ).typography.style(metrics.caption, color: look.description),
+                  style: text.caption.copyWith(color: look.description),
                   child: description,
                 ),
             ],
@@ -282,11 +279,6 @@ class _Body<T> extends StatelessWidget {
     );
   }
 }
-
-const _normal = CoilWeight.normal;
-const _semibold = CoilWeight.semibold;
-
-double _lerp(double a, double b, double t) => a + (b - a) * t;
 
 /// A row's number key, centered on the first line of the label.
 ///
@@ -413,12 +405,11 @@ class QuestionKey extends StatelessWidget {
                     : null,
                 child: Text(
                   '$number',
-                  style: look.keyStyle!.copyWith(
+                  style: look.keyStyle!.tabular.copyWith(
                     color: color,
-                    fontVariations: filled
-                        ? CoilWeight.semibold.variations
-                        : CoilWeight.normal.variations,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                    fontWeight: filled
+                        ? CoilTheme.textOf(context).emphasis
+                        : look.keyStyle!.fontWeight,
                   ),
                 ),
               ),

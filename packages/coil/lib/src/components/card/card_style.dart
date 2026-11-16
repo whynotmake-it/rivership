@@ -38,7 +38,7 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
   factory CoilCardStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     final light = c.brightness == Brightness.light;
-    final typography = theme.typography;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilCardStyle(
       border: light ? BorderSide.none : BorderSide(color: c.border),
       radius: theme.shape.radii(metrics.tier).container,
@@ -59,27 +59,11 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
       tileExtent: 32,
       tilePadding: 8,
       dismissInset: 8,
-      titleStyle: typography.style(
-        _title(metrics),
-        weight: CoilWeight.semibold,
-        color: c.foreground,
-      ),
-      descriptionStyle: typography.style(
-        metrics.caption,
-        color: c.mutedForeground,
-      ),
-      contentStyle: typography.style(metrics.body, color: c.foreground),
+      titleStyle: text.title.copyWith(color: c.foreground),
+      descriptionStyle: text.caption.copyWith(color: c.mutedForeground),
+      contentStyle: text.body.copyWith(color: c.foreground),
     );
   }
-
-  /// The title role (DESIGN.md §3.1) for [metrics].
-  static CoilTypeStep _title(CoilMetrics metrics) =>
-      switch ((metrics.tier, metrics.size)) {
-        (CoilTier.pointer, CoilSize.regular) => const CoilTypeStep(16, 22),
-        (CoilTier.pointer, CoilSize.compact) => const CoilTypeStep(14, 20),
-        (CoilTier.touch, CoilSize.regular) => const CoilTypeStep(17, 22),
-        (CoilTier.touch, CoilSize.compact) => const CoilTypeStep(16, 22),
-      };
 
   /// The card's fill. Null is the color of the card's level: two above
   /// the surface it sits on in light (3 on the page), one in dark (2).

@@ -53,6 +53,7 @@ class CoilFileThumbnail extends StatelessWidget {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
     final colors = theme.colors;
+    final text = CoilTheme.textOf(context).muted;
     final radius = BorderRadius.circular(theme.shape.radii(metrics.tier).item);
     final fallback = Center(
       child: IconTheme(
@@ -62,11 +63,7 @@ class CoilFileThumbnail extends StatelessWidget {
           color: colors.mutedForeground,
         ),
         child: DefaultTextStyle(
-          style: theme.typography.style(
-            metrics.caption,
-            weight: CoilWeight.semibold,
-            color: colors.mutedForeground,
-          ),
+          style: text.caption.copyWith(fontWeight: text.emphasis),
           maxLines: 1,
           child: placeholder ?? Text(_extension),
         ),

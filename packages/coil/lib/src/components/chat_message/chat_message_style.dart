@@ -29,15 +29,11 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
     final c = theme.colors;
     final compact = metrics.size == CoilSize.compact;
     final touch = metrics.tier == CoilTier.touch;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilChatMessageStyle(
       bubble: CoilColorMix.oklab(c.accent, c.background, 0.45),
-      textStyle: theme.typography.style(
-        _subtitle(metrics),
-        color: c.foreground,
-      ),
-      metaStyle: theme.typography
-          .style(metrics.caption, color: c.mutedForeground)
-          .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+      textStyle: text.subtitle.copyWith(color: c.foreground),
+      metaStyle: text.caption.tabular.copyWith(color: c.mutedForeground),
       padding: compact
           ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
           : touch
@@ -52,15 +48,6 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
       menuMinWidth: 220,
     );
   }
-
-  /// The subtitle role (DESIGN.md §3.1), which `CoilMetrics` doesn't carry.
-  static CoilTypeStep _subtitle(CoilMetrics metrics) =>
-      switch ((metrics.tier, metrics.size)) {
-        (CoilTier.pointer, CoilSize.regular) => const CoilTypeStep(14, 20),
-        (CoilTier.pointer, CoilSize.compact) => const CoilTypeStep(13, 18),
-        (CoilTier.touch, CoilSize.regular) => const CoilTypeStep(16, 22),
-        (CoilTier.touch, CoilSize.compact) => const CoilTypeStep(15, 20),
-      };
 
   /// The user bubble's fill. Assistant messages have no bubble.
   final Color? bubble;

@@ -534,10 +534,11 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
               ),
               child: DefaultTextStyle(
                 textAlign: TextAlign.center,
-                style: theme.typography.style(
-                  metrics.body,
-                  color: theme.colors.mutedForeground,
-                ),
+                // A sheet uses the touch sizes whatever the context's tier.
+                style: theme.typography
+                    .resolve(metrics.tier, metrics.size)
+                    .body
+                    .copyWith(color: theme.colors.mutedForeground),
                 child: widget.empty,
               ),
             ),
@@ -704,10 +705,7 @@ class _Chip extends StatelessWidget {
           spacing: 2,
           children: [
             DefaultTextStyle(
-              style: theme.typography.style(
-                metrics.caption,
-                color: colors.foreground,
-              ),
+              style: CoilTheme.textOf(context).caption,
               child: label,
             ),
             Semantics(

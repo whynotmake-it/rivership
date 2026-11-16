@@ -63,10 +63,9 @@ class _Menu extends StatelessWidget {
                               ),
                               Text(
                                 label,
-                                style: const CoilTypography().style(
-                                  sizes.body,
-                                  color: color,
-                                ),
+                                style: CoilTheme.textOf(
+                                  context,
+                                ).body.copyWith(color: color),
                               ),
                             ],
                           ),
@@ -86,7 +85,7 @@ class _Menu extends StatelessWidget {
 Widget _app(Widget child) => WidgetsApp(
   color: const Color(0xFF000000),
   builder: (context, _) => CoilTheme(
-    data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+    data: goldenLight.copyWith(tier: CoilTier.pointer),
     child: FocusScope(
       autofocus: true,
       child: Align(alignment: Alignment.topLeft, child: child),

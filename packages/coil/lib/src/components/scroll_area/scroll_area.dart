@@ -277,7 +277,7 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
                 CoilTheme.radiiOf(context).item,
               ),
               // Inside the clipping viewport.
-              offset: -(1 + CoilTheme.of(context).focusRingWidth),
+              offset: -(1 + CoilTheme.of(context).focusRing.width),
               child: child!,
             ),
             child: area,

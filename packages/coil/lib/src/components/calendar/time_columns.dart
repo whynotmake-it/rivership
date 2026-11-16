@@ -81,10 +81,7 @@ class CoilTimeColumns extends StatelessWidget {
               ExcludeSemantics(
                 child: Text(
                   ':',
-                  style: theme.typography.style(
-                    metrics.body,
-                    color: theme.colors.mutedForeground,
-                  ),
+                  style: CoilTheme.textOf(context).muted.body,
                 ),
               ),
               _Column(
@@ -168,6 +165,7 @@ class _ColumnState extends State<_Column> {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
     final colors = theme.colors;
+    final text = CoilTheme.textOf(context);
     final value = widget.text(widget.index);
     return Semantics(
       label: widget.label,
@@ -197,8 +195,8 @@ class _ColumnState extends State<_Column> {
                           CoilInputModality.instance.value ==
                               CoilModality.keyboard
                       ? BorderSide(
-                          color: colors.focusRing,
-                          width: theme.focusRingWidth,
+                          color: theme.focusRing.colorOf(colors),
+                          width: theme.focusRing.width,
                         )
                       : BorderSide.none,
                 ),
@@ -223,15 +221,11 @@ class _ColumnState extends State<_Column> {
                         Center(
                           child: Text(
                             widget.text(i),
-                            style: theme.typography.style(
-                              metrics.body,
-                              weight: i == widget.index
-                                  ? CoilWeight.semibold
-                                  : CoilWeight.normal,
-                              color: i == widget.index
-                                  ? colors.foreground
-                                  : colors.mutedForeground,
-                            ),
+                            style: i == widget.index
+                                ? text.body.copyWith(
+                                    fontWeight: text.emphasis,
+                                  )
+                                : text.muted.body,
                           ),
                         ),
                     ],

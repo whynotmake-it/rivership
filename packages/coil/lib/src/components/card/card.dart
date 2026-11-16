@@ -273,7 +273,7 @@ class _CoilCardState extends State<CoilCard> {
         visible: states.contains(WidgetState.focused),
         borderRadius: radius,
         // Inset, inside the card's clip.
-        offset: -(1 + theme.focusRingWidth),
+        offset: -(1 + theme.focusRing.width),
         child: MotionBuilder<Color>(
           value: overlay,
           converter: MotionConverter.colorRgb,

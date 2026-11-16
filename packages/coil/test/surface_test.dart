@@ -14,8 +14,7 @@ class _Level extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     'level ${CoilSurface.levelOf(context)}',
-    style: const CoilTypography().style(
-      CoilMetrics.pointer.caption,
+    style: goldenTypography.pointer.caption.copyWith(
       color: CoilTheme.of(context).colors.foreground,
     ),
   );
@@ -220,8 +219,7 @@ void main() {
                     child: Center(
                       child: Text(
                         '$level',
-                        style: const CoilTypography().style(
-                          CoilMetrics.pointer.body,
+                        style: goldenTypography.pointer.body.copyWith(
                           color: theme.colors.foreground,
                         ),
                       ),

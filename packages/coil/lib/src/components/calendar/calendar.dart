@@ -246,6 +246,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final labels = widget.labels;
     final rtl = Directionality.of(context) == TextDirection.rtl;
@@ -264,11 +265,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
             child: Semantics(
               liveRegion: true,
               child: DefaultTextStyle(
-                style: theme.typography.style(
-                  metrics.body,
-                  weight: CoilWeight.semibold,
-                  color: colors.foreground,
-                ),
+                style: text.body.copyWith(fontWeight: text.emphasis),
                 child: labels.monthTitle(_month),
               ),
             ),
@@ -303,10 +300,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
             child: ExcludeSemantics(
               child: DefaultTextStyle(
                 textAlign: TextAlign.center,
-                style: theme.typography.style(
-                  metrics.caption,
-                  color: colors.mutedForeground,
-                ),
+                style: text.muted.caption,
                 child: labels.weekday((widget.firstDayOfWeek - 1 + i) % 7 + 1),
               ),
             ),
@@ -367,15 +361,15 @@ class _CoilCalendarState extends State<CoilCalendar> {
               exitMotion: motion.fadeExit,
               exitTravelMotion: motion.quick,
               fade: motion.fade,
-              inflate: 1 + theme.focusRingWidth,
+              inflate: 1 + theme.focusRing.width,
               decoration: ShapeDecoration(
                 shape: RoundedSuperellipseBorder(
                   borderRadius: BorderRadius.circular(
                     theme.shape.radii(metrics.tier).focusRing,
                   ),
                   side: BorderSide(
-                    color: colors.focusRing,
-                    width: theme.focusRingWidth,
+                    color: theme.focusRing.colorOf(colors),
+                    width: theme.focusRing.width,
                   ),
                 ),
               ),
@@ -514,8 +508,8 @@ class _DayState extends State<_Day> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final colors = theme.colors;
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     final enabled = widget.onPressed != null;
     final color = widget.selected
         ? colors.background
@@ -541,11 +535,10 @@ class _DayState extends State<_Day> {
             child: Center(
               child: Text(
                 '${widget.day.day}',
-                style: theme.typography.style(
-                  widget.metrics.body,
-                  weight: widget.today || widget.selected
-                      ? CoilWeight.semibold
-                      : CoilWeight.normal,
+                style: text.body.copyWith(
+                  fontWeight: widget.today || widget.selected
+                      ? text.emphasis
+                      : text.body.fontWeight,
                   color: color,
                 ),
               ),

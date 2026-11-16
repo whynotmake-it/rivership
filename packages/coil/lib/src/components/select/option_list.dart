@@ -288,15 +288,15 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
                   exitMotion: motion.fadeExit,
                   exitTravelMotion: motion.quick,
                   fade: motion.fade,
-                  inflate: 1 + theme.focusRingWidth,
+                  inflate: 1 + theme.focusRing.width,
                   decoration: ShapeDecoration(
                     shape: RoundedSuperellipseBorder(
                       borderRadius: BorderRadius.circular(
                         theme.shape.radii(metrics.tier).focusRing,
                       ),
                       side: BorderSide(
-                        color: colors.focusRing,
-                        width: theme.focusRingWidth,
+                        color: theme.focusRing.colorOf(colors),
+                        width: theme.focusRing.width,
                       ),
                     ),
                   ),
@@ -484,7 +484,7 @@ class _OptionRowState extends State<_OptionRow> {
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: metrics.itemPaddingX,
-                    vertical: metrics.controlPaddingY(metrics.body),
+                    vertical: metrics.controlPaddingY(style.textStyle!),
                   ),
                   child: IconTheme(
                     data: IconThemeData(

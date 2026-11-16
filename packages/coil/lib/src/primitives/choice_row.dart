@@ -1,6 +1,5 @@
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
-import 'package:coil/src/foundation/typography.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -45,16 +44,19 @@ class CoilChoiceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: size);
-    final semibold = labelStyle.copyWith(
-      fontVariations: CoilWeight.semibold.variations,
-    );
+    final emphasis = theme.typography
+        .resolve(metrics.tier, metrics.size)
+        .emphasis;
+    final rest = labelStyle.fontWeight ?? FontWeight.w400;
+    final semibold = labelStyle.copyWith(fontWeight: emphasis);
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: metrics.controlHeight),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: metrics.itemPaddingX,
-          vertical: metrics.controlPaddingY(metrics.body),
+          vertical: metrics.controlPaddingY(labelStyle),
         ),
         child: Row(
           spacing: metrics.gap,
@@ -84,24 +86,7 @@ class CoilChoiceRow extends StatelessWidget {
                       DefaultTextStyle(
                         style: labelStyle.copyWith(
                           color: color,
-                          fontVariations: [
-                            FontVariation(
-                              'wght',
-                              _lerp(
-                                CoilWeight.normal.wght,
-                                CoilWeight.semibold.wght,
-                                t,
-                              ),
-                            ),
-                            FontVariation(
-                              'opsz',
-                              _lerp(
-                                CoilWeight.normal.opsz,
-                                CoilWeight.semibold.opsz,
-                                t,
-                              ),
-                            ),
-                          ],
+                          fontWeight: FontWeight.lerp(rest, emphasis, t),
                         ),
                         child: label,
                       ),
@@ -116,5 +101,3 @@ class CoilChoiceRow extends StatelessWidget {
     );
   }
 }
-
-double _lerp(double a, double b, double t) => a + (b - a) * t;

@@ -2,7 +2,6 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const colorsEntry = CatalogEntry(
@@ -40,7 +39,6 @@ final _tints = <_Token>[
 
 final _brand = <_Token>[
   ('brand', (c) => c.brand),
-  ('focusRing', (c) => c.focusRing),
   ('red', (c) => c.red),
   ('redLabel', (c) => c.redLabel),
   ('destructive', (c) => c.destructive),
@@ -181,6 +179,7 @@ class _ThemeColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = CoilTheme.radiiOf(context).item;
+    final text = CoilTheme.textOf(context);
     return DecoratedBox(
       decoration: ShapeDecoration(
         color: colors.background,
@@ -198,9 +197,8 @@ class _ThemeColumn extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TypeRole.caption.styleOf(
-                  context,
-                  weight: CoilWeight.semibold,
+                style: text.caption.copyWith(
+                  fontWeight: text.emphasis,
                   color: colors.mutedForeground,
                 ),
               ),
@@ -243,6 +241,7 @@ class _Swatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.textScalerOf(context).scale(28);
+    final text = CoilTheme.textOf(context);
     return Row(
       children: [
         SizedBox.square(
@@ -266,9 +265,8 @@ class _Swatch extends StatelessWidget {
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TypeRole.caption.styleOf(
-                  context,
-                  weight: CoilWeight.semibold,
+                style: text.caption.copyWith(
+                  fontWeight: text.emphasis,
                   color: colors.foreground,
                 ),
               ),
@@ -276,11 +274,10 @@ class _Swatch extends StatelessWidget {
                 hex(color),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TypeRole.micro
-                    .styleOf(context, color: colors.mutedForeground)
-                    .copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                style: text.micro.copyWith(
+                  color: colors.mutedForeground,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ],
           ),
@@ -324,7 +321,10 @@ class _Elevation extends StatelessWidget {
                       ),
                     ),
                     child: Center(
-                      child: RoleText('$level', role: TypeRole.caption),
+                      child: Text(
+                        '$level',
+                        style: CoilTheme.textOf(context).caption,
+                      ),
                     ),
                   ),
                 ),

@@ -216,20 +216,21 @@ class _Title extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
     return Semantics(
       header: true,
       namesRoute: true,
       child: DefaultTextStyle(
-        style: theme.typography.style(
-          const CoilTypeStep(16, 22),
-          color: theme.colors.foreground,
-        ),
+        style: _heading(CoilTheme.textOf(context)),
         child: title,
       ),
     );
   }
 }
+
+/// The dialog's and a section's heading: the title role, at the body's
+/// weight.
+TextStyle _heading(CoilTextTheme text) =>
+    text.title.copyWith(fontWeight: text.body.fontWeight);
 
 /// The picked section: its heading and description, then its content
 /// scrolling below. Compact, the dialog's [title] and a [picker] lead.
@@ -242,8 +243,7 @@ class _Panel<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     final description = section.description;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -261,18 +261,12 @@ class _Panel<T> extends StatelessWidget {
                 ?picker,
               ] else ...[
                 DefaultTextStyle(
-                  style: theme.typography.style(
-                    const CoilTypeStep(16, 22),
-                    color: theme.colors.foreground,
-                  ),
+                  style: _heading(text),
                   child: section.label,
                 ),
                 if (description != null)
                   DefaultTextStyle(
-                    style: theme.typography.style(
-                      metrics.body,
-                      color: theme.colors.mutedForeground,
-                    ),
+                    style: text.muted.body,
                     child: description,
                   ),
               ],
@@ -349,8 +343,7 @@ class _CoilSettingRowState extends State<CoilSettingRow> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     final description = widget.description;
     return CoilFieldScope(
       invalid: false,
@@ -371,18 +364,12 @@ class _CoilSettingRowState extends State<CoilSettingRow> {
                     spacing: 2,
                     children: [
                       DefaultTextStyle(
-                        style: theme.typography.style(
-                          metrics.body,
-                          color: theme.colors.foreground,
-                        ),
+                        style: text.body,
                         child: widget.label,
                       ),
                       if (description != null)
                         DefaultTextStyle(
-                          style: theme.typography.style(
-                            metrics.caption,
-                            color: theme.colors.mutedForeground,
-                          ),
+                          style: text.muted.caption,
                           child: description,
                         ),
                     ],

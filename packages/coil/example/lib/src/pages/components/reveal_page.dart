@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const revealEntry = CatalogEntry(
@@ -211,10 +210,9 @@ class _LoadingDemoState extends State<_LoadingDemo> {
         ],
       ),
       if (_state == _Load.idle)
-        const RoleText(
+        Text(
           'Nothing loaded yet.',
-          role: TypeRole.body,
-          muted: true,
+          style: CoilTheme.textOf(context).muted.body,
         )
       else
         CoilSkeletonSwitcher(

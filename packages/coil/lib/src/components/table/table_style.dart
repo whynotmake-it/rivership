@@ -44,11 +44,9 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     final c = theme.colors;
     final touch = metrics.tier == CoilTier.touch;
     final rest = touch || highContrast ? c.foreground : c.mutedForeground;
-    const tabular = [FontFeature.tabularFigures()];
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilTableStyle(
-      headerStyle: theme.typography
-          .style(metrics.caption, weight: CoilWeight.semibold)
-          .copyWith(fontFeatures: tabular),
+      headerStyle: text.caption.copyWith(fontWeight: text.emphasis).tabular,
       headerLabel: WidgetStateProperty.fromMap({
         WidgetState.hovered | WidgetState.pressed: c.foreground,
         WidgetState.any: touch ? c.foreground : c.mutedForeground,
@@ -58,9 +56,7 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
         WidgetState.hovered: c.hover,
         WidgetState.any: c.hover.withValues(alpha: 0),
       }),
-      cellStyle: theme.typography
-          .style(metrics.body)
-          .copyWith(fontFeatures: tabular),
+      cellStyle: text.body.tabular,
       cellLabel: WidgetStateProperty.fromMap({
         WidgetState.hovered | WidgetState.selected: c.foreground,
         WidgetState.any: rest,
@@ -70,7 +66,7 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
       selection: c.active,
       pressedFill: c.active,
       radius: theme.shape.radii(metrics.tier).item,
-      headerIconSize: metrics.caption.lineHeight,
+      headerIconSize: text.caption.lineHeight,
       sortIndicatorGap: 4,
       ringInset: 1,
     );

@@ -74,7 +74,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
           spreadRadius: -1,
         ),
       ],
-      textStyle: theme.typography.style(metrics.body),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       radius: theme.shape.radii(metrics.tier).item,
       knobSize: touch ? 22 : 16,
       knobBox: touch ? 44 : 20,

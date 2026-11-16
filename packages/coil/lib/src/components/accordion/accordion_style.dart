@@ -42,6 +42,7 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
         ? c.foreground
         : c.mutedForeground;
     final padX = metrics.controlPaddingX;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilAccordionStyle(
       // A mouse press keeps the hover look; a touch press fills.
       triggerFill: WidgetStateProperty.fromMap({
@@ -59,11 +60,8 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
         WidgetState.any: rest,
       }),
       expandedLabel: WidgetStatePropertyAll(c.foreground),
-      textStyle: theme.typography.style(metrics.body),
-      panelTextStyle: theme.typography.style(
-        metrics.body,
-        color: c.mutedForeground,
-      ),
+      textStyle: text.body,
+      panelTextStyle: text.body.copyWith(color: c.mutedForeground),
       panelPadding: EdgeInsetsDirectional.fromSTEB(padX, 0, padX, 12),
       radius: theme.shape.radii(metrics.tier).item,
       groupWidth: 288,

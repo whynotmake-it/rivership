@@ -124,7 +124,7 @@ void main() {
       tester,
       Builder(
         builder: (context) => CoilTheme(
-          data: CoilThemeData.light,
+          data: goldenLight,
           child: CoilAdaptiveScope(
             tier: CoilTier.pointer,
             child: ColoredBox(

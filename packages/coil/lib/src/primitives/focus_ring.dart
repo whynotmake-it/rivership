@@ -1,11 +1,12 @@
-import 'package:coil/src/foundation/colors.dart' show CoilColors;
+import 'package:coil/src/foundation/focus_ring_theme.dart'
+    show CoilFocusRingTheme;
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The focus ring around [child]: a 1 px line in [CoilColors.focusRing]
-/// (2 px in high contrast), [offset] outside it. It fades in and out and
-/// never changes layout.
+/// The focus ring around [child], as the theme's [CoilFocusRingTheme] draws
+/// it: a 1 px line in the brand color by default (2 px in high contrast),
+/// [offset] outside it. It fades in and out and never changes layout.
 ///
 /// Show it only for keyboard focus, which `CoilInteraction` reports as
 /// [WidgetState.focused].
@@ -16,7 +17,7 @@ class CoilFocusRing extends StatelessWidget {
     required this.borderRadius,
     required this.child,
     super.key,
-    this.offset = 0,
+    this.offset,
     this.width,
     this.color,
   });
@@ -28,11 +29,12 @@ class CoilFocusRing extends StatelessWidget {
   /// [offset] so it stays concentric.
   final BorderRadius borderRadius;
 
-  /// Gap between [child] and the ring.
-  final double offset;
+  /// Gap between [child] and the ring. Defaults to the theme's
+  /// [CoilFocusRingTheme.offset].
+  final double? offset;
 
-  /// Ring thickness. Defaults to the theme's `focusRingWidth` (1, or 2 in
-  /// high contrast).
+  /// Ring thickness. Defaults to the theme's [CoilFocusRingTheme.width] (1,
+  /// or 2 in high contrast).
   final double? width;
 
   /// Ring color. Defaults to the theme's focus ring color.
@@ -45,7 +47,7 @@ class CoilFocusRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final motion = CoilTheme.motionOf(context);
-    final ring = color ?? theme.colors.focusRing;
+    final ring = color ?? theme.focusRing.colorOf(theme.colors);
     return SingleMotionBuilder(
       value: visible ? 1 : 0,
       motion: visible ? motion.fade : motion.fadeExit,
@@ -59,8 +61,8 @@ class CoilFocusRing extends StatelessWidget {
                   alpha: ring.a * opacity.clamp(0.0, 1.0),
                 ),
                 borderRadius: borderRadius,
-                offset: offset,
-                width: width ?? theme.focusRingWidth,
+                offset: offset ?? theme.focusRing.offset,
+                width: width ?? theme.focusRing.width,
               ),
         child: child,
       ),

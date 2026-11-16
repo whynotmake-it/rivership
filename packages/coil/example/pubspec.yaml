@@ -34,3 +34,13 @@ flutter:
   uses-material-design: false
   assets:
     - assets/images/dunes.jpg
+  # The fonts coil has tuned typography for. coil bundles none: an app adds
+  # the ones it uses, with their licenses, and picks the matching
+  # CoilTypography preset.
+  fonts:
+    - family: Allo
+      fonts:
+        - asset: fonts/allo/AlloVariable.ttf
+    - family: Inter
+      fonts:
+        - asset: fonts/inter/InterVariable.ttf

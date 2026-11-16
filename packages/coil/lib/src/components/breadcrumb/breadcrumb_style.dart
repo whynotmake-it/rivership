@@ -46,7 +46,7 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
       highlight: c.hover,
       pressFill: c.active,
       radius: theme.shape.radii(metrics.tier).item,
-      textStyle: theme.typography.style(metrics.body),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       minHeight: metrics.controlHeight,
       paddingX: 6,
       separatorGap: 2,

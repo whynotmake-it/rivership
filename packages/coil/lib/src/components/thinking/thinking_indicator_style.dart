@@ -21,10 +21,10 @@ class CoilThinkingIndicatorStyle
   ) {
     final c = theme.colors;
     return CoilThinkingIndicatorStyle(
-      textStyle: theme.typography.style(
-        metrics.body,
-        color: c.mutedForeground,
-      ),
+      textStyle: theme.typography
+          .resolve(metrics.tier, metrics.size)
+          .body
+          .copyWith(color: c.mutedForeground),
       glyphColor: c.mutedForeground,
       glyphSize: metrics.size == CoilSize.compact ? 18 : 20,
     );

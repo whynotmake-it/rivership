@@ -350,7 +350,7 @@ class _CoilInputState extends State<CoilInput> {
         // 1 px of each side is the border.
         padding: EdgeInsets.symmetric(
           horizontal: sizes.controlPaddingX - 1,
-          vertical: sizes.controlPaddingY(sizes.field) - 1,
+          vertical: sizes.controlPaddingY(textStyle) - 1,
         ),
         child: Row(
           spacing: sizes.gap,

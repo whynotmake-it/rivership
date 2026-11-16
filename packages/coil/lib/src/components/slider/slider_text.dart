@@ -18,9 +18,7 @@ class SliderReserve extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final semibold = style.copyWith(
-      fontVariations: CoilWeight.semibold.variations,
-    );
+    final semibold = sliderWeight(context, style, 1);
     return ExcludeSemantics(
       child: Stack(
         children: [
@@ -69,10 +67,7 @@ class SliderValueText extends StatelessWidget {
     children: [
       SliderReserve(reserve: reserve, style: style),
       DefaultTextStyle(
-        style: style.copyWith(
-          color: color,
-          fontVariations: sliderWeight(emphasis),
-        ),
+        style: sliderWeight(context, style.copyWith(color: color), emphasis),
         maxLines: 1,
         softWrap: false,
         child: Row(mainAxisSize: MainAxisSize.min, children: parts),
@@ -149,11 +144,16 @@ class SliderValueField extends StatelessWidget {
   );
 }
 
-/// Font variations between regular and semibold, `opsz` following `wght`.
-List<FontVariation> sliderWeight(double emphasis) {
-  final wght = 400 + (CoilWeight.semibold.wght - 400) * emphasis;
-  return [
-    FontVariation('wght', wght),
-    FontVariation('opsz', 14 + (wght - 400) / 150 * 4),
-  ];
-}
+/// [style] with its weight [emphasis] of the way from its own (0) to the
+/// typography's emphasis (1).
+TextStyle sliderWeight(
+  BuildContext context,
+  TextStyle style,
+  double emphasis,
+) => style.copyWith(
+  fontWeight: FontWeight.lerp(
+    style.fontWeight ?? FontWeight.w400,
+    CoilTheme.textOf(context).emphasis,
+    emphasis,
+  ),
+);

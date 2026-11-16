@@ -73,19 +73,25 @@ void useScreen(WidgetTester tester, TestScreen screen) {
 const appBoundary = ValueKey('app-boundary');
 
 /// An app whose first page is [home], with the theme above the navigator
-/// so routes inherit it.
+/// so routes inherit it. Text is set in a real font ([typography], Allo by
+/// default), so widths and goldens are measured on real glyphs.
 Widget testApp({
   required Widget home,
   CoilColors colors = CoilColors.light,
   CoilMotion motion = const CoilMotion(),
+  CoilTypography? typography,
   CoilTier? tier,
   CoilPresentation? presentation,
   CoilSelectStyle? selectStyle,
 }) {
-  var theme = CoilThemeData(colors: colors, motion: motion);
+  var theme = CoilThemeData(
+    colors: colors,
+    motion: motion,
+    typography: typography ?? CoilTypography.allo(),
+  );
   if (selectStyle != null) theme = theme.withComponentStyle(selectStyle);
   return WidgetsApp(
-    color: colors.focusRing,
+    color: colors.brand,
     debugShowCheckedModeBanner: false,
     builder: (context, navigator) => RepaintBoundary(
       key: appBoundary,
@@ -143,8 +149,7 @@ class SelectDemoState extends State<SelectDemo> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
-    final metrics = CoilTheme.metricsOf(context);
+    final text = CoilTheme.textOf(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -153,11 +158,7 @@ class SelectDemoState extends State<SelectDemo> {
           children: [
             Text(
               'Fruit',
-              style: theme.typography.style(
-                metrics.body,
-                weight: CoilWeight.semibold,
-                color: theme.colors.foreground,
-              ),
+              style: text.body.copyWith(fontWeight: text.emphasis),
             ),
             const SizedBox(height: 6),
             SizedBox(

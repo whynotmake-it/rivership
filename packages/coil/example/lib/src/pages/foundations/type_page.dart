@@ -1,14 +1,13 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const typeEntry = CatalogEntry(
   slug: 'type',
   title: 'Type',
   group: CatalogGroup.foundations,
-  summary: 'Inter Variable: seven roles per tier, three weights.',
+  summary: 'Seven roles per tier, on any font: Allo, Inter or your own.',
   page: TypePage.new,
 );
 
@@ -18,34 +17,44 @@ class TypePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tier = CoilTheme.tierOf(context);
+    final family =
+        CoilTheme.textOf(context).body.fontFamily ?? "the platform's font";
     return CatalogPage(
       title: 'Type',
       summary:
-          'Roles at the current tier (${tier.name}). Switch the tier or the '
-          'text scale in the settings to compare.',
+          'The roles of CoilTypography at the current tier (${tier.name}), '
+          'set in $family. Change the font, its roundness and its features '
+          'under Type in the settings.',
       children: [
         for (final size in CoilSize.values)
           DemoSection(
             title: size == CoilSize.regular ? 'Regular' : 'Compact',
-            child: DemoColumn(
-              spacing: 12,
-              children: [
-                for (final role in TypeRole.values) _RoleSample(role, size),
-              ],
+            child: CoilAdaptiveScope(
+              size: size,
+              child: const _Roles(),
             ),
           ),
         const DemoSection(
           title: 'Weights',
           description:
-              'Weight comes from the font variation (wght + opsz), so a label '
-              'turning semibold keeps nearly the same width.',
+              "Weights are plain FontWeights, which set a variable font's "
+              'wght axis. Titles and selected labels share one emphasis '
+              'weight, so it follows the font.',
           child: _Weights(),
+        ),
+        const DemoSection(
+          title: 'Optical size',
+          description:
+              'Each role sets opsz to its font size, as CSS does on its own. '
+              'Small text opens its spacing up, titles tighten. On the right, '
+              'every size uses the text cut (opsz 14).',
+          child: _OpticalSize(),
         ),
         const DemoSection(
           title: 'Tabular figures',
           description:
-              'Numbers that line up use tabular figures; prose keeps '
-              'proportional ones.',
+              'Numbers that line up use tabular figures (.tabular); prose '
+              'keeps proportional ones.',
           child: _Figures(),
         ),
       ],
@@ -53,52 +62,95 @@ class TypePage extends StatelessWidget {
   }
 }
 
-class _RoleSample extends StatelessWidget {
-  const _RoleSample(this.role, this.size);
-
-  final TypeRole role;
-  final CoilSize size;
+class _Roles extends StatelessWidget {
+  const _Roles();
 
   @override
   Widget build(BuildContext context) {
-    final step = role.step(CoilTheme.tierOf(context), size);
-    final colors = CoilTheme.of(context).colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final text = CoilTheme.textOf(context);
+    return DemoColumn(
+      spacing: 12,
       children: [
-        Text(
-          '${role.label} · ${_n(step.fontSize)}/${_n(step.lineHeight)} · '
-          '${role.weight.name}',
-          style: TypeRole.micro.styleOf(context, color: colors.mutedForeground),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'Restraint in motion and color',
-          style: role.styleOf(context, size: size),
-        ),
+        for (final (name, style) in [
+          ('display', text.display),
+          ('title', text.title),
+          ('subtitle', text.subtitle),
+          ('body', text.body),
+          ('field', text.field),
+          ('caption', text.caption),
+          ('micro', text.micro),
+        ])
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$name · ${_n(style.fontSize!)}/${_n(style.lineHeight)} · '
+                '${style.fontWeight?.value ?? 400}',
+                style: text.muted.micro,
+              ),
+              const SizedBox(height: 2),
+              Text('Restraint in motion and color', style: style),
+            ],
+          ),
       ],
     );
   }
 
   static String _n(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 }
 
 class _Weights extends StatelessWidget {
   const _Weights();
 
   @override
-  Widget build(BuildContext context) => DemoColumn(
-    spacing: 8,
-    children: [
-      for (final weight in CoilWeight.values)
-        Text(
-          '${weight.name} · wght ${weight.wght.round()} · opsz '
-          '${weight.opsz.round()}',
-          style: TypeRole.title.styleOf(context, weight: weight),
-        ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return DemoColumn(
+      spacing: 8,
+      children: [
+        for (final (name, weight) in [
+          ('normal', FontWeight.w400),
+          ('emphasis', text.emphasis),
+          ('bold', FontWeight.w700),
+        ])
+          Text(
+            '$name · ${weight.value}',
+            style: text.title.copyWith(fontWeight: weight),
+          ),
+      ],
+    );
+  }
+}
+
+class _OpticalSize extends StatelessWidget {
+  const _OpticalSize();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    TextStyle textCut(TextStyle style) => style.copyWith(
+      fontVariations: [
+        for (final axis in [...?style.fontVariations])
+          if (axis.axis != 'opsz') axis,
+        const FontVariation('opsz', 14),
+      ],
+    );
+    Widget column(TextStyle Function(TextStyle) adjust) => DemoColumn(
+      spacing: 8,
+      children: [
+        for (final style in [text.micro, text.body, text.title, text.display])
+          Text('Handgloves 0123', style: adjust(style)),
+      ],
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Labeled('Automatic', child: column((s) => s))),
+        Expanded(child: Labeled('Text cut', child: column(textCut))),
+      ],
+    );
+  }
 }
 
 class _Figures extends StatelessWidget {
@@ -106,10 +158,7 @@ class _Figures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = TypeRole.body.styleOf(context);
-    final tabular = style.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
+    final style = CoilTheme.textOf(context).body;
     return Row(
       children: [
         Expanded(
@@ -121,7 +170,7 @@ class _Figures extends StatelessWidget {
         Expanded(
           child: Labeled(
             'Tabular',
-            child: Text('1,111.11\n9,999.99\n4,041.70', style: tabular),
+            child: Text('1,111.11\n9,999.99\n4,041.70', style: style.tabular),
           ),
         ),
       ],

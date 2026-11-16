@@ -230,7 +230,7 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
       builder: (context, dots) => CoilFocusRing(
         visible: _states.value.contains(WidgetState.focused),
         borderRadius: BorderRadius.circular(style.radius!),
-        offset: style.ringOffset!,
+        offset: style.ringOffset,
         child: dots!,
       ),
     );

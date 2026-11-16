@@ -97,7 +97,7 @@ class _Host extends StatefulWidget {
 }
 
 class _HostState extends State<_Host> {
-  late CoilThemeData theme = CoilThemeData.light.copyWith(tier: widget.tier);
+  late CoilThemeData theme = goldenLight.copyWith(tier: widget.tier);
 
   void setTheme(CoilThemeData value) => setState(() => theme = value);
 
@@ -1016,7 +1016,11 @@ Future<void> _expectRowCentered(
       child: Directionality(
         textDirection: TextDirection.ltr,
         child: CoilTheme(
-          data: CoilThemeData.light.copyWith(tier: tier),
+          // Ink is measured on a real font.
+          data: CoilThemeData.light.copyWith(
+            tier: tier,
+            typography: CoilTypography.allo(),
+          ),
           child: CoilAdaptiveScope(
             size: size,
             child: Center(

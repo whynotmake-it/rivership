@@ -30,6 +30,7 @@ class WorkspaceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
+    final text = CoilTheme.textOf(context);
     return SizedBox.square(
       dimension: 20,
       child: DecoratedBox(
@@ -42,9 +43,8 @@ class WorkspaceTile extends StatelessWidget {
         child: Center(
           child: Text(
             letter,
-            style: theme.typography.style(
-              const CoilTypeStep(11, 14),
-              weight: CoilWeight.semibold,
+            style: text.micro.copyWith(
+              fontWeight: text.emphasis,
               color: const Color(0xFFFFFFFF),
             ),
           ),
@@ -165,8 +165,9 @@ class _Avatar extends StatelessWidget {
         child: Center(
           child: Text(
             'A',
-            style: CoilTheme.of(context).typography.style(
-              const CoilTypeStep(10, 12),
+            style: CoilTheme.textOf(context).micro.copyWith(
+              fontSize: 10,
+              height: 12 / 10,
               color: colors.foreground,
             ),
           ),
@@ -402,7 +403,6 @@ class DemoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
     final trigger = CoilSidebarTrigger(
       icon: CatalogIcon(
         side == CoilSidebarSide.start ? Glyph.panelLeft : Glyph.panelRight,
@@ -420,10 +420,7 @@ class DemoPage extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: theme.typography.style(
-                    CoilTheme.metricsOf(context).body,
-                    color: theme.colors.mutedForeground,
-                  ),
+                  style: CoilTheme.textOf(context).muted.body,
                 ),
               ),
               if (side == CoilSidebarSide.end) trigger,

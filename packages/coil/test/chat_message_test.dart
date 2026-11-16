@@ -134,8 +134,7 @@ void main() {
         children: [
           Text(
             label,
-            style: const CoilTypography().style(
-              CoilMetrics.pointer.caption,
+            style: goldenTypography.pointer.caption.copyWith(
               color: CoilTheme.of(context).colors.mutedForeground,
             ),
           ),
@@ -486,9 +485,10 @@ void main() {
       style: style,
       child: Text('word ' * 60),
     );
-    final themed = CoilThemeData.light.withComponentStyle(
-      const CoilChatMessageStyle(maxWidthFactor: 0.5),
-    );
+    // Widths are measured on a real font.
+    final themed = CoilThemeData.light
+        .copyWith(typography: CoilTypography.allo())
+        .withComponentStyle(const CoilChatMessageStyle(maxWidthFactor: 0.5));
     await tester.pumpWidget(_app(message(), theme: themed));
     expect(tester.getSize(find.byType(Text)).width, lessThanOrEqualTo(200));
     await tester.pumpWidget(

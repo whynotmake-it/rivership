@@ -167,7 +167,7 @@ class _HeaderCell extends StatelessWidget {
                 visible: states.contains(WidgetState.focused),
                 borderRadius: radius,
                 // Inset, inside the table's clip.
-                offset: -(style.ringInset! + theme.focusRingWidth),
+                offset: -(style.ringInset! + theme.focusRing.width),
                 child: MotionBuilder<Color>(
                   value: style.headerFill!.resolve(states)!,
                   converter: MotionConverter.colorRgb,
@@ -194,7 +194,7 @@ class _HeaderCell extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: metrics.controlPaddingX,
-          vertical: metrics.controlPaddingY(metrics.caption),
+          vertical: metrics.controlPaddingY(style.headerStyle!),
         ),
         child: Align(
           alignment: column.alignment,

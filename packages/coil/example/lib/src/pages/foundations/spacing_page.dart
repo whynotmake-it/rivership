@@ -1,7 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const spacingEntry = CatalogEntry(
@@ -38,8 +37,6 @@ final _metrics = <_Metric>[
   ),
   ('switch thumb', (m) => _n(m.switchMetrics.thumbSize)),
   ('segmentPadding', (m) => _n(m.segmentPadding)),
-  ('body', (m) => '${_n(m.body.fontSize)}/${_n(m.body.lineHeight)}'),
-  ('caption', (m) => '${_n(m.caption.fontSize)}/${_n(m.caption.lineHeight)}'),
 ];
 
 const _columns = [
@@ -90,6 +87,7 @@ class _Heights extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final radius = BorderRadius.circular(CoilTheme.radiiOf(context).item);
+    final text = CoilTheme.textOf(context);
     return DemoWrap(
       spacing: 16,
       crossAxisAlignment: WrapCrossAlignment.end,
@@ -110,15 +108,15 @@ class _Heights extends StatelessWidget {
                         shape: RoundedSuperellipseBorder(borderRadius: radius),
                       ),
                       child: Center(
-                        child: RoleText(
+                        child: Text(
                           _n(m.controlHeight),
-                          role: TypeRole.caption,
+                          style: text.caption,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
-                  RoleText(label, role: TypeRole.caption, muted: true),
+                  Text(label, style: text.muted.caption),
                 ],
               );
             },
@@ -135,18 +133,12 @@ class _Ladder extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final current = CoilTheme.tierOf(context);
-    final header = TypeRole.caption.styleOf(
-      context,
-      weight: CoilWeight.semibold,
-      color: colors.mutedForeground,
+    final text = CoilTheme.textOf(context);
+    final header = text.muted.caption.copyWith(fontWeight: text.emphasis);
+    final cell = text.caption.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
-    final cell = TypeRole.caption
-        .styleOf(context)
-        .copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
-    final name = TypeRole.caption.styleOf(
-      context,
-      color: colors.mutedForeground,
-    );
+    final name = text.muted.caption;
     final highlight = ShapeDecoration(
       color: colors.hover,
       shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(4)),
@@ -202,6 +194,7 @@ class _Scale extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     return DemoWrap(
       spacing: 12,
       crossAxisAlignment: WrapCrossAlignment.end,
@@ -216,7 +209,7 @@ class _Scale extends StatelessWidget {
                 child: ColoredBox(color: colors.brand),
               ),
               const SizedBox(height: 4),
-              RoleText('$v', role: TypeRole.micro, muted: true),
+              Text('$v', style: text.muted.micro),
             ],
           ),
       ],

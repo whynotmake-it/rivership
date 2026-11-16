@@ -3,6 +3,19 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// The typography goldens render with: Allo, the catalog's look.
+final goldenTypography = CoilTypography.allo();
+
+/// [theme] with [goldenTypography].
+CoilThemeData goldenTheme(CoilThemeData theme) =>
+    theme.copyWith(typography: goldenTypography);
+
+/// The light theme goldens render with.
+final goldenLight = goldenTheme(CoilThemeData.light);
+
+/// The dark theme goldens render with.
+final goldenDark = goldenTheme(CoilThemeData.dark);
+
 /// The interaction states every overview sheet shows, as columns.
 enum SheetState {
   rest('rest', {}),
@@ -46,8 +59,7 @@ class StateTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
-    final caption = const CoilTypography().style(
-      CoilMetrics.pointer.caption,
+    final caption = goldenTypography.pointer.caption.copyWith(
       color: colors.mutedForeground,
     );
     return Table(
@@ -135,7 +147,7 @@ class SheetPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CoilTheme(
-      data: theme,
+      data: goldenTheme(theme),
       child: Builder(
         builder: (context) {
           final colors = CoilTheme.of(context).colors;
@@ -149,9 +161,7 @@ class SheetPanel extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const CoilTypography().style(
-                      const CoilTypeStep(14, 20),
-                      weight: CoilWeight.semibold,
+                    style: goldenTypography.pointerCompact.title.copyWith(
                       color: colors.foreground,
                     ),
                   ),

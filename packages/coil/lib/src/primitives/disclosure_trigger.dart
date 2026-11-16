@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
 import 'package:coil/src/primitives/focus_ring.dart';
@@ -238,8 +239,8 @@ class CoilDisclosureTrigger extends StatelessWidget {
   }
 }
 
-/// The label, its weight springing between normal and semibold. The
-/// weights pair `wght` with `opsz`, so the width barely changes.
+/// The label, its weight springing between its own and the typography's
+/// emphasis weight.
 class _Label extends StatelessWidget {
   const _Label({
     required this.expanded,
@@ -254,23 +255,21 @@ class _Label extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => SingleMotionBuilder(
-    value: expanded ? 1 : 0,
-    motion: motion,
-    debugLabel: 'CoilDisclosureTrigger.weight',
-    builder: (context, t, child) => DefaultTextStyle(
-      style: style.copyWith(
-        fontVariations: CoilWeight.lerp(
-          CoilWeight.normal,
-          CoilWeight.semibold,
-          t,
-        ),
+  Widget build(BuildContext context) {
+    final rest = style.fontWeight ?? FontWeight.w400;
+    final emphasis = CoilTheme.textOf(context).emphasis;
+    return SingleMotionBuilder(
+      value: expanded ? 1 : 0,
+      motion: motion,
+      debugLabel: 'CoilDisclosureTrigger.weight',
+      builder: (context, t, child) => DefaultTextStyle(
+        style: style.copyWith(fontWeight: FontWeight.lerp(rest, emphasis, t)),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        child: child!,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      softWrap: false,
-      child: child!,
-    ),
-    child: child,
-  );
+      child: child,
+    );
+  }
 }

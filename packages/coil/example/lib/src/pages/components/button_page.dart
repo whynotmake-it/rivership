@@ -4,7 +4,6 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 
 const buttonEntry = CatalogEntry(
@@ -98,10 +97,9 @@ class _ButtonPageState extends State<ButtonPage> {
               onPressed: () {},
             ),
             if (_likes > 0)
-              RoleText(
+              Text(
                 '$_likes ${_likes == 1 ? 'like' : 'likes'}',
-                role: TypeRole.caption,
-                muted: true,
+                style: CoilTheme.textOf(context).muted.caption,
               ),
           ],
         ),

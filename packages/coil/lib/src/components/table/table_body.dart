@@ -113,8 +113,8 @@ class TableBody<T> extends StatelessWidget {
                     style.radius! - style.ringInset!,
                   ),
                   side: BorderSide(
-                    color: theme.colors.focusRing,
-                    width: theme.focusRingWidth,
+                    color: theme.focusRing.colorOf(theme.colors),
+                    width: theme.focusRing.width,
                   ),
                 ),
               ),

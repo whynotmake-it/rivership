@@ -21,6 +21,6 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
 - **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
-- **Value font:** coil bundles no monospace font; the value is Inter with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
+- **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
 - **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed".
 - **Keyboard:** Enter or Space copies.

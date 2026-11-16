@@ -108,7 +108,7 @@ class CrumbLink extends StatelessWidget {
               child: CoilFocusRing(
                 visible: states.contains(WidgetState.focused),
                 borderRadius: radius,
-                offset: style.focusRingOffset!,
+                offset: style.focusRingOffset,
                 child: MotionBuilder<Color>(
                   value: fill,
                   converter: MotionConverter.colorRgb,

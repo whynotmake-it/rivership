@@ -946,11 +946,10 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           reserve: reserveOf(i),
           reserveStyle: text,
           style: theme.typography
-              .style(metrics.field)
-              .copyWith(
-                color: theme.colors.foreground,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              .resolve(metrics.tier, metrics.size)
+              .field
+              .copyWith(color: theme.colors.foreground)
+              .tabular,
           underline: style.border!,
           signed: scale.min < 0,
           onSubmit: _commitEdit,

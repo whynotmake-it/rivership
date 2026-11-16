@@ -366,7 +366,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
         onMetrics: _onScrollMetrics,
         physics: _RevealPhysics(request: _revealRequest),
         edgeFade: style.edgeFade!,
-        bleed: 1 + 2 * theme.focusRingWidth,
+        bleed: 1 + 2 * theme.focusRing.width,
         // Inside the scrollable, so the tabs are the tab bar's direct
         // semantic children.
         child: Semantics(
@@ -422,15 +422,15 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   exitMotion: focusMotion.exit,
                   exitTravelMotion: travel(focusMotion, motion.quick),
                   fade: fadeMotion,
-                  inflate: 1 + theme.focusRingWidth,
+                  inflate: 1 + theme.focusRing.width,
                   decoration: ShapeDecoration(
                     shape: RoundedSuperellipseBorder(
                       borderRadius: BorderRadius.circular(
                         theme.shape.radii(sizes.tier).focusRing,
                       ),
                       side: BorderSide(
-                        color: colors.focusRing,
-                        width: theme.focusRingWidth,
+                        color: theme.focusRing.colorOf(colors),
+                        width: theme.focusRing.width,
                       ),
                     ),
                   ),
@@ -668,9 +668,11 @@ class _TabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showLabel = !collapseLabel || selected;
-    final semibold = style.textStyle!.copyWith(
-      fontVariations: CoilWeight.semibold.variations,
-    );
+    final rest = style.textStyle!;
+    final emphasis = CoilTheme.of(
+      context,
+    ).typography.resolve(sizes.tier, sizes.size).emphasis;
+    final semibold = rest.copyWith(fontWeight: emphasis);
 
     return Semantics(
       role: SemanticsRole.tab,
@@ -685,7 +687,7 @@ class _TabButton extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: sizes.controlPaddingX,
-              vertical: sizes.controlPaddingY(sizes.body),
+              vertical: sizes.controlPaddingY(rest),
             ),
             child: MotionBuilder<Color>(
               value: style.label!.resolve({
@@ -695,18 +697,16 @@ class _TabButton extends StatelessWidget {
               motion: emphasisMotion,
               converter: MotionConverter.colorRgb,
               builder: (context, color, _) => SingleMotionBuilder(
-                value: selected ? CoilWeight.semibold.wght : 400,
+                value: selected ? 1 : 0,
                 motion: emphasisMotion,
-                builder: (context, wght, _) {
-                  final textStyle = style.textStyle!.copyWith(
+                builder: (context, t, _) {
+                  final textStyle = rest.copyWith(
                     color: color,
-                    fontVariations: [
-                      FontVariation('wght', wght),
-                      FontVariation(
-                        'opsz',
-                        14 + (wght - 400) / 150 * 4,
-                      ),
-                    ],
+                    fontWeight: FontWeight.lerp(
+                      rest.fontWeight ?? FontWeight.w400,
+                      emphasis,
+                      t,
+                    ),
                   );
                   final label = Stack(
                     children: [

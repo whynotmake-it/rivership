@@ -29,7 +29,7 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
       gap: 8,
       actionSize: 24,
       actionGap: 4,
-      labelStyle: theme.typography.style(metrics.caption),
+      labelStyle: theme.typography.resolve(metrics.tier, metrics.size).caption,
       labelColor: WidgetStateProperty<Color?>.fromMap({
         WidgetState.hovered | WidgetState.focused: c.foreground,
         WidgetState.any: c.mutedForeground,

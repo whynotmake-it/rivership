@@ -172,6 +172,7 @@ class _TableBodyRowState<T> extends State<TableBodyRow<T>> {
                             role: SemanticsRole.cell,
                             child: _CellFrame(
                               metrics: metrics,
+                              text: style.cellStyle!,
                               child: Align(
                                 alignment: column.alignment,
                                 heightFactor: 1,
@@ -236,6 +237,7 @@ class TableEmptyRow extends StatelessWidget {
                 for (var i = 0; i < rows; i++)
                   _CellFrame(
                     metrics: metrics,
+                    text: style.cellStyle!,
                     child: CoilLineBox(
                       style: style.cellStyle!,
                       child: const SizedBox.shrink(),
@@ -258,11 +260,16 @@ class TableEmptyRow extends StatelessWidget {
 }
 
 /// A body cell's box: at least a control tall, padded like a control
-/// around body text.
+/// around a line of [text].
 class _CellFrame extends StatelessWidget {
-  const _CellFrame({required this.metrics, required this.child});
+  const _CellFrame({
+    required this.metrics,
+    required this.text,
+    required this.child,
+  });
 
   final CoilMetrics metrics;
+  final TextStyle text;
   final Widget child;
 
   @override
@@ -271,7 +278,7 @@ class _CellFrame extends StatelessWidget {
     child: Padding(
       padding: EdgeInsets.symmetric(
         horizontal: metrics.controlPaddingX,
-        vertical: metrics.controlPaddingY(metrics.body),
+        vertical: metrics.controlPaddingY(text),
       ),
       child: child,
     ),

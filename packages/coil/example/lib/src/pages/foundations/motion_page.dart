@@ -2,7 +2,6 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -123,6 +122,7 @@ class _LaneView extends StatelessWidget {
     final (enter, exit) = lane.of(motion);
     final colors = CoilTheme.of(context).colors;
     final dot = MediaQuery.textScalerOf(context).scale(20);
+    final text = CoilTheme.textOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -131,23 +131,18 @@ class _LaneView extends StatelessWidget {
             children: [
               TextSpan(
                 text: lane.label,
-                style: TypeRole.body.styleOf(
-                  context,
-                  weight: CoilWeight.semibold,
-                ),
+                style: text.body.copyWith(fontWeight: text.emphasis),
               ),
               TextSpan(
                 text: '  ${describe(enter)} · exit ${describe(exit)}',
-                style: TypeRole.caption
-                    .styleOf(context, color: colors.mutedForeground)
-                    .copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                style: text.muted.caption.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ],
           ),
         ),
-        RoleText(lane.use, role: TypeRole.caption, muted: true),
+        Text(lane.use, style: text.muted.caption),
         const SizedBox(height: 6),
         SizedBox(
           height: dot + 8,
@@ -203,21 +198,18 @@ class _Hold extends StatelessWidget {
   final String use;
 
   @override
-  Widget build(BuildContext context) => Text.rich(
-    TextSpan(
-      children: [
-        TextSpan(
-          text: '$name  ${duration.inMilliseconds} ms\n',
-          style: TypeRole.body.styleOf(context, weight: CoilWeight.semibold),
-        ),
-        TextSpan(
-          text: use,
-          style: TypeRole.caption.styleOf(
-            context,
-            color: CoilTheme.of(context).colors.mutedForeground,
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$name  ${duration.inMilliseconds} ms\n',
+            style: text.body.copyWith(fontWeight: text.emphasis),
           ),
-        ),
-      ],
-    ),
-  );
+          TextSpan(text: use, style: text.muted.caption),
+        ],
+      ),
+    );
+  }
 }

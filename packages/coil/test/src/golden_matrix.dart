@@ -35,8 +35,7 @@ class GoldenMatrix extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final caption = const CoilTypography().style(
-      CoilMetrics.pointer.caption,
+    final caption = goldenTypography.pointer.caption.copyWith(
       color: const Color(0xFF737373),
     );
     Widget cell(CoilThemeData theme, CoilTier tier, MatrixVariant variant) =>
@@ -84,8 +83,8 @@ class GoldenMatrix extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final (name, theme) in [
-              ('light', CoilThemeData.light),
-              ('dark', CoilThemeData.dark),
+              ('light', goldenLight),
+              ('dark', goldenDark),
             ])
               for (final tier in CoilTier.values) ...[
                 Padding(

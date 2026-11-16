@@ -16,8 +16,37 @@ coil's look. coil is its own system: it doesn't aim for pixel or timing
 parity, and its motion tokens are its own. The original license is in
 [`LICENSE.fluid-functionalism`](LICENSE.fluid-functionalism).
 
-The bundled font is [Inter](https://rsms.me/inter/), © The Inter Project
-Authors, SIL Open Font License 1.1.
+## Fonts
+
+coil bundles no font, so apps don't carry one they don't use. By default
+it uses the platform's UI font. Two presets are tuned for specific fonts:
+
+- `CoilTypography.allo()`, for [Allo](https://allo.joshpuckett.me) by Josh
+  Puckett, with its roundness axis and stylistic sets. This is the
+  catalog's look.
+- `CoilTypography.inter()`, for [Inter](https://rsms.me/inter/) by Rasmus
+  Andersson.
+
+Both are under the SIL Open Font License 1.1. To use one, add its variable
+font to the app with its license, declare it in the app's `pubspec.yaml`,
+and pass the preset to the theme:
+
+```yaml
+flutter:
+  fonts:
+    - family: Allo
+      fonts:
+        - asset: fonts/AlloVariable.ttf
+```
+
+```dart
+CoilThemeData(typography: CoilTypography.allo(roundness: 70))
+```
+
+In debug builds, coil reports a typography whose font the app doesn't
+bundle. For any other font, `CoilTypography.from(TextStyle(fontFamily:
+'Brand'))` puts coil's type scale on it. The catalog in `example/` bundles
+both fonts and shows the setup.
 
 ## Using it
 
@@ -73,7 +102,7 @@ copy it.
 
 | Layer | Library | Holds |
 |---|---|---|
-| Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography`, `CoilShape`, `CoilHaptics`, `CoilInputModality`, `CoilAdaptiveScope` |
+| Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography` and `CoilTextTheme`, `CoilFocusRingTheme`, `CoilShape`, `CoilHaptics`, `CoilInputModality`, `CoilAdaptiveScope` |
 | Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlight`, `CoilSelectionBlocks` (merge/split), `CoilLayerPaint`, `CoilHoverHighlight`, `CoilBlurFade`, `CoilPopover`, `CoilSheetRoute`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow`, `CoilPopoverSurface`, `CoilActionList`, `CoilCollapsible`, `CoilDisclosureTrigger`, `CoilScrollbar`, `CoilScrollEdgeFade`, `CoilScrollSpring` |
 | Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect`, `CoilScrollArea`, `CoilAccordion`, `CoilThinkingSteps`, `CoilThinkingIndicator`, `CoilCard` (with `CoilCardGroup`), `CoilTable`, `CoilBanner`, `CoilBreadcrumb`, `CoilChatMessage`, `CoilCarouselDots` |
 
@@ -133,7 +162,7 @@ Each component's file runs the shared checks from `test/src/`:
 
 - `matrixGoldenTest` (goldens in `test/goldens/matrix/`): light/dark ×
   pointer/touch, each at text scale 1, 1.5 and 2, in RTL and high contrast,
-  with real Inter at 2x; overlays open as popover and sheet.
+  with real Allo at 2x; overlays open as popover and sheet.
 - `expectCoilPattern` (public in `package:coil_cli/testing.dart`): semantics,
   keyboard and focus-visible, in LTR and RTL.
 - `inkCenteringTests`: label ink centered within 1 px at every tier, size

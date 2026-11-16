@@ -417,7 +417,7 @@ class _CoilButtonState extends State<CoilButton> {
     }
     // A minimum height plus symmetric padding: the label's line box sits
     // centered, and the button grows with the text scale.
-    final padY = sizes.controlPaddingY(sizes.body);
+    final padY = sizes.controlPaddingY(style.textStyle!);
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: style.minHeight!),
       child: Padding(

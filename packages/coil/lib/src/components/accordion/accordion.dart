@@ -245,15 +245,15 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
         exitMotion: motion.quickExit,
         exitTravelMotion: motion.standard,
         fade: motion.fade,
-        inflate: 1 + theme.focusRingWidth,
+        inflate: 1 + theme.focusRing.width,
         decoration: ShapeDecoration(
           shape: RoundedSuperellipseBorder(
             borderRadius: BorderRadius.circular(
               theme.shape.radii(metrics.tier).focusRing,
             ),
             side: BorderSide(
-              color: theme.colors.focusRing,
-              width: theme.focusRingWidth,
+              color: theme.focusRing.colorOf(theme.colors),
+              width: theme.focusRing.width,
             ),
           ),
         ),

@@ -37,7 +37,7 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
         WidgetState.selected: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),
-      textStyle: theme.typography.style(metrics.body),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       // A pill: half the track's height.
       radius: theme.shape == CoilShape.sharp ? 0 : m.trackHeight / 2,
     );

@@ -168,7 +168,11 @@ class _InkHarness extends StatelessWidget {
         initialEntries: [
           OverlayEntry(
             builder: (_) => CoilTheme(
-              data: CoilThemeData.light.copyWith(tier: tier),
+              // Ink is measured on a real font.
+              data: CoilThemeData.light.copyWith(
+                tier: tier,
+                typography: CoilTypography.allo(),
+              ),
               child: CoilAdaptiveScope(
                 size: size,
                 child: Center(

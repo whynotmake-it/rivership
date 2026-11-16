@@ -12,7 +12,7 @@ Contents: [1 Principles](#1-principles) · [2 Color](#2-color) · [3 Type](#3-ty
 
 - **Coil is a Flutter design system on Motor springs.** You use it like `material_ui` or `cupertino_ui`: import it under any `WidgetsApp`. It has no app shell and no Material dependency.
 - **It's inspired by [Fluid Functionalism](https://www.fluidfunctionalism.com)** (MIT, credited in the README). From FF it takes:
-  - the spacing rhythm and Inter type;
+  - the spacing rhythm and the type scale;
   - color restraint;
   - the gliding hover highlight;
   - merged selections;
@@ -84,17 +84,25 @@ High contrast is driven by `MediaQuery.highContrastOf` and applied last (`CoilTh
 
 ## 3. Type
 
-**Family:** Inter Variable, bundled. Weights are `wght` + `opsz` pairs (`CoilWeight`), so a weight change keeps the advance width nearly constant:
+**Font:** coil bundles none. `CoilThemeData.typography` is a `CoilTypography`: the roles below, as plain `TextStyle`s, for every tier and size step. Read them with `CoilTheme.textOf(context)`.
 
-| Weight | `wght` / `opsz` | Use |
+- **The default** is the platform's UI font: San Francisco on Apple platforms, Roboto on Android.
+- **Tuned presets:** `CoilTypography.allo()` (the catalog's look) and `CoilTypography.inter()`. The app bundles the font itself, under the family the preset names. In debug builds coil reports a family that the app's font manifest doesn't declare, since Flutter would silently fall back to the platform font.
+- **Any other font:** `CoilTypography.from(TextStyle(fontFamily: 'Brand'))` puts the scale on top of a base style. The base carries the family, axes and features; each role adds its size, line height and weight.
+
+**Optical size follows the font size.** Every role sets `opsz` to its font size, as CSS `font-optical-sizing: auto` does, unless the base style sets `opsz`. Allo's axis runs 9–32: it opens up small text and tightens titles. Fonts without the axis ignore it.
+
+**Weights are plain `FontWeight`s.** A `FontWeight(550)` sets a variable font's `wght` axis, and `TextStyle.lerp` animates it. `CoilTextTheme.emphasis`, the title's weight, marks titles, selected items and buttons:
+
+| Weight | Value | Use |
 |---|---|---|
-| `normal` | 400 / 14 | body, resting labels |
-| `semibold` | 550 / 18 | titles, selected items, buttons |
-| `bold` | 700 / 25 | display only |
+| normal | 400 | body, resting labels |
+| emphasis | 550 | titles, selected items, buttons |
+| bold | 700 | display only |
 
-Never set a static `FontWeight` on top of the variation; the engine would synthesize bold.
+**Leading** is CSS half-leading (`TextLeadingDistribution.even`). For Allo and Inter, whose vertical metrics are identical, this centers the cap height in the line box exactly, so labels are optically centered with no nudging. A label that looks off-center is a layout bug, and the ink-measurement test catches it.
 
-**Leading** is CSS half-leading (`TextLeadingDistribution.even`). For Inter this centers the cap height in the line box exactly, so labels are optically centered with no nudging. A label that looks off-center is a layout bug, and the ink-measurement test catches it.
+**Color:** `CoilTheme.textOf` returns the roles in the foreground color. `text.muted`, `text.brand` and `text.destructive` are the same roles in those colors: `Text('Synced', style: text.muted.caption)`.
 
 ### 3.1 Roles
 
@@ -109,7 +117,7 @@ Never set a static `FontWeight` on top of the variation; the engine would synthe
 | micro | 11/14 | 11/14 | 11/14 | 11/14 | normal | counters, compact badges, key caps |
 
 - **Why touch body is 16/22:** it keeps the pointer's text-to-height ratio (13 in 36 = 16 in 44 = 0.36), and Inter 16 reads like SF 17 (research 08).
-- Numbers that line up (calendar cells, times, table numbers, counters) use `FontFeature.tabularFigures()`.
+- Numbers that line up (calendar cells, times, table numbers, counters) use tabular figures: `style.tabular`.
 - **Weight changes never reflow.** A label that turns semibold when selected reserves the semibold width with an invisible copy (the "ghost span").
 - **Rows truncate with an ellipsis and never wrap**, except where a component says it wraps (Field labels, CheckboxGroup labels, Banner text).
 
@@ -455,7 +463,7 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.4 Focus ring
 
-1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
+1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the extra gap and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
 
 **Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1); the text field core marks itself with `CoilFocusAlwaysVisible`, which a custom field can use too. A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
 
@@ -713,7 +721,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
 - **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
-- **Value font:** coil bundles no monospace font; the value is Inter with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
+- **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
 - **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed".
 - **Keyboard:** Enter or Space copies.
 

@@ -65,8 +65,7 @@ Widget _row(String label, {required bool highContrast}) => Builder(
       children: [
         Text(
           label,
-          style: const CoilTypography().style(
-            CoilMetrics.pointer.caption,
+          style: goldenTypography.pointer.caption.copyWith(
             color: CoilTheme.of(context).colors.mutedForeground,
           ),
         ),
@@ -95,9 +94,9 @@ void main() {
     );
     final c = resolved.colors;
     expect(c.borderAlpha, 0.4);
-    expect(resolved.focusRingWidth, 2);
+    expect(resolved.focusRing.width, 2);
     expect(
-      CoilColorMix.contrastRatio(c.focusRing, c.background),
+      CoilColorMix.contrastRatio(resolved.focusRing.colorOf(c), c.background),
       greaterThanOrEqualTo(3),
     );
     expect(

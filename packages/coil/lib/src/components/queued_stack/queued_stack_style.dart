@@ -22,15 +22,11 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
     CoilMetrics metrics,
   ) {
     final c = theme.colors;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilQueuedStackStyle(
       cardColor: CoilColorMix.oklab(c.accent, c.background, 0.32),
-      textStyle: theme.typography.style(
-        _subtitle(metrics),
-        color: c.mutedForeground,
-      ),
-      countStyle: theme.typography
-          .style(metrics.caption, color: c.mutedForeground)
-          .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+      textStyle: text.subtitle.copyWith(color: c.mutedForeground),
+      countStyle: text.caption.copyWith(color: c.mutedForeground).tabular,
       iconColor: c.mutedForeground,
       radius: theme.shape.radii(metrics.tier).container,
       cardMinHeight: metrics.controlHeight + 8,
@@ -38,15 +34,6 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
       gutterWidth: metrics.controlHeight + 4,
     );
   }
-
-  /// The subtitle role (DESIGN.md §3.1), which `CoilMetrics` doesn't carry.
-  static CoilTypeStep _subtitle(CoilMetrics metrics) =>
-      switch ((metrics.tier, metrics.size)) {
-        (CoilTier.pointer, CoilSize.regular) => const CoilTypeStep(14, 20),
-        (CoilTier.pointer, CoilSize.compact) => const CoilTypeStep(13, 18),
-        (CoilTier.touch, CoilSize.regular) => const CoilTypeStep(16, 22),
-        (CoilTier.touch, CoilSize.compact) => const CoilTypeStep(15, 20),
-      };
 
   /// A card's fill: `accent` mixed into the background.
   final Color? cardColor;

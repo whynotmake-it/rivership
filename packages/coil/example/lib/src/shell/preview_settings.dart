@@ -17,7 +17,7 @@ class SettingsButton extends StatelessWidget {
 }
 
 /// The sections of the preview settings.
-enum PreviewSection { appearance, shape, motion, accessibility, device }
+enum PreviewSection { appearance, type, shape, motion, accessibility, device }
 
 /// Opens the preview settings in a [CoilSettingsDialog].
 ///
@@ -41,6 +41,16 @@ Future<void> showPreviewSettings(
         'neutral tone.',
       ),
       builder: (context) => const _Appearance(),
+    ),
+    CoilSettingsSection(
+      value: PreviewSection.type,
+      label: const Text('Type'),
+      icon: const CatalogIcon(Glyph.type),
+      description: const Text(
+        "The font, with coil's tuned typography for Allo and Inter, which "
+        'this app bundles.',
+      ),
+      builder: (context) => const _Type(),
     ),
     CoilSettingsSection(
       value: PreviewSection.shape,
@@ -247,6 +257,21 @@ class _Appearance extends StatelessWidget {
           valueText: (v) => v == 0 ? 'Grey' : v.toStringAsFixed(3),
           onChanged: (value) => settings.neutralChroma = value,
         ),
+      ],
+    );
+  }
+}
+
+class _Type extends StatelessWidget {
+  const _Type();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = CatalogSettingsScope.of(context);
+    final tuned =
+        settings.font == CatalogFont.allo || settings.font == CatalogFont.inter;
+    return CoilSettingsList(
+      children: [
         _SelectRow<CatalogFont>(
           label: const Text('Font'),
           value: settings.font,
@@ -254,6 +279,51 @@ class _Appearance extends StatelessWidget {
           text: (font) => font.label,
           onChanged: (value) => settings.font = value,
         ),
+        if (settings.font == CatalogFont.allo)
+          _SliderRow(
+            label: 'Roundness',
+            max: 100,
+            divisions: 20,
+            value: settings.roundness,
+            valueText: (v) => switch (v.round()) {
+              0 => 'Sharp',
+              50 => 'Friendly',
+              100 => 'Round',
+              final round => '$round',
+            },
+            onChanged: (value) => settings.roundness = value,
+          ),
+        if (tuned) ...[
+          _SwitchRow(
+            label: 'Optical sizing',
+            description: const Text(
+              'Spacing and detail follow the size: open for small text, '
+              'tight for titles. Off draws every size with the text cut.',
+            ),
+            value: settings.opticalSizing,
+            onChanged: (value) => settings.opticalSizing = value,
+          ),
+          if (settings.font == CatalogFont.allo)
+            _SwitchRow(
+              label: 'Single-story a',
+              value: settings.singleStoryA,
+              onChanged: (value) => settings.singleStoryA = value,
+            ),
+          _SwitchRow(
+            label: 'Distinct letters and figures',
+            description: const Text(
+              'I, l, 1 and 0 that cannot be mistaken for each other.',
+            ),
+            value: settings.disambiguate,
+            onChanged: (value) => settings.disambiguate = value,
+          ),
+          _SwitchRow(
+            label: 'Open figures',
+            description: const Text('Open forms of 4, 6 and 9.'),
+            value: settings.openFigures,
+            onChanged: (value) => settings.openFigures = value,
+          ),
+        ],
       ],
     );
   }

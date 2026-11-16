@@ -206,10 +206,10 @@ class CoilTooltipBubble extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: DefaultTextStyle(
-          style: theme.typography.style(
-            metrics.caption,
-            color: theme.colors.background,
-          ),
+          style: theme.typography
+              .resolve(metrics.tier, metrics.size)
+              .caption
+              .copyWith(color: theme.colors.background),
           child: IconTheme.merge(
             data: IconThemeData(color: theme.colors.background),
             child: MotionSizeSwitcher(

@@ -751,15 +751,15 @@ class _CoilActionListState extends State<CoilActionList>
                     exitMotion: motion.fadeExit,
                     exitTravelMotion: motion.quick,
                     fade: motion.fade,
-                    inflate: 1 + theme.focusRingWidth,
+                    inflate: 1 + theme.focusRing.width,
                     decoration: ShapeDecoration(
                       shape: RoundedSuperellipseBorder(
                         borderRadius: BorderRadius.circular(
                           theme.shape.radii(metrics.tier).focusRing,
                         ),
                         side: BorderSide(
-                          color: theme.colors.focusRing,
-                          width: theme.focusRingWidth,
+                          color: theme.focusRing.colorOf(theme.colors),
+                          width: theme.focusRing.width,
                         ),
                       ),
                     ),
@@ -1043,6 +1043,8 @@ class _RowContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
+    // The list's metrics can differ from the context's (a sheet is touch).
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     final pointer = metrics.tier == CoilTier.pointer;
     final mark = switch (action.mark) {
       CoilActionMark.none => null,
@@ -1082,11 +1084,8 @@ class _RowContent extends StatelessWidget {
               color: color,
             ),
             child: DefaultTextStyle(
-              style: theme.typography.style(
-                metrics.body,
-                weight: action.selected
-                    ? CoilWeight.semibold
-                    : CoilWeight.normal,
+              style: text.body.copyWith(
+                fontWeight: action.selected ? text.emphasis : null,
                 color: color,
               ),
               maxLines: 1,
@@ -1101,8 +1100,7 @@ class _RowContent extends StatelessWidget {
                   if (shortcut != null)
                     ExcludeSemantics(
                       child: DefaultTextStyle(
-                        style: theme.typography.style(
-                          metrics.caption,
+                        style: text.caption.copyWith(
                           color: theme.colors.mutedForeground,
                         ),
                         child: shortcut,
@@ -1142,10 +1140,10 @@ class _GroupLabel extends StatelessWidget {
         child: DefaultTextStyle(
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.typography.style(
-            metrics.caption,
-            color: theme.colors.mutedForeground,
-          ),
+          style: theme.typography
+              .resolve(metrics.tier, metrics.size)
+              .caption
+              .copyWith(color: theme.colors.mutedForeground),
           child: label,
         ),
       ),
@@ -1225,10 +1223,10 @@ class _SearchField extends StatelessWidget {
               autofocus: true,
               placeholder: search.placeholder,
               placeholderColor: colors.mutedForeground,
-              style: theme.typography.style(
-                metrics.body,
-                color: colors.foreground,
-              ),
+              style: theme.typography
+                  .resolve(metrics.tier, metrics.size)
+                  .body
+                  .copyWith(color: colors.foreground),
               cursorColor: colors.foreground,
               textInputAction: TextInputAction.search,
               autocorrect: false,
@@ -1258,10 +1256,10 @@ class _Empty extends StatelessWidget {
         padding: EdgeInsets.all(metrics.popupInset + metrics.itemPaddingX),
         child: DefaultTextStyle(
           textAlign: TextAlign.center,
-          style: theme.typography.style(
-            metrics.body,
-            color: theme.colors.mutedForeground,
-          ),
+          style: theme.typography
+              .resolve(metrics.tier, metrics.size)
+              .body
+              .copyWith(color: theme.colors.mutedForeground),
           child: label,
         ),
       ),

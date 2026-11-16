@@ -2,7 +2,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/shell/preview_settings.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:coil_example/src/widgets/type_roles.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -46,6 +45,7 @@ class CatalogPage extends StatelessWidget {
     final sectionGap = CatalogLayout.sectionGapOf(context);
     final summary = this.summary;
     final padding = MediaQuery.paddingOf(context);
+    final text = CoilTheme.textOf(context);
     // A page owns its background, so a page pushed on top covers the one
     // below instead of showing through it.
     return ColoredBox(
@@ -75,11 +75,7 @@ class CatalogPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (summary != null) ...[
-                            RoleText(
-                              summary,
-                              role: TypeRole.subtitle,
-                              muted: true,
-                            ),
+                            Text(summary, style: text.muted.subtitle),
                             SizedBox(height: sectionGap),
                           ],
                           for (final (i, child) in children.indexed) ...[
@@ -141,7 +137,7 @@ class CatalogHeader extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TypeRole.title.styleOf(context),
+                style: CoilTheme.textOf(context).title,
               ),
             ),
           ),
@@ -172,20 +168,20 @@ class DemoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description = this.description;
+    final text = CoilTheme.textOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
           header: true,
-          child: RoleText(
+          child: Text(
             title,
-            role: TypeRole.subtitle,
-            weight: CoilWeight.semibold,
+            style: text.subtitle.copyWith(fontWeight: text.emphasis),
           ),
         ),
         if (description != null) ...[
           const SizedBox(height: 4),
-          RoleText(description, role: TypeRole.caption, muted: true),
+          Text(description, style: text.muted.caption),
         ],
         const SizedBox(height: 12),
         DemoStage(padding: padding, child: child),
@@ -282,7 +278,7 @@ class Labeled extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      RoleText(label, role: TypeRole.caption, muted: true),
+      Text(label, style: CoilTheme.textOf(context).muted.caption),
       const SizedBox(height: 6),
       child,
     ],

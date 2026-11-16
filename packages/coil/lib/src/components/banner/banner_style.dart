@@ -40,6 +40,7 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
       CoilBannerVariant.tinted => hue.withValues(alpha: 0.08),
     };
     final compact = metrics.size == CoilSize.compact;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilBannerStyle(
       // A fixed bar covers scrolling content, so its fill sits on an
       // opaque background.
@@ -47,15 +48,11 @@ class CoilBannerStyle extends CoilComponentStyle<CoilBannerStyle> {
           ? Color.alphaBlend(fill, c.background)
           : fill,
       statusColor: hue,
-      titleStyle: theme.typography.style(
-        metrics.body,
-        weight: CoilWeight.semibold,
+      titleStyle: text.body.copyWith(
+        fontWeight: text.emphasis,
         color: c.foreground,
       ),
-      descriptionStyle: theme.typography.style(
-        metrics.body,
-        color: c.mutedForeground,
-      ),
+      descriptionStyle: text.body.copyWith(color: c.mutedForeground),
       radius: placement == CoilBannerPlacement.fixed
           ? 0
           : theme.shape.radii(metrics.tier).container,

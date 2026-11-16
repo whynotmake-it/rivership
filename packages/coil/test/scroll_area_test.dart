@@ -53,7 +53,7 @@ void main() {
     final sheet = await pumpSheet(
       tester,
       CoilTheme(
-        data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+        data: goldenLight.copyWith(tier: CoilTier.pointer),
         child: ColoredBox(
           color: CoilThemeData.light.colors.background,
           child: Padding(

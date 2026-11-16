@@ -30,7 +30,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
         WidgetState.selected | WidgetState.hovered: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),
-      textStyle: theme.typography.style(metrics.body),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       radius: theme.shape.radii(metrics.tier).item,
       minHeight: metrics.controlHeight,
       edgeFade: 24,

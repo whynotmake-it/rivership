@@ -306,8 +306,7 @@ class _ColumnState extends State<_Column> {
       children: [
         Text(
           widget.title,
-          style: const CoilTypography().style(
-            CoilMetrics.pointer.caption,
+          style: goldenTypography.pointer.caption.copyWith(
             color: colors.mutedForeground,
           ),
         ),

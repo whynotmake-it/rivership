@@ -398,7 +398,7 @@ void main() {
           return tester.getSize(find.byKey(const ValueKey('box'))).height;
         }
 
-        final style = const CoilTypography().style(CoilMetrics.pointer.body);
+        final style = CoilTypography.platform.pointer.body;
         final text = await height(
           Column(
             children: [

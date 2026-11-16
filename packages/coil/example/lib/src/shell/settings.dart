@@ -36,9 +36,11 @@ enum CatalogTextScale {
   final double? factor;
 }
 
-/// The font family: the bundled Inter, the platform's UI font, or the
+/// The font: Allo or Inter, which this app bundles (see its pubspec.yaml)
+/// and coil has tuned typography for, the platform's UI font, or the
 /// platform's monospace font. None of them loads anything from the network.
 enum CatalogFont {
+  allo('Allo'),
   inter('Inter'),
   system('System'),
   monospace('Monospace');
@@ -46,21 +48,6 @@ enum CatalogFont {
   const CatalogFont(this.label);
 
   final String label;
-
-  /// The typography theme data for this font on [platform].
-  CoilTypography typography(TargetPlatform platform) => switch (this) {
-    inter => const CoilTypography(),
-    system => CoilTypography.platform,
-    monospace => CoilTypography(
-      fontFamily: switch (platform) {
-        TargetPlatform.iOS || TargetPlatform.macOS => 'Menlo',
-        TargetPlatform.windows => 'Consolas',
-        TargetPlatform.linux => 'DejaVu Sans Mono',
-        TargetPlatform.android || TargetPlatform.fuchsia => 'monospace',
-      },
-      fontPackage: null,
-    ),
-  };
 }
 
 /// The brand color, the one accent coil uses (switch track, focus ring,
@@ -208,10 +195,67 @@ class CatalogSettings extends ChangeNotifier {
     timeDilation = value ? slowMoFactor : 1;
   }
 
-  /// The font family.
+  /// The font.
   CatalogFont get font => _font;
-  CatalogFont _font = CatalogFont.inter;
+  CatalogFont _font = CatalogFont.allo;
   set font(CatalogFont value) => _set(() => _font = value);
+
+  /// Allo's roundness, its `ROND` axis: 0 sharp, 50 friendly, 100 round.
+  double get roundness => _roundness;
+  double _roundness = 50;
+  set roundness(double value) => _set(() => _roundness = value);
+
+  /// Allo's single-story a (`ss01`).
+  bool get singleStoryA => _singleStoryA;
+  bool _singleStoryA = false;
+  set singleStoryA(bool value) => _set(() => _singleStoryA = value);
+
+  /// Letters and figures that can't be mistaken for each other (`ss02`):
+  /// a serifed I, a tailed l, a footed 1 and a slashed zero in Allo.
+  bool get disambiguate => _disambiguate;
+  bool _disambiguate = false;
+  set disambiguate(bool value) => _set(() => _disambiguate = value);
+
+  /// Open forms of 4, 6 and 9.
+  bool get openFigures => _openFigures;
+  bool _openFigures = false;
+  set openFigures(bool value) => _set(() => _openFigures = value);
+
+  /// Whether the optical size follows the font size. Off pins Allo and
+  /// Inter to their text cut (14) at every size.
+  bool get opticalSizing => _opticalSizing;
+  bool _opticalSizing = true;
+  set opticalSizing(bool value) => _set(() => _opticalSizing = value);
+
+  /// The typography these settings describe on [platform].
+  CoilTypography typography(TargetPlatform platform) {
+    final opticalSize = opticalSizing ? null : 14.0;
+    return switch (font) {
+      CatalogFont.allo => CoilTypography.allo(
+        roundness: roundness,
+        opticalSize: opticalSize,
+        singleStoryA: singleStoryA,
+        disambiguate: disambiguate,
+        openFigures: openFigures,
+      ),
+      CatalogFont.inter => CoilTypography.inter(
+        opticalSize: opticalSize,
+        disambiguate: disambiguate,
+        openFigures: openFigures,
+      ),
+      CatalogFont.system => CoilTypography.platform,
+      CatalogFont.monospace => CoilTypography.from(
+        TextStyle(
+          fontFamily: switch (platform) {
+            TargetPlatform.iOS || TargetPlatform.macOS => 'Menlo',
+            TargetPlatform.windows => 'Consolas',
+            TargetPlatform.linux => 'DejaVu Sans Mono',
+            TargetPlatform.android || TargetPlatform.fuchsia => 'monospace',
+          },
+        ),
+      ),
+    };
+  }
 
   /// The brand color.
   CatalogBrand get brand => _brand;
@@ -275,11 +319,11 @@ class CatalogSettings extends ChangeNotifier {
         neutralHue: neutralHue,
         neutralChroma: neutralChroma,
       ),
-      typography: font.typography(platform ?? defaultTargetPlatform),
+      typography: typography(platform ?? defaultTargetPlatform),
       shape: _coilShape,
       metrics: spacing.metrics,
       motion: motion.motion,
-      focusRingWidth: boldFocusRing ? 2 : 1,
+      focusRing: CoilFocusRingTheme(width: boldFocusRing ? 2 : 1),
       haptics: hapticsOff ? CoilHaptics.none : null,
       controlCursor: pointingCursor
           ? SystemMouseCursors.click

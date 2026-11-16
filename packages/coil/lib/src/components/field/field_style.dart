@@ -33,26 +33,25 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
   /// The defaults from the theme's tokens.
   factory CoilFieldStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
-    final t = theme.typography;
+    final t = theme.typography.resolve(metrics.tier, metrics.size);
     final touch = metrics.tier == CoilTier.touch;
     return CoilFieldStyle(
-      labelStyle: t.style(metrics.body),
+      labelStyle: t.body,
       labelColor: c.mutedForeground,
       besideLabelColor: c.foreground,
       requiredColor: c.mutedForeground,
       requiredGap: 4,
-      descriptionStyle: t.style(metrics.caption, color: c.mutedForeground),
-      errorStyle: t.style(metrics.caption, color: c.destructive),
+      descriptionStyle: t.caption.copyWith(color: c.mutedForeground),
+      errorStyle: t.caption.copyWith(color: c.destructive),
       errorIconSize: metrics.size == CoilSize.compact ? 12 : 14,
       errorIconGap: 6,
-      legendStyle: t.style(
-        _subtitle(metrics),
-        weight: CoilWeight.semibold,
+      legendStyle: t.subtitle.copyWith(
+        fontWeight: t.emphasis,
         color: c.foreground,
       ),
       legendGap: 4,
       separatorColor: c.border,
-      separatorLabelStyle: t.style(metrics.caption, color: c.mutedForeground),
+      separatorLabelStyle: t.caption.copyWith(color: c.mutedForeground),
       separatorHeight: 20,
       separatorLabelGap: 8,
       labelGap: 6,
@@ -73,14 +72,6 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
     CoilTheme.of(context),
     CoilTheme.metricsOf(context, size: size),
   ).merge(CoilTheme.styleOf<CoilFieldStyle>(context)).merge(style);
-
-  // The subtitle role (DESIGN.md §3.1), which CoilMetrics doesn't carry.
-  static CoilTypeStep _subtitle(CoilMetrics m) => switch ((m.tier, m.size)) {
-    (CoilTier.pointer, CoilSize.regular) => const CoilTypeStep(14, 20),
-    (CoilTier.pointer, CoilSize.compact) => const CoilTypeStep(13, 18),
-    (CoilTier.touch, CoilSize.regular) => const CoilTypeStep(16, 22),
-    (CoilTier.touch, CoilSize.compact) => const CoilTypeStep(15, 20),
-  };
 
   /// The label's text style. Its color comes from [labelColor] or
   /// [besideLabelColor]; an invalid field uses the [errorStyle] color.

@@ -1,5 +1,6 @@
 import 'package:coil/src/foundation/typography.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show TextStyle;
 
 /// The input a size set is designed for.
 ///
@@ -110,9 +111,6 @@ class CoilMetrics {
     required this.itemPaddingX,
     required this.gap,
     required this.iconSize,
-    required this.body,
-    required this.field,
-    required this.caption,
     required this.buttonPaddingX,
     required this.buttonIconPaddingX,
     required this.buttonGap,
@@ -136,9 +134,6 @@ class CoilMetrics {
     itemPaddingX: 8,
     gap: 8,
     iconSize: 16,
-    body: CoilTypeStep(13, 20),
-    field: CoilTypeStep(13, 20),
-    caption: CoilTypeStep(12, 16),
     buttonPaddingX: 16,
     buttonIconPaddingX: 12,
     buttonGap: 6,
@@ -168,9 +163,6 @@ class CoilMetrics {
     itemPaddingX: 6,
     gap: 4,
     iconSize: 14,
-    body: CoilTypeStep(12, 18),
-    field: CoilTypeStep(12, 18),
-    caption: CoilTypeStep(11, 14),
     buttonPaddingX: 12,
     buttonIconPaddingX: 8,
     buttonGap: 4,
@@ -192,10 +184,8 @@ class CoilMetrics {
 
   /// Touch, regular: 44 px controls.
   ///
-  /// Body and field text go to 16/22: the pointer tier's text-to-height
-  /// ratio (13 in 36) at 44, and 16 keeps iOS from zooming into a focused
-  /// field. Control padding (16) equals popup inset + row padding (6 + 10),
-  /// so a popover's row text lines up with its trigger's.
+  /// Control padding (16) equals popup inset + row padding (6 + 10), so a
+  /// popover's row text lines up with its trigger's.
   static const touch = CoilMetrics(
     tier: CoilTier.touch,
     size: CoilSize.regular,
@@ -205,9 +195,6 @@ class CoilMetrics {
     itemPaddingX: 10,
     gap: 12,
     iconSize: 20,
-    body: CoilTypeStep(16, 22),
-    field: CoilTypeStep(16, 22),
-    caption: CoilTypeStep(13, 18),
     buttonPaddingX: 20,
     buttonIconPaddingX: 16,
     buttonGap: 8,
@@ -238,9 +225,6 @@ class CoilMetrics {
     itemPaddingX: 6,
     gap: 8,
     iconSize: 16,
-    body: CoilTypeStep(14, 20),
-    field: CoilTypeStep(16, 20),
-    caption: CoilTypeStep(12, 16),
     buttonPaddingX: 16,
     buttonIconPaddingX: 12,
     buttonGap: 6,
@@ -276,11 +260,11 @@ class CoilMetrics {
   /// Bounded control height: buttons, inputs, tabs, and list rows.
   final double controlHeight;
 
-  /// The vertical padding that puts a [text] line box in a [controlHeight]
-  /// control: `(controlHeight − lineHeight) / 2`, e.g. 8 + 20 + 8 = 36. The
-  /// control uses [controlHeight] as a minimum, so it grows with the text
-  /// scale instead of clipping or shifting the label.
-  double controlPaddingY(CoilTypeStep text) =>
+  /// The vertical padding that puts a line box of [text] in a
+  /// [controlHeight] control: `(controlHeight − lineHeight) / 2`, e.g. 8 +
+  /// 20 + 8 = 36. The control uses [controlHeight] as a minimum, so it grows
+  /// with the text scale instead of clipping or shifting the label.
+  double controlPaddingY(TextStyle text) =>
       (controlHeight - text.lineHeight) / 2;
 
   /// The smallest a tappable area may be. Controls whose visual is smaller
@@ -299,15 +283,6 @@ class CoilMetrics {
 
   /// Leading and trailing icon size inside controls.
   final double iconSize;
-
-  /// Body text inside controls.
-  final CoilTypeStep body;
-
-  /// Text inside editable fields.
-  final CoilTypeStep field;
-
-  /// Caption text.
-  final CoilTypeStep caption;
 
   /// Button horizontal padding next to a label.
   final double buttonPaddingX;
@@ -353,9 +328,6 @@ class CoilMetrics {
     double? itemPaddingX,
     double? gap,
     double? iconSize,
-    CoilTypeStep? body,
-    CoilTypeStep? field,
-    CoilTypeStep? caption,
     double? buttonPaddingX,
     double? buttonIconPaddingX,
     double? buttonGap,
@@ -376,9 +348,6 @@ class CoilMetrics {
     itemPaddingX: itemPaddingX ?? this.itemPaddingX,
     gap: gap ?? this.gap,
     iconSize: iconSize ?? this.iconSize,
-    body: body ?? this.body,
-    field: field ?? this.field,
-    caption: caption ?? this.caption,
     buttonPaddingX: buttonPaddingX ?? this.buttonPaddingX,
     buttonIconPaddingX: buttonIconPaddingX ?? this.buttonIconPaddingX,
     buttonGap: buttonGap ?? this.buttonGap,
@@ -401,9 +370,6 @@ class CoilMetrics {
     itemPaddingX,
     gap,
     iconSize,
-    body,
-    field,
-    caption,
     buttonPaddingX,
     buttonIconPaddingX,
     buttonGap,

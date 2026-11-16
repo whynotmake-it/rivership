@@ -22,8 +22,7 @@ class _Board extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final caption = const CoilTypography().style(
-      CoilMetrics.pointer.caption,
+    final caption = goldenTypography.pointer.caption.copyWith(
       color: colors.mutedForeground,
     );
     Widget section(String label, Widget child) => Padding(
@@ -39,7 +38,7 @@ class _Board extends StatelessWidget {
       ),
     );
     Widget column(CoilTier tier) => CoilTheme(
-      data: CoilThemeData(colors: colors).copyWith(tier: tier),
+      data: goldenTheme(CoilThemeData(colors: colors)).copyWith(tier: tier),
       child: SizedBox(
         width: 400,
         child: Column(

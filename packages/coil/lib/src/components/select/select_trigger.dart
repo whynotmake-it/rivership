@@ -83,7 +83,7 @@ class CoilSelectTrigger extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: metrics.controlPaddingX,
-                vertical: metrics.controlPaddingY(metrics.body),
+                vertical: metrics.controlPaddingY(style.textStyle!),
               ),
               child: IconTheme(
                 data: IconThemeData(

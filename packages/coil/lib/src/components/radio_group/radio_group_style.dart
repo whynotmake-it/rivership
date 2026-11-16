@@ -43,7 +43,7 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
                   c.foreground,
               WidgetState.any: c.mutedForeground,
             }),
-      textStyle: theme.typography.style(metrics.body),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       radius: theme.shape.radii(metrics.tier).item,
       border: WidgetStateProperty<Color?>.fromMap({
         WidgetState.hovered: c.foreground.withValues(alpha: 0.4),

@@ -69,9 +69,7 @@ void main() {
       ),
     );
 
-    await pump(
-      const CoilTypography(fontFamily: 'Brand', fontPackage: null),
-    );
+    await pump(CoilTypography.from(const TextStyle(fontFamily: 'Brand')));
     expect(style.fontFamily, 'Brand');
 
     await pump(CoilTypography.platform);
@@ -79,8 +77,15 @@ void main() {
   });
 
   test('focus rings keep following the brand after a theme lerp', () {
-    final colors = CoilColors.lerp(CoilColors.light, CoilColors.dark, 1);
+    final theme = CoilThemeData.lerp(
+      CoilThemeData.light,
+      CoilThemeData.dark,
+      1,
+    );
     const violet = Color(0xFF8B5CF6);
-    expect(colors.copyWith(brand: violet).focusRing, violet);
+    expect(
+      theme.focusRing.colorOf(theme.colors.copyWith(brand: violet)),
+      violet,
+    );
   });
 }
