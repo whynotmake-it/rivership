@@ -100,7 +100,7 @@ class CoilSurface extends StatelessWidget {
             shadows: colors.shadow(weight),
             shape: RoundedSuperellipseBorder(borderRadius: radius),
           ),
-          theme.relief(CoilReliefRole.floating),
+          CoilTheme.reliefOf(context, CoilReliefRole.floating),
         ),
         // Between the fill and the content, as inset shadows are.
         child: CustomPaint(

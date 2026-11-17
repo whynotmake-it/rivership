@@ -73,7 +73,8 @@ class CoilSelectTrigger extends StatelessWidget {
                 ),
               ),
               // A raised control under a plastic theme, sunk while open.
-              theme.relief(
+              CoilTheme.reliefOf(
+                context,
                 CoilReliefRole.raised,
                 override: style.plasticity,
                 hover: hovered ? 1 : 0,

@@ -84,25 +84,9 @@ class CoilThemeData with Diagnosticable {
   /// [CoilPlasticity.soft] and [CoilPlasticity.tactile] add a gradient edge,
   /// a top highlight, a sheen and a drop shadow that respond to hover and
   /// press. Components read it through their style's `plasticity`, so one
-  /// component type can differ with [withComponentStyle].
+  /// component type can differ with [withComponentStyle], and resolve it
+  /// with [CoilTheme.reliefOf].
   final CoilPlasticity plasticity;
-
-  /// The lighting of a [role] shape under [plasticity] (or [override]) in
-  /// this theme's brightness, or null for none. See
-  /// [CoilPlasticity.resolve].
-  CoilRelief? relief(
-    CoilReliefRole role, {
-    CoilPlasticity? override,
-    double hover = 0,
-    double press = 0,
-    bool enabled = true,
-  }) => (override ?? plasticity).resolve(
-    role,
-    brightness,
-    hover: hover,
-    press: press,
-    enabled: enabled,
-  );
 
   /// Per-component-type style overrides, keyed by style type:
   /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
@@ -332,6 +316,38 @@ class CoilTheme extends StatelessWidget {
     return MediaQuery.maybeHighContrastOf(context) ?? false
         ? _highContrast[data] ??= data.highContrast()
         : data;
+  }
+
+  /// The lighting of a [role] shape at [context], or null for none: the
+  /// theme's plasticity (or [override], a component style's `plasticity`)
+  /// resolved for the theme's brightness. See [CoilPlasticity.resolve] for
+  /// [hover], [press] and [enabled].
+  ///
+  /// Controls read the plasticity [of] returns, which is flat on an
+  /// elevated surface. A [CoilReliefRole.floating] shape is that surface:
+  /// it reads the theme's plasticity as set, so a popover or dialog has the
+  /// same edge wherever it was opened.
+  static CoilRelief? reliefOf(
+    BuildContext context,
+    CoilReliefRole role, {
+    CoilPlasticity? override,
+    double hover = 0,
+    double press = 0,
+    bool enabled = true,
+  }) {
+    final theme = of(context);
+    final plasticity =
+        override ??
+        (role == CoilReliefRole.floating
+            ? _raw(context).plasticity
+            : theme.plasticity);
+    return plasticity.resolve(
+      role,
+      theme.brightness,
+      hover: hover,
+      press: press,
+      enabled: enabled,
+    );
   }
 
   /// The motion tokens at [context]: [override] (a component's `motion:`)

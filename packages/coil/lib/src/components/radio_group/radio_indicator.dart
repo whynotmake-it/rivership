@@ -83,7 +83,8 @@ class CoilRadioIndicator extends StatelessWidget {
             ),
           ),
           // A well the dot sits in, under a plastic theme.
-          theme.relief(
+          CoilTheme.reliefOf(
+            context,
             CoilReliefRole.recessed,
             override: look.plasticity,
             hover: states.contains(WidgetState.hovered) ? 1 : 0,
@@ -115,7 +116,8 @@ class CoilRadioIndicator extends StatelessWidget {
                       ),
                     ),
                   ),
-                  theme.relief(
+                  CoilTheme.reliefOf(
+                    context,
                     CoilReliefRole.filled,
                     override: look.plasticity,
                     enabled: !states.contains(WidgetState.disabled),

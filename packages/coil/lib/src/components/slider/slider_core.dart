@@ -856,7 +856,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final scale = _scale;
     final e = v(CoilSliderTrack.emphasis).clamp(0.0, 1.0);
     // Under a plastic theme the knob stands on the track, a well.
-    CoilRelief? relief(CoilReliefRole role) => theme.relief(
+    CoilRelief? relief(CoilReliefRole role) => CoilTheme.reliefOf(
+      context,
       role,
       override: style.plasticity,
       hover: e,

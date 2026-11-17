@@ -87,7 +87,8 @@ class CoilPlasticity with Diagnosticable {
   /// opencode's recipe, kept to what you press: a hairline edge lit at the
   /// top and darker at the bottom, a faint top highlight, a 1 px drop
   /// shadow and a light sheen on buttons, thumbs and the select trigger,
-  /// at about four fifths of opencode's strength. Wells
+  /// with raised controls at 0.78 and filled ones at 0.8 of opencode's
+  /// strength (`roles`). Wells
   /// (checkbox, radio, the off switch) get a hairline of shade, fields
   /// barely any; slider tracks, quiet buttons and containers stay flat.
   /// Hover and press move the light half as far as [soft] and [tactile].

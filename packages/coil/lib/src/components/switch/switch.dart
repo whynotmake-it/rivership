@@ -463,18 +463,19 @@ class _SwitchTrack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = metrics;
-    final theme = CoilTheme.of(context);
     // Under a plastic theme: the off track is a well, the on track a
     // strong fill, the thumb a raised knob that sinks as it's pressed.
     final plasticity = style.plasticity;
     final trackRelief = CoilRelief.lerp(
-      theme.relief(
+      CoilTheme.reliefOf(
+        context,
         CoilReliefRole.recessed,
         override: plasticity,
         hover: hover,
         enabled: enabled,
       ),
-      theme.relief(
+      CoilTheme.reliefOf(
+        context,
         CoilReliefRole.filled,
         override: plasticity,
         hover: hover,
@@ -482,7 +483,8 @@ class _SwitchTrack extends StatelessWidget {
       ),
       tint,
     );
-    final thumbRelief = theme.relief(
+    final thumbRelief = CoilTheme.reliefOf(
+      context,
       CoilReliefRole.raised,
       override: plasticity,
       hover: hover,

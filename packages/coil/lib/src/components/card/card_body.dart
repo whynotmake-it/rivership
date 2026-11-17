@@ -37,7 +37,11 @@ ShapeDecoration cardSurface(BuildContext context, CoilCardStyle style) {
         side: style.border!,
       ),
     ),
-    theme.relief(CoilReliefRole.floating, override: style.plasticity),
+    CoilTheme.reliefOf(
+      context,
+      CoilReliefRole.floating,
+      override: style.plasticity,
+    ),
   );
 }
 

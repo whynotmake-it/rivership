@@ -84,6 +84,51 @@ void main() {
       expect(_lit(tester, find.byKey(const Key('field'))), isTrue);
     });
 
+    testWidgets("a surface's own edge doesn't depend on where it opens", (
+      tester,
+    ) async {
+      /// The relief on [surface]'s own fill.
+      CoilRelief? edgeOf(Finder surface) {
+        final box = tester.widget<DecoratedBox>(
+          find
+              .descendant(of: surface, matching: find.byType(DecoratedBox))
+              .first,
+        );
+        final shape = (box.decoration as ShapeDecoration).shape;
+        return shape is CoilReliefBorder ? shape.relief : null;
+      }
+
+      await tester.pumpWidget(
+        CoilTheme(
+          data: CoilThemeData.light.copyWith(plasticity: CoilPlasticity.soft),
+          child: const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
+              children: [
+                CoilSurface(
+                  key: Key('page'),
+                  offset: CoilSurface.popoverOffset,
+                  child: SizedBox(height: 20),
+                ),
+                // Opened from inside a card: an elevated scope.
+                CoilSurface.scope(
+                  offset: 1,
+                  child: CoilSurface(
+                    key: Key('card'),
+                    offset: CoilSurface.popoverOffset,
+                    child: SizedBox(height: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final onPage = edgeOf(find.byKey(const Key('page')));
+      expect(onPage, isNotNull);
+      expect(edgeOf(find.byKey(const Key('card'))), onPage);
+    });
+
     testWidgets('an unelevated scope lights a subtree again', (tester) async {
       await pump(
         tester,

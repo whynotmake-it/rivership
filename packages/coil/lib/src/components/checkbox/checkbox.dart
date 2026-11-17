@@ -313,7 +313,8 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
               ),
             ),
             // A well the tick sits in, under a plastic theme.
-            theme.relief(
+            CoilTheme.reliefOf(
+              context,
               CoilReliefRole.recessed,
               override: style.plasticity,
               hover: widget.states.contains(WidgetState.hovered) ? 1 : 0,
