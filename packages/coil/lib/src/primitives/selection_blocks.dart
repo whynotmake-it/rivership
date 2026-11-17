@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/motion.dart';
-import 'package:coil/src/foundation/plasticity.dart';
 import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -218,7 +217,6 @@ class CoilSelectionPainter extends CoilLayerPainter {
   Axis _axis = Axis.vertical;
   double _radius = 8;
   Color _color = const Color(0x12000000);
-  CoilRelief? _relief;
   CoilMotion _motion = const CoilMotion();
 
   /// Sets the selection and style. Call on every build; an unchanged
@@ -229,11 +227,9 @@ class CoilSelectionPainter extends CoilLayerPainter {
     required double radius,
     required CoilMotion motion,
     Axis axis = Axis.vertical,
-    CoilRelief? relief,
   }) {
     _axis = axis;
     _color = color;
-    _relief = relief;
     _radius = radius;
     _motion = motion;
     final previousSelection = _selected;
@@ -472,14 +468,11 @@ class CoilSelectionPainter extends CoilLayerPainter {
         );
       }
       final shifted = rect.shift(offset);
-      CoilRelief.decorate(
-            ShapeDecoration(
-              color: _color,
-              shape: RoundedSuperellipseBorder(
-                borderRadius: block.corners.borderRadius,
-              ),
+      ShapeDecoration(
+            color: _color,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: block.corners.borderRadius,
             ),
-            _relief,
           )
           .createBoxPainter(_noop)
           .paint(

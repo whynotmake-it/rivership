@@ -114,12 +114,6 @@ class CoilToggleGroup<T> extends StatelessWidget {
         tabStops: CoilRovingTabStops.one,
         enabled: onChanged != null,
         selectionColor: look.selection!,
-        // Selected segments stand off the strip under a plastic theme.
-        selectionRelief: theme.relief(
-          CoilReliefRole.raised,
-          override: look.plasticity,
-          enabled: onChanged != null,
-        ),
         highlightColor: look.highlight!,
         radius: look.radius!,
         selectionMotion: motionFor(

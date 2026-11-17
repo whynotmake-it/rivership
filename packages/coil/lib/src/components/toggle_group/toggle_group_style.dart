@@ -20,7 +20,6 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     this.textStyle,
     this.radius,
     this.motions,
-    this.plasticity,
   });
 
   /// The defaults from the theme's tokens.
@@ -30,7 +29,6 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
   ) {
     final c = theme.colors;
     return CoilToggleGroupStyle(
-      plasticity: theme.plasticity,
       selection: c.active,
       highlight: c.hover,
       // Touch rows rest at full strength: "the pointer is here" means nothing
@@ -69,16 +67,10 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
   /// tokens. [merge] combines the maps key by key.
   final Map<CoilToggleGroupTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
-  final CoilPlasticity? plasticity;
-
   @override
   CoilToggleGroupStyle merge(CoilToggleGroupStyle? other) => other == null
       ? this
       : CoilToggleGroupStyle(
-          plasticity: other.plasticity ?? plasticity,
           selection: other.selection ?? selection,
           highlight: other.highlight ?? highlight,
           label: other.label ?? label,
@@ -97,6 +89,5 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     textStyle,
     radius,
     motions,
-    plasticity,
   ];
 }

@@ -1,5 +1,4 @@
 import 'package:coil/src/foundation/option.dart';
-import 'package:coil/src/foundation/plasticity.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/hover.dart';
 import 'package:coil/src/primitives/layer.dart';
@@ -51,7 +50,6 @@ class CoilChoiceGroup<T> extends StatefulWidget {
     this.tabStops = CoilRovingTabStops.each,
     this.enabled = true,
     this.onFocusMoved,
-    this.selectionRelief,
   });
 
   /// The items, in order.
@@ -65,10 +63,6 @@ class CoilChoiceGroup<T> extends StatefulWidget {
 
   /// The selection fill.
   final Color selectionColor;
-
-  /// The selection fill's lighting under a plastic theme, or null for
-  /// none.
-  final CoilRelief? selectionRelief;
 
   /// The hover highlight.
   final Color highlightColor;
@@ -179,7 +173,6 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
         selected: selected,
         axis: widget.axis,
         color: widget.selectionColor,
-        relief: widget.selectionRelief,
         radius: widget.radius,
         motion: CoilTheme.motionOf(
           context,
@@ -192,14 +185,11 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
         exitMotion: widget.selectionMotion,
         exitTravelMotion: widget.selectionMotion,
         fade: widget.fadeMotion,
-        decoration: CoilRelief.decorate(
-          ShapeDecoration(
-            color: widget.selectionColor,
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(widget.radius),
-            ),
+        decoration: ShapeDecoration(
+          color: widget.selectionColor,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(widget.radius),
           ),
-          widget.selectionRelief,
         ),
       ),
     };

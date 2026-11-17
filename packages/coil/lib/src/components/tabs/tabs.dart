@@ -390,17 +390,9 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                     );
                 final hovered = state.activeIndex;
                 final hovering = hovered != null && hovered != selected;
-                // The pill stands off the strip under a plastic theme; the
-                // lighting travels with it.
-                final fill = CoilRelief.decorate(
-                  ShapeDecoration(
-                    color: style.pill,
-                    shape: RoundedSuperellipseBorder(borderRadius: radius),
-                  ),
-                  theme.relief(
-                    CoilReliefRole.raised,
-                    override: style.plasticity,
-                  ),
+                final fill = ShapeDecoration(
+                  color: style.pill,
+                  shape: RoundedSuperellipseBorder(borderRadius: radius),
                 );
                 final selectedPill = CoilHighlight(
                   debugLabel: 'CoilTabs.selected',

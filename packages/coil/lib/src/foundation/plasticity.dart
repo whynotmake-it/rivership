@@ -10,9 +10,11 @@ import 'package:flutter/widgets.dart';
 /// shaded along its top and lit along its bottom; a [floating] one is a
 /// container (card, popover) that only gets a quiet edge.
 enum CoilReliefRole {
-  /// A neutral control standing off the surface: secondary and tertiary
-  /// buttons, the switch thumb, the slider knob, the select trigger, a
-  /// selected tab or segment.
+  /// A neutral control standing off the surface: secondary and
+  /// destructive buttons, the switch thumb, the slider knob, the select
+  /// trigger. Selection indicators (a tab's pill, a toggle group's
+  /// segment) mark the current item rather than something to press, and
+  /// are never lit.
   raised,
 
   /// A control with a strong fill: the primary button, an on switch, a
@@ -84,8 +86,8 @@ class CoilPlasticity with Diagnosticable {
 
   /// opencode's recipe, kept to what you press: a hairline edge lit at the
   /// top and darker at the bottom, a faint top highlight, a 1 px drop
-  /// shadow and a light sheen on buttons, thumbs, the select trigger and
-  /// selected pills, at about two thirds of opencode's strength. Wells
+  /// shadow and a light sheen on buttons, thumbs and the select trigger,
+  /// at about four fifths of opencode's strength. Wells
   /// (checkbox, radio, the off switch) get a hairline of shade, fields
   /// barely any; slider tracks, quiet buttons and containers stay flat.
   /// Hover and press move the light half as far as [soft] and [tactile].
@@ -100,8 +102,8 @@ class CoilPlasticity with Diagnosticable {
     containers: 1,
     response: 0.5,
     roles: {
-      CoilReliefRole.raised: 0.65,
-      CoilReliefRole.filled: 0.7,
+      CoilReliefRole.raised: 0.78,
+      CoilReliefRole.filled: 0.8,
       CoilReliefRole.quiet: 0,
       CoilReliefRole.recessed: 0.35,
       CoilReliefRole.field: 0.2,
