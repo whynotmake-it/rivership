@@ -127,7 +127,7 @@ class CoilDialog extends StatelessWidget {
     final hasHeader = !sheet || description != null;
     final actionBar = actions.isEmpty
         ? null
-        : CoilActionBar(actions: actions, spacing: look.actionGap!);
+        : CoilActionBar(actions: actions, spacing: look.actionGap);
     final body = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,

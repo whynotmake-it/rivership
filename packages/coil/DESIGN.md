@@ -482,10 +482,10 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.5 Action bar
 
-The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them out, and every dialog and sheet uses it. Actions are given Cancel first and the primary last.
+The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them out, and every dialog and sheet uses it. Actions are given Cancel first and the primary last. The gap between buttons is the tier's `gap` (8 pointer, 12 touch) unless the caller passes `spacing`; a dialog passes its style's `actionGap` (8).
 
 - **Pointer tier, tablets, wide windows:** a row at the buttons' own width, trailing-aligned, gap 8, Cancel before the primary. Buttons that don't fit wrap onto another trailing row.
-- **Phone** (inside a sheet, or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
+- **Phone** (inside a sheet, a modal shown as one or any `CoilSheetRoute`, such as a popup's sheet; or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
 - **Always a stack on a phone, never a two-up row.** One shape whatever the labels, locale and text size: a row would turn into a stack when a label grows, so the same dialog would look different in German or at large text. Every button is a full-width thumb target, and the primary is always in the same place, whatever the count. The order matches both platforms: iOS puts Cancel last in action sheets and stacked alerts, and Material's stacked dialog buttons put the confirming action on top. A destructive primary goes on top like any primary; its color marks it, not its position.
 - **Labels** stay on one line and end in an ellipsis when they don't fit (§ Button); the stack gives them the most room.
 - **In a sheet** the bar is pinned under the content (§13.3), keeping the dialog's padding on the sides and half the usual 16 gap above it.

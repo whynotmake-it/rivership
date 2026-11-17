@@ -8,7 +8,9 @@ Milestone M0, unreleased.
   on the touch tier under 600 (centered confirmations too) every button at
   the full content width, 44 tall, stacked with the primary on top and
   Cancel at the bottom. `layout: CoilActionBarLayout { row, stack }`
-  overrides the choice. `CoilDialog` uses it, and in a sheet pins it under
+  overrides the choice; `CoilActionBar.layoutOf` picks the stack in any
+  `CoilSheetRoute` too, and `spacing` defaults to the tier's
+  `CoilMetrics.gap`. `CoilDialog` uses it, and in a sheet pins it under
   the body with the new `CoilSheetPanel.footer`, which stays above the
   home indicator and the keyboard and shows a hairline while content
   continues beneath. Fixed: on the touch tier a button given a tight width

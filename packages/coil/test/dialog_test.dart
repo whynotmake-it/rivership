@@ -384,6 +384,65 @@ void main() {
       );
     });
 
+    testWidgets('stacks in any sheet route, even in a wide window', (
+      tester,
+    ) async {
+      // A touch-tier window wider than a phone's (a tablet, a phone in
+      // landscape): a row on the page.
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(900, 600);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Builder(
+            builder: (context) => Center(
+              child: CoilButton(
+                onPressed: () => Navigator.of(context).push(
+                  CoilSheetRoute<void>(
+                    context: context,
+                    child: CoilSheetPanel(
+                      child: CoilActionBar(
+                        actions: [
+                          _action(
+                            'Cancel',
+                            variant: CoilButtonVariant.secondary,
+                          ),
+                          _action('OK'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      final ok = tester.getRect(_button('OK'));
+      final cancel = tester.getRect(_button('Cancel'));
+      expect(ok.width, cancel.width);
+      expect(ok.width, greaterThan(200));
+      expect(ok.bottom, lessThan(cancel.top));
+    });
+
+    testWidgets("spacing defaults to the tier's gap", (tester) async {
+      useScreen(tester, TestScreen.desktop);
+      for (final (tier, gap) in [
+        (CoilTier.pointer, CoilMetrics.pointer.gap),
+        (CoilTier.touch, CoilMetrics.touch.gap),
+      ]) {
+        await tester.pumpWidget(bar(CoilActionBarLayout.stack, tier: tier));
+        final ok = tester.getRect(_button('OK'));
+        final cancel = tester.getRect(_button('Cancel'));
+        expect(cancel.top - ok.bottom, gap, reason: '$tier');
+      }
+    });
+
     testWidgets('a layout given overrides the choice', (tester) async {
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(bar(CoilActionBarLayout.stack));
