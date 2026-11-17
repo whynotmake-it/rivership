@@ -57,6 +57,8 @@ class CoilSidebarScopeData {
     required this.side,
     required this.physicalLeft,
     required this.drawer,
+    required this.compact,
+    required this.drawerOpen,
     required this.peeking,
     required this.peekMode,
     required this.shortcutLabel,
@@ -80,6 +82,17 @@ class CoilSidebarScopeData {
 
   /// Whether this content is the phone drawer.
   final bool drawer;
+
+  /// Whether the scaffold is below its drawer breakpoint, so the sidebar
+  /// shows as a drawer.
+  final bool compact;
+
+  /// Whether the drawer is open.
+  final bool drawerOpen;
+
+  /// Whether the sidebar shows: the open drawer when [compact], else the
+  /// column ([CoilSidebarController.open]).
+  bool get shown => compact ? drawerOpen : controller.open;
 
   /// Whether the collapsed sidebar is floating out as a peek.
   final bool peeking;
@@ -120,6 +133,8 @@ class CoilSidebarScopeData {
       other.side == side &&
       other.physicalLeft == physicalLeft &&
       other.drawer == drawer &&
+      other.compact == compact &&
+      other.drawerOpen == drawerOpen &&
       other.peeking == peeking &&
       other.peekMode == peekMode &&
       other.shortcutLabel == shortcutLabel &&
@@ -132,6 +147,8 @@ class CoilSidebarScopeData {
     side,
     physicalLeft,
     drawer,
+    compact,
+    drawerOpen,
     peeking,
     peekMode,
     shortcutLabel,
@@ -148,9 +165,31 @@ class CoilSidebarScope extends InheritedWidget {
   /// The shared data.
   final CoilSidebarScopeData data;
 
-  /// The nearest scope's data, if any.
-  static CoilSidebarScopeData? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<CoilSidebarScope>()?.data;
+  /// The nearest scope's data, if any; with [side], the nearest scaffold's
+  /// whose sidebar sits on that side, so a page between two nested
+  /// scaffolds reaches either.
+  static CoilSidebarScopeData? maybeOf(
+    BuildContext context, {
+    CoilSidebarSide? side,
+  }) {
+    if (side == null) {
+      return context
+          .dependOnInheritedWidgetOfExactType<CoilSidebarScope>()
+          ?.data;
+    }
+    InheritedElement? found;
+    context.visitAncestorElements((ancestor) {
+      final widget = ancestor.widget;
+      if (widget is CoilSidebarScope && widget.data.side == side) {
+        found = ancestor as InheritedElement;
+        return false;
+      }
+      return true;
+    });
+    final element = found;
+    if (element == null) return null;
+    return (context.dependOnInheritedElement(element) as CoilSidebarScope).data;
+  }
 
   @override
   bool updateShouldNotify(CoilSidebarScope oldWidget) => oldWidget.data != data;

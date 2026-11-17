@@ -11,6 +11,7 @@ environment:
   flutter: ">=3.47.0"
 
 dependencies:
+  corner_radius_plugin: ^1.0.0
   cupertino_ui: ^1.1.6
   flutter:
     sdk: flutter
@@ -19,6 +20,8 @@ dependencies:
     path: ../motor
   motor_widgets:
     path: ../motor_widgets
+  scroll_drag_detector:
+    path: ../scroll_drag_detector
   stupid_simple_sheet:
     path: ../stupid_simple_sheet
 

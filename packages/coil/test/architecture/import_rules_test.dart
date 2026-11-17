@@ -35,6 +35,24 @@ const _flutterAllowed = {
 /// The one file allowed to use material_ui / cupertino_ui.
 const _textFieldCore = 'src/primitives/text_field_core.dart';
 
+/// Packages besides Flutter and coil, and the layers that may import them.
+const _packageLayers = {
+  'motor': {'foundation', 'primitives', 'components'},
+  'motor_widgets': {'primitives', 'components'},
+  'stupid_simple_sheet': {'primitives'},
+  'scroll_drag_detector': {'primitives'},
+  'corner_radius_plugin': {'primitives'},
+  'material_ui': {'primitives'},
+  'cupertino_ui': {'primitives'},
+};
+
+/// Packages kept behind exactly one primitive file, so swapping them out
+/// touches one place.
+const _packageFiles = {
+  'corner_radius_plugin': 'src/primitives/screen_radius.dart',
+  'scroll_drag_detector': 'src/primitives/drawer.dart',
+};
+
 /// Things components must reach through a primitive.
 final _bannedInComponents = {
   'MouseRegion': RegExp(r'\bMouseRegion\('),
@@ -94,6 +112,21 @@ void main() {
                   uri.startsWith('package:cupertino_ui/')) &&
               path != _textFieldCore)
             '$path imports $uri',
+    ];
+    expect(violations, isEmpty);
+  });
+
+  test('third-party packages stay in their layers and files', () {
+    final violations = <String>[
+      for (final MapEntry(key: path, value: uris) in sources.entries)
+        for (final uri in uris)
+          if (RegExp(r'^package:(\w+)/').firstMatch(uri)?.group(1)
+              case final package?
+              when package != 'flutter' && package != 'coil')
+            if (!(_packageLayers[package]?.contains(_layerOf(path)) ?? false) ||
+                (_packageFiles[package] != null &&
+                    _packageFiles[package] != path))
+              '$path imports $uri',
     ];
     expect(violations, isEmpty);
   });

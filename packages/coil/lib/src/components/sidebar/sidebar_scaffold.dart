@@ -68,8 +68,10 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilSidebar.expand',
   );
 
-  /// The phone drawer sliding in and out. Default motion: `standard` in,
-  /// `standardExit` out. A drag follows the finger.
+  /// The phone drawer opening and closing: the page sliding aside, or the
+  /// panel sliding over it. Default motion: `standard` opening,
+  /// `standardExit` closing. A drag follows the finger and its release
+  /// velocity carries into the spring.
   static final drawer = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.drawer',
@@ -83,8 +85,16 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
 /// through a `CoilSidebarTrigger`, the [rail], the [shortcuts] while focus
 /// is inside the scaffold, or the [controller]. Folded, its edge can
 /// [peek] it back over the page. Below [drawerBreakpoint] it hides and
-/// opens as a modal drawer instead, which a pick in a sidebar menu, a press
-/// on the scrim, Escape, a drag or system back closes.
+/// opens as a drawer instead (a `CoilDrawer`): on touch the page slides
+/// aside to reveal it from behind ([drawerReveal]) and a horizontal drag
+/// anywhere on the page opens it ([drawerDrag]). A pick in a sidebar menu,
+/// a press on the page, Escape, a drag or system back closes it.
+///
+/// For a sidebar on each side, nest two scaffolds: one with
+/// [CoilSidebarSide.start] whose body is one with [CoilSidebarSide.end].
+/// Their drawers act as one: a drag moves whichever side it heads for, and
+/// opening one closes the other. A `CoilSidebarTrigger` with a `side`
+/// reaches either from the page.
 ///
 /// There is no icon-only rail on purpose: folded means gone, and [peek]
 /// brings the whole sidebar back, labels and all.
@@ -105,6 +115,9 @@ class CoilSidebarScaffold extends StatefulWidget {
     this.drawerBreakpoint = 768,
     this.minWidth = 160,
     this.maxWidth = 360,
+    this.drawerReveal,
+    this.drawerDrag,
+    this.drawerWidth,
     this.drawerLabel = 'Sidebar',
     this.peekLabel = 'Peek sidebar',
     this.style,
@@ -160,6 +173,23 @@ class CoilSidebarScaffold extends StatefulWidget {
 
   /// The widest the rail resizes the sidebar to.
   final double maxWidth;
+
+  /// How the drawer meets the page. Null reveals it from behind the page
+  /// on the touch tier ([CoilDrawerReveal.behind]), and slides it over the
+  /// page on the pointer tier, as in a narrow desktop window
+  /// ([CoilDrawerReveal.over]). Its look (corner radius, scale, scrim,
+  /// shadow) is in [CoilSidebarStyle]'s `drawer…` fields.
+  final CoilDrawerReveal? drawerReveal;
+
+  /// Which drags open and close the drawer. Null: on touch, a drag anywhere
+  /// on the page opens it (horizontal scrollables keep their drags and hand
+  /// over at their edge), except that on a route iOS can swipe back, a
+  /// drawer on the start side leaves that swipe to the route and only
+  /// closes by drag; on the pointer tier, drags only close it.
+  final CoilDrawerDrag? drawerDrag;
+
+  /// The drawer's width. Null is 85 % of the scaffold's width, at most 320.
+  final double? drawerWidth;
 
   /// The drawer's name for screen readers.
   final String drawerLabel;
@@ -425,6 +455,8 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     side: widget.side,
     physicalLeft: _physicalLeft,
     drawer: drawer,
+    compact: _compact && _offcanvas,
+    drawerOpen: _drawerOpen,
     peeking: _peeking,
     peekMode: _peekAllowed ? widget.peek : CoilSidebarPeek.none,
     shortcutLabel: _physicalLeft ? '[' : ']',
@@ -670,29 +702,47 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     );
   }
 
-  /// [child] with the phone drawer above it. The drawer stays put if the
+  /// [child] with the phone drawer around it. The drawer stays put if the
   /// window widens while it is open, until it is closed.
   Widget _withDrawer(CoilSidebarStyle look, Widget child) {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
+    final edge = widget.side == CoilSidebarSide.start
+        ? CoilDrawerEdge.start
+        : CoilDrawerEdge.end;
+    final panel = CoilSidebarScope(
+      data: _scope(drawer: true),
+      // Wide, the column holds the sidebar and its state; a drawer left
+      // open while the window widened shows a second copy until closed.
+      child: _compact
+          ? KeyedSubtree(key: _sidebarKey, child: widget.sidebar)
+          : _drawerOpen
+          ? widget.sidebar
+          : const SizedBox.shrink(),
+    );
+    final reveal =
+        widget.drawerReveal ??
+        (CoilTheme.tierOf(context) == CoilTier.touch
+            ? CoilDrawerReveal.behind
+            : CoilDrawerReveal.over);
     return CoilDrawer(
-      open: _drawerOpen,
-      onClose: _closeDrawer,
-      edge: widget.side == CoilSidebarSide.start
-          ? CoilDrawerEdge.start
-          : CoilDrawerEdge.end,
-      semanticLabel: widget.drawerLabel,
+      open: _drawerOpen ? edge : null,
+      onOpenChanged: (open) => open == null ? _closeDrawer() : _openDrawer(),
+      start: edge == CoilDrawerEdge.start ? panel : null,
+      end: edge == CoilDrawerEdge.end ? panel : null,
+      reveal: reveal,
+      // Wide, only a drawer left open closes by drag; nothing opens one.
+      drag: _compact ? widget.drawerDrag : CoilDrawerDrag.close,
+      width: widget.drawerWidth,
+      startSemanticLabel: widget.drawerLabel,
+      endSemanticLabel: widget.drawerLabel,
+      cornerRadius: look.drawerCornerRadius,
+      fallbackCornerRadius: look.drawerFallbackCornerRadius!,
+      scale: look.drawerScale!,
+      scrimColor: look.drawerScrimColor,
+      shadows: look.drawerShadows,
+      panelColor: reveal == CoilDrawerReveal.behind ? look.background : null,
       motion: _motionFor(CoilSidebarTrack.drawer, motion.standard),
       exitMotion: _motionFor(CoilSidebarTrack.drawer, motion.standardExit),
-      drawer: CoilSidebarScope(
-        data: _scope(drawer: true),
-        // Wide, the column holds the sidebar and its state; a drawer left
-        // open while the window widened shows a second copy until closed.
-        child: _compact
-            ? KeyedSubtree(key: _sidebarKey, child: widget.sidebar)
-            : _drawerOpen
-            ? widget.sidebar
-            : const SizedBox.shrink(),
-      ),
       child: child,
     );
   }

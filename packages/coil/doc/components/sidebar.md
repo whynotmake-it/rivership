@@ -35,12 +35,15 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - `[` (`]` for a sidebar on the right) or ⌘B / Ctrl+B toggles it while focus is inside the scaffold; the innermost scaffold answers; never while typing in a field. With nothing focused (at launch), the outermost scaffold takes focus, so the key works at once. The scaffold is a focus scope, so focus a folding sidebar drops stays inside and the next press still works.
   - Opening and closing run on `gentle` / `gentleExit`. A rail drag sets the width 1:1; a fold or reopen during the drag springs on `standard`, and once it lands the drag tracks 1:1 again. The space taken is the width times how open it is, two separate tracks.
   - Peek: hovering the folded edge (or the folded trigger) 150 ms, or clicking the edge, floats the sidebar out as a card over the page on `standard`. It holds while the pointer is within 8 of the card (a tooltip or menu over it doesn't count as leaving) and lets go 250 ms after it leaves; Escape or a press elsewhere dismisses it. Peeking never pins it open.
-- **Touch, < 768 (the scaffold's width):** a **modal drawer** from the sidebar's edge on `standard` / `standardExit`, with a 40 % scrim.
+- **< 768 (the scaffold's width): a drawer** (`CoilDrawer`) on `standard` / `standardExit`.
+  - **Touch: revealed from behind.** The sidebar lies under the page, and the page slides aside by the drawer's width to reveal it, under a 16 % scrim (the 40 % scrim at 40 % strength) with shadow step 8 on its edge. While it is away from the edges the page takes the device's screen corner radius (read once through `CoilScreenRadius`; square where the platform can't tell), and it squares up the moment it covers the sidebar again. An optional scale (1 by default) shrinks it away from the drawer.
+  - **Pointer (a narrow desktop window): over the page**, a raised panel sliding in from the sidebar's edge with a 40 % scrim.
+  - **Opening by drag (touch):** a horizontal drag anywhere on the page, read with a scroll-aware drag detector: a horizontal scrollable (carousel, page view) scrolls first and hands over only when the drag starts at its edge, so flicking back through a carousel never opens the drawer. On a route iOS can swipe back, a start-side drawer leaves that swipe to the route. The pointer tier opens only through the trigger or the keys.
+  - **Both sides:** nest a start and an end scaffold. A drag opens the side it heads for, and opening one closes the other.
   - It stays a descendant of the scaffold (not a route), so it always shows the app's current state.
-  - Dragging it closed follows the finger and releases with velocity: a fling decides by direction, a slow release by position.
-  - It **closes on navigation** (a row pick), on the scrim, Escape and system back.
+  - Dragging follows the finger and releases into the spring with its velocity: a fling decides by direction, a slow release by position (past half opens).
+  - It **closes on navigation** (a row pick), on a press on the page or scrim, Escape and system back.
   - Focus moves into it and returns on close.
-  - No edge-swipe open by default.
 - **Persistence:** `CoilSidebarController` holds `open` and `width`. The app saves them and restores them by creating the controller; coil stores nothing. The drawer and peeks never change `open`.
 - **Keyboard:** roving within each menu; Up and Down; Right and Left expand and collapse sub-trees; Enter navigates; the ring travels. Group labels are tab stops that Enter or Space folds. A folded sidebar leaves the focus order.
-- **Semantics:** a navigation landmark when the sidebar has a label (each needs its own); the active row is `selected`; collapsible labels are buttons with `expanded`; the rail offers increase, decrease and tap; the drawer is a named route scope.
+- **Semantics:** a navigation landmark when the sidebar has a label (each needs its own); the active row is `selected`; collapsible labels are buttons with `expanded`; the rail offers increase, decrease and tap; the drawer is a named route scope, and while it is open the page is hidden from screen readers except for its dismiss action.

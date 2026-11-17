@@ -30,6 +30,7 @@ export 'src/primitives/popover_surface.dart';
 export 'src/primitives/popup_controller.dart';
 export 'src/primitives/presence.dart';
 export 'src/primitives/roving_focus.dart';
+export 'src/primitives/screen_radius.dart';
 export 'src/primitives/scroll_spring.dart';
 export 'src/primitives/scrollbar.dart' hide CoilScrollbar;
 export 'src/primitives/selection_blocks.dart'

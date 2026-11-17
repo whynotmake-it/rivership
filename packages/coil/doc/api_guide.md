@@ -14,7 +14,7 @@ then this guide, and FF's web names last.
 | Layer | Public library | May import |
 |---|---|---|
 | Foundation: tokens, theme, motion, metrics, input modality, adaptive scope | `package:coil/foundation.dart` | Flutter (`widgets`, `foundation`, `painting`, `services`, `gestures`, `rendering`, `scheduler`, `physics`, `semantics`), `motor` |
-| Primitives: interaction, focus, active item, motion layer, anchor, presence, sheet, adaptive popup, text-field core | `package:coil/primitives.dart` | the above, foundation, other primitives, `stupid_simple_sheet` |
+| Primitives: interaction, focus, active item, motion layer, anchor, presence, sheet, drawer, screen radius, adaptive popup, text-field core | `package:coil/primitives.dart` | the above, foundation, other primitives, `motor_widgets`, `stupid_simple_sheet`; `scroll_drag_detector` only in `drawer.dart`, `corner_radius_plugin` only in `screen_radius.dart` |
 | Components: look and composition | `package:coil/<component>.dart` | the above, `package:coil/foundation.dart`, `package:coil/primitives.dart`, other components' **public** libraries, `motor_widgets` |
 
 - A component never imports another component's `src/`, and never imports a
@@ -28,6 +28,10 @@ then this guide, and FF's web names last.
   one file, `lib/src/primitives/text_field_core.dart`, and none of their
   types appear in coil's public API. `package:flutter/material.dart` and
   `package:flutter/cupertino.dart` are never imported.
+- A third-party package enters through one primitive, so replacing it
+  touches one file: `corner_radius_plugin` (the screen's corner radius) is
+  imported only by `screen_radius.dart`, behind `CoilScreenRadius`, and
+  `scroll_drag_detector` only by `drawer.dart`, behind `CoilDrawer`.
 - `test/architecture/import_rules_test.dart` enforces all of the above.
 
 `package:coil/coil.dart` exports everything for apps that don't care.
@@ -103,7 +107,9 @@ Rules:
 | travelling highlight, pills, merge/split selection | `CoilHoverHighlight`, or your own `CoilMotionLayer` with `CoilHighlight` and `CoilSelectionBlocks` items (`CoilLayerPaint` for custom drawing). Items are immutable and built in `build`; the layer owns the animation. Inside a scroll view, put it in the scrolled content |
 | anchored popover | `CoilPopover` via `CoilAdaptivePopup` |
 | sheet | `CoilSheetRoute` (`stupid_simple_sheet`'s glass sheet) with a `CoilSheetPanel`, via `CoilAdaptivePopup` or `CoilModalRoute` |
-| modal route (dialog, settings, command menu, drawer) | `CoilModalRoute`, or `CoilModalPage` in `Navigator.pages`; content reads `CoilModalRoute.presentationOf` |
+| modal route (dialog, settings, command menu) | `CoilModalRoute`, or `CoilModalPage` in `Navigator.pages`; content reads `CoilModalRoute.presentationOf` |
+| side panel that stays a descendant (phone sidebar) | `CoilDrawer` (`reveal: .behind` or `.over`, `start`/`end` panels, nests) |
+| the device screen's corner radius | `CoilScreenRadius` |
 | popover or sheet? | `CoilAdaptivePopup.presentationOf` (the hybrid phone rule) |
 | editable text | `CoilTextFieldCore` |
 | a raised surface (fill, shadow, edge) and its level scope | `CoilSurface` |
@@ -341,3 +347,7 @@ Look:
 | 2026-11-14 | Every modal is reachable as a route: `CoilModalRoute<T>` (one adaptive route; null `presentation` is a sheet on a phone, centered elsewhere) and `CoilModalPage<T>`. The `showCoil…` functions only push it. Dialog, settings dialog and command menu have no route class of their own: their content (`CoilDialog`, `CoilSettingsDialog`, `CoilCommandMenu`) goes in a `CoilModalRoute`, and `CoilDialogKind.presentation` maps a kind to its presentation | the presentation decides the route's class (a sheet is a `stupid_simple_sheet` route), so one factory route picks it; per-component route types would each need a private class per presentation and add API without behavior |
 | 2026-11-17 | Sheets are `stupid_simple_sheet`'s `StupidSimpleGlassSheetRoute`, used as it is: `CoilSheetRoute(context:, child:)` reads coil's motion (`gentle` in, `gentleExit` out), scrim, surface and corner from `context`; `CoilSheetPanel` keeps only the grabber, title, scroll-edge hairline and safe area. Gaps go upstream (`exitMotion`, short glass sheets) instead of into coil | owner: "for sheets, let's just use GlassSheet"; one sheet look and its stacking, blur and drag for free |
 | 2026-11-17 | Every copy affordance runs on `CoilCopyController` (primitive): a copy while the result shows only restarts the 2 s hold, and a copy while it leaves turns it around; `CoilCopySwitcher` keys its content by status alone. Without an icon, coil draws a copy glyph | owner review: a copy button must always show, and spam-clicking must not replay the animation |
+| 2026-11-17 | One `CoilDrawer` primitive with `reveal: CoilDrawerReveal { behind, over }`, `start` and `end` panels, `open: CoilDrawerEdge?` + `onOpenChanged`; the old overlay drawer is its `over` mode, rendered in place instead of through an `OverlayPortal` | one drawer behavior (focus, back, Escape, drag, springs) for both looks; the scaffold picks `behind` on touch and `over` on the pointer tier. In place keeps the page and panel in one layout, which the reveal needs |
+| 2026-11-17 | Two sidebars are two nested scaffolds; their drawers coordinate (drag hand-off to the enclosing drawer, one open at a time) and `CoilSidebarTrigger.side` picks the scaffold | a second sidebar slot would double the scaffold's controller, rail and width API for a layout composition already gives |
+| 2026-11-17 | The drawer opens by dragging the page anywhere through `scroll_drag_detector` (`boundaryStart` from rest, `scrollFirst` while open); on iOS/macOS a start-side drawer on a poppable route defers to the back swipe | supersedes DESIGN.md's "no edge-swipe drawers": a scroll-aware drag doesn't fight carousels, and the back-swipe rule keeps the iOS conflict out. An edge-strip exclusion can't be expressed: the drawer's recognizer would still win the arena |
+| 2026-11-17 | `corner_radius_plugin` (MIT; Android 12+ `RoundedCorner`, iOS 26 `UICornerConfiguration`, older iOS via BezelKit) behind `CoilScreenRadius`, asked once, null on web, desktop and in tests | the owner reported its iOS bug (issue #1), and it is the maintained option with both platforms; callers fall back to their own radius |

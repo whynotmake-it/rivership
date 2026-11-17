@@ -10,7 +10,9 @@ const sidebarEntry = CatalogEntry(
   slug: 'sidebar',
   title: 'Sidebar',
   group: CatalogGroup.shellAndComposites,
-  summary: 'Resizes, folds away and peeks back; a drawer on phones.',
+  summary:
+      'Resizes, folds away and peeks back; on phones, the page slides aside '
+      'to reveal it.',
   page: SidebarPage.new,
 );
 
@@ -22,7 +24,7 @@ class SidebarPage extends StatelessWidget {
     title: 'Sidebar',
     summary:
         'Drag its edge to resize, click the edge or press [ to fold it, and '
-        'on a phone it becomes a drawer.',
+        'on a phone the page slides aside to reveal it.',
     children: [
       _Section(
         title: 'Sidebar',
@@ -48,6 +50,15 @@ class SidebarPage extends StatelessWidget {
             side: CoilSidebarSide.end,
           ),
         ),
+      ),
+      _Section(
+        title: 'On a phone, both sides',
+        description:
+            'Two nested scaffolds, one sidebar per side. On touch the page '
+            'slides aside to reveal one, rounding like the screen. Drag the '
+            'page sideways anywhere: the cards scroll first and hand over at '
+            'their ends.',
+        child: _PhoneFrame(),
       ),
       _Section(
         title: 'Nesting',
@@ -165,6 +176,35 @@ class _Frame extends StatelessWidget {
       child: SizedBox(
         height: 520,
         child: ColoredBox(color: colors.background, child: child),
+      ),
+    );
+  }
+}
+
+/// A phone-sized frame on the touch tier, centered on the stage.
+class _PhoneFrame extends StatelessWidget {
+  const _PhoneFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: ClipRSuperellipse(
+          borderRadius: BorderRadius.circular(44),
+          child: SizedBox(
+            width: 375,
+            height: 680,
+            child: ColoredBox(
+              color: colors.background,
+              child: const CoilAdaptiveScope(
+                tier: CoilTier.touch,
+                child: PhoneSidebars(),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
