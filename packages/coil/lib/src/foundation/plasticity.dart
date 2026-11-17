@@ -479,17 +479,32 @@ class CoilRelief {
 
   /// [base] with this relief: its shape wrapped in a [CoilReliefBorder]
   /// that paints the lighting over the fill and the shadows around it.
-  /// [base]'s shape must be a [RoundedSuperellipseBorder].
-  ShapeDecoration apply(ShapeDecoration base) => ShapeDecoration(
-    color: base.color,
-    gradient: base.gradient,
-    image: base.image,
-    shadows: base.shadows,
-    shape: CoilReliefBorder(
-      relief: this,
-      shape: base.shape as RoundedSuperellipseBorder,
-    ),
-  );
+  ///
+  /// [base]'s shape must be a [RoundedSuperellipseBorder], or a
+  /// [CoilReliefBorder], whose relief this one replaces: applying twice
+  /// lights the shape once. Any other shape is a mistake (coil's shapes
+  /// are superellipses); in release builds it is returned unlit.
+  ShapeDecoration apply(ShapeDecoration base) {
+    final shape = switch (base.shape) {
+      final CoilReliefBorder lit => lit.shape,
+      final RoundedSuperellipseBorder plain => plain,
+      _ => null,
+    };
+    assert(
+      shape != null,
+      'CoilRelief.apply needs a RoundedSuperellipseBorder (or a '
+      'CoilReliefBorder), not a ${base.shape.runtimeType}. coil lights '
+      'superellipses only.',
+    );
+    if (shape == null) return base;
+    return ShapeDecoration(
+      color: base.color,
+      gradient: base.gradient,
+      image: base.image,
+      shadows: base.shadows,
+      shape: CoilReliefBorder(relief: this, shape: shape),
+    );
+  }
 
   /// [base] lit by [relief], or [base] itself, untouched, when [relief] is
   /// null.
@@ -707,6 +722,23 @@ class CoilReliefBorder extends OutlinedBorder {
   CoilReliefBorder({required this.relief, required this.shape})
     : super(side: shape.side);
 
+  CoilReliefBorder._lerp(
+    (CoilRelief?, RoundedSuperellipseBorder) a,
+    (CoilRelief?, RoundedSuperellipseBorder) b,
+    double t,
+  ) : this(
+        // At least one side is lit, so the lerp isn't null.
+        relief: CoilRelief.lerp(a.$1, b.$1, t)!,
+        shape: RoundedSuperellipseBorder(
+          side: BorderSide.lerp(a.$2.side, b.$2.side, t),
+          borderRadius: BorderRadiusGeometry.lerp(
+            a.$2.borderRadius,
+            b.$2.borderRadius,
+            t,
+          ),
+        ),
+      );
+
   /// The lighting.
   final CoilRelief relief;
 
@@ -721,6 +753,34 @@ class CoilReliefBorder extends OutlinedBorder {
     relief: relief,
     shape: shape.scale(t) as RoundedSuperellipseBorder,
   );
+
+  /// [border]'s relief and superellipse, or null when it is neither a
+  /// [CoilReliefBorder] nor a [RoundedSuperellipseBorder].
+  static (CoilRelief?, RoundedSuperellipseBorder)? _partsOf(
+    ShapeBorder? border,
+  ) => switch (border) {
+    CoilReliefBorder(:final relief, :final shape) => (relief, shape),
+    final RoundedSuperellipseBorder shape => (null, shape),
+    _ => null,
+  };
+
+  /// Lerps from another lit or plain superellipse: the corners and side
+  /// morph and the lighting fades, instead of [ShapeBorder.lerp]'s
+  /// fallback, which shrinks one shape away and grows the other.
+  @override
+  ShapeBorder? lerpFrom(ShapeBorder? a, double t) {
+    final from = _partsOf(a);
+    if (from == null) return super.lerpFrom(a, t);
+    return CoilReliefBorder._lerp(from, (relief, shape), t);
+  }
+
+  /// See [lerpFrom].
+  @override
+  ShapeBorder? lerpTo(ShapeBorder? b, double t) {
+    final to = _partsOf(b);
+    if (to == null) return super.lerpTo(b, t);
+    return CoilReliefBorder._lerp((relief, shape), to, t);
+  }
 
   @override
   CoilReliefBorder copyWith({BorderSide? side}) => CoilReliefBorder(

@@ -110,4 +110,75 @@ void main() {
       isNull,
     );
   });
+
+  group('CoilRelief.decorate', () {
+    final relief = CoilPlasticity.tactile.resolve(.raised, Brightness.light)!;
+    const plain = ShapeDecoration(
+      color: Color(0xFFFFFFFF),
+      shape: RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+      ),
+    );
+
+    test('is idempotent: a lit shape is lit once', () {
+      final once = CoilRelief.decorate(plain, relief);
+      final twice = CoilRelief.decorate(once, relief);
+      expect(twice.shape, once.shape);
+      final border = twice.shape as CoilReliefBorder;
+      expect(border.shape, plain.shape);
+    });
+
+    test('a second relief replaces the first', () {
+      final other = CoilPlasticity.subtle.resolve(.raised, Brightness.dark)!;
+      final lit = CoilRelief.decorate(
+        CoilRelief.decorate(plain, relief),
+        other,
+      );
+      expect((lit.shape as CoilReliefBorder).relief, other);
+    });
+
+    test('asserts on shapes that are not superellipses', () {
+      expect(
+        () => CoilRelief.decorate(
+          const ShapeDecoration(shape: StadiumBorder()),
+          relief,
+        ),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            contains('RoundedSuperellipseBorder'),
+          ),
+        ),
+      );
+    });
+
+    test('tweens keep their corners and fade the light', () {
+      final lit = CoilRelief.decorate(plain, relief);
+      const wide = RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      );
+      for (final (from, to) in [
+        (plain.shape, lit.shape),
+        (lit.shape, plain.shape),
+        (
+          lit.shape,
+          CoilRelief.decorate(const ShapeDecoration(shape: wide), relief).shape,
+        ),
+      ]) {
+        final mid = ShapeBorder.lerp(from, to, 0.5);
+        expect(mid, isA<CoilReliefBorder>(), reason: '$from -> $to');
+        final shape = (mid! as CoilReliefBorder).shape;
+        // No collapse through a scaled-down shape: the radius stays in
+        // between the ends.
+        final radius = (shape.borderRadius as BorderRadius).topLeft.x;
+        expect(radius, inInclusiveRange(8, 12));
+      }
+      // Half way from unlit, the light is half on.
+      final half =
+          (ShapeBorder.lerp(plain.shape, lit.shape, 0.5)! as CoilReliefBorder)
+              .relief;
+      expect(half.edgeTop.a, closeTo(relief.edgeTop.a / 2, 0.01));
+    });
+  });
 }
