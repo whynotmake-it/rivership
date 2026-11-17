@@ -323,6 +323,9 @@ class _CoilButtonState extends State<CoilButton> {
                         style: style.textStyle!.copyWith(color: labelColor),
                         maxLines: 1,
                         softWrap: false,
+                        // A label too long for the room ends in an
+                        // ellipsis, as platform buttons do.
+                        overflow: TextOverflow.ellipsis,
                         child: iconOnly
                             ? _iconContent(sizes, style)
                             : _labelContent(sizes, style),
@@ -381,7 +384,7 @@ class _CoilButtonState extends State<CoilButton> {
       spacing: sizes.buttonGap,
       children: [
         if (leadingSlot != null) leadingSlot,
-        widget.child!,
+        Flexible(child: widget.child!),
         if (trailing != null) trailing,
       ],
     );
