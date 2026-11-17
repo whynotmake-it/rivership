@@ -6,7 +6,7 @@
 import 'package:coil/calendar.dart';
 ```
 
-Exports `CoilCalendar`, `CoilCalendarLabels`, `CoilTimeColumns`.
+Exports `CoilCalendar`, `CoilCalendarLabels`, `CoilCalendarWidth`, `CoilTimeColumns`.
 
 To change its look or composition, eject a copy into your app with `dart run coil_cli:eject calendar` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
@@ -17,7 +17,8 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - weekday row (caption muted, locale first day);
   - a 6 × 7 day grid (body, tabular), **always 6 rows** so the height never jumps.
 - **Cell sizes:** square, the control height (36 / 28 / 44 / 36), grown by as much as the text scale grows the line box (the padding doesn't scale).
-- **Width:** seven cells when it can choose (a popover hugs it); a wider space it's given is filled (a phone sheet), with the cell's fill a square in the middle of each column; a narrower one is shared, the rows shrink to stay square (measured inside the focus ring's inset, so the columns and rows match) and the numbers scale down rather than wrap.
+- **Width:** seven cells when it can choose (a popover hugs it). A wider space it's given is filled until the days are 20 % past their natural side (a phone sheet); past that the calendar centers at that width (a tablet sheet), so **days are always square** and never stretch into wide rectangles. The cell's fill is the natural-size square in the middle of each cell. A narrower space is shared: the rows shrink to stay square (measured inside the focus ring's inset, so the columns and rows match) and the numbers scale down rather than wrap.
+- **Hit area:** each day takes the tap on its whole cell, with no gaps between days or rows; a tap in the focus ring's inset at either edge of the grid picks the edge day.
 - **Day states:**
   - outside the month: muted 60 %;
   - today: semibold with a 4 `brand` dot;

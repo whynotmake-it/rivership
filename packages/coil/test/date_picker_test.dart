@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,6 +171,32 @@ void sizingTests() {
     expect(calendar.width, sheet.width - 2 * 12);
   });
 
+  testWidgets('a wide sheet centers the calendar and time at their widest', (
+    tester,
+  ) async {
+    _useWindow(tester, const Size(834, 1194));
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        presentation: CoilPresentation.sheet,
+        home: const _TimeDemo(),
+      ),
+    );
+    await tester.tap(find.byType(CoilDatePicker));
+    await tester.pumpAndSettle();
+    final sheet = tester.getRect(find.byType(CoilSheetPanel));
+    final grid = tester.getRect(find.byType(PageView));
+    final time = tester.getRect(find.byType(CoilTimeColumns));
+    // Days 20 % past the 44 touch cell at most, so the 560 sheet doesn't
+    // stretch them; the calendar and the time band share its width.
+    expect(grid.width, lessThanOrEqualTo(44 * 1.2 * 7 + 8));
+    expect(grid.center.dx, moreOrLessEquals(sheet.center.dx, epsilon: 0.5));
+    expect(time.width, moreOrLessEquals(grid.width, epsilon: 0.5));
+    expect(time.center.dx, moreOrLessEquals(sheet.center.dx, epsilon: 0.5));
+    // Square rows: six of them as tall as the columns are wide.
+    expect(grid.height, moreOrLessEquals((grid.width - 6) * 6 / 7, epsilon: 6));
+  });
+
   for (final presentation in CoilPresentation.values) {
     for (final scale in const [1.0, 2.0]) {
       testWidgets(
@@ -251,11 +278,12 @@ void sizingTests() {
     await tester.tap(find.byType(CoilDatePicker));
     await tester.pumpAndSettle();
     final hour = find.byType(ListWheelScrollView).first;
-    // 160 px up, slowly: past the touch slop that's three 44 px rows,
-    // and no fling, so it lands three hours on.
+    // Up, slowly: past the touch slop that's three rows, and no fling, so
+    // it lands three hours on.
+    final row = tester.getSize(hour).height / CoilTimeColumns.visibleRows;
     final gesture = await tester.startGesture(tester.getCenter(hour));
     for (var i = 0; i < 20; i++) {
-      await gesture.moveBy(const Offset(0, -8));
+      await gesture.moveBy(Offset(0, -(kTouchSlop + row * 3) / 20));
       await tester.pump(const Duration(milliseconds: 50));
     }
     await tester.pump(const Duration(milliseconds: 500));

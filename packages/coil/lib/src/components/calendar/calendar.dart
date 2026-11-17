@@ -94,10 +94,12 @@ class CoilCalendarLabels {
 /// Shift, the year), and Enter or Space picks. Moving past the month turns
 /// the page.
 ///
-/// Cells are square, as tall as the tier's control height and grown with
-/// the text scale. The calendar is seven cells wide when it can choose,
-/// fills a wider space it's given (a sheet on a phone), and shares a
-/// narrower one, shrinking the numbers if they don't fit.
+/// Days are always square: as tall as the tier's control height and grown
+/// with the text scale. The calendar is seven cells wide when it can
+/// choose. It fills a wider space it's given (a sheet on a phone) until
+/// the days are 20 % bigger, and centers in anything wider; it shares a
+/// narrower one, shrinking the numbers if they don't fit. Each day takes
+/// taps on its whole cell, so no point of the grid misses a day.
 ///
 /// Days before [firstDate], after [lastDate] or for which [isDisabled]
 /// returns true can't be picked. Dates are compared by day; their time is
@@ -153,6 +155,28 @@ class CoilCalendar extends StatefulWidget {
 
   @override
   State<CoilCalendar> createState() => _CoilCalendarState();
+}
+
+/// Gives [child] a [CoilCalendar]'s width: seven days when it can choose;
+/// more when it's stretched, until the days are 20 % bigger; centered
+/// past that. Put a calendar and what sits under it (like
+/// `CoilTimeColumns`) in one so they share the width.
+class CoilCalendarWidth extends StatelessWidget {
+  /// Sizes [child] as wide as a calendar.
+  const CoilCalendarWidth({required this.child, super.key});
+
+  /// The calendar, and what shares its width.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final widths = calendarWidths(context);
+    return CalendarWidthBox(
+      natural: widths.natural,
+      max: widths.max,
+      child: child,
+    );
+  }
 }
 
 /// The day of [date], at midnight.
@@ -362,16 +386,16 @@ class _CoilCalendarState extends State<CoilCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
     final text = CoilTheme.textOf(context);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final labels = widget.labels;
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    final cell = calendarCellExtent(context, metrics, text.body);
-    // Room for the focus ring around the edge cells, inside the pager's
-    // clip.
-    final inset = 1 + theme.focusRing.width;
+    // The inset is room for the focus ring around the edge cells, inside
+    // the pager's clip.
+    final widths = calendarWidths(context);
+    final cell = widths.cell;
+    final inset = widths.inset;
 
     final header = Padding(
       padding: EdgeInsets.symmetric(horizontal: inset),
@@ -440,8 +464,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
 
     final pager = NotificationListener<ScrollEndNotification>(
       onNotification: _onScrollEnd,
-      // Rows as tall as the columns are wide, up to the cell's extent: a
-      // narrow calendar gets shorter rather than tall, thin cells.
+      // Rows as tall as the columns are wide: every day is square.
       child: CalendarGridBox(
         cell: cell,
         inset: inset,
@@ -450,18 +473,22 @@ class _CoilCalendarState extends State<CoilCalendar> {
           itemCount: _pageCount,
           pageSnapping: false,
           physics: CalendarPagePhysics(motion: motion.standard),
-          itemBuilder: (context, page) => Padding(
-            padding: EdgeInsets.symmetric(horizontal: inset),
-            child: _grid(_monthAt(page), cell: cell, motion: motion),
+          // A tap in the focus ring's inset picks the edge day.
+          itemBuilder: (context, page) => CalendarInsetHit(
+            inset: inset,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: inset),
+              child: _grid(_monthAt(page), cell: cell, motion: motion),
+            ),
           ),
         ),
       ),
     );
 
     // Seven cells wide when the calendar can choose; it fills a wider
-    // space it's given, and shares a narrower one.
-    return SizedBox(
-      width: cell * 7 + inset * 2,
+    // space it's given up to its max and centers past it, and shares a
+    // narrower one.
+    return CoilCalendarWidth(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

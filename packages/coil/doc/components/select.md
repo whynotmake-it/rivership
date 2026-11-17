@@ -37,13 +37,13 @@ To change its look or composition, eject a copy into your app with `dart run coi
 ## DatePicker
 
 - **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
-- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
+- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width up to days 20 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
 - **Phone (touch, < 600): a sheet built for the thumb.**
   - Grabber → caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.
   - Presets: a horizontally scrolling chip row (Today, Tomorrow, Next week…).
   - Time: chips ("Start 11:00", "End 12:45"). Tapping one pushes the **time page** inside the sheet on `standard`, with a "‹ Date" back row.
-    - The time page is **two snap columns** (hours | minutes in the minute step), flat 44 rows. A selection band in `active` sits across the center, the center row is foreground semibold and the others are muted.
+    - The time page is **two snap columns** (hours | minutes in the minute step), flat rows: a line of body text in tabular figures and the tier's gap (28 pointer, 34 touch at 1×, grown with the text scale), **five visible**. The rows fade out toward the top and bottom over two rows (the scroll edge fade). A selection band in `active` with the day cells' radius sits across the center; the center row and the colon are foreground semibold and the others are muted. The columns are a day and a half wide each.
     - The columns snap on `standard` with the fling velocity. No 3D wheel.
     - A duration caption ("1 h 45 min") sits under the end column. "Type a time" opens a numeric field (opt-in).
   - Footer: Clear (ghost) and **Done** (primary) in range and time modes. A single date commits on tap and closes after 200 ms.

@@ -18,9 +18,10 @@ import 'package:flutter/widgets.dart';
 /// and the popup stays open until dismissed. In a short, wide window (a
 /// phone in landscape) the columns sit beside the calendar instead.
 ///
-/// The popover is as wide as the calendar's seven cells; a sheet's
-/// calendar fills the sheet. Either scrolls when the window is too short
-/// for it.
+/// The popover is as wide as the calendar's seven cells. A sheet's
+/// calendar fills the sheet up to days 20 % bigger than their natural
+/// size, and centers in a wider one: days are always square. Either
+/// scrolls when the window is too short for it.
 class CoilDatePicker extends StatefulWidget {
   /// Creates a date picker.
   const CoilDatePicker({
@@ -340,14 +341,18 @@ class _DateTimePanelState extends State<_DateTimePanel> {
         ],
       );
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: gap,
-      children: [
-        calendar,
-        time,
-      ],
+    // The time band is as wide as the calendar, which a wide sheet
+    // centers.
+    return CoilCalendarWidth(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: gap,
+        children: [
+          calendar,
+          time,
+        ],
+      ),
     );
   }
 }

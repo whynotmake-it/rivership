@@ -1037,7 +1037,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - weekday row (caption muted, locale first day);
   - a 6 × 7 day grid (body, tabular), **always 6 rows** so the height never jumps.
 - **Cell sizes:** square, the control height (36 / 28 / 44 / 36), grown by as much as the text scale grows the line box (the padding doesn't scale).
-- **Width:** seven cells when it can choose (a popover hugs it); a wider space it's given is filled (a phone sheet), with the cell's fill a square in the middle of each column; a narrower one is shared, the rows shrink to stay square (measured inside the focus ring's inset, so the columns and rows match) and the numbers scale down rather than wrap.
+- **Width:** seven cells when it can choose (a popover hugs it). A wider space it's given is filled until the days are 20 % past their natural side (a phone sheet); past that the calendar centers at that width (a tablet sheet), so **days are always square** and never stretch into wide rectangles. The cell's fill is the natural-size square in the middle of each cell. A narrower space is shared: the rows shrink to stay square (measured inside the focus ring's inset, so the columns and rows match) and the numbers scale down rather than wrap.
+- **Hit area:** each day takes the tap on its whole cell, with no gaps between days or rows; a tap in the focus ring's inset at either edge of the grid picks the edge day.
 - **Day states:**
   - outside the month: muted 60 %;
   - today: semibold with a 4 `brand` dot;
@@ -1054,13 +1055,13 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### DatePicker
 
 - **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
-- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
+- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width up to days 20 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
 - **Phone (touch, < 600): a sheet built for the thumb.**
   - Grabber → caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.
   - Presets: a horizontally scrolling chip row (Today, Tomorrow, Next week…).
   - Time: chips ("Start 11:00", "End 12:45"). Tapping one pushes the **time page** inside the sheet on `standard`, with a "‹ Date" back row.
-    - The time page is **two snap columns** (hours | minutes in the minute step), flat 44 rows. A selection band in `active` sits across the center, the center row is foreground semibold and the others are muted.
+    - The time page is **two snap columns** (hours | minutes in the minute step), flat rows: a line of body text in tabular figures and the tier's gap (28 pointer, 34 touch at 1×, grown with the text scale), **five visible**. The rows fade out toward the top and bottom over two rows (the scroll edge fade). A selection band in `active` with the day cells' radius sits across the center; the center row and the colon are foreground semibold and the others are muted. The columns are a day and a half wide each.
     - The columns snap on `standard` with the fling velocity. No 3D wheel.
     - A duration caption ("1 h 45 min") sits under the end column. "Type a time" opens a numeric field (opt-in).
   - Footer: Clear (ghost) and **Done** (primary) in range and time modes. A single date commits on tap and closes after 200 ms.

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:coil/src/components/calendar/calendar_layout.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -13,8 +14,10 @@ import 'package:flutter/widgets.dart';
 /// column up and down. Minutes step by [minuteInterval]; a [value] between
 /// steps shows the step below it.
 ///
-/// Rows are the tier's control height, grown with the text scale, and the
-/// columns show five of them.
+/// The columns show [visibleRows] rows, each a line of body text (tabular
+/// figures) and the tier's gap, grown with the text scale: 28 tall on
+/// pointer, 34 on touch. The picked row sits in an `active` band with the
+/// day cells' radius; the rows fade out toward the top and bottom edges.
 class CoilTimeColumns extends StatelessWidget {
   /// Creates the time columns.
   const CoilTimeColumns({
@@ -48,24 +51,28 @@ class CoilTimeColumns extends StatelessWidget {
   /// Overrides the theme's motion tokens; a column settles on `standard`.
   final CoilMotion? motion;
 
+  /// How many rows the columns show: the picked one and two on each side.
+  static const visibleRows = 5;
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
-    final extent = calendarCellExtent(
-      context,
-      metrics,
-      CoilTheme.textOf(context).body,
-    );
+    final text = CoilTheme.textOf(context);
+    final extent = calendarTimeRowExtent(context, metrics, text.body);
+    // As wide as a calendar day and a half: the two digits, with room to
+    // grab either column.
+    final width = calendarWidths(context).cell * 1.5;
     final radius = BorderRadius.circular(theme.shape.radii(metrics.tier).item);
     final minuteSteps = 60 ~/ minuteInterval;
     final onChanged = this.onChanged;
     return SizedBox(
-      height: extent * 5,
+      height: extent * visibleRows,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // The band the picked values sit in.
+          // The band the picked values sit in: the selected fill, with the
+          // day cells' corners.
           Positioned.fill(
             child: Center(
               child: SizedBox(
@@ -88,6 +95,7 @@ class CoilTimeColumns extends StatelessWidget {
                 count: 24,
                 index: value.hour,
                 extent: extent,
+                width: width,
                 motion: motion,
                 text: (i) => i.toString().padLeft(2, '0'),
                 onChanged: onChanged == null
@@ -97,7 +105,7 @@ class CoilTimeColumns extends StatelessWidget {
               ExcludeSemantics(
                 child: Text(
                   ':',
-                  style: CoilTheme.textOf(context).muted.body,
+                  style: text.body.tabular.copyWith(fontWeight: text.emphasis),
                 ),
               ),
               _Column(
@@ -105,6 +113,7 @@ class CoilTimeColumns extends StatelessWidget {
                 count: minuteSteps,
                 index: value.minute ~/ minuteInterval,
                 extent: extent,
+                width: width,
                 motion: motion,
                 text: (i) => (i * minuteInterval).toString().padLeft(2, '0'),
                 onChanged: onChanged == null
@@ -129,6 +138,7 @@ class _Column extends StatefulWidget {
     required this.count,
     required this.index,
     required this.extent,
+    required this.width,
     required this.text,
     required this.onChanged,
     required this.motion,
@@ -139,6 +149,7 @@ class _Column extends StatefulWidget {
   final int count;
   final int index;
   final double extent;
+  final double width;
   final String Function(int index) text;
   final ValueChanged<int>? onChanged;
 
@@ -229,43 +240,47 @@ class _ColumnState extends State<_Column> {
                 child: child,
               ),
               child: SizedBox(
-                width: widget.extent * 1.5,
+                width: widget.width,
                 child: ExcludeSemantics(
-                  child: ListWheelScrollView.useDelegate(
-                    controller: _scroll,
-                    itemExtent: widget.extent,
-                    physics: CalendarWheelPhysics(
-                      motion: CoilTheme.motionOf(
-                        context,
-                        override: widget.motion,
-                      ).standard,
-                    ),
-                    // Nearly flat rows, as the design asks: no 3D drum.
-                    diameterRatio: 8,
-                    onSelectedItemChanged: (i) {
-                      final index = i % widget.count;
-                      if (index == widget.index) return;
-                      unawaited(
-                        CoilHaptics.play(context, CoilHapticEvent.toggle),
-                      );
-                      widget.onChanged?.call(index);
-                    },
-                    childDelegate: ListWheelChildLoopingListDelegate(
-                      children: [
-                        for (var i = 0; i < widget.count; i++)
-                          Center(
-                            child: Text(
-                              widget.text(i),
-                              maxLines: 1,
-                              softWrap: false,
-                              style: i == widget.index
-                                  ? text.body.tabular.copyWith(
-                                      fontWeight: text.emphasis,
-                                    )
-                                  : text.muted.body.tabular,
+                  // The rows fade out over two rows toward each edge.
+                  child: CoilScrollEdgeFade(
+                    extent: widget.extent * 2,
+                    child: ListWheelScrollView.useDelegate(
+                      controller: _scroll,
+                      itemExtent: widget.extent,
+                      physics: CalendarWheelPhysics(
+                        motion: CoilTheme.motionOf(
+                          context,
+                          override: widget.motion,
+                        ).standard,
+                      ),
+                      // Nearly flat rows, as the design asks: no 3D drum.
+                      diameterRatio: 8,
+                      onSelectedItemChanged: (i) {
+                        final index = i % widget.count;
+                        if (index == widget.index) return;
+                        unawaited(
+                          CoilHaptics.play(context, CoilHapticEvent.toggle),
+                        );
+                        widget.onChanged?.call(index);
+                      },
+                      childDelegate: ListWheelChildLoopingListDelegate(
+                        children: [
+                          for (var i = 0; i < widget.count; i++)
+                            Center(
+                              child: Text(
+                                widget.text(i),
+                                maxLines: 1,
+                                softWrap: false,
+                                style: i == widget.index
+                                    ? text.body.tabular.copyWith(
+                                        fontWeight: text.emphasis,
+                                      )
+                                    : text.muted.body.tabular,
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

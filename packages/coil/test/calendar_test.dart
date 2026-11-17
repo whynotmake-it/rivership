@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:coil/coil.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -373,4 +375,118 @@ void sizingTests() {
       greaterThanOrEqualTo(day.width * 7),
     );
   });
+
+  for (final tier in CoilTier.values) {
+    testWidgets('a wide space centers the calendar with square days '
+        '(${tier.name})', (tester) async {
+      tester.view
+        ..devicePixelRatio = 2
+        ..physicalSize = const Size(1000, 1000) * 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        testApp(
+          tier: tier,
+          home: Center(
+            child: SizedBox(
+              width: 800,
+              child: CoilCalendar(
+                selected: DateTime(2026, 11, 14),
+                onSelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      final natural = switch (tier) {
+        CoilTier.pointer => 36.0,
+        CoilTier.touch => 44.0,
+      };
+      final grid = tester.getRect(find.byType(PageView));
+      // At most 20 % past the natural cell, and centered in the 800.
+      expect(grid.width, lessThanOrEqualTo(natural * 1.2 * 7 + 8));
+      expect(grid.center.dx, moreOrLessEquals(500, epsilon: 0.5));
+      // Every day's cell (its tap area) is square, and its fill is too.
+      for (final cell in _cells().evaluate().take(7)) {
+        final size = tester.getSize(find.byWidget(cell.widget));
+        expect(size.width, moreOrLessEquals(size.height, epsilon: 0.05));
+      }
+      final fill = tester.getSize(_days().first);
+      expect(fill.width, moreOrLessEquals(fill.height, epsilon: 0.05));
+    });
+  }
+
+  testWidgets('every point of the grid picks a day', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    DateTime? picked;
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        home: Center(
+          child: SizedBox(
+            width: 380,
+            child: CoilCalendar(
+              selected: DateTime(2026, 11, 14),
+              onSelected: (day) => picked = day,
+            ),
+          ),
+        ),
+      ),
+    );
+    final grid = tester.getRect(find.byType(PageView));
+    final cells = <RenderObject>{
+      for (final cell in _cells().evaluate())
+        tester.renderObject(
+          find
+              .descendant(
+                of: find.byWidget(cell.widget),
+                matching: find.byType(Listener),
+              )
+              .first,
+        ),
+    };
+    // Every point, edges and the focus ring's inset included, hits a cell.
+    var misses = 0;
+    for (var y = grid.top + 0.5; y < grid.bottom; y += 1) {
+      for (var x = grid.left + 0.5; x < grid.right; x += 1) {
+        final result = HitTestResult();
+        RendererBinding.instance.hitTestInView(
+          result,
+          Offset(x, y),
+          tester.view.viewId,
+        );
+        if (!result.path.any((entry) => cells.contains(entry.target))) {
+          misses++;
+        }
+      }
+    }
+    expect(misses, 0);
+
+    // A real tap in a cell's corner, outside its fill, picks its day; so
+    // does one in the inset at the grid's edge.
+    final cell = tester.getRect(
+      find.byWidget(_cells().evaluate().elementAt(19).widget),
+    );
+    for (final corner in [
+      cell.topLeft + const Offset(1, 1),
+      cell.bottomRight - const Offset(1, 1),
+    ]) {
+      picked = null;
+      await tester.tapAt(corner);
+      await tester.pumpAndSettle();
+      expect(picked, DateTime(2026, 11, 14));
+    }
+    picked = null;
+    await tester.tapAt(Offset(grid.left + 0.5, cell.center.dy));
+    await tester.pumpAndSettle();
+    // November 2026 starts on a Sunday: Monday the 9th leads row three.
+    expect(picked, DateTime(2026, 11, 9));
+  });
 }
+
+/// Each day's whole cell, the area that takes its tap.
+Finder _cells() => find.descendant(
+  of: find.byType(PageView),
+  matching: find.byWidgetPredicate(
+    (widget) => widget.runtimeType.toString() == '_Day',
+  ),
+);

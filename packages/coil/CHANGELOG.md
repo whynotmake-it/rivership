@@ -27,6 +27,14 @@ Milestone M0, unreleased.
   springs back, on `standard`. A trackpad swipe pages too; a mouse drag
   doesn't. Landing on a new month plays the `toggle` haptic, and only a
   finger's pick plays `pick` (Enter, Space and clicks pick silently).
+- `CoilCalendar` and `CoilDatePicker` keep days square in any width: a
+  wide sheet or popover grows the days at most 20 % past their natural
+  side and centers the calendar (and the date picker's time columns)
+  instead of stretching the days into wide rectangles. Every point of
+  the grid picks a day, the focus ring's inset at the edges included.
+  `CoilTimeColumns` is compact: five rows of a body line and the tier's
+  gap (28 pointer, 34 touch), fading out toward the top and bottom, in
+  tabular figures with a semibold colon; `CoilTimeColumns.visibleRows`.
 - `CoilThinkingSteps` draws a connector under every step's glyph but the
   last's, following wrapping, text scale and RTL;
   `CoilThinkingStepsStyle.connectorColor`, `connectorWidth` and
