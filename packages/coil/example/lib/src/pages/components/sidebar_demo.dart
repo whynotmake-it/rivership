@@ -475,3 +475,115 @@ class _BannerArt extends StatelessWidget {
     );
   }
 }
+
+/// A phone layout with a sidebar on each side: workspace navigation on the
+/// start side and threads on the end side. Two nested scaffolds; below
+/// their breakpoint each one's sidebar becomes a drawer the page slides
+/// aside to reveal. Drag the page sideways anywhere (the cards scroll
+/// first and hand over at their ends), or press a trigger.
+class PhoneSidebars extends StatelessWidget {
+  const PhoneSidebars({super.key});
+
+  @override
+  Widget build(BuildContext context) => const CoilSidebarScaffold(
+    autofocus: false,
+    drawerLabel: 'Navigation',
+    sidebar: CoilSidebar(
+      header: DemoHeader(),
+      footer: UserMenu(),
+      children: [WorkspaceGroup()],
+    ),
+    body: CoilSidebarScaffold(
+      autofocus: false,
+      side: CoilSidebarSide.end,
+      drawerLabel: 'Threads',
+      sidebar: CoilSidebar(children: [ThreadsGroup(count: 4)]),
+      body: _PhonePage(),
+    ),
+  );
+}
+
+class _PhonePage extends StatelessWidget {
+  const _PhonePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final colors = CoilTheme.of(context).colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            spacing: 8,
+            children: [
+              const CoilSidebarTrigger(
+                side: CoilSidebarSide.start,
+                icon: CatalogIcon(Glyph.panelLeft),
+                openLabel: Text('Open navigation'),
+                closeLabel: Text('Close navigation'),
+              ),
+              Expanded(
+                child: Text(
+                  'Chat',
+                  textAlign: TextAlign.center,
+                  style: text.body.copyWith(fontWeight: text.emphasis),
+                ),
+              ),
+              const CoilSidebarTrigger(
+                side: CoilSidebarSide.end,
+                icon: CatalogIcon(Glyph.panelRight),
+                openLabel: Text('Open threads'),
+                closeLabel: Text('Close threads'),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Text('Pinned', style: text.muted.caption),
+        ),
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: 6,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, i) => SizedBox(
+              width: 160,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: colors.muted,
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(
+                      CoilTheme.radiiOf(context).container,
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Align(
+                    alignment: AlignmentDirectional.bottomStart,
+                    child: Text('Card ${i + 1}', style: text.body),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Drag the page sideways anywhere to reveal a sidebar. The '
+              'cards scroll first and hand over at their ends.',
+              style: text.muted.body,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
