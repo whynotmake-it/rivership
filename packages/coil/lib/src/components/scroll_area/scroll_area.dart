@@ -256,7 +256,14 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
               child: widget.child,
             ),
           );
-    if (widget.scrollbar == CoilScrollbarVisibility.auto) {
+    if (widget.scrollbar == CoilScrollbarVisibility.none) {
+      // No bar at all: not coil's, and not the behavior's desktop one
+      // either. The content above keeps the ambient behavior.
+      scrollable = ScrollConfiguration(
+        behavior: ambient.copyWith(scrollbars: false),
+        child: scrollable,
+      );
+    } else {
       scrollable = CoilScrollbar(
         controller: _controller,
         look: style.scrollbarLook,

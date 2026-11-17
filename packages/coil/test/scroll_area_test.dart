@@ -342,6 +342,58 @@ void main() {
     expect(find.byWidgetPredicate((w) => w is RawScrollbar), findsNWidgets(2));
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('scrollbar: none draws no bar, not even the behavior\'s', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea(
+          scrollbar: CoilScrollbarVisibility.none,
+          child: Column(
+            children: [
+              _rows(12),
+              // A nested scrollable keeps the app's behavior and its bar.
+              SizedBox(
+                height: 60,
+                child: ListView(
+                  key: const ValueKey('nested'),
+                  children: [_rows(4)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(CoilScrollbar), findsNothing);
+    expect(
+      find.byWidgetPredicate((w) => w is RawScrollbar),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('nested')),
+        matching: find.byWidgetPredicate((w) => w is RawScrollbar),
+      ),
+      findsOneWidget,
+    );
+
+    // The same for a list it wraps. (A new app: the route keeps its page.)
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea.scrollable(
+          controller: controller,
+          scrollbar: CoilScrollbarVisibility.none,
+          child: ListView(controller: controller, children: [_rows(12)]),
+        ),
+      ),
+    );
+    expect(find.byWidgetPredicate((w) => w is RawScrollbar), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('content that shrinks while scrolled to the end rebuilds the '
       'area after the frame', (tester) async {
     final controller = ScrollController();
