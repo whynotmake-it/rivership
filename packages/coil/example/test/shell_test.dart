@@ -18,6 +18,7 @@ import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -166,6 +167,70 @@ void main() {
     expect(_sidebarItem('Button').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  // The frame's screen sets its own scroll behavior (any pointer drags),
+  // which coil's drawer and sheets have to hand drags through.
+  for (final kind in [PointerDeviceKind.mouse, PointerDeviceKind.touch]) {
+    testWidgets('drags and flings in the frame end cleanly (${kind.name})', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        size: const Size(1440, 900),
+        viewport: CatalogViewport.mobile,
+      );
+      final home = find.byType(HomePage);
+      final scrollable = tester.state<ScrollableState>(
+        find.descendant(of: home, matching: find.byType(Scrollable)).first,
+      );
+
+      // Scroll the page by dragging and by flinging, ending on the screen.
+      await tester.drag(home, const Offset(0, -200), kind: kind);
+      await tester.pumpAndSettle();
+      final scrolled = scrollable.position.pixels;
+      expect(scrolled, greaterThan(0));
+      // From the top of the screen, clear of the tiles' own scrollers.
+      await tester.flingFrom(
+        tester.getTopLeft(home) + const Offset(150, 140),
+        const Offset(0, 400),
+        1500,
+        deviceKind: kind,
+      );
+      await tester.pumpAndSettle();
+      expect(scrollable.position.pixels, lessThan(scrolled));
+
+      // Open the drawer by dragging the page, close it by dragging back.
+      final center = tester.getCenter(home);
+      await tester.dragFrom(center, const Offset(260, 0), kind: kind);
+      await tester.pumpAndSettle();
+      expect(_sidebarItem('Button').hitTestable(), findsOneWidget);
+      await tester.dragFrom(
+        tester.getCenter(find.byType(PhoneFrame)) + const Offset(120, 0),
+        const Offset(-260, 0),
+        kind: kind,
+      );
+      await tester.pumpAndSettle();
+      expect(_sidebarItem('Button').hitTestable(), findsNothing);
+
+      // A sheet in the frame: the date and time picker. Drag and fling in
+      // it, then drag it away.
+      final picker = find.byType(CoilDatePicker);
+      await tester.ensureVisible(picker);
+      await tester.pumpAndSettle();
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      final sheet = find.byType(CoilCalendar).last;
+      expect(sheet, findsOneWidget);
+      await tester.drag(sheet, const Offset(-200, 0), kind: kind);
+      await tester.pumpAndSettle();
+      await tester.fling(sheet, const Offset(0, -200), 1200, deviceKind: kind);
+      await tester.pumpAndSettle();
+      await tester.fling(sheet, const Offset(0, 500), 2000, deviceKind: kind);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('a narrow window shows the catalog full screen on touch', (
     tester,
