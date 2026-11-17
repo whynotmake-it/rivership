@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
+import 'package:stupid_simple_sheet/src/presentation_sizing.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 // Smoothing factor applied to the device's top padding (which approximates the corner radius)
@@ -56,8 +57,9 @@ Widget getOverlayedChild(
   BuildContext context,
   Widget? child,
   Animation<double> animation,
-  bool secondLayer,
-) {
+  bool secondLayer, {
+  bool expandOverlay = true,
+}) {
   final bool isDarkMode =
       CupertinoTheme.brightnessOf(context) == Brightness.dark;
   final overlayColor = isDarkMode && !secondLayer
@@ -67,19 +69,24 @@ Widget getOverlayedChild(
     begin: 0.0,
     end: secondLayer && isDarkMode ? 0.15 : 0.1,
   ));
+  final overlay = IgnorePointer(
+    child: FadeTransition(
+      opacity: opacity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: overlayColor),
+        // When expanding, the overlay is a non-positioned child that forces the
+        // stack to fill the largest allowed size (the default sheet behavior).
+        child: expandOverlay ? const SizedBox.expand() : null,
+      ),
+    ),
+  );
   return Stack(
     clipBehavior: Clip.none,
     children: <Widget>[
       if (child != null) child,
-      IgnorePointer(
-        child: FadeTransition(
-          opacity: opacity,
-          child: DecoratedBox(
-            decoration: BoxDecoration(color: overlayColor),
-            child: const SizedBox.expand(),
-          ),
-        ),
-      ),
+      // When not expanding, position the overlay so it matches the child's size
+      // instead of dictating it — letting a content-sized sheet hug content.
+      if (expandOverlay) overlay else Positioned.fill(child: overlay),
     ],
   );
 }
@@ -213,6 +220,8 @@ abstract class CopiedCupertinoSheetTransitions {
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     required Color backgroundColor,
+    double? extensionAtBottom,
+    bool hugContent = false,
     Widget? child,
   }) {
     return SlideTransition(
@@ -248,6 +257,7 @@ abstract class CopiedCupertinoSheetTransitions {
               backgroundColor,
               context,
             ),
+            extensionAtBottom: extensionAtBottom,
             child: child!,
           ),
           child: getOverlayedChild(
@@ -258,6 +268,7 @@ abstract class CopiedCupertinoSheetTransitions {
               end: opacityRange.$2,
             ),
             true,
+            expandOverlay: !hugContent,
           ),
         ),
       ),
@@ -277,11 +288,16 @@ abstract class CopiedCupertinoSheetTransitions {
         top: Radius.circular(12),
       ),
     ),
+    PresentationSizing presentationSizing = PresentationSizing.automatic,
+    bool secondSheet = false,
     Widget? child,
   }) {
+    final formSheet =
+        presentationSizing.resolvesToFormSheet(MediaQuery.sizeOf(context));
+    final effectiveShape = formSheet ? allCornersSheetShape(shape) : shape;
     final shapeTween = ShapeBorderTween(
-      begin: shape,
-      end: shape.scale(1 / 1.5),
+      begin: effectiveShape,
+      end: effectiveShape.scale(1 / 1.5),
     );
 
     final shapeAnimation = secondaryAnimation
@@ -299,8 +315,71 @@ abstract class CopiedCupertinoSheetTransitions {
       opacityRange: opacityRange,
       slideBackRange: slideBackRange,
       backgroundColor: backgroundColor,
+      extensionAtBottom: formSheet ? 0 : null,
+      hugContent: presentationSizing.sizesToContent(
+        MediaQuery.sizeOf(context),
+      ),
       child: child,
     );
+
+    if (formSheet) {
+      return Builder(
+        builder: (context) {
+          final availableSize = presentationSizing.formSheetAvailableSize(
+            context,
+            additionalTopMargin: secondSheet ? kFormSheetPaddingToPrevious : 0,
+          );
+          final constraints = presentationSizing.constraintsFor(
+            availableSize,
+            formSheet: true,
+          );
+          return Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: kFormSheetMinHorizontalMargin,
+              vertical: kFormSheetMinVerticalMargin,
+            ),
+            child: Center(
+              child: Transform.translate(
+                offset: Offset(
+                  0,
+                  secondSheet ? kFormSheetPaddingToPrevious : 0,
+                ),
+                child: AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, child) {
+                    final maxHeight =
+                        constraints.maxHeight * animation.value.clamp(0.0, 1.0);
+                    return ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.minWidth,
+                        maxWidth: constraints.maxWidth,
+                        minHeight: min(constraints.minHeight, maxHeight),
+                        maxHeight: maxHeight,
+                      ),
+                      child: child,
+                    );
+                  },
+                  child: secondaryChild,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    final regularPage = presentationSizing.isRegularPresentation(
+      MediaQuery.sizeOf(context),
+    );
+    final constraints = regularPage
+        ? presentationSizing.constraintsFor(
+            Size(
+              MediaQuery.sizeOf(context).width,
+              MediaQuery.sizeOf(context).height,
+            ),
+            formSheet: false,
+          )
+        : BoxConstraints.tight(MediaQuery.sizeOf(context));
 
     return Builder(
       builder: (context) {
@@ -317,12 +396,49 @@ abstract class CopiedCupertinoSheetTransitions {
               child: SheetDismissalTransition(
                 animation: animation,
                 dismissalMode: dismissalMode,
-                child: secondaryChild,
+                child: ConstrainedBox(
+                  constraints: constraints,
+                  child: secondaryChild,
+                ),
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  /// Returns a version of [shape] with all corners rounded, suitable for
+  /// presentations that are not edge-attached. Shape borders are preserved.
+  static ShapeBorder allCornersSheetShape(ShapeBorder shape) {
+    switch (shape) {
+      case RoundedSuperellipseBorder(
+          :final borderRadius,
+          :final side,
+        ):
+        final resolved = borderRadius.resolve(TextDirection.ltr);
+        return RoundedSuperellipseBorder(
+          side: side,
+          borderRadius: BorderRadius.only(
+            topLeft: resolved.topLeft,
+            topRight: resolved.topRight,
+            bottomLeft: resolved.topLeft,
+            bottomRight: resolved.topRight,
+          ),
+        );
+      case RoundedRectangleBorder(:final borderRadius, :final side):
+        final resolved = borderRadius.resolve(TextDirection.ltr);
+        return RoundedRectangleBorder(
+          side: side,
+          borderRadius: BorderRadius.only(
+            topLeft: resolved.topLeft,
+            topRight: resolved.topRight,
+            bottomLeft: resolved.topLeft,
+            bottomRight: resolved.topRight,
+          ),
+        );
+      default:
+        return shape;
+    }
   }
 }

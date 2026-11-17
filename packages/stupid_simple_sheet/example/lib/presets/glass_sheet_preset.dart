@@ -62,8 +62,9 @@ class GlassSheetPreview extends StatelessWidget {
 /// Demonstrates [StupidSimpleGlassSheetRoute], a bundled preset built
 /// with [StupidSimpleSheetTransitionMixin].
 ///
-/// This route recreates the iOS 26 liquid-glass sheet: the first sheet blurs
-/// the backdrop, and subsequent sheets stack seamlessly without re-blurring.
+/// This route recreates the iOS 26 liquid-glass sheet: its translucent
+/// material filters only the sheet region, and subsequent sheets stack
+/// seamlessly without applying another barrier.
 ///
 /// Open the sheet and tap "Push Another" to see glass sheets stack.
 class GlassSheetPreset extends StatelessWidget {
@@ -81,7 +82,7 @@ class GlassSheetPreset extends StatelessWidget {
                 spacing: 16,
                 children: [
                   const Text(
-                    'iOS 26 liquid glass style.\nOnly the first sheet blurs.',
+                    'iOS 26 liquid glass style.\nOnly the first sheet dims.',
                     textAlign: TextAlign.center,
                   ),
                   CupertinoButton.filled(

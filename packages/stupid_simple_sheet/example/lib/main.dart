@@ -77,7 +77,9 @@ final stupidSimpleSheetRoutes = [
     type: RouteType.custom(
       customRouteBuilder: <T>(context, child, page) =>
           StupidSimpleGlassSheetRoute<T>(
-        snappingConfig: SheetSnappingConfig([.5, 1]),
+        snappingConfig: const SheetSnappingConfig.detents(
+          [SheetDetent.medium, SheetDetent.large],
+        ),
         backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
         dismissalMode: DismissalMode.shrink,
         settings: page,
@@ -332,7 +334,7 @@ class _HomePage extends StatelessWidget {
           preview: const GlassSheetPreview(),
           title: 'Glass Sheet',
           description:
-              'The first sheet blurs and fades the background. Subsequent sheets stack on top of each other.',
+              'The first sheet dims the background. Subsequent sheets stack on top of each other.',
           onTap: () => context.navigateTo(const NamedRoute('Glass Sheet')),
         ),
       ];

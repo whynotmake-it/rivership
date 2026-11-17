@@ -13,6 +13,7 @@ export 'package:scroll_drag_detector/scroll_drag_detector.dart'
     show ScrollDragBehavior;
 
 export 'src/dismissal_mode.dart';
+export 'src/presentation_sizing.dart' show PresentationSizing;
 export 'src/route_snapshot_mode.dart';
 export 'src/sheet_background.dart';
 export 'src/sheet_dismissal_transition.dart';
@@ -144,6 +145,7 @@ class _RelativeGestureDetector extends StatefulWidget {
     required this.onRelativeDragEnd,
     required this.dismissalMode,
     required this.child,
+    this.referenceHeight,
   });
 
   final bool dragFromTrailingEdge;
@@ -156,6 +158,7 @@ class _RelativeGestureDetector extends StatefulWidget {
   final void Function(double velocity, double referenceHeight, bool wouldScroll)
       onRelativeDragEnd;
   final DismissalMode dismissalMode;
+  final double? referenceHeight;
 
   final Widget child;
 
@@ -180,10 +183,13 @@ class _RelativeGestureDetectorState extends State<_RelativeGestureDetector> {
       left: ScrollDragMode.none,
       right: ScrollDragMode.none,
       onVerticalDragStart: (details, _) {
-        _referenceHeight = SheetDismissalTransition.referenceHeightOf(
+        final measuredHeight = SheetDismissalTransition.referenceHeightOf(
           context,
           widget.dismissalMode,
         );
+        _referenceHeight = widget.dismissalMode == DismissalMode.shrink
+            ? measuredHeight ?? widget.referenceHeight
+            : widget.referenceHeight ?? measuredHeight;
         widget.onRelativeDragStart();
       },
       onVerticalDragEnd: (details, willScroll) {
@@ -276,6 +282,18 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// above the keyboard.
   bool get originateAboveBottomViewInset => false;
 
+  /// The maximum height used to resolve detents and normalize drag deltas.
+  ///
+  /// Routes that constrain their sheet to a smaller presentation (for example
+  /// a centered form sheet) should override this to return the presentation's
+  /// maximum height rather than the route's full height.
+  ///
+  /// Defaults to the current screen height.
+  @protected
+  double presentationExtent(BuildContext context) {
+    return MediaQuery.sizeOf(context).height;
+  }
+
   /// The mode used to animate the sheet's dismissal.
   ///
   /// [DismissalMode.slide] translates the sheet downward (the default).
@@ -344,6 +362,54 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   SheetSnappingConfig get effectiveSnappingConfig =>
       _snappingConfigOverride ?? snappingConfig;
 
+  SheetDetentContext? _detentContext;
+
+  /// Resolves the active snapping configuration against [context].
+  ///
+  /// This converts absolute [SheetDetent.height] values and custom resolvers
+  /// into the normalized values used by the route animation.
+  @protected
+  SheetSnappingConfig resolvedSnappingConfig(BuildContext context) {
+    final detentContext = _detentContext = SheetDetentContext(
+      maxHeight: presentationExtent(context),
+      screenSize: MediaQuery.sizeOf(context),
+      safeAreaInsets: MediaQuery.paddingOf(context),
+    );
+    return effectiveSnappingConfig.resolve(detentContext);
+  }
+
+  SheetSnappingConfig get _resolvedSnappingConfig =>
+      effectiveSnappingConfig.resolve(
+        _detentContext ??
+            const SheetDetentContext(
+              maxHeight: 1,
+              screenSize: Size.zero,
+            ),
+      );
+
+  /// The range of a sheet stacked on top during which this sheet pushes back.
+  ///
+  /// Native stacked sheets only begin moving the route behind once the sheet
+  /// in front reaches approximately the rear sheet's height. Expressing that
+  /// threshold in the front sheet's normalized coordinate keeps the behavior
+  /// correct across different presentation extents and detent sets.
+  @protected
+  (double, double) slideBackRangeFor(
+    BuildContext context,
+    StupidSimpleSheetTransitionMixin<dynamic> nextSheet,
+  ) {
+    final nextConfig = nextSheet.resolvedSnappingConfig(context);
+    final nextMaxExtent = nextConfig.maxExtent;
+    final rearExtent = animation?.value ?? 0;
+    final rearPresentationExtent = presentationExtent(context);
+    final frontPresentationExtent = nextSheet.presentationExtent(context);
+    final rearInFrontCoordinates = frontPresentationExtent <= 0
+        ? 0.0
+        : rearExtent * rearPresentationExtent / frontPresentationExtent;
+    final start = rearInFrontCoordinates.clamp(0.0, nextMaxExtent);
+    return (start, nextMaxExtent);
+  }
+
   double? _dragEndVelocity;
 
   double? _animationTargetValue;
@@ -411,8 +477,16 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     // Get the appropriate end value
     double endValue;
     if (forward) {
+      final navigatorContext = navigator?.context;
+      if (navigatorContext != null) {
+        _detentContext = SheetDetentContext(
+          maxHeight: presentationExtent(navigatorContext),
+          screenSize: MediaQuery.sizeOf(navigatorContext),
+          safeAreaInsets: MediaQuery.paddingOf(navigatorContext),
+        );
+      }
       // Opening: use initial snap point or default
-      endValue = effectiveSnappingConfig.initialSnap;
+      endValue = _resolvedSnappingConfig.initialSnap;
     } else {
       // Closing
       endValue = 0.0;
@@ -443,8 +517,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         child: _RelativeGestureDetector(
           dismissalMode: dismissalMode,
           dragHandoff: dragHandoff,
+          referenceHeight: presentationExtent(context),
           dragFromTrailingEdge: (_animationTargetValue ?? animation.value) <
-              effectiveSnappingConfig.maxExtent,
+              resolvedSnappingConfig(context).maxExtent,
           onRelativeDragStart: () => _handleDragStart(context),
           onRelativeDragUpdate: (relativeDelta, referenceHeight, wouldScroll) =>
               _handleDragUpdate(
@@ -554,9 +629,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final currentValue = controller?.value ?? 0;
     var adjustedDelta = delta;
 
-    final maxExtent = effectiveSnappingConfig.maxExtent;
+    final maxExtent = resolvedSnappingConfig(context).maxExtent;
 
-    final minSnap = effectiveSnappingConfig.minExtent;
+    final minSnap = resolvedSnappingConfig(context).minExtent;
     final cannotPop = popDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop =
         cannotPop && currentValue < minSnap && delta > 0;
@@ -611,15 +686,16 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final currentValue = controller!.value;
     _dragEndVelocity = velocity;
 
-    final maxExtent = effectiveSnappingConfig.maxExtent;
+    final config = resolvedSnappingConfig(context);
+    final maxExtent = config.maxExtent;
 
-    final minSnap = effectiveSnappingConfig.minExtent;
+    final minSnap = config.minExtent;
     final routePopDisposition = popDisposition;
     final cannotPop = routePopDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop = cannotPop && currentValue < minSnap;
 
     if (draggable && routePopDisposition == RoutePopDisposition.doNotPop) {
-      final attemptedTarget = effectiveSnappingConfig.findTargetSnapPoint(
+      final attemptedTarget = config.findTargetSnapPoint(
         position: currentValue,
         relativeVelocity: -velocity,
         absoluteVelocity: -velocity * referenceHeight,
@@ -649,8 +725,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       _dragEndVelocity = null;
     } else {
       // Find the target snap point based on position and velocity
-      final targetValue =
-          _animationTargetValue = effectiveSnappingConfig.findTargetSnapPoint(
+      final targetValue = _animationTargetValue = config.findTargetSnapPoint(
         position: currentValue,
         relativeVelocity: -velocity,
         absoluteVelocity: -velocity * referenceHeight,
@@ -769,7 +844,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
 
     if (snap) {
       // Find the closest snapping point that isn't 0.0
-      final config = effectiveSnappingConfig;
+      final config = _resolvedSnappingConfig;
 
       target = switch (config.findClosestSnapPoint(relativePosition)) {
         0.0 => config.points.first,
@@ -827,7 +902,7 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
 
       // Find the nearest snapping point in the new configuration
       final targetPosition =
-          effectiveSnappingConfig.findClosestSnapPoint(currentPosition);
+          _resolvedSnappingConfig.findClosestSnapPoint(currentPosition);
 
       // If the current position is already at a valid snap point, don't animate
       if ((targetPosition - currentPosition).abs() < sheetPositionTolerance) {
