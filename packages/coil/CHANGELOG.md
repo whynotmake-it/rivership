@@ -17,10 +17,12 @@ Milestone M0, unreleased.
   aside to show the sidebar, taking the screen's corner radius while it
   moves and squaring up once it covers the sidebar again; a horizontal
   drag anywhere on the page opens it, and horizontal scrollables hand
-  over at their edge. Nothing tints the page: the sidebar fades in as it
-  is revealed, and the page's edge takes a popover's shadow (step 3) and
-  a hairline in `border`, all following the drag. The pointer tier keeps
-  the drawer over the page.
+  over at their edge. The sidebar fades in as it is revealed, and the
+  page lifts off it: a light scrim (7 % light, 15 % dark), shadow step 8
+  centered on its side and a hairline in `border`, all following the drag.
+  Where the screen's radius is unknown, phones round the page 40 (iOS) /
+  24 (Android) by default (`drawerFallbackCornerRadius`). The pointer tier
+  keeps the drawer over the page.
   New: `drawerReveal`, `drawerDrag`, `drawerWidth`, `CoilSidebarStyle`'s
   `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
   scaffolds give a phone a sidebar on each side.
@@ -30,7 +32,8 @@ Milestone M0, unreleased.
     CoilDrawerReveal { behind, over }`, `drag: CoilDrawerDrag?` and look
     parameters. It renders in place instead of in an overlay.
   - `CoilScreenRadius` (primitive) reads the device screen's corner radii
-    once through `corner_radius_plugin`; null on web, desktop and in tests.
+    once through `corner_radius_plugin`; null where unknown (web, desktop,
+    a failed query, tests) and `BorderRadius.zero` for a square screen.
     coil now depends on `corner_radius_plugin` and `scroll_drag_detector`.
 - Keys are Flutter shortcuts. Every coil widget maps its keys to intents
   in `Shortcuts` and handles them in `Actions`, instead of reading key

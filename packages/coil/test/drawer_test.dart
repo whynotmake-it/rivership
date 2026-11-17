@@ -27,7 +27,7 @@ class _Host extends StatefulWidget {
   final CoilDrawerReveal reveal;
   final CoilDrawerDrag? drag;
   final BorderRadius? cornerRadius;
-  final BorderRadius fallbackCornerRadius;
+  final BorderRadius? fallbackCornerRadius;
   final CoilDrawerEdge? initial;
 
   @override
@@ -247,8 +247,8 @@ void main() {
       expect(_open(tester), isNull, reason: 'a short, slow drag settles back');
     });
 
-    testWidgets('no scrim; the panel fades in and the edge lifts with the '
-        'drag', (tester) async {
+    testWidgets('a light scrim, the panel fading in and a lifted edge follow '
+        'the drag', (tester) async {
       await _pump(tester, const _Host());
       final colors = CoilTheme.of(tester.element(find.byType(_Host))).colors;
       final gesture = await tester.startGesture(const Offset(100, 500));
@@ -259,7 +259,13 @@ void main() {
       // Half of the 320 panel.
       expect(_contentLeft(tester), 160);
       expect(_panelOpacity(tester), closeTo(0.5, 0.01));
-      final shadow = colors.shadow(3);
+      // Step 8's blurs, centered so they show at the side.
+      final shadow = [
+        for (final s in colors.shadow(8))
+          if (s.blurRadius > 0)
+            s.copyWith(offset: Offset.zero, spreadRadius: 0),
+      ];
+      expect(shadow, isNotEmpty);
       expect(_edge(tester).shadows, [
         for (final s in shadow)
           s.copyWith(color: s.color.withValues(alpha: s.color.a * 0.5)),
@@ -268,7 +274,7 @@ void main() {
         _hairline(tester).color,
         colors.border.withValues(alpha: colors.border.a * 0.5),
       );
-      expect(_scrim(tester).a, 0, reason: 'nothing tints the content');
+      expect(_scrim(tester).a, closeTo(0.035, 0.001), reason: 'half of 7 %');
 
       await gesture.moveBy(const Offset(200, 0));
       await tester.pump(const Duration(milliseconds: 300));
@@ -278,7 +284,7 @@ void main() {
       expect(_panelOpacity(tester), 1);
       expect(_edge(tester).shadows, shadow);
       expect(_hairline(tester).color, colors.border);
-      expect(_scrim(tester).a, 0);
+      expect(_scrim(tester).a, closeTo(0.07, 0.001));
 
       // A press on the content still closes it, and the edge goes away.
       await tester.tapAt(const Offset(360, 400));
@@ -448,6 +454,38 @@ void main() {
       );
       expect(CoilScreenRadius.value, isNull);
       expect(_radius(tester), 12);
+    });
+
+    testWidgets('the default fallback is a phone radius on iOS and Android '
+        'only', (tester) async {
+      for (final (platform, radius) in [
+        (TargetPlatform.iOS, 40.0),
+        (TargetPlatform.android, 24.0),
+        (TargetPlatform.macOS, 0.0),
+      ]) {
+        debugDefaultTargetPlatformOverride = platform;
+        // The query fails here: no plugin is registered in tests.
+        CoilScreenRadius.debugReset();
+        await tester.pumpWidget(const SizedBox());
+        await _pump(
+          tester,
+          const _Host(
+            initial: CoilDrawerEdge.start,
+            fallbackCornerRadius: null,
+          ),
+        );
+        expect(_radius(tester), radius, reason: '$platform');
+      }
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('a square screen stays square', (tester) async {
+      CoilScreenRadius.debugReset(value: BorderRadius.zero);
+      await _pump(
+        tester,
+        const _Host(initial: CoilDrawerEdge.start, fallbackCornerRadius: null),
+      );
+      expect(_radius(tester), 0);
     });
 
     testWidgets('an explicit radius wins', (tester) async {

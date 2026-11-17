@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/intents.dart';
@@ -58,8 +59,21 @@ const _flingVelocity = 400.0;
 const _restSlop = 0.5;
 
 /// The shadow on the content's edge while a panel is revealed from behind:
-/// a raised surface's, as popovers use.
-const _contentShadowLevel = 3;
+/// the top of the ladder, so the page reads as a sheet lifted off the panel.
+const _contentShadowLevel = 8;
+
+/// The scrim over the content once a panel revealed from behind is fully
+/// open: a light dim, with the edge doing most of the separating.
+const _behindScrimLight = Color.from(alpha: 0.07, red: 0, green: 0, blue: 0);
+const _behindScrimDark = Color.from(alpha: 0.15, red: 0, green: 0, blue: 0);
+
+/// The content's corners while aside where the screen can't tell its own
+/// radius on a phone (the platform query failed or isn't registered): close
+/// to a recent iPhone's or Android phone's. Desktop and web stay square.
+const _phoneFallbackRadius = {
+  TargetPlatform.iOS: 40.0,
+  TargetPlatform.android: 24.0,
+};
 
 /// Shows [child] with a panel on either side, [start] and [end], one of
 /// which is [open] at a time.
@@ -68,8 +82,9 @@ const _contentShadowLevel = 3;
 /// and [child] slides aside to reveal one, taking the device's screen
 /// corner radius while it is away from the edges ([cornerRadius], from
 /// [CoilScreenRadius] when null) and squaring up again the moment it
-/// covers the panels. As it slides, the panel fades in under it and the
-/// content's edge takes a shadow and a hairline, both following the drag.
+/// covers the panels. As it slides, the panel fades in under it, and a
+/// light scrim, a shadow and a hairline on the content's edge follow the
+/// drag.
 /// With [CoilDrawerReveal.over], the panel slides in over [child] under a
 /// scrim.
 ///
@@ -111,7 +126,7 @@ class CoilDrawer extends StatefulWidget {
     this.startSemanticLabel,
     this.endSemanticLabel,
     this.cornerRadius,
-    this.fallbackCornerRadius = BorderRadius.zero,
+    this.fallbackCornerRadius,
     this.scale = 1,
     this.scrimColor,
     this.shadows,
@@ -160,12 +175,14 @@ class CoilDrawer extends StatefulWidget {
 
   /// The content's corners while it is aside, in physical corners. Null
   /// takes the screen's from [CoilScreenRadius], and [fallbackCornerRadius]
-  /// where the screen can't tell (web, desktop, tests).
+  /// where the screen can't tell (web, desktop, a failed query, tests).
   final BorderRadius? cornerRadius;
 
   /// The content's corners while aside when [cornerRadius] is null and the
-  /// screen's radius is unknown.
-  final BorderRadius fallbackCornerRadius;
+  /// screen's radius is unknown. Null is 40 on iOS and 24 on Android (close
+  /// to current phones, for when the platform query fails) and square on
+  /// desktop and web.
+  final BorderRadius? fallbackCornerRadius;
 
   /// How small the content gets once a panel is fully open, 1 for not at
   /// all. It shrinks toward the open panel's far edge, so the panel stays
@@ -174,13 +191,16 @@ class CoilDrawer extends StatefulWidget {
 
   /// The scrim over the content once a panel is fully open; it fades in
   /// with the slide. Null is the theme's barrier color for
-  /// [CoilDrawerReveal.over], and none for [CoilDrawerReveal.behind], where
-  /// the content's edge (shadows and a hairline) separates it instead.
+  /// [CoilDrawerReveal.over], and a light dim for [CoilDrawerReveal.behind]
+  /// (black 7 % in light, 15 % in dark), where the content's edge does
+  /// most of the separating.
   final Color? scrimColor;
 
   /// The content's shadow while it is aside ([CoilDrawerReveal.behind]),
-  /// faded in with the slide. Null is the theme's shadow step 3, a raised
-  /// surface's. A hairline in the theme's border color fades in with it.
+  /// faded in with the slide. Null is the blurs of the theme's shadow step
+  /// 8, centered on the content so they show along its side: it reads as a
+  /// sheet lifted off the panel.
+  /// A hairline in the theme's border color fades in with it.
   final List<BoxShadow>? shadows;
 
   /// The panels' fill. Null is the page background under the content, or
@@ -604,14 +624,33 @@ class _CoilDrawerState extends State<CoilDrawer>
   );
 
   Color _scrim(double strength) {
-    // Revealed from behind, the content's edge separates it; no tint.
+    // Revealed from behind, a light dim; the content's edge does the rest.
     final full =
         widget.scrimColor ??
         (widget.reveal == CoilDrawerReveal.behind
-            ? const Color(0x00000000)
+            ? (CoilTheme.of(context).brightness == Brightness.dark
+                  ? _behindScrimDark
+                  : _behindScrimLight)
             : CoilSheetPanel.barrierColorOf(context));
     return _faded(full, strength);
   }
+
+  static BorderRadius get _defaultFallbackRadius =>
+      switch (kIsWeb ? null : _phoneFallbackRadius[defaultTargetPlatform]) {
+        final radius? => BorderRadius.circular(radius),
+        null => BorderRadius.zero,
+      };
+
+  /// Step 8 of the shadow ladder, centered on the content instead of
+  /// dropped below it. The ladder's drops pull in their sides (negative
+  /// spread) to fall under a floating surface; on a page pushed sideways,
+  /// the side is the edge that has to show, so the same blurs and colors
+  /// spread evenly around it.
+  static List<BoxShadow> _edgeShadows(CoilColors colors) => [
+    for (final shadow in colors.shadow(_contentShadowLevel))
+      if (shadow.blurRadius > 0)
+        shadow.copyWith(offset: Offset.zero, spreadRadius: 0),
+  ];
 
   /// [color] at [strength] (0 to 1) of its alpha.
   static Color _faded(Color color, double strength) =>
@@ -645,15 +684,15 @@ class _CoilDrawerState extends State<CoilDrawer>
         ? BorderRadius.zero
         : widget.cornerRadius ??
               CoilScreenRadius.value ??
-              widget.fallbackCornerRadius;
+              widget.fallbackCornerRadius ??
+              _defaultFallbackRadius;
     final shape = RoundedSuperellipseBorder(borderRadius: radius);
     // The edge fades in with the reveal: a raised surface's shadow and a
     // hairline in the border color.
     final shadows = atRest
         ? const <BoxShadow>[]
         : [
-            for (final shadow
-                in widget.shadows ?? theme.colors.shadow(_contentShadowLevel))
+            for (final shadow in widget.shadows ?? _edgeShadows(theme.colors))
               shadow.copyWith(color: _faded(shadow.color, strength)),
           ];
     return Transform.translate(

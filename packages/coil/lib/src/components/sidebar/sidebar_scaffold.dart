@@ -736,7 +736,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       startSemanticLabel: widget.drawerLabel,
       endSemanticLabel: widget.drawerLabel,
       cornerRadius: look.drawerCornerRadius,
-      fallbackCornerRadius: look.drawerFallbackCornerRadius!,
+      fallbackCornerRadius: look.drawerFallbackCornerRadius,
       scale: look.drawerScale!,
       scrimColor: look.drawerScrimColor,
       shadows: look.drawerShadows,

@@ -43,7 +43,6 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
         WidgetState.hovered | WidgetState.focused: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),
-      drawerFallbackCornerRadius: BorderRadius.zero,
       drawerScale: 1,
     );
   }
@@ -89,8 +88,8 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
   final BorderRadius? drawerCornerRadius;
 
   /// The page's corners while pushed aside where the screen's radius is
-  /// unknown (web, desktop, tests) and [drawerCornerRadius] is null.
-  /// Defaults to square.
+  /// unknown (web, desktop, a failed query, tests) and [drawerCornerRadius]
+  /// is null. Null is 40 on iOS and 24 on Android, square elsewhere.
   final BorderRadius? drawerFallbackCornerRadius;
 
   /// How small the page gets while the drawer is fully open, 1 for not at
@@ -99,13 +98,15 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
   final double? drawerScale;
 
   /// The scrim over the page once the drawer is fully open. Null is the
-  /// theme's barrier color when the drawer slides over the page, and none
-  /// when it is revealed from behind, where the page's edge separates it.
+  /// theme's barrier color when the drawer slides over the page, and a
+  /// light dim (black 7 % in light, 15 % in dark) when it is revealed from
+  /// behind, where the page's edge does most of the separating.
   final Color? drawerScrimColor;
 
   /// The page's shadow while the drawer pushes it aside, faded in with the
-  /// slide. Null is the theme's shadow step 3, with a hairline in the
-  /// border color.
+  /// slide. Null is the blurs of the theme's shadow step 8, centered on
+  /// the page so they show along its side, with a hairline in the border
+  /// color.
   final List<BoxShadow>? drawerShadows;
 
   /// Springs for the sidebar's animated parts, keyed by [CoilSidebarTrack]s:

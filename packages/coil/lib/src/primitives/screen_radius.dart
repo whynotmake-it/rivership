@@ -13,8 +13,9 @@ import 'package:flutter/widgets.dart';
 /// UIKit's corner configuration, and older iPhones and iPads through a
 /// bundled table of device bezels. Asking is asynchronous and happens once
 /// per app, on first use. Until it answers, and wherever there is nothing
-/// to ask (web, desktop, tests without a mocked channel, square screens),
-/// [value] is null and callers use their own fallback.
+/// to ask (web, desktop, tests without a mocked channel, a failed query),
+/// [value] is null and callers use their own fallback. A square screen
+/// answers [BorderRadius.zero].
 ///
 /// Values are logical pixels per physical corner, in the screen's portrait
 /// orientation.
@@ -22,7 +23,8 @@ abstract final class CoilScreenRadius {
   static final _notifier = ValueNotifier<BorderRadius?>(null);
   static Future<BorderRadius?>? _request;
 
-  /// The screen's corner radii, or null while unknown or square.
+  /// The screen's corner radii ([BorderRadius.zero] for a square screen),
+  /// or null while unknown.
   ///
   /// Reading it starts the platform query if it hasn't run yet; listen to
   /// [listenable] to hear when it answers.
@@ -36,7 +38,7 @@ abstract final class CoilScreenRadius {
   static ValueListenable<BorderRadius?> get listenable => _notifier;
 
   /// Asks the platform for the radii, once, and completes with them (null
-  /// when unknown or square). Later calls return the same future.
+  /// when unknown). Later calls return the same future.
   static Future<BorderRadius?> resolve() => _request ??= _ask();
 
   /// Whether this platform can report its radii at all.
@@ -57,7 +59,7 @@ abstract final class CoilScreenRadius {
         bottomLeft: Radius.circular(corners.bottomLeft),
         bottomRight: Radius.circular(corners.bottomRight),
       );
-      return _notifier.value = radius == BorderRadius.zero ? null : radius;
+      return _notifier.value = radius;
     } on Object {
       // No plugin registered (tests, an add-to-app host without it) or the
       // platform refused: there is nothing better than the fallback.
