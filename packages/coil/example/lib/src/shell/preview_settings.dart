@@ -344,6 +344,16 @@ class _ShapeAndSpacing extends StatelessWidget {
           text: (shape) => shape.label,
           onChanged: (value) => settings.shape = value,
         ),
+        _SelectRow<CatalogPlasticity>(
+          label: const Text('Surface'),
+          description: const Text(
+            'Plasticity: subtle vertical light on the controls you press.',
+          ),
+          value: settings.plasticity,
+          values: CatalogPlasticity.values,
+          text: (plasticity) => plasticity.label,
+          onChanged: (value) => settings.plasticity = value,
+        ),
         if (settings.shape == CatalogShape.custom)
           _SliderRow(
             label: 'Corner radius',
