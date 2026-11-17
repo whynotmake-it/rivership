@@ -184,7 +184,7 @@ class CoilDialog extends StatelessWidget {
 /// a body and actions, such as a settings dialog with its own navigation.
 /// [child] fills the panel edge to edge. Where [showCoilDialog] opens a
 /// phone sheet, the frame is the sheet's panel instead, and [child] lays
-/// out below the grabber.
+/// out at its top.
 class CoilDialogFrame extends StatelessWidget {
   /// Creates a dialog frame.
   const CoilDialogFrame({

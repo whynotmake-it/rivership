@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- Sheets have no grabber. `CoilSheetPanel` starts with a 12 gap
+  (`CoilSheetPanel.topGap`) above its title or content; the sheet still
+  drags anywhere.
 - Sheets are coil's own. Breaking: `CoilSheetRoute` extends
   `stupid_simple_sheet`'s plain `StupidSimpleSheetRoute` instead of the
   glass sheet, so `blurBehindBarrier` and the glass route's other options

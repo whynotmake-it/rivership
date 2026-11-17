@@ -71,7 +71,7 @@ void main() {
     expect(sheet.width, 390, reason: 'full width on a phone');
     expect(sheet.top, lessThan(content.top));
     expect(sheet.top, greaterThan(400), reason: 'it hugs its content');
-    // The grabber, the title and the content, nothing more.
+    // The top gap, the title and the content, nothing more.
     expect(sheet.height, lessThan(200 + 34 + 80));
   });
 

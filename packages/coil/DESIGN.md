@@ -479,7 +479,7 @@ Every component ships with all of these. They're required to call it done.
 - It dims the page with the `scrim` token (20 % light, 30 % dark) and doesn't blur it. A sheet opened from a sheet slides over it with its own scrim; the one below stays put.
 - Surface: `CoilSurface` two levels above the opener (3 from the page) with its shadow, in a `RoundedSuperellipseBorder` whose top corners are the glass sheet's 36 (§5), clipping the content. Content clears the home indicator and the side insets that reach it.
 - It rides on the keyboard: a field inside stays above it.
-- Grabber 36×5 (foreground 16 %), 6 above and below.
+- No grabber: the sheet drags anywhere. 12 above the title (or the content without one).
 - Optional title: 17/22 semibold `foreground`, aligned with the row text, 4 above and 6 below, `Semantics(header)`.
 - **Optional pinned header row:**
   - a search field (44, not autofocused on touch, kept above the keyboard);
@@ -1060,7 +1060,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width up to days 20 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
 - **Phone (touch, < 600): a sheet built for the thumb.**
-  - Grabber → caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.
+  - Caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.
   - Presets: a horizontally scrolling chip row (Today, Tomorrow, Next week…).
   - Time: chips ("Start 11:00", "End 12:45"). Tapping one pushes the **time page** inside the sheet on `standard`, with a "‹ Date" back row.
     - The time page is **two snap columns** (hours | minutes in the minute step), flat rows: a line of body text in tabular figures and the tier's gap (28 pointer, 34 touch at 1×, grown with the text scale), **five visible**. The rows fade out toward the top and bottom over two rows (the scroll edge fade). A selection band in `active` with the day cells' radius sits across the center; the center row and the colon are foreground semibold and the others are muted. The columns are a day and a half wide each.

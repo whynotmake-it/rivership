@@ -32,8 +32,8 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 ///
 /// A sheet opened from another sheet slides over it with its own scrim.
 ///
-/// Put a [CoilSheetPanel] in it for the grabber, an optional title, a
-/// pinned footer and the safe area.
+/// Put a [CoilSheetPanel] in it for an optional title, a pinned footer and
+/// the safe area.
 class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   /// Creates a sheet route showing [child] (usually a [CoilSheetPanel]).
   ///
@@ -186,9 +186,9 @@ class _SheetSurface extends StatelessWidget {
   }
 }
 
-/// The content layout of a [CoilSheetRoute]: a grabber, an optional
-/// [title], then [child], then an optional pinned [footer], clear of the
-/// home indicator and side insets.
+/// The content layout of a [CoilSheetRoute]: an optional [title], then
+/// [child], then an optional pinned [footer], clear of the home indicator
+/// and side insets.
 ///
 /// A hairline under the header shows only while [child]'s scrollable has
 /// content scrolled beneath it (read from its scroll notifications), and
@@ -215,6 +215,10 @@ class CoilSheetPanel extends StatefulWidget {
   /// indicator, with [footerBottomGap] below it at least (the safe area
   /// counts toward it, and 8 always separates the two).
   final Widget? footer;
+
+  /// The space above the title, or above [child] without one. A sheet has
+  /// no grabber; the drag works anywhere on it.
+  static const topGap = 12.0;
 
   /// The least space under a [footer], safe area included.
   static const footerBottomGap = 16.0;
@@ -301,23 +305,8 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: SizedBox(
-                width: 36,
-                height: 5,
-                child: DecoratedBox(
-                  decoration: ShapeDecoration(
-                    color: colors.foreground.withValues(alpha: 0.16),
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Room above the title or content, so it clears the corners.
+          const SizedBox(height: CoilSheetPanel.topGap),
           if (title != null)
             Padding(
               padding: EdgeInsetsDirectional.fromSTEB(
