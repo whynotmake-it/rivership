@@ -197,30 +197,37 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
           expanded: _popup.isOpen,
           value: text,
           onTap: _enabled ? _open : null,
-          child: CallbackShortcuts(
-            bindings: {
-              const SingleActivator(LogicalKeyboardKey.arrowDown): _open,
-              const SingleActivator(LogicalKeyboardKey.arrowUp): _open,
+          child: Shortcuts(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.arrowDown): _OpenIntent(),
+              SingleActivator(LogicalKeyboardKey.arrowUp): _OpenIntent(),
             },
-            child: CoilInteraction(
-              onPressed: _enabled ? _open : null,
-              focusNode: widget.focusNode,
-              autofocus: widget.autofocus,
-              statesController: _states,
-              excludeFromSemantics: true,
-              builder: (context, states, _) => CoilSelectTrigger(
-                metrics: metrics,
-                style: style,
-                states: {...states, if (_popup.isOpen) WidgetState.selected},
-                icon: widget.icon,
-                label: ExcludeSemantics(
-                  excluding: value != null,
-                  child: value == null
-                      ? DefaultTextStyle.merge(
-                          style: TextStyle(color: style.placeholder),
-                          child: widget.placeholder,
-                        )
-                      : widget.labels.date(value, withTime: widget.withTime),
+            child: Actions(
+              actions: {
+                _OpenIntent: CallbackAction<_OpenIntent>(
+                  onInvoke: (_) => _open(),
+                ),
+              },
+              child: CoilInteraction(
+                onPressed: _enabled ? _open : null,
+                focusNode: widget.focusNode,
+                autofocus: widget.autofocus,
+                statesController: _states,
+                excludeFromSemantics: true,
+                builder: (context, states, _) => CoilSelectTrigger(
+                  metrics: metrics,
+                  style: style,
+                  states: {...states, if (_popup.isOpen) WidgetState.selected},
+                  icon: widget.icon,
+                  label: ExcludeSemantics(
+                    excluding: value != null,
+                    child: value == null
+                        ? DefaultTextStyle.merge(
+                            style: TextStyle(color: style.placeholder),
+                            child: widget.placeholder,
+                          )
+                        : widget.labels.date(value, withTime: widget.withTime),
+                  ),
                 ),
               ),
             ),
@@ -229,6 +236,11 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       ),
     );
   }
+}
+
+/// Opens the popup from the keyboard: Up or Down on the trigger.
+class _OpenIntent extends Intent {
+  const _OpenIntent();
 }
 
 /// The popup's content: the calendar and, with [withTime], the time

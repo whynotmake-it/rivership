@@ -1,5 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -477,7 +478,9 @@ void main() {
       await _pump(tester, [_a, _b], tier: CoilTier.touch);
       await tester.pumpAndSettle();
       expect(
-        find.bySemanticsLabel('Remove'),
+        find.byWidgetPredicate(
+          (w) => w is CoilButton && w.semanticLabel == 'Remove',
+        ),
         findsNWidgets(2),
         reason: 'actions always show on touch',
       );
@@ -498,6 +501,40 @@ void main() {
         closeTo(folded, 0.5),
         reason: 'nothing stays open where the finger lifted',
       );
+    });
+
+    testWidgets('every tap target is at least 44, folded or fanned out', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      const guideline = MinimumTapTargetGuideline(
+        size: Size(44, 44),
+        link: 'DESIGN.md §10',
+      );
+      await _pump(tester, [_a, _b, _c, _d], tier: CoilTier.touch);
+      await tester.pumpAndSettle();
+      await expectLater(tester, meetsGuideline(guideline));
+      expect(
+        find.bySemanticsLabel('Remove'),
+        findsOneWidget,
+        reason: 'only the front card offers its buttons while folded',
+      );
+      expect(
+        tester.getSemantics(find.bySemanticsLabel(RegExp('message 2 of 4'))),
+        isSemantics(
+          customActions: const [
+            CustomSemanticsAction(label: 'Edit'),
+            CustomSemanticsAction(label: 'Remove'),
+          ],
+        ),
+        reason: 'a peeking card offers its actions on the card',
+      );
+
+      await tester.tap(find.text(_a.semanticLabel));
+      await tester.pumpAndSettle();
+      await expectLater(tester, meetsGuideline(guideline));
+      expect(find.bySemanticsLabel('Remove'), findsNWidgets(4));
+      semantics.dispose();
     });
 
     testWidgets('remove takes the card out of the queue', (tester) async {

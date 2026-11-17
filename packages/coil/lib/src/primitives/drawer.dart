@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/screen_radius.dart';
 import 'package:coil/src/primitives/sheet.dart';
 import 'package:coil/src/primitives/surface.dart';
@@ -56,6 +57,10 @@ const _flingVelocity = 400.0;
 /// again: its corners square up and the panel goes offstage.
 const _restSlop = 0.5;
 
+/// The shadow on the content's edge while a panel is revealed from behind:
+/// a raised surface's, as popovers use.
+const _contentShadowLevel = 3;
+
 /// Shows [child] with a panel on either side, [start] and [end], one of
 /// which is [open] at a time.
 ///
@@ -63,8 +68,10 @@ const _restSlop = 0.5;
 /// and [child] slides aside to reveal one, taking the device's screen
 /// corner radius while it is away from the edges ([cornerRadius], from
 /// [CoilScreenRadius] when null) and squaring up again the moment it
-/// covers the panels. With [CoilDrawerReveal.over], the panel slides in
-/// over [child] under a scrim.
+/// covers the panels. As it slides, the panel fades in under it and the
+/// content's edge takes a shadow and a hairline, both following the drag.
+/// With [CoilDrawerReveal.over], the panel slides in over [child] under a
+/// scrim.
 ///
 /// Unlike a route, the panels stay descendants of this widget: they show
 /// the owner's current state and rebuild with it, the way Flutter's
@@ -165,12 +172,15 @@ class CoilDrawer extends StatefulWidget {
   /// fully revealed. Only with [CoilDrawerReveal.behind].
   final double scale;
 
-  /// The scrim over the content once a panel is fully open. Null is the
-  /// theme's barrier color, at 40 % strength for [CoilDrawerReveal.behind].
+  /// The scrim over the content once a panel is fully open; it fades in
+  /// with the slide. Null is the theme's barrier color for
+  /// [CoilDrawerReveal.over], and none for [CoilDrawerReveal.behind], where
+  /// the content's edge (shadows and a hairline) separates it instead.
   final Color? scrimColor;
 
-  /// The content's shadow while it is aside ([CoilDrawerReveal.behind]).
-  /// Null is the theme's shadow step 8.
+  /// The content's shadow while it is aside ([CoilDrawerReveal.behind]),
+  /// faded in with the slide. Null is the theme's shadow step 3, a raised
+  /// surface's. A hairline in the theme's border color fades in with it.
   final List<BoxShadow>? shadows;
 
   /// The panels' fill. Null is the page background under the content, or
@@ -355,6 +365,13 @@ class _CoilDrawerState extends State<CoilDrawer>
   void _close() {
     if (widget.open != null) widget.onOpenChanged(null);
   }
+
+  /// Escape in an open panel closes it, unless the app handles
+  /// [CoilDismissIntent] above the drawer.
+  late final _dismiss = CoilDefaultAction<CoilDismissIntent>(
+    context: context,
+    onInvoke: (_) => _close(),
+  );
 
   Motion _motionToward(double target) {
     final tokens = CoilTheme.motionOf(context);
@@ -587,14 +604,18 @@ class _CoilDrawerState extends State<CoilDrawer>
   );
 
   Color _scrim(double strength) {
-    final barrier = CoilSheetPanel.barrierColorOf(context);
+    // Revealed from behind, the content's edge separates it; no tint.
     final full =
         widget.scrimColor ??
         (widget.reveal == CoilDrawerReveal.behind
-            ? barrier.withValues(alpha: barrier.a * 0.4)
-            : barrier);
-    return full.withValues(alpha: full.a * strength.clamp(0, 1));
+            ? const Color(0x00000000)
+            : CoilSheetPanel.barrierColorOf(context));
+    return _faded(full, strength);
   }
+
+  /// [color] at [strength] (0 to 1) of its alpha.
+  static Color _faded(Color color, double strength) =>
+      color.withValues(alpha: color.a * strength.clamp(0, 1));
 
   /// What covers the content while a panel shows: it closes on a press,
   /// and stands in for the content for screen readers.
@@ -626,6 +647,15 @@ class _CoilDrawerState extends State<CoilDrawer>
               CoilScreenRadius.value ??
               widget.fallbackCornerRadius;
     final shape = RoundedSuperellipseBorder(borderRadius: radius);
+    // The edge fades in with the reveal: a raised surface's shadow and a
+    // hairline in the border color.
+    final shadows = atRest
+        ? const <BoxShadow>[]
+        : [
+            for (final shadow
+                in widget.shadows ?? theme.colors.shadow(_contentShadowLevel))
+              shadow.copyWith(color: _faded(shadow.color, strength)),
+          ];
     return Transform.translate(
       offset: Offset(dx, 0),
       child: Transform.scale(
@@ -636,27 +666,40 @@ class _CoilDrawerState extends State<CoilDrawer>
           decoration: ShapeDecoration(
             shape: shape,
             color: widget.contentColor ?? theme.colors.background,
-            shadows: atRest
-                ? const []
-                : widget.shadows ?? theme.colors.shadow(8),
+            shadows: shadows,
           ),
-          child: ClipRSuperellipse(
-            borderRadius: radius,
-            clipBehavior: atRest ? Clip.none : Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.passthrough,
-              children: [
-                _ContentGate(open: open, child: child),
-                Positioned.fill(
-                  child: Offstage(
-                    offstage: atRest && !open,
-                    child: IgnorePointer(
-                      ignoring: !open && !_dragging,
-                      child: _dismissLayer(strength),
+
+          child: DecoratedBox(
+            // Over the content, which would hide it.
+            position: DecorationPosition.foreground,
+            decoration: ShapeDecoration(
+              shape: RoundedSuperellipseBorder(
+                borderRadius: radius,
+                side: atRest
+                    ? BorderSide.none
+                    : BorderSide(
+                        color: _faded(theme.colors.border, strength),
+                      ),
+              ),
+            ),
+            child: ClipRSuperellipse(
+              borderRadius: radius,
+              clipBehavior: atRest ? Clip.none : Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: [
+                  _ContentGate(open: open, child: child),
+                  Positioned.fill(
+                    child: Offstage(
+                      offstage: atRest && !open,
+                      child: IgnorePointer(
+                        ignoring: !open && !_dragging,
+                        child: _dismissLayer(strength),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -702,9 +745,16 @@ class _CoilDrawerState extends State<CoilDrawer>
         ? widget.startSemanticLabel
         : widget.endSemanticLabel;
     var surface = switch (widget.reveal) {
+      // The panel fades in as the content uncovers it, following the drag.
+      // Its fill stays, so nothing shows through. Semantics follow `open`
+      // below, not the fade.
       CoilDrawerReveal.behind => ColoredBox(
         color: widget.panelColor ?? theme.colors.background,
-        child: panel,
+        child: Opacity(
+          opacity: shown,
+          alwaysIncludeSemantics: true,
+          child: panel,
+        ),
       ),
       CoilDrawerReveal.over => CoilSurface(
         offset: CoilSurface.popoverOffset,
@@ -721,11 +771,16 @@ class _CoilDrawerState extends State<CoilDrawer>
       label: label,
       // Above the scope, so Escape also works while the scope itself
       // holds focus.
-      child: CallbackShortcuts(
-        bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
-        child: FocusScope(
-          node: edge == CoilDrawerEdge.start ? _startScope : _endScope,
-          child: surface,
+      child: Shortcuts(
+        shortcuts: const {
+          SingleActivator(LogicalKeyboardKey.escape): CoilDismissIntent(),
+        },
+        child: Actions(
+          actions: {CoilDismissIntent: _dismiss},
+          child: FocusScope(
+            node: edge == CoilDrawerEdge.start ? _startScope : _endScope,
+            child: surface,
+          ),
         ),
       ),
     );

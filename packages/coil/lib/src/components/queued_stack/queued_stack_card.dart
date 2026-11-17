@@ -218,26 +218,36 @@ class _CardBodyState extends State<_CardBody> {
     final remove = card.onRemove;
     final move = card.onMove;
 
-    Widget actions() => Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 2,
-      children: [
-        if (card.editIcon case final icon?)
+    // A card peeking out of the folded pile takes no taps (a tap there
+    // fans the pile out), and its buttons are drawn smaller than a hit
+    // target. Screen readers get its actions on the card instead.
+    final reachable = card.expanded || card.front;
+    Widget actions() => ExcludeSemantics(
+      excluding: !reachable,
+      // On a card too narrow for both buttons, remove goes under edit.
+      child: Wrap(
+        spacing: 2,
+        runSpacing: 2,
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (card.editIcon case final icon?)
+            CoilButton.icon(
+              variant: CoilButtonVariant.ghost,
+              size: CoilSize.compact,
+              semanticLabel: card.labels.editLabel,
+              onPressed: edit,
+              icon: icon,
+            ),
           CoilButton.icon(
             variant: CoilButtonVariant.ghost,
             size: CoilSize.compact,
-            semanticLabel: card.labels.editLabel,
-            onPressed: edit,
-            icon: icon,
+            semanticLabel: card.labels.removeLabel,
+            onPressed: remove,
+            icon: card.removeIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
           ),
-        CoilButton.icon(
-          variant: CoilButtonVariant.ghost,
-          size: CoilSize.compact,
-          semanticLabel: card.labels.removeLabel,
-          onPressed: remove,
-          icon: card.removeIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
-        ),
-      ],
+        ],
+      ),
     );
 
     final content = ListenableBuilder(
@@ -264,70 +274,67 @@ class _CardBodyState extends State<_CardBody> {
                   start: files.isEmpty ? metrics.controlPaddingX : _thumbInset,
                   end: 6,
                 ),
-                child: Row(
-                  spacing: metrics.gap,
+                child: _CardRow(
+                  gap: metrics.gap,
                   children: [
                     // Double-clicking the message edits it. The actions
                     // sit outside this region, so their taps aren't held
                     // back waiting for a second tap.
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onDoubleTap: card.expanded ? edit : null,
-                        child: Row(
-                          spacing: metrics.gap,
-                          children: [
-                            // The previews give way to the text when the
-                            // card is narrow, as the text gives way to its
-                            // ellipsis.
-                            if (files.isNotEmpty)
-                              Flexible(
-                                child: UnconstrainedBox(
-                                  constrainedAxis: Axis.vertical,
-                                  alignment: AlignmentDirectional.centerStart,
-                                  clipBehavior: Clip.hardEdge,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    spacing: 4,
-                                    children: [
-                                      for (final file in files.take(3))
-                                        ClipRSuperellipse(
-                                          borderRadius: BorderRadius.circular(
-                                            math.max(0, radius - _thumbInset),
-                                          ),
-                                          child: SizedBox.square(
-                                            dimension: thumb,
-                                            child: file,
-                                          ),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onDoubleTap: card.expanded ? edit : null,
+                      child: Row(
+                        spacing: metrics.gap,
+                        children: [
+                          // The previews give way to the text when the
+                          // card is narrow, as the text gives way to its
+                          // ellipsis.
+                          if (files.isNotEmpty)
+                            Flexible(
+                              child: UnconstrainedBox(
+                                constrainedAxis: Axis.vertical,
+                                alignment: AlignmentDirectional.centerStart,
+                                clipBehavior: Clip.hardEdge,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: 4,
+                                  children: [
+                                    for (final file in files.take(3))
+                                      ClipRSuperellipse(
+                                        borderRadius: BorderRadius.circular(
+                                          math.max(0, radius - _thumbInset),
                                         ),
-                                      if (files.length > 3)
-                                        _More(
-                                          count: files.length - 3,
-                                          size: thumb,
-                                          radius: math.max(
-                                            0,
-                                            radius - _thumbInset,
-                                          ),
-                                          style: look.countStyle!,
+                                        child: SizedBox.square(
+                                          dimension: thumb,
+                                          child: file,
                                         ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            Expanded(
-                              child: ExcludeSemantics(
-                                child: DefaultTextStyle.merge(
-                                  style: look.textStyle,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.ellipsis,
-                                  child:
-                                      message.child ?? const SizedBox.shrink(),
+                                      ),
+                                    if (files.length > 3)
+                                      _More(
+                                        count: files.length - 3,
+                                        size: thumb,
+                                        radius: math.max(
+                                          0,
+                                          radius - _thumbInset,
+                                        ),
+                                        style: look.countStyle!,
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          Expanded(
+                            child: ExcludeSemantics(
+                              child: DefaultTextStyle.merge(
+                                style: look.textStyle,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                child: message.child ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (showActions) actions(),
@@ -340,63 +347,80 @@ class _CardBodyState extends State<_CardBody> {
       },
     );
 
-    return CallbackShortcuts(
-      bindings: {
-        if (edit != null) ...{
-          const SingleActivator(LogicalKeyboardKey.enter): edit,
-          const SingleActivator(LogicalKeyboardKey.numpadEnter): edit,
-          const SingleActivator(LogicalKeyboardKey.f2): edit,
+    return Shortcuts(
+      shortcuts: {
+        if (edit != null) ...const {
+          SingleActivator(LogicalKeyboardKey.enter): _EditIntent(),
+          SingleActivator(LogicalKeyboardKey.numpadEnter): _EditIntent(),
+          SingleActivator(LogicalKeyboardKey.f2): _EditIntent(),
         },
-        if (remove != null) ...{
-          const SingleActivator(LogicalKeyboardKey.delete): remove,
-          const SingleActivator(LogicalKeyboardKey.backspace): remove,
+        if (remove != null) ...const {
+          SingleActivator(LogicalKeyboardKey.delete): _RemoveIntent(),
+          SingleActivator(LogicalKeyboardKey.backspace): _RemoveIntent(),
         },
-        if (move != null) ...{
-          const SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): () =>
-              move(1),
-          const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): () =>
-              move(-1),
+        if (move != null) ...const {
+          SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): _MoveIntent(
+            1,
+          ),
+          SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): _MoveIntent(
+            -1,
+          ),
         },
       },
-      child: Focus(
-        // Fires for the card and for a button inside it.
-        focusNode: card.focusNode,
-        onFocusChange: (focused) {
-          setState(() => _focusWithin = focused);
-          card.onFocusChange(focused);
+      child: Actions(
+        actions: {
+          _EditIntent: CallbackAction<_EditIntent>(
+            onInvoke: (_) => edit?.call(),
+          ),
+          _RemoveIntent: CallbackAction<_RemoveIntent>(
+            onInvoke: (_) => remove?.call(),
+          ),
+          _MoveIntent: CallbackAction<_MoveIntent>(
+            onInvoke: (intent) => move?.call(intent.by),
+          ),
         },
-        child: Semantics(
-          container: true,
-          label: card.semanticLabel,
-          customSemanticsActions: {
-            if (edit != null)
-              CustomSemanticsAction(label: card.labels.editLabel): edit,
+        child: Focus(
+          // Fires for the card and for a button inside it.
+          focusNode: card.focusNode,
+          onFocusChange: (focused) {
+            setState(() => _focusWithin = focused);
+            card.onFocusChange(focused);
           },
-          child: GestureDetector(
-            onVerticalDragStart: card.onDragStart == null
-                ? null
-                : (_) => card.onDragStart!(context.size!.height),
-            onVerticalDragUpdate: card.onDragStart == null
-                ? null
-                : (details) => card.onDragUpdate(details.delta.dy),
-            onVerticalDragEnd: card.onDragStart == null
-                ? null
-                : (_) => card.onDragEnd(),
-            onVerticalDragCancel: card.onDragStart == null
-                ? null
-                : card.onDragEnd,
-            child: CoilInteractionDetector(
-              states: _states,
-              focusNode: card.focusNode,
-              onTap: card.onTap,
-              trackPress: card.onTap != null,
-              excludeFromSemantics: true,
-              cursor: card.expanded
-                  ? (card.lifted
-                        ? SystemMouseCursors.grabbing
-                        : SystemMouseCursors.grab)
-                  : MouseCursor.defer,
-              child: content,
+          child: Semantics(
+            container: true,
+            label: card.semanticLabel,
+            customSemanticsActions: {
+              if (edit != null)
+                CustomSemanticsAction(label: card.labels.editLabel): edit,
+              if (remove != null && !reachable)
+                CustomSemanticsAction(label: card.labels.removeLabel): remove,
+            },
+            child: GestureDetector(
+              onVerticalDragStart: card.onDragStart == null
+                  ? null
+                  : (_) => card.onDragStart!(context.size!.height),
+              onVerticalDragUpdate: card.onDragStart == null
+                  ? null
+                  : (details) => card.onDragUpdate(details.delta.dy),
+              onVerticalDragEnd: card.onDragStart == null
+                  ? null
+                  : (_) => card.onDragEnd(),
+              onVerticalDragCancel: card.onDragStart == null
+                  ? null
+                  : card.onDragEnd,
+              child: CoilInteractionDetector(
+                states: _states,
+                focusNode: card.focusNode,
+                onTap: card.onTap,
+                trackPress: card.onTap != null,
+                excludeFromSemantics: true,
+                cursor: card.expanded
+                    ? (card.lifted
+                          ? SystemMouseCursors.grabbing
+                          : SystemMouseCursors.grab)
+                    : MouseCursor.defer,
+                child: content,
+              ),
             ),
           ),
         ),
@@ -435,4 +459,208 @@ class _More extends StatelessWidget {
       child: Center(child: Text('+$count', style: style)),
     ),
   );
+}
+
+/// Edits the focused card: Enter or F2.
+class _EditIntent extends Intent {
+  const _EditIntent();
+}
+
+/// Removes the focused card: Delete or Backspace.
+class _RemoveIntent extends Intent {
+  const _RemoveIntent();
+}
+
+/// Moves the focused card [by] places toward the back: Alt+Up and
+/// Alt+Down.
+class _MoveIntent extends Intent {
+  const _MoveIntent(this.by);
+
+  final int by;
+}
+
+/// A card's content row: the message (first child) and, when shown, its
+/// actions (second child) at the end.
+///
+/// The message gets what the actions leave. When that would be narrower
+/// than the actions themselves (a narrow screen at a large text scale),
+/// the actions move to a line of their own under the message, at the end,
+/// so they stay whole and the message keeps the card's width to ellipsize
+/// in.
+class _CardRow extends MultiChildRenderObjectWidget {
+  const _CardRow({required this.gap, required super.children});
+
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderCardRow(gap: gap, textDirection: Directionality.of(context));
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderCardRow renderObject) {
+    renderObject
+      ..gap = gap
+      ..textDirection = Directionality.of(context);
+  }
+}
+
+class _CardRowParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderCardRow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _CardRowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _CardRowParentData> {
+  _RenderCardRow({required this._gap, required this._textDirection});
+
+  double get gap => _gap;
+  double _gap;
+  set gap(double value) {
+    if (value == _gap) return;
+    _gap = value;
+    markNeedsLayout();
+  }
+
+  TextDirection get textDirection => _textDirection;
+  TextDirection _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  RenderBox get _body => firstChild!;
+  RenderBox? get _actions => childAfter(firstChild!);
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _CardRowParentData) {
+      child.parentData = _CardRowParentData();
+    }
+  }
+
+  /// Lays the row out in [constraints], measuring children with [measure],
+  /// and places them when [place].
+  Size _layout(
+    BoxConstraints constraints,
+    Size Function(RenderBox child, BoxConstraints constraints) measure, {
+    bool place = false,
+  }) {
+    final width = constraints.maxWidth;
+    final actions = _actions;
+    final actionsSize = actions == null
+        ? Size.zero
+        : measure(actions, BoxConstraints(maxWidth: width));
+    // The message keeps at least the actions' width beside them.
+    final stacked =
+        actions != null && width - gap - actionsSize.width < actionsSize.width;
+    final bodyWidth = actions == null || stacked
+        ? width
+        : width - gap - actionsSize.width;
+    final body = measure(
+      _body,
+      BoxConstraints(
+        minWidth: bodyWidth,
+        maxWidth: bodyWidth,
+        maxHeight: constraints.maxHeight,
+      ),
+    );
+    if (stacked) {
+      final band = math.max(constraints.minHeight, body.height);
+      if (place) {
+        _place(_body, 0, (band - body.height) / 2, body.width, width);
+        _place(
+          actions,
+          width - actionsSize.width,
+          band,
+          actionsSize.width,
+          width,
+        );
+      }
+      return constraints.constrain(Size(width, band + actionsSize.height));
+    }
+    final height = math.max(
+      constraints.minHeight,
+      math.max(body.height, actionsSize.height),
+    );
+    if (place) {
+      _place(_body, 0, (height - body.height) / 2, body.width, width);
+      if (actions != null) {
+        _place(
+          actions,
+          width - actionsSize.width,
+          (height - actionsSize.height) / 2,
+          actionsSize.width,
+          width,
+        );
+      }
+    }
+    return constraints.constrain(Size(width, height));
+  }
+
+  /// Puts [child], [childWidth] wide, [start] from the start edge and
+  /// [top] from the top.
+  void _place(
+    RenderBox child,
+    double start,
+    double top,
+    double childWidth,
+    double width,
+  ) {
+    final left = textDirection == TextDirection.ltr
+        ? start
+        : width - start - childWidth;
+    (child.parentData! as _CardRowParentData).offset = Offset(left, top);
+  }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _layout(constraints, (child, c) => child.getDryLayout(c));
+
+  @override
+  void performLayout() {
+    size = _layout(constraints, (child, c) {
+      child.layout(c, parentUsesSize: true);
+      return child.size;
+    }, place: true);
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => math.max(
+    _body.getMinIntrinsicWidth(height),
+    _actions?.getMinIntrinsicWidth(height) ?? 0,
+  );
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      _body.getMaxIntrinsicWidth(height) +
+      switch (_actions) {
+        final actions? => gap + actions.getMaxIntrinsicWidth(height),
+        null => 0,
+      };
+
+  double _intrinsicHeight(double width, {required bool max}) => _layout(
+    BoxConstraints(maxWidth: width),
+    (child, c) => Size(
+      c.constrainWidth(child.getMaxIntrinsicWidth(double.infinity)),
+      max
+          ? child.getMaxIntrinsicHeight(c.maxWidth)
+          : child.getMinIntrinsicHeight(c.maxWidth),
+    ),
+  ).height;
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      _intrinsicHeight(width, max: false);
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      _intrinsicHeight(width, max: true);
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }

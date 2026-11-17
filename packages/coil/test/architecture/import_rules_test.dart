@@ -204,6 +204,21 @@ void main() {
     expect(violations, isEmpty);
   });
 
+  test('keys go through Shortcuts and Actions (DESIGN.md §9.2.1)', () {
+    // Typeahead needs typed characters; nothing else reads key events.
+    final raw = RegExp(r'\bCallbackShortcuts\b|\bonKeyEvent:|\bonKey:');
+    final violations = <String>[
+      for (final file in Directory('lib').listSync(recursive: true))
+        if (file is File &&
+            file.path.endsWith('.dart') &&
+            !file.path.endsWith('primitives/typeahead.dart'))
+          for (final (n, line) in file.readAsLinesSync().indexed)
+            if (!line.trimLeft().startsWith('//') && raw.hasMatch(line))
+              '${file.path}:${n + 1}',
+    ];
+    expect(violations, isEmpty);
+  });
+
   test('every rounded shape is a superellipse', () {
     // Superellipse APIs (RoundedSuperellipseBorder, RSuperellipse,
     // ClipRSuperellipse, drawRSuperellipse) are fine, and so is a

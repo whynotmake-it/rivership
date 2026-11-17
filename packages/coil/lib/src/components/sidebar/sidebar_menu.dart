@@ -479,14 +479,24 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
       ),
     );
     // Right and Left open, enter, close and leave sub-trees.
-    final keyed = CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-            _horizontal(entry, open: !_rtl(context)),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-            _horizontal(entry, open: _rtl(context)),
+    final rtl = _rtl(context);
+    final keyed = Shortcuts(
+      shortcuts: {
+        const SingleActivator(LogicalKeyboardKey.arrowRight): _TreeIntent(
+          open: !rtl,
+        ),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): _TreeIntent(
+          open: rtl,
+        ),
       },
-      child: row,
+      child: Actions(
+        actions: {
+          _TreeIntent: CallbackAction<_TreeIntent>(
+            onInvoke: (intent) => _horizontal(entry, open: intent.open),
+          ),
+        },
+        child: row,
+      ),
     );
     if (item.actions.isEmpty) return keyed;
     return CoilContextMenu(entries: item.actions, child: keyed);
@@ -512,6 +522,14 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
       item.onExpandedChanged?.call(false);
     }
   }
+}
+
+/// Opens or enters a row's sub-tree ([open]), or closes or leaves it:
+/// Right and Left, mirrored in RTL.
+class _TreeIntent extends Intent {
+  const _TreeIntent({required this.open});
+
+  final bool open;
 }
 
 /// A sub-tree: a guide line under the parent's icon, its rows indented so

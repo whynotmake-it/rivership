@@ -1,7 +1,8 @@
 import 'package:flutter/widgets.dart';
 
 /// Closes the coil popup that has focus: a popover, a menu, a select's
-/// list, a tooltip, a combobox's list. coil maps Escape to it.
+/// list, a tooltip, a combobox's list, a drawer's panel. coil maps Escape
+/// to it.
 ///
 /// coil's widgets register their own action for it with
 /// [CoilDefaultAction]. To change what Escape does inside coil, put an

@@ -17,7 +17,10 @@ Milestone M0, unreleased.
   aside to show the sidebar, taking the screen's corner radius while it
   moves and squaring up once it covers the sidebar again; a horizontal
   drag anywhere on the page opens it, and horizontal scrollables hand
-  over at their edge. The pointer tier keeps the drawer over the page.
+  over at their edge. Nothing tints the page: the sidebar fades in as it
+  is revealed, and the page's edge takes a popover's shadow (step 3) and
+  a hairline in `border`, all following the drag. The pointer tier keeps
+  the drawer over the page.
   New: `drawerReveal`, `drawerDrag`, `drawerWidth`, `CoilSidebarStyle`'s
   `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
   scaffolds give a phone a sidebar on each side.
@@ -33,13 +36,19 @@ Milestone M0, unreleased.
   in `Shortcuts` and handles them in `Actions`, instead of reading key
   events. Behavior is unchanged.
   - `CoilDismissIntent` is what Escape does in a popover, menu, select
-    list, combobox or tooltip, and `CoilSliderStepIntent` and
+    list, combobox, tooltip or drawer panel, and `CoilSliderStepIntent` and
     `CoilSliderLimitIntent` are a slider's arrows, Page keys and
     Home/End. An app replaces any of them with its own `Actions` entry
     above the widget.
   - `CoilDefaultAction` is how a coil widget registers its action for
     those: like `Action.overridable`, but a nested popup skips the
     actions of the popups around it.
+- A queued stack card fits a narrow screen at a large text scale: when
+  the message would get less room than the edit and remove buttons, they
+  move to a line under it (and wrap if needed) instead of overflowing.
+  Cards peeking behind the folded pile leave their buttons, drawn under
+  the 44 hit target, out of semantics and offer Edit and Remove as
+  actions on the card.
 - The blur-fade is subtler. `CoilBlurFade` starts at a blur sigma of 1.5
   (`CoilBlurFade.defaultBlur`), down from 4, so popovers, tooltips, reveals
   and swaps soften as they arrive instead of smearing. Button and select
