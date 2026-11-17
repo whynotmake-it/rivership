@@ -1,0 +1,6 @@
+tags:
+  visuals:
+    description: >-
+      Renders the exploration's screenshots and recordings into the
+      directory given by --dart-define=COIL_GLASS_VISUALS; skipped without
+      it. Needs `--enable-impeller --enable-flutter-gpu` for real glass.

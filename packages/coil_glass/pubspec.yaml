@@ -1,0 +1,34 @@
+name: coil_glass
+description: >-
+  Liquid glass for coil: the far end of coil's material scale, rendered with
+  liquid_glass_renderer. Opt-in and kept out of coil's dependencies.
+version: 0.0.1-dev.0
+publish_to: none
+# Not a workspace member yet: liquid_glass_renderer 1.0.0-dev pins its Dart
+# SDK to 3.13.x, which the workspace's Flutter can't satisfy. See README.
+
+environment:
+  sdk: ">=3.13.0 <4.0.0"
+  flutter: ">=3.47.0"
+
+dependencies:
+  coil:
+    path: ../coil
+  flutter:
+    sdk: flutter
+  liquid_glass_renderer: ^1.0.0-dev.2
+  motor:
+    path: ../motor
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  lucide_icons_flutter: 4.0.1
+  snaptest:
+    path: ../snaptest
+
+# coil uses the repo's motor; liquid_glass_renderer asks for the hosted one.
+dependency_overrides:
+  motor:
+    path: ../motor
