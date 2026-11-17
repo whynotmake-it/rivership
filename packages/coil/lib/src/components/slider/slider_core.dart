@@ -101,8 +101,21 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   /// moment the drag ends.
   final _hover = ValueNotifier<double?>(null);
 
-  /// Where the hover last was; the bubble stays there while it fades out.
-  double _lastHover = 0;
+  /// Where a hover-capable pointer last was, as a fraction of the range,
+  /// not snapped: the hover bubble's position. It stays there while the
+  /// bubble fades out.
+  final _hoverAt = ValueNotifier<double>(0);
+
+  /// The hover bubble's glide once it has joined the preview. It springs
+  /// on the preview's motion toward [_hoverAt], so with steps the bubble
+  /// keeps moving with the pointer while the preview snaps to steps. A
+  /// continuous slider's bubble rides the preview itself, which targets the
+  /// same place.
+  late final _follow = TrackController(
+    vsync: this,
+    debugLabel: 'CoilSlider.follow',
+  );
+  double get _followAt => _follow.value(CoilSliderTrack.thumb);
 
   /// The hover preview bar's end. It springs from the nearest thumb toward
   /// the hover, set by pointer events rather than by builds.
@@ -133,6 +146,15 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   /// Repaints the track: a thumb or the preview moved.
   late final Listenable _paintMoves = Listenable.merge([..._thumbs, _preview]);
+
+  /// Moves a value bubble: anything its position reads.
+  late final Listenable _bubbleMoves = Listenable.merge([
+    _paintMoves,
+    _follow,
+    _settle,
+    _pressAt,
+    _hoverAt,
+  ]);
 
   WidgetStatesController? _ownStates;
   WidgetStatesController get _states =>
@@ -170,9 +192,33 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   /// The value under the pointer while the track is pressed: the snapped
   /// press or drag position, kept from crossing the other thumb. The value
-  /// bubble belongs to the pointer, so it sits here while the thumb springs
-  /// to meet it, and it doesn't move when the parent refuses the change.
+  /// bubble shows it, and it doesn't change when the parent refuses the
+  /// change.
   double _pressValue = 0;
+
+  /// Where the pointer pressing the track is, as a fraction of the range,
+  /// not snapped, kept from crossing the other thumb. The value bubble
+  /// belongs to the pointer, so it sits here while pressed: with steps the
+  /// value snaps, but the bubble moves with the finger, and the thumb
+  /// springs underneath from step to step.
+  final _pressAt = ValueNotifier<double>(0);
+
+  /// The released bubble's distance from where it lands, springing to 0 on
+  /// the thumb's motion. A released press bubble lands on the snapped value,
+  /// a tooltip bubble on its thumb ([_settled]).
+  late final _settle = TrackController(
+    vsync: this,
+    debugLabel: 'CoilSlider.settle',
+  );
+  double get _settleBy => _settle.value(CoilSliderTrack.thumb);
+
+  /// The thumb whose tooltip bubble [_settle] moves.
+  int _settled = 0;
+
+  /// Whether the text and editable bubble shows the last press rather than
+  /// the hover: from a press until a hover-capable pointer takes it back. So
+  /// a finger's bubble stays on its press while it fades out.
+  bool _fromPress = false;
 
   /// The thumb whose value is being typed, if any.
   int? _editing;
@@ -264,6 +310,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     _preview
       ..set([CoilSliderTrack.preview.value(_scale.norm(widget.values[0]))])
       ..addListener(_meet);
+    _follow.set([CoilSliderTrack.thumb.value(0)]);
+    _settle.set([CoilSliderTrack.thumb.value(0)]);
     _states
       ..addListener(_forgetHover)
       ..addListener(_syncBubble);
@@ -412,6 +460,10 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     _editFocus.dispose();
     _editText.dispose();
     _hover.dispose();
+    _hoverAt.dispose();
+    _follow.dispose();
+    _pressAt.dispose();
+    _settle.dispose();
     _preview.dispose();
     _bubble.dispose();
     super.dispose();
@@ -457,7 +509,10 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   void _beginPress() {
     if (_pressing) return;
-    setState(() => _pressing = true);
+    setState(() {
+      _pressing = true;
+      _fromPress = true;
+    });
     _syncBubble();
     _asked = widget.values;
     widget.onChangeStart?.call(widget.values);
@@ -480,6 +535,18 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   /// The track box, for mapping a press to it.
   final _trackKey = GlobalKey(debugLabel: 'CoilSlider.track');
 
+  /// The x of the pointer at [global] in the track box where it is now.
+  ///
+  /// A drag's or a move's local position goes through the box's place at
+  /// pointer down, but the pill's track shifts while its text turns
+  /// semibold, so the thumb and bubble would sit off the pointer.
+  double _trackX(Offset global, Offset local) {
+    final track = _trackKey.currentContext?.findRenderObject();
+    return track is RenderBox && track.attached
+        ? track.globalToLocal(global).dx
+        : local.dx;
+  }
+
   CoilMetrics get _metrics => CoilTheme.metricsOf(context, size: widget.size);
 
   CoilSliderStyle _style(CoilMetrics metrics) => CoilSliderStyle.fallback(
@@ -496,7 +563,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     _dragging = true;
     setState(() {});
     _beginPress();
-    _dragTo(d.localPosition.dx, width, reach);
+    _dragTo(_trackX(d.globalPosition, d.localPosition), width, reach);
   }
 
   void _dragTo(double dx, double width, SliderReach reach) {
@@ -506,6 +573,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       _active = f > _downFraction ? 1 : 0;
     }
     final value = _limit(_active, _scale.valueAt(f));
+    _pressAt.value = _limitFraction(_active, f);
     if (value != _pressValue) setState(() => _pressValue = value);
     if (value != widget.values[_active]) {
       _asked = _with(_active, value);
@@ -516,9 +584,41 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   void _endPress() {
     if (_dragging) setState(() => _dragging = false);
     if (!_pressing) return _syncBubble();
-    setState(() => _pressing = false);
+    setState(() {
+      _pressing = false;
+      // A pointer still hovering takes the bubble back where it is.
+      _fromPress = !CoilInputModality.canHover(_kind) || _hover.value == null;
+    });
+    _land();
     _syncBubble();
     widget.onChangeEnd?.call(_asked);
+  }
+
+  /// Springs a released bubble from the pointer onto where it belongs: the
+  /// snapped value, or its thumb in tooltip mode.
+  void _land() {
+    final follows = !_tooltip || _followsPress;
+    final to = _tooltip ? _at(_active) : _scale.norm(_pressValue);
+    _settled = _active;
+    _settle
+      ..set([CoilSliderTrack.thumb.value(follows ? _pressAt.value - to : 0)])
+      ..animate([
+        CoilSliderTrack.thumb([
+          .to(0, motion: _motionFor(CoilSliderTrack.thumb, _tokens).enter),
+        ]),
+      ]);
+  }
+
+  /// Whether the pressed thumb's tooltip bubble follows the pointer rather
+  /// than the thumb. A continuous thumb is under the pointer anyway, and
+  /// stays put when the parent refuses the change, so its bubble does too.
+  bool get _followsPress => !_scale.continuous;
+
+  /// The fraction [f] for thumb [i], kept from crossing the other thumb.
+  double _limitFraction(int i, double f) {
+    if (!_range) return f;
+    final other = _scale.norm(widget.values[1 - i]);
+    return i == 0 ? (f < other ? f : other) : (f > other ? f : other);
   }
 
   void _step(int i, CoilSliderStepIntent intent) {
@@ -807,26 +907,35 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
         // Each bubble's anchor is a thumb-sized box at its fraction, as
         // tall as the track, so the bubble clears the track. The anchor
         // follows the thumb in layout; the bubble lives in the overlay.
+        // A bubble that tracks a pointer sits at the pointer, not at the
+        // snapped value its text shows: with steps it moves smoothly while
+        // the value and the thumb go from step to step.
         if (_tooltip)
           for (var i = 0; i < _count; i++)
             _bubbleAnchor(
-              moves: _thumbs[i],
-              fraction: () => _at(i),
+              fraction: () => onTrack && i == _active && _followsPress
+                  ? _pressAt.value
+                  : _at(i) + (i == _settled ? _settleBy : 0),
               reach: reach,
               width: style.knobBox!,
               value: widget.values[i],
             )
         else
           _bubbleAnchor(
-            moves: _paintMoves,
             fraction: () => onTrack
-                ? scale.norm(_pressValue)
-                : _joined
+                ? _pressAt.value
+                : _fromPress
+                ? scale.norm(_pressValue) + _settleBy
+                : !_joined
+                ? _hoverAt.value
+                : scale.continuous
                 ? _previewAt
-                : _lastHover,
+                : _followAt,
             reach: reach,
             width: style.knobBox!,
-            value: onTrack ? _pressValue : scale.valueAt(_lastHover),
+            value: onTrack || _fromPress
+                ? _pressValue
+                : scale.valueAt(_hoverAt.value),
           ),
       ],
     );
@@ -909,14 +1018,13 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
 
   /// A value bubble over a [width]-wide box at [fraction] of the track.
   Widget _bubbleAnchor({
-    required Listenable moves,
     required ValueGetter<double> fraction,
     required SliderReach reach,
     required double width,
     required double value,
   }) => Positioned.fill(
     child: ListenableBuilder(
-      listenable: moves,
+      listenable: _bubbleMoves,
       builder: (context, child) => CustomSingleChildLayout(
         delegate: SliderThumbLayout(
           fraction: fraction().clamp(0.0, 1.0),
@@ -1020,17 +1128,24 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     );
   }
 
-  /// Puts the hover where a hover-capable pointer is, at the snapped value.
+  /// Puts the hover where a hover-capable pointer is: the bubble at the
+  /// pointer, the preview and the shown value at the snapped value.
   ///
   /// A new hover starts the preview at the nearest thumb and puts the bubble
   /// on the hover, unjoined. Every hover springs the preview toward it.
   void _point(PointerEvent e, double width, SliderReach reach) {
     if (!_enabled || !CoilInputModality.canHover(e.kind)) return;
-    final to = _scale.norm(
-      _scale.valueAt(reach.fractionAt(e.localPosition.dx, width, rtl: _rtl)),
+    if (_fromPress && !_pressing && !_dragging) {
+      setState(() => _fromPress = false);
+    }
+    final at = reach.fractionAt(
+      _trackX(e.position, e.localPosition),
+      width,
+      rtl: _rtl,
     );
-    if (to == _hover.value) return;
-    if (_hover.value == null) {
+    final to = _scale.norm(_scale.valueAt(at));
+    final fresh = _hover.value == null;
+    if (fresh) {
       final thumbs = _fractions();
       _preview.set([
         CoilSliderTrack.preview.value(
@@ -1040,7 +1155,22 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       _joined = false;
       _side = null;
     }
-    _lastHover = to;
+    if (fresh || at != _hoverAt.value) {
+      _hoverAt.value = at;
+      if (_joined && !_pressing && !_dragging) {
+        _follow.animate([
+          CoilSliderTrack.thumb([
+            .to(at, motion: _motionFor(CoilSliderTrack.preview, _tokens).enter),
+          ]),
+        ]);
+      } else {
+        // Until it joins, the bubble is on the hover, so its glide starts
+        // from there. A press moves the bubble directly, so when it ends,
+        // the hover bubble takes over where the pointer is.
+        _follow.set([CoilSliderTrack.thumb.value(at)]);
+      }
+    }
+    if (to == _hover.value) return;
     _hover.value = to;
     _preview.animate([
       CoilSliderTrack.preview([
@@ -1078,7 +1208,11 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
                 ? (d) => _dragStart(d, width, reach)
                 : null,
             onHorizontalDragUpdate: _enabled
-                ? (d) => _dragTo(d.localPosition.dx, width, reach)
+                ? (d) => _dragTo(
+                    _trackX(d.globalPosition, d.localPosition),
+                    width,
+                    reach,
+                  )
                 : null,
             onHorizontalDragEnd: _enabled ? (_) => _endPress() : null,
             onHorizontalDragCancel: _enabled ? _endPress : null,

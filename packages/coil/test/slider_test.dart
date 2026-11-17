@@ -119,6 +119,10 @@ class _HostState extends State<_Host> {
 
 String _fmt(double v) => v.toStringAsFixed(2);
 
+/// [v] as the slider shows it by default.
+String _shownValue(double v) =>
+    v.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+
 _HostState _host(WidgetTester tester) =>
     tester.state(find.byType(_Host)) as _HostState;
 
@@ -519,7 +523,15 @@ void main() {
         await mouse.moveTo(_at(tester, .98));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 16));
-        expect(bubbleX(tester), closeTo(_at(tester, 1).dx, .5));
+        // At the pointer, showing the snapped value.
+        expect(bubbleX(tester), closeTo(_at(tester, .98).dx, .5));
+        expect(
+          find.descendant(
+            of: find.byKey(sliderBubbleKey),
+            matching: find.text('1'),
+          ),
+          findsOneWidget,
+        );
         expect(previewEnd(tester), lessThan(_at(tester, .9).dx));
       });
 
@@ -608,12 +620,18 @@ void main() {
         // The snapped press position: where the thumb lands.
         final landed = tester.getCenter(_knob()).dx;
         expect(knobs.first, lessThan(landed - 5), reason: 'the thumb springs');
+        expect(
+          (press.dx - landed).abs(),
+          greaterThan(1),
+          reason: 'the press is off the step, so the two can differ',
+        );
         for (final (i, x) in bubbles.indexed) {
-          expect(x, closeTo(landed, .5), reason: 'frame $i: with the press');
+          expect(x, closeTo(press.dx, .5), reason: 'frame $i: with the press');
         }
         if (hovered != null) {
-          expect(hovered, closeTo(landed, .5), reason: 'no jump on press');
-          expect(bubbleX(), closeTo(landed, .5), reason: 'none on release');
+          expect(hovered, closeTo(press.dx, .5), reason: 'no jump on press');
+          // The mouse still hovers there, and the hover bubble is its own.
+          expect(bubbleX(), closeTo(press.dx, .5), reason: 'none on release');
         }
       });
     }
@@ -743,6 +761,177 @@ void main() {
         await settle(tester);
       });
     }
+  });
+
+  group('with steps, the bubble moves with the pointer', () {
+    Finder bubbleBox() => find.descendant(
+      of: find.byKey(sliderBubbleKey),
+      matching: find.byType(DecoratedBox),
+    );
+    double bubbleX(WidgetTester tester) => tester.getCenter(bubbleBox()).dx;
+    Finder bubbleText(double v) => find.descendant(
+      of: find.byKey(sliderBubbleKey),
+      matching: find.text(_shownValue(v)),
+    );
+
+    /// Presses at [from] and drags [toward] by 20 px, past any drag slop.
+    Future<TestGesture> grab(
+      WidgetTester tester,
+      PointerDeviceKind kind,
+      Offset from,
+      double toward,
+    ) async {
+      final g = await tester.createGesture(kind: kind);
+      addTearDown(g.removePointer);
+      if (kind == PointerDeviceKind.mouse) {
+        await g.addPointer(location: from);
+        await g.moveTo(from);
+        await tester.pump();
+      }
+      await g.down(from);
+      await tester.pump();
+      await g.moveTo(from + Offset(20 * toward, 0));
+      // A bubble already showing glides over to where the drag began, and
+      // the pill's text turns semibold, which shifts the track a little.
+      await settle(tester);
+      return g;
+    }
+
+    for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
+      for (final rtl in [false, true]) {
+        final name = '${kind.name}${rtl ? ', RTL' : ''}';
+        testWidgets('$name: the value snaps, the bubble follows the pointer, '
+            'and lands on the value', (tester) async {
+          await tester.pumpWidget(
+            _Host(
+              divisions: 10,
+              textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+            ),
+          );
+          // Toward max: right, or left in RTL.
+          final toward = rtl ? -1.0 : 1.0;
+          final from = _at(tester, .5);
+          final g = await grab(tester, kind, from, toward);
+          var x = from.dx + 20 * toward;
+          final values = <double>{};
+          // 4 px moves on a 300 px row: a step is 30 px.
+          for (var i = 0; i < 20; i++) {
+            x += 4 * toward;
+            await g.moveTo(Offset(x, from.dy));
+            await tester.pump(const Duration(milliseconds: 16));
+            final v = _valueOf(tester);
+            values.add(v);
+            expect(v * 10, closeTo((v * 10).roundToDouble(), 1e-9));
+            expect(bubbleX(tester), closeTo(x, .5), reason: 'frame $i');
+            expect(bubbleText(v), findsOneWidget, reason: 'frame $i');
+          }
+          expect(values.length, greaterThan(2), reason: 'crossed steps');
+          // The pointer lets go 10 px past the step it snapped to.
+          final v = _valueOf(tester);
+          final landed = _at(tester, rtl ? 1 - v : v).dx;
+          expect((x - landed).abs(), closeTo(10, .5));
+          await g.up();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 16));
+          if (kind == PointerDeviceKind.mouse) {
+            // Still hovering: the hover bubble is the pointer's.
+            expect(bubbleX(tester), closeTo(x, .5));
+          } else {
+            // A finger's bubble springs onto the value as it fades.
+            final mid = bubbleX(tester);
+            expect((mid - landed).abs(), lessThan((x - landed).abs() - .5));
+            expect((mid - landed).abs(), greaterThan(.5), reason: 'springs');
+          }
+          expect(_valueOf(tester), v, reason: 'the release changes nothing');
+          await settle(tester);
+        });
+      }
+
+      testWidgets('${kind.name}, tooltip: the dragged bubble leaves its '
+          'springing thumb for the pointer, then lands back on it', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          const _Host(
+            divisions: 10,
+            variant: CoilSliderVariant.pill,
+            valueDisplay: CoilSliderValueDisplay.tooltip,
+          ),
+        );
+        final from = tester.getCenter(_knob());
+        final g = await grab(tester, kind, from, 1);
+        var x = from.dx + 20;
+        var apart = 0.0;
+        for (var i = 0; i < 20; i++) {
+          x += 3;
+          await g.moveTo(Offset(x, from.dy));
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(bubbleX(tester), closeTo(x, .5), reason: 'frame $i');
+          expect(bubbleText(_valueOf(tester)), findsOneWidget);
+          final knob = tester.getCenter(_knob()).dx;
+          if ((knob - x).abs() > apart) apart = (knob - x).abs();
+        }
+        expect(apart, greaterThan(3), reason: 'the thumb keeps to the steps');
+        await g.up();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        final mid = bubbleX(tester);
+        await tester.pump(const Duration(milliseconds: 600));
+        final knob = tester.getCenter(_knob()).dx;
+        expect((mid - knob).abs(), lessThan((x - knob).abs()));
+        if (kind == PointerDeviceKind.mouse) {
+          // Still hovered, so the tooltip still shows: on the thumb.
+          expect(bubbleX(tester), closeTo(knob, .5));
+        }
+        await settle(tester);
+      });
+    }
+
+    testWidgets('keys: the tooltip rides the thumb step by step', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const _Host(
+          divisions: 10,
+          variant: CoilSliderVariant.pill,
+          valueDisplay: CoilSliderValueDisplay.tooltip,
+        ),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await settle(tester);
+      final before = tester.getCenter(_knob()).dx;
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(_valueOf(tester), closeTo(.6, 1e-9));
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final knob = tester.getCenter(_knob()).dx;
+        expect(bubbleX(tester), closeTo(knob, .5), reason: 'frame $i');
+      }
+      await settle(tester);
+      expect(tester.getCenter(_knob()).dx, greaterThan(before + 5));
+      expect(bubbleX(tester), closeTo(tester.getCenter(_knob()).dx, .5));
+    });
+
+    testWidgets('a continuous drag is unchanged: bubble and thumb together', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const _Host(
+          variant: CoilSliderVariant.pill,
+          valueDisplay: CoilSliderValueDisplay.tooltip,
+        ),
+      );
+      final from = tester.getCenter(_knob());
+      final g = await grab(tester, PointerDeviceKind.touch, from, 1);
+      for (var i = 0; i < 5; i++) {
+        await g.moveBy(const Offset(7, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+        final knob = tester.getCenter(_knob()).dx;
+        expect(bubbleX(tester), closeTo(knob, .5), reason: 'frame $i');
+      }
+      await g.up();
+      await settle(tester);
+    });
   });
 
   group('motion', () {
