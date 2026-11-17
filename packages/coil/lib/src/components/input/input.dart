@@ -345,7 +345,7 @@ class _CoilInputState extends State<CoilInput> {
               ),
               // A field is a well under a plastic theme.
               theme.relief(
-                CoilReliefRole.recessed,
+                CoilReliefRole.field,
                 override: look.plasticity,
                 hover: hovered ? 1 : 0,
                 enabled: widget.enabled,

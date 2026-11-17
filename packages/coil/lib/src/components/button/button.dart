@@ -370,7 +370,8 @@ class _CoilButtonState extends State<CoilButton> {
   }
 
   /// The lighting under a plastic theme, or null when flat or disabled.
-  /// The primary button is a strong fill; the rest are raised. A ghost
+  /// The primary button is a strong fill; tertiary and ghost are quiet;
+  /// the rest are raised. A ghost
   /// button only has a surface while hovered or pressed, so its lighting
   /// fades in with it.
   CoilRelief? _relief(
@@ -381,9 +382,12 @@ class _CoilButtonState extends State<CoilButton> {
     required double press,
   }) {
     final relief = theme.relief(
-      widget.variant == CoilButtonVariant.primary
-          ? CoilReliefRole.filled
-          : CoilReliefRole.raised,
+      switch (widget.variant) {
+        CoilButtonVariant.primary => CoilReliefRole.filled,
+        CoilButtonVariant.tertiary ||
+        CoilButtonVariant.ghost => CoilReliefRole.quiet,
+        _ => CoilReliefRole.raised,
+      },
       override: style.plasticity,
       hover: hover,
       press: press,

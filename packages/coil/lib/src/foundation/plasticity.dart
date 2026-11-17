@@ -21,9 +21,19 @@ enum CoilReliefRole {
   /// saturated fills.
   filled,
 
-  /// A well the content sits in: inputs, the switch's off track, the
-  /// slider's track, the checkbox and radio boxes.
+  /// A control that only shows a surface on hover or press, or is drawn
+  /// with a hairline: tertiary and ghost buttons. Lit like [raised].
+  quiet,
+
+  /// A well a mark sits in: the switch's off track, the checkbox and
+  /// radio boxes.
   recessed,
+
+  /// A text field. Lit like [recessed].
+  field,
+
+  /// A slider's track, under its thumb. Lit like [recessed].
+  track,
 
   /// A container above the page: cards, popovers, menus, dialogs.
   floating,
@@ -66,14 +76,20 @@ class CoilPlasticity with Diagnosticable {
     this.lift = 0,
     this.recess = 0,
     this.containers = 0,
+    this.response = 1,
+    this.roles = const {},
   }) : assert(edgeWidth > 0, 'edgeWidth must be positive');
 
   /// No lighting: coil's flat look. The default.
   static const flat = CoilPlasticity();
 
-  /// opencode's recipe: a hairline edge lit at the top and darker at the
-  /// bottom, a faint top highlight, a 1 px drop shadow, and a light sheen
-  /// on strong fills. Inputs and tracks sit slightly in.
+  /// opencode's recipe, kept to what you press: a hairline edge lit at the
+  /// top and darker at the bottom, a faint top highlight, a 1 px drop
+  /// shadow and a light sheen on buttons, thumbs, the select trigger and
+  /// selected pills, at about two thirds of opencode's strength. Wells
+  /// (checkbox, radio, the off switch) get a hairline of shade, fields
+  /// barely any; slider tracks, quiet buttons and containers stay flat.
+  /// Hover and press move the light half as far as [soft] and [tactile].
   static const subtle = CoilPlasticity(
     edge: 1,
     edgeWidth: 0.5,
@@ -83,6 +99,16 @@ class CoilPlasticity with Diagnosticable {
     lift: 1,
     recess: 0.6,
     containers: 1,
+    response: 0.5,
+    roles: {
+      CoilReliefRole.raised: 0.65,
+      CoilReliefRole.filled: 0.7,
+      CoilReliefRole.quiet: 0,
+      CoilReliefRole.recessed: 0.35,
+      CoilReliefRole.field: 0.2,
+      CoilReliefRole.track: 0,
+      CoilReliefRole.floating: 0,
+    },
   );
 
   /// Softly lit: a quieter edge, a visible top-to-bottom sheen on every
@@ -134,6 +160,15 @@ class CoilPlasticity with Diagnosticable {
   /// How lit floating containers (cards, popovers) are.
   final double containers;
 
+  /// How far hover and press move the light, 0 (not at all) to 1 (fully
+  /// brightened, fully sunk).
+  final double response;
+
+  /// A multiplier per role, for lighting some kinds of shape less than
+  /// others: `{CoilReliefRole.track: 0}` keeps slider tracks flat. A
+  /// missing role is 1; 0 turns that role off.
+  final Map<CoilReliefRole, double> roles;
+
   /// Whether this paints nothing, so components keep their flat look
   /// untouched.
   bool get isFlat =>
@@ -156,6 +191,8 @@ class CoilPlasticity with Diagnosticable {
     lift: lift * t,
     recess: recess * t,
     containers: containers * t,
+    response: response,
+    roles: roles,
   );
 
   /// Returns a copy with the given intensities replaced.
@@ -168,6 +205,8 @@ class CoilPlasticity with Diagnosticable {
     double? lift,
     double? recess,
     double? containers,
+    double? response,
+    Map<CoilReliefRole, double>? roles,
   }) => CoilPlasticity(
     edge: edge ?? this.edge,
     edgeWidth: edgeWidth ?? this.edgeWidth,
@@ -177,6 +216,8 @@ class CoilPlasticity with Diagnosticable {
     lift: lift ?? this.lift,
     recess: recess ?? this.recess,
     containers: containers ?? this.containers,
+    response: response ?? this.response,
+    roles: roles ?? this.roles,
   );
 
   /// Interpolates two plasticities, for animated theme changes.
@@ -193,6 +234,11 @@ class CoilPlasticity with Diagnosticable {
       lift: l(a.lift, b.lift),
       recess: l(a.recess, b.recess),
       containers: l(a.containers, b.containers),
+      response: l(a.response, b.response),
+      roles: {
+        for (final role in {...a.roles.keys, ...b.roles.keys})
+          role: l(a.roles[role] ?? 1, b.roles[role] ?? 1),
+      },
     );
   }
 
@@ -210,6 +256,27 @@ class CoilPlasticity with Diagnosticable {
     bool enabled = true,
   }) {
     if (!enabled || isFlat) return null;
+    final k = roles[role] ?? 1;
+    if (k <= 0) return null;
+    final base = switch (role) {
+      CoilReliefRole.quiet => CoilReliefRole.raised,
+      CoilReliefRole.field || CoilReliefRole.track => CoilReliefRole.recessed,
+      _ => role,
+    };
+    return (k == 1 ? this : scale(k))._resolve(
+      base,
+      brightness,
+      hover * response,
+      press * response,
+    );
+  }
+
+  CoilRelief _resolve(
+    CoilReliefRole role,
+    Brightness brightness,
+    double hover,
+    double press,
+  ) {
     final dark = brightness == Brightness.dark;
     Color w(double a) => Color.fromRGBO(255, 255, 255, a.clamp(0.0, 1.0));
     Color b(double a) => Color.fromRGBO(0, 0, 0, a.clamp(0.0, 1.0));
@@ -222,7 +289,7 @@ class CoilPlasticity with Diagnosticable {
     // contrast buttons.
     final CoilRelief rest;
     switch (role) {
-      case CoilReliefRole.raised:
+      case CoilReliefRole.raised || CoilReliefRole.quiet:
         rest = CoilRelief(
           edgeWidth: edgeWidth,
           edgeTop: dark ? w(0.22 * edge) : b(0.06 * edge),
@@ -244,7 +311,9 @@ class CoilPlasticity with Diagnosticable {
           sheenBottom: b(0.06 * sheen),
           shadows: _drop(dark ? 0.40 : 0.18, dark ? 0.20 : 0.06),
         );
-      case CoilReliefRole.recessed:
+      case CoilReliefRole.recessed ||
+          CoilReliefRole.field ||
+          CoilReliefRole.track:
         final r = recess;
         rest = CoilRelief(
           edgeWidth: edgeWidth,
@@ -322,7 +391,9 @@ class CoilPlasticity with Diagnosticable {
       other.sheen == sheen &&
       other.lift == lift &&
       other.recess == recess &&
-      other.containers == containers;
+      other.containers == containers &&
+      other.response == response &&
+      mapEquals(other.roles, roles);
 
   @override
   int get hashCode => Object.hash(
@@ -334,6 +405,10 @@ class CoilPlasticity with Diagnosticable {
     lift,
     recess,
     containers,
+    response,
+    Object.hashAllUnordered(
+      roles.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
   );
 
   @override
@@ -347,7 +422,9 @@ class CoilPlasticity with Diagnosticable {
       ..add(DoubleProperty('sheen', sheen, defaultValue: 0))
       ..add(DoubleProperty('lift', lift, defaultValue: 0))
       ..add(DoubleProperty('recess', recess, defaultValue: 0))
-      ..add(DoubleProperty('containers', containers, defaultValue: 0));
+      ..add(DoubleProperty('containers', containers, defaultValue: 0))
+      ..add(DoubleProperty('response', response, defaultValue: 1))
+      ..add(DiagnosticsProperty('roles', roles, defaultValue: const {}));
   }
 }
 
