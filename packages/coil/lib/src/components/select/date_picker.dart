@@ -15,7 +15,12 @@ import 'package:flutter/widgets.dart';
 /// picked day.
 ///
 /// With [withTime], two columns under the calendar pick the time of day,
-/// and the popup stays open until dismissed.
+/// and the popup stays open until dismissed. In a short, wide window (a
+/// phone in landscape) the columns sit beside the calendar instead.
+///
+/// The popover is as wide as the calendar's seven cells; a sheet's
+/// calendar fills the sheet. Either scrolls when the window is too short
+/// for it.
 class CoilDatePicker extends StatefulWidget {
   /// Creates a date picker.
   const CoilDatePicker({
@@ -145,11 +150,15 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
         kind: CoilOverlayKind.dateTime,
         itemCount: 0,
       ),
-      content: (context, popup) => Padding(
-        padding: EdgeInsets.all(CoilTheme.metricsOf(context).popupInset * 2),
-        child: Center(
-          widthFactor: 1,
-          heightFactor: 1,
+      // Scrolls when the window is too short for it (a phone in
+      // landscape, large text). The popover hugs the calendar's width; a
+      // sheet's width is the calendar's to fill.
+      content: (context, popup) => SingleChildScrollView(
+        // A popover's scroll view isn't the page's primary one; a sheet's
+        // is the sheet's, so a drag hands off to dismissing it.
+        primary: popup.presentation == CoilPresentation.sheet ? null : false,
+        child: Padding(
+          padding: EdgeInsets.all(CoilTheme.metricsOf(context).popupInset * 2),
           child: _DateTimePanel(
             initial: value,
             withTime: widget.withTime,
@@ -257,6 +266,10 @@ class _DateTimePanel extends StatefulWidget {
 }
 
 class _DateTimePanelState extends State<_DateTimePanel> {
+  /// Windows wider than tall and shorter than this put the time beside
+  /// the calendar.
+  static const sideBySideHeight = 600.0;
+
   late DateTime? _value = widget.initial;
 
   void _set(DateTime value, {required bool day}) {
@@ -289,20 +302,35 @@ class _DateTimePanelState extends State<_DateTimePanel> {
     );
     if (!widget.withTime) return calendar;
     final now = value ?? DateTime.now();
+    final gap = CoilTheme.metricsOf(context).gap * 2;
+    final time = CoilTimeColumns(
+      value: (hour: now.hour, minute: now.minute),
+      minuteInterval: widget.minuteInterval,
+      motion: widget.motion,
+      onChanged: (time) => _set(
+        DateTime(now.year, now.month, now.day, time.hour, time.minute),
+        day: false,
+      ),
+    );
+    // A short, wide window has no room for the columns under the
+    // calendar, and room beside it.
+    final window = MediaQuery.sizeOf(context);
+    if (window.width > window.height && window.height < sideBySideHeight) {
+      return Row(
+        spacing: gap,
+        children: [
+          Expanded(child: calendar),
+          time,
+        ],
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: CoilTheme.metricsOf(context).gap * 2,
+      spacing: gap,
       children: [
         calendar,
-        CoilTimeColumns(
-          value: (hour: now.hour, minute: now.minute),
-          minuteInterval: widget.minuteInterval,
-          onChanged: (time) => _set(
-            DateTime(now.year, now.month, now.day, time.hour, time.minute),
-            day: false,
-          ),
-        ),
+        time,
       ],
     );
   }

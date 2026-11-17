@@ -994,7 +994,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - caption: "‹ November 2026 ›" (title role) with the month/year label opening a jump grid;
   - weekday row (caption muted, locale first day);
   - a 6 × 7 day grid (body, tabular), **always 6 rows** so the height never jumps.
-- **Cell sizes:** 36 / 32 / 44 / 40.
+- **Cell sizes:** square, the control height (36 / 28 / 44 / 36), grown by as much as the text scale grows the line box (the padding doesn't scale).
+- **Width:** seven cells when it can choose (a popover hugs it); a wider space it's given is filled (a phone sheet), with the cell's fill a square in the middle of each column; a narrower one is shared, the rows shrink to stay square and the numbers scale down rather than wrap.
 - **Day states:**
   - outside the month: muted 60 %;
   - today: semibold with a 4 `brand` dot;
@@ -1003,13 +1004,15 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - disabled: 40 % and struck through for "booked";
   - hover (pointer): the gliding highlight; in range picking, the highlight *is* the proposed end.
 - **Months:** pointer and tablets show 2 side by side when they fit; phones show 1.
-- **Motion:** month change slides the grid by ⅓ of the stride with a crossfade on `standard`; on touch, **horizontal paging follows the finger and keeps the fling velocity**; highlight `quick`; range band `standard`.
+- **Motion:** the months are pages: the arrows and PageUp/PageDown slide a full page on `standard`, and a jump of more than one month (Shift+PageUp) is a cut. On touch, **horizontal paging follows the finger and keeps the fling velocity**: a swipe past half a page or a flick turns one page, anything less springs back, all on `standard`. A trackpad's horizontal swipe pages too; a mouse drag doesn't. Highlight `quick`; range band `standard`.
+- **Haptics:** `toggle` when a swipe lands on a new month and as a time column passes a row; `pick` when a day is picked.
 - **Keyboard:** arrows move the day; PageUp/PageDown change the month; Shift+PageUp/PageDown change the year; Home and End go to the week's start and end; Enter selects.
 - **Semantics:** grid cells carry full-date labels; previous and next month are semantics actions.
 
 #### DatePicker
 
 - **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
+- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width. Both scroll when the window is too short. In a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
 - **Phone (touch, < 600): a sheet built for the thumb.**
   - Grabber → caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.

@@ -25,8 +25,9 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Calendar',
     summary:
-        'Arrows move a day or a week, PageUp and PageDown a month, with '
-        'Shift a year. Weekends are disabled here.',
+        'Swipe on touch (or with a trackpad) to page months. Arrows move '
+        'a day or a week, PageUp and PageDown a month, with Shift a year. '
+        'Weekends are disabled here.',
     children: [
       DemoSection(
         title: 'Single day',

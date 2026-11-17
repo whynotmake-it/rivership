@@ -1,13 +1,20 @@
+import 'dart:async';
+
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/calendar/calendar_layout.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 /// A time of day, picked in two columns that snap: hours and minutes.
 ///
-/// Drag or scroll a column, or focus it and use the arrow keys. The
-/// columns wrap around. Screen readers adjust each column up and down.
-/// Minutes step by [minuteInterval]; a [value] between steps shows the
-/// step below it.
+/// Drag or scroll a column, or focus it and use the arrow keys. A flick
+/// keeps its momentum and lands on a row; the columns wrap around. Each
+/// row that passes the band ticks a haptic. Screen readers adjust each
+/// column up and down. Minutes step by [minuteInterval]; a [value] between
+/// steps shows the step below it.
+///
+/// Rows are the tier's control height, grown with the text scale, and the
+/// columns show five of them.
 class CoilTimeColumns extends StatelessWidget {
   /// Creates the time columns.
   const CoilTimeColumns({
@@ -17,6 +24,7 @@ class CoilTimeColumns extends StatelessWidget {
     this.minuteInterval = 5,
     this.hourLabel = 'Hour',
     this.minuteLabel = 'Minute',
+    this.motion,
   }) : assert(
          minuteInterval > 0 && 60 % minuteInterval == 0,
          'minuteInterval must divide 60.',
@@ -37,11 +45,18 @@ class CoilTimeColumns extends StatelessWidget {
   /// The minute column's name for screen readers.
   final String minuteLabel;
 
+  /// Overrides the theme's motion tokens; a column settles on `standard`.
+  final CoilMotion? motion;
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
-    final extent = metrics.controlHeight;
+    final extent = calendarCellExtent(
+      context,
+      metrics,
+      CoilTheme.textOf(context).body,
+    );
     final radius = BorderRadius.circular(theme.shape.radii(metrics.tier).item);
     final minuteSteps = 60 ~/ minuteInterval;
     final onChanged = this.onChanged;
@@ -73,6 +88,7 @@ class CoilTimeColumns extends StatelessWidget {
                 count: 24,
                 index: value.hour,
                 extent: extent,
+                motion: motion,
                 text: (i) => i.toString().padLeft(2, '0'),
                 onChanged: onChanged == null
                     ? null
@@ -89,6 +105,7 @@ class CoilTimeColumns extends StatelessWidget {
                 count: minuteSteps,
                 index: value.minute ~/ minuteInterval,
                 extent: extent,
+                motion: motion,
                 text: (i) => (i * minuteInterval).toString().padLeft(2, '0'),
                 onChanged: onChanged == null
                     ? null
@@ -114,8 +131,10 @@ class _Column extends StatefulWidget {
     required this.extent,
     required this.text,
     required this.onChanged,
+    required this.motion,
   });
 
+  final CoilMotion? motion;
   final String label;
   final int count;
   final int index;
@@ -209,11 +228,21 @@ class _ColumnState extends State<_Column> {
                 child: ListWheelScrollView.useDelegate(
                   controller: _scroll,
                   itemExtent: widget.extent,
-                  physics: const FixedExtentScrollPhysics(),
-                  diameterRatio: 1.6,
+                  physics: CalendarWheelPhysics(
+                    motion: CoilTheme.motionOf(
+                      context,
+                      override: widget.motion,
+                    ).standard,
+                  ),
+                  // Nearly flat rows, as the design asks: no 3D drum.
+                  diameterRatio: 8,
                   onSelectedItemChanged: (i) {
                     final index = i % widget.count;
-                    if (index != widget.index) widget.onChanged?.call(index);
+                    if (index == widget.index) return;
+                    unawaited(
+                      CoilHaptics.play(context, CoilHapticEvent.toggle),
+                    );
+                    widget.onChanged?.call(index);
                   },
                   childDelegate: ListWheelChildLoopingListDelegate(
                     children: [
@@ -221,11 +250,13 @@ class _ColumnState extends State<_Column> {
                         Center(
                           child: Text(
                             widget.text(i),
+                            maxLines: 1,
+                            softWrap: false,
                             style: i == widget.index
-                                ? text.body.copyWith(
+                                ? text.body.tabular.copyWith(
                                     fontWeight: text.emphasis,
                                   )
-                                : text.muted.body,
+                                : text.muted.body.tabular,
                           ),
                         ),
                     ],
