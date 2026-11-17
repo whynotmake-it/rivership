@@ -193,7 +193,8 @@ class DemoSection extends StatelessWidget {
 /// The surface live examples sit on: a popover's level (3 on the page)
 /// with a hairline and no drop shadow, so examples are seen on a raised
 /// surface as well as on the page. Its border darkens while keyboard focus
-/// is inside, so you can see which example takes your keys.
+/// is inside, so you can see which example takes your keys. Examples on it
+/// count as on the page for plasticity.
 class DemoStage extends StatelessWidget {
   const DemoStage({required this.child, super.key, this.padding = 16});
 
@@ -235,7 +236,13 @@ class DemoStage extends StatelessWidget {
           ),
           child: child,
         ),
-        child: Padding(padding: EdgeInsets.all(padding), child: child),
+        // The stage stands in for a page, so controls on it are lit under
+        // plasticity like controls on the page (a raised surface would
+        // otherwise keep them flat).
+        child: CoilPlasticityScope(
+          elevated: false,
+          child: Padding(padding: EdgeInsets.all(padding), child: child),
+        ),
       ),
     );
   }
