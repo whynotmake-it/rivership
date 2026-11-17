@@ -1,6 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil_cli/testing.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -402,6 +403,105 @@ void main() {
     );
     expect(size.width, greaterThanOrEqualTo(44));
     expect(size.height, greaterThanOrEqualTo(44));
+  });
+
+  group('reflow', () {
+    Future<void> pump(
+      WidgetTester tester,
+      String title, {
+      double width = 360,
+      double scale = 1,
+      TextDirection direction = TextDirection.ltr,
+      VoidCallback? onDismissRequested,
+    }) => tester.pumpWidget(
+      MediaQuery(
+        data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+        child: Directionality(
+          textDirection: direction,
+          child: CoilTheme(
+            data: goldenLight.copyWith(tier: CoilTier.touch),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: width,
+                child: CoilBanner(
+                  key: const ValueKey('banner'),
+                  icon: const TestIcon(TestGlyph.heart),
+                  title: Text(title),
+                  onDismissRequested: onDismissRequested ?? () {},
+                  actions: [
+                    CoilButton(onPressed: () {}, child: const Text('Retry')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Rect rect(WidgetTester tester, String text) =>
+        tester.getRect(find.text(text));
+
+    testWidgets('a short title keeps the actions beside it, centered', (
+      tester,
+    ) async {
+      await pump(tester, 'Offline');
+      final title = rect(tester, 'Offline');
+      final retry = rect(tester, 'Retry');
+      expect(retry.left, greaterThan(title.right));
+      expect(retry.center.dy, moreOrLessEquals(title.center.dy, epsilon: 1));
+    });
+
+    testWidgets('a long title moves the actions under it', (tester) async {
+      const long =
+          'Your workspace storage is almost full, so new uploads may fail';
+      await pump(tester, long);
+      expect(tester.takeException(), isNull);
+      final title = rect(tester, long);
+      final retry = rect(tester, 'Retry');
+      expect(retry.top, greaterThan(title.bottom));
+      expect(retry.left, moreOrLessEquals(title.left, epsilon: 16));
+    });
+
+    testWidgets('stacked, the close button centers on the first line and '
+        'takes taps above the text', (tester) async {
+      const long = 'A title long enough to push the action under it';
+      var dismissed = 0;
+      await pump(tester, long, onDismissRequested: () => dismissed++);
+      final title = rect(tester, long);
+      final cross = tester.getRect(find.byType(CoilButton).last);
+      final line = tester
+          .renderObject<RenderParagraph>(find.text(long))
+          .getFullHeightForCaret(const TextPosition(offset: 0));
+      expect(
+        cross.center.dy,
+        moreOrLessEquals(title.top + line / 2, epsilon: 1),
+      );
+      // Above the title's top, still inside the 44 px target.
+      expect(cross.top, lessThan(title.top));
+      await tester.tapAt(Offset(cross.center.dx, cross.top + 2));
+      expect(dismissed, 1);
+    });
+
+    for (final direction in TextDirection.values) {
+      testWidgets('never overflows: 240 px, 2x text, an unbroken title, '
+          '${direction.name}', (tester) async {
+        await pump(
+          tester,
+          'https://example.com/${'w' * 200}',
+          width: 240,
+          scale: 2,
+          direction: direction,
+        );
+        expect(tester.takeException(), isNull);
+        final banner = tester.getRect(_banner);
+        for (final part in [find.text('Retry'), find.byType(TestIcon)]) {
+          final r = tester.getRect(part);
+          expect(banner.left <= r.left && r.right <= banner.right, isTrue);
+        }
+      });
+    }
   });
 
   testWidgets('fixed banners pad below the top safe area', (tester) async {

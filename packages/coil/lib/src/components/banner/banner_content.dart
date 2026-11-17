@@ -1,11 +1,13 @@
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/banner/banner_layout.dart';
 import 'package:coil/src/components/banner/banner_style.dart';
 import 'package:flutter/widgets.dart';
 
-/// A banner's layout: [icon] text [actions] [✕]. With a description, the
-/// actions move under the text.
+/// A banner's parts: [icon] text [actions] [✕]. The actions follow the
+/// title when they fit beside it and move under the text when they don't,
+/// or when there is a description.
 class BannerContent extends StatelessWidget {
   /// Lays out a banner's parts.
   const BannerContent({
@@ -46,9 +48,7 @@ class BannerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = style.gap!;
     final spacing = style.actionSpacing!;
-    final stacked = description != null;
 
     final text = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,52 +70,46 @@ class BannerContent extends StatelessWidget {
             ),
           );
 
+    final line = style.titleStyle!;
     return Padding(
       padding: EdgeInsets.all(style.padding!),
-      child: Row(
-        // Without a description the title is usually one line, and
-        // everything centers on it.
-        crossAxisAlignment: stacked
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        spacing: gap,
-        children: [
-          if (icon case final icon?)
-            CoilLineBox(
-              style: style.titleStyle!,
-              child: ExcludeSemantics(
-                child: IconTheme(
-                  data: IconThemeData(
-                    size: style.iconSize,
-                    color: style.statusColor,
-                    applyTextScaling: true,
-                  ),
-                  child: icon,
+      child: BannerLayout(
+        gap: style.gap!,
+        actionSpacing: spacing,
+        // A description makes the banner a block: the actions go under it.
+        flow: description != null ? BannerFlow.stacked : BannerFlow.auto,
+        icon: switch (icon) {
+          final icon? => CoilLineBox(
+            style: line,
+            child: ExcludeSemantics(
+              child: IconTheme(
+                data: IconThemeData(
+                  size: style.iconSize,
+                  color: style.statusColor,
+                  applyTextScaling: true,
                 ),
+                child: icon,
               ),
             ),
-          Expanded(
-            child: stacked && buttons != null
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: spacing,
-                    children: [text, buttons],
-                  )
-                : text,
           ),
-          if (!stacked) ?buttons,
-          if (onDismissRequested case final dismiss?)
-            CoilLineBox(
-              style: style.titleStyle!,
-              child: CoilButton.icon(
-                onPressed: dismiss,
-                variant: CoilButtonVariant.ghost,
-                size: CoilSize.compact,
-                semanticLabel: dismissLabel,
-                icon: dismissIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
-              ),
+          null => null,
+        },
+        line: CoilLineBox(style: line, child: const SizedBox.shrink()),
+        text: text,
+        actions: buttons,
+        dismiss: switch (onDismissRequested) {
+          final dismiss? => CoilLineBox(
+            style: line,
+            child: CoilButton.icon(
+              onPressed: dismiss,
+              variant: CoilButtonVariant.ghost,
+              size: CoilSize.compact,
+              semanticLabel: dismissLabel,
+              icon: dismissIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
             ),
-        ],
+          ),
+          null => null,
+        },
       ),
     );
   }
