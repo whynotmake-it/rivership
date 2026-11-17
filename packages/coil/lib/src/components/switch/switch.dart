@@ -391,11 +391,15 @@ class _CoilSwitchState extends State<CoilSwitch>
                   spacing: sizes.gap,
                   children: [
                     track,
-                    DefaultTextStyle(
-                      style: style.textStyle!.copyWith(
-                        color: value(CoilSwitchTrack.label),
+                    // A long label wraps beside the track, like a form
+                    // label.
+                    Flexible(
+                      child: DefaultTextStyle(
+                        style: style.textStyle!.copyWith(
+                          color: value(CoilSwitchTrack.label),
+                        ),
+                        child: label,
                       ),
-                      child: label,
                     ),
                   ],
                 ),

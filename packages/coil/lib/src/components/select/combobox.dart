@@ -704,9 +704,14 @@ class _Chip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 2,
           children: [
-            DefaultTextStyle(
-              style: CoilTheme.textOf(context).caption,
-              child: label,
+            // A long chip label ends in an ellipsis.
+            Flexible(
+              child: DefaultTextStyle(
+                style: CoilTheme.textOf(context).caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                child: label,
+              ),
             ),
             Semantics(
               button: true,

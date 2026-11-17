@@ -152,6 +152,8 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
           style: style.textStyle!,
           maxLines: 1,
           softWrap: false,
+          // A word wider than the room ends in an ellipsis.
+          overflow: TextOverflow.ellipsis,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             spacing: metrics.gap,
@@ -167,7 +169,7 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
                     child: leading,
                   ),
                 ),
-              words,
+              Flexible(child: words),
             ],
           ),
         ),
