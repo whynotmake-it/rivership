@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/select_harness.dart';
 import 'src/test_icons.dart';
@@ -726,8 +727,8 @@ void main() {
       final before = FocusManager.instance.primaryFocus;
       expect(before?.context?.widget, isNotNull);
 
-      final host = tester.state<_HostState>(find.byType(_Host));
-      host.set(CoilDrawerEdge.start);
+      final host = tester.state<_HostState>(find.byType(_Host))
+        ..set(CoilDrawerEdge.start);
       await tester.pumpAndSettle();
       expect(FocusManager.instance.primaryFocus, isNot(before));
       host.set(CoilDrawerEdge.end);
@@ -849,6 +850,110 @@ void main() {
       await tester.tap(find.text('Press'));
       await tester.pumpAndSettle();
       expect(presses, 1, reason: 'the content still takes presses');
+    });
+  });
+
+  group('motion', () {
+    Future<void> pumpScaffold(
+      WidgetTester tester, {
+      required bool reduced,
+    }) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(disableAnimations: reduced),
+              child: CoilSidebarScaffold(
+                sidebar: const CoilSidebar(children: [Text('Nav')]),
+                motions: {
+                  CoilSidebarTrack.drawer: const Motion.linear(
+                    Duration(seconds: 2),
+                  ),
+                },
+                body: const Column(
+                  children: [
+                    CoilSidebarTrigger(
+                      icon: TestIcon(TestGlyph.home),
+                      openLabel: Text('Open navigation'),
+                    ),
+                    Expanded(child: SizedBox.expand(key: ValueKey('page'))),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Open navigation'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    double pageLeft(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(const ValueKey('page'))).dx;
+
+    testWidgets("the drawer track's motion drives the slide", (tester) async {
+      await pumpScaffold(tester, reduced: false);
+      expect(pageLeft(tester), closeTo(80, 2), reason: 'a quarter of 2 s');
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("a drawer's own motion tokens obey reduced motion", (
+      tester,
+    ) async {
+      for (final reduced in [false, true]) {
+        await tester.pumpWidget(const SizedBox());
+        useScreen(tester, TestScreen.phone);
+        late StateSetter update;
+        CoilDrawerEdge? open;
+        await tester.pumpWidget(
+          testApp(
+            tier: CoilTier.touch,
+            home: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(disableAnimations: reduced),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    update = setState;
+                    return CoilDrawer(
+                      open: open,
+                      onOpenChanged: (value) => setState(() => open = value),
+                      motion: CoilTheme.of(context).motion.copyWith(
+                        standard: const Motion.linear(Duration(seconds: 2)),
+                      ),
+                      start: const Text('Start panel'),
+                      child: const SizedBox.expand(key: ValueKey('content')),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+        update(() => open = CoilDrawerEdge.start);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(
+          _contentLeft(tester),
+          reduced ? 320 : closeTo(80, 2),
+          reason: 'reduced: $reduced',
+        );
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('reduced motion makes a custom drawer motion instant', (
+      tester,
+    ) async {
+      await pumpScaffold(tester, reduced: true);
+      expect(pageLeft(tester), 320);
     });
   });
 

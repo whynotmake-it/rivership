@@ -50,6 +50,9 @@ Milestone M0, unreleased.
     `open: bool`, `onClose`, `semanticLabel`), and `reveal:
     CoilDrawerReveal { behind, over }`, `drag: CoilDrawerDrag?` and look
     parameters. It renders in place instead of in an overlay.
+  - Breaking: `CoilDrawer.motion` is a `CoilMotion?` token set and
+    `exitMotion` is gone; it slides on `standard` / `standardExit`, and
+    reduced motion now applies to an app's own drawer motion too.
   - `CoilScreenRadius` (primitive) reads the device screen's corner radii
     once through `corner_radius_plugin`; null where unknown (web, desktop,
     a failed query, tests) and `BorderRadius.zero` for a square screen.

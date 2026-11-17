@@ -249,8 +249,8 @@ Which token for what:
 | Token | Moves |
 |---|---|
 | `quick` / `quickExit` | small travel: the hover highlight, press collapse, thumb squish |
-| `standard` / `standardExit` | indicators that must land: tab pill, switch thumb, merge/split, popovers |
-| `gentle` / `gentleExit` | large surfaces: dialogs, panels; sheets use `gentle` both ways |
+| `standard` / `standardExit` | indicators that must land: tab pill, switch thumb, merge/split, popovers; the drawer, which a finger drags and which has to land as fast |
+| `gentle` / `gentleExit` | large surfaces: dialogs, panels (the sidebar folding); sheets use `gentle` both ways |
 | `fade` / `fadeExit` | opacity and color: tints, focus rings, label color, check drawing |
 
 Reduced motion makes every spatial token instant and keeps `fade`/`fadeExit`.
@@ -364,3 +364,4 @@ Look:
 | 2026-11-17 | Selection indicators (the tabs pill, toggle-group segments, merged selection blocks) are never lit; `subtle` lights raised controls at 0.78 and filled at 0.8 | owner review: an indicator marks the current item, it isn't pressed; pressables a hair stronger |
 | 2026-11-17 | Card piles (sidebar callouts, queued messages) share one primitive, `CoilCardStack`: folded peeks are measured at the cards' far edges and fanned-out cards stack by measured height with the tier's gap; anchor edge, when it fans (`CoilCardStackExpand`), how a tap-pinned pile folds (`CoilCardStackFold`), peek and scale are configuration. A dismissible `CoilCard` in a pile fades in place (`CoilCardStackItemScope.leave`) instead of collapsing | owner review: mixed card heights spaced unevenly, and two layouts duplicated the same rules |
 | 2026-11-17 | Dialog and sheet buttons go through one primitive, `CoilActionBar(actions:, layout: CoilActionBarLayout?)`, null picking `CoilActionBar.layoutOf(context)`: `row` (trailing, at the buttons' width) on the pointer tier and in wide windows, `stack` (full width, primary on top, Cancel at the bottom) in a sheet or on the touch tier under 600, centered confirmations included. Never a two-up row. A sheet pins it as `CoilSheetPanel.footer`. `CoilInteraction`'s minimum hit target now lays the visual out with the parent's constraints | owner, on stacked buttons centered at their own width in phone sheets: "That's very wrong". One shape whatever the label length, locale or text size, in the order both platforms stack; the old `ConstrainedBox` + `Center` loosened a tight width, so no parent could stretch a touch-tier button |
+| 2026-11-17 | `CoilDrawer.motion` is a `CoilMotion?` (was raw `motion`/`exitMotion` springs) and slides on `standard` / `standardExit`, not `gentle`. No `CoilDrawerTrack`: the drawer animates one value, so the open and close tokens are all it needs; the sidebar's `drawer` track reaches it as a copy of the tokens | raw springs skipped reduced motion. The drawer follows a finger and releases into the spring, so it lands like an indicator; DESIGN.md already put it on `standard` |

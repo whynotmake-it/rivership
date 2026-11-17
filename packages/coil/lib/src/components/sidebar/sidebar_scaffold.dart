@@ -743,8 +743,12 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       scrimColor: look.drawerScrimColor,
       shadows: look.drawerShadows,
       panelColor: reveal == CoilDrawerReveal.behind ? look.background : null,
-      motion: _motionFor(CoilSidebarTrack.drawer, motion.standard),
-      exitMotion: _motionFor(CoilSidebarTrack.drawer, motion.standardExit),
+      // The drawer track's spring, if set, both ways; the drawer applies
+      // reduced motion again on top.
+      motion: motion.copyWith(
+        standard: _motionFor(CoilSidebarTrack.drawer, motion.standard),
+        standardExit: _motionFor(CoilSidebarTrack.drawer, motion.standardExit),
+      ),
       child: child,
     );
   }

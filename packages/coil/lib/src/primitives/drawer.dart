@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/metrics.dart';
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/screen_radius.dart';
@@ -106,10 +107,11 @@ const _phoneFallbackRadius = {
 /// the others, so an inner `end` drawer and an outer `start` drawer behave
 /// as one drawer with two sides.
 ///
-/// It slides on [motion] and back on [exitMotion] (the theme's `standard`
-/// and `standardExit` by default); a drag follows the finger and its
-/// release velocity carries into the spring. [width] is the panel's width,
-/// 85 % of this widget's width when null, at most 320.
+/// It slides open on the `standard` token and closed on `standardExit`,
+/// of [motion] or the theme's (reduced motion makes both instant); a drag
+/// follows the finger and its release velocity carries into the spring.
+/// [width] is the panel's width, 85 % of this widget's width when null, at
+/// most 320.
 class CoilDrawer extends StatefulWidget {
   /// Creates a drawer host.
   const CoilDrawer({
@@ -134,7 +136,6 @@ class CoilDrawer extends StatefulWidget {
     this.panelColor,
     this.contentColor,
     this.motion,
-    this.exitMotion,
   }) : assert(scale > 0 && scale <= 1, 'scale shrinks the content, 0 to 1'),
        assert(
          panelScale > 0 && panelScale <= 1,
@@ -232,11 +233,9 @@ class CoilDrawer extends StatefulWidget {
   /// the panel never shows through it. Null is the page background.
   final Color? contentColor;
 
-  /// The slide open. The theme's `standard` when null.
-  final Motion? motion;
-
-  /// The slide closed. The theme's `standardExit` when null.
-  final Motion? exitMotion;
+  /// Overrides the theme's motion tokens: the slide opens on `standard`
+  /// and closes on `standardExit`. Reduced motion still applies.
+  final CoilMotion? motion;
 
   @override
   State<CoilDrawer> createState() => _CoilDrawerState();
@@ -449,10 +448,8 @@ class _CoilDrawerState extends State<CoilDrawer>
   );
 
   Motion _motionToward(double target) {
-    final tokens = CoilTheme.motionOf(context);
-    return target == 0
-        ? widget.exitMotion ?? tokens.standardExit
-        : widget.motion ?? tokens.standard;
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
+    return target == 0 ? tokens.standardExit : tokens.standard;
   }
 
   void _animateTo(double target, {double? velocity}) {
@@ -603,9 +600,7 @@ class _CoilDrawerState extends State<CoilDrawer>
     // An owner that doesn't apply the change (it keeps `open` as it was)
     // would leave the drawer where the drag sent it: go back.
     _schedule(() {
-      if (!_dragging &&
-          widget.open != result &&
-          _target == _targetOf(result)) {
+      if (!_dragging && widget.open != result && _target == _targetOf(result)) {
         _animateTo(_targetOf(widget.open));
       }
     });
