@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil_glass/src/glass_scope.dart';
@@ -5,6 +8,7 @@ import 'package:coil_glass/src/glass_style.dart';
 import 'package:coil_glass/src/on_glass.dart';
 import 'package:flutter/widgets.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+import 'package:motor/motor.dart';
 
 /// The corner family of a [CoilGlass].
 enum CoilGlassShape {
@@ -18,10 +22,16 @@ enum CoilGlassShape {
 
 /// Whether a glass shape answers touch with Apple's squash and stretch.
 enum CoilGlassResponse {
-  /// Stays put. For panels and menus.
+  /// Stays put.
   none,
 
-  /// Swells under the finger and stretches while dragged: controls.
+  /// Stays put; a soft glow follows the finger while it presses or drags
+  /// (`GlassGlow`). For menus.
+  glow,
+
+  /// Glows, swells under the finger and stretches toward a drag
+  /// (`LiquidStretch`); while it does, its [CoilGlassGroup] lets it blend
+  /// with a neighbor it comes close to. For controls.
   stretch,
 }
 
@@ -91,43 +101,91 @@ class _LayerScope extends InheritedWidget {
   bool updateShouldNotify(_LayerScope oldWidget) => oldWidget.style != style;
 }
 
-/// Melts the [CoilGlass] shapes inside into one surface where they come
-/// within the style's `blend` distance, like drops of water.
+/// Lets the [CoilGlass] shapes inside melt into each other, but only while
+/// one of them is pressed or dragged.
 ///
-/// Must sit inside a [CoilGlassLayer].
-class CoilGlassGroup extends StatelessWidget {
+/// At rest the shapes are separate (blend 0), so the renderer's geometry
+/// stays cached. While a [CoilGlassResponse.stretch] shape is held, the
+/// blend rises to the style's `blend` distance on the theme's `quick`
+/// spring: the held shape swells and stretches toward the finger, and once
+/// it comes within that distance of a neighbor they join. On release the
+/// blend springs back to 0 on `standard` as the shapes spring apart.
+///
+/// Space the shapes further apart than the blend distance plus the press
+/// swell (8 px for the default 5 px blend), so a plain press doesn't
+/// join them. Must sit inside a [CoilGlassLayer].
+class CoilGlassGroup extends StatefulWidget {
   /// Creates a blend group.
   const CoilGlassGroup({required this.child, super.key, this.blend});
 
   /// The shapes, anywhere below.
   final Widget child;
 
-  /// Overrides the style's blend distance.
+  /// Overrides the style's blend distance while a shape is held.
   final double? blend;
 
   @override
+  State<CoilGlassGroup> createState() => _CoilGlassGroupState();
+}
+
+class _CoilGlassGroupState extends State<CoilGlassGroup> {
+  int _held = 0;
+
+  void _press() => setState(() => _held++);
+
+  void _release() {
+    // Also called while a held shape is disposed, when the tree is locked.
+    scheduleMicrotask(() {
+      if (mounted) setState(() => _held = math.max(0, _held - 1));
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (CoilGlassScope.modeOf(context) == CoilGlassMode.solid) return child;
+    if (CoilGlassScope.modeOf(context) == CoilGlassMode.solid) {
+      return widget.child;
+    }
+    final motion = CoilTheme.motionOf(context);
+    final held = _held > 0;
+    final target = held ? widget.blend ?? _styleOf(context).blend! : 0.0;
     return _Grouped(
       grouped: true,
-      child: LiquidGlassBlendGroup(
-        blend: blend ?? _styleOf(context).blend!,
-        child: child,
+      onPress: _press,
+      onRelease: _release,
+      child: SingleMotionBuilder(
+        value: target,
+        motion: held ? motion.quick : motion.standard,
+        builder: (context, blend, child) =>
+            LiquidGlassBlendGroup(blend: blend.clamp(0, 100), child: child!),
+        child: widget.child,
       ),
     );
   }
 }
 
 class _Grouped extends InheritedWidget {
-  const _Grouped({required this.grouped, required super.child});
+  const _Grouped({
+    required this.grouped,
+    required super.child,
+    this.onPress,
+    this.onRelease,
+  });
 
   final bool grouped;
+  final VoidCallback? onPress;
+  final VoidCallback? onRelease;
+
+  static _Grouped? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_Grouped>();
 
   static bool of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_Grouped>()?.grouped ?? false;
 
   @override
-  bool updateShouldNotify(_Grouped oldWidget) => oldWidget.grouped != grouped;
+  bool updateShouldNotify(_Grouped oldWidget) =>
+      oldWidget.grouped != grouped ||
+      oldWidget.onPress != onPress ||
+      oldWidget.onRelease != onRelease;
 }
 
 /// One piece of glass: a button's body, a menu's panel.
@@ -186,7 +244,11 @@ class CoilGlass extends StatelessWidget {
             4.5,
           )
         : look.label ?? theme.colors.foreground;
-    final content = CoilOnGlass(
+    // Glow and stretch follow the finger, so reduced motion turns them
+    // off (and with them any blending).
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final response = reduce ? CoilGlassResponse.none : this.response;
+    Widget content = CoilOnGlass(
       variant: look.variant!,
       child: IconTheme.merge(
         data: IconThemeData(color: label),
@@ -196,6 +258,15 @@ class CoilGlass extends StatelessWidget {
         ),
       ),
     );
+    if (response != CoilGlassResponse.none) {
+      content = GlassGlowLayer(
+        child: GlassGlow(
+          glowColor: look.glow!,
+          glowRadius: look.glowRadius!,
+          child: content,
+        ),
+      );
+    }
 
     if (CoilGlassScope.modeOf(context) == CoilGlassMode.solid) {
       final border = BorderRadius.circular(radius);
@@ -230,13 +301,48 @@ class CoilGlass extends StatelessWidget {
     if (context.dependOnInheritedWidgetOfExactType<_LayerScope>() == null) {
       glass = CoilGlassLayer(child: glass);
     }
-    return switch (response) {
-      CoilGlassResponse.none => glass,
-      CoilGlassResponse.stretch => LiquidStretch(
-        interactionScale: 1.04,
-        stretch: 0.3,
-        child: glass,
-      ),
-    };
+    if (response != CoilGlassResponse.stretch) return glass;
+    return _HoldReporter(
+      group: _Grouped.maybeOf(context),
+      child: LiquidStretch(interactionScale: 1.04, child: glass),
+    );
   }
+}
+
+/// Tells the enclosing [CoilGlassGroup] while a pointer holds [child].
+class _HoldReporter extends StatefulWidget {
+  const _HoldReporter({required this.group, required this.child});
+
+  final _Grouped? group;
+  final Widget child;
+
+  @override
+  State<_HoldReporter> createState() => _HoldReporterState();
+}
+
+class _HoldReporterState extends State<_HoldReporter> {
+  int _pointers = 0;
+
+  void _down(PointerDownEvent _) {
+    if (_pointers++ == 0) widget.group?.onPress?.call();
+  }
+
+  void _up(PointerEvent _) {
+    if (_pointers == 0) return;
+    if (--_pointers == 0) widget.group?.onRelease?.call();
+  }
+
+  @override
+  void dispose() {
+    if (_pointers > 0) widget.group?.onRelease?.call();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: _down,
+    onPointerUp: _up,
+    onPointerCancel: _up,
+    child: widget.child,
+  );
 }

@@ -25,11 +25,11 @@ CoilTheme(
 )
 
 // Anywhere below: plain coil.
-CoilMaterialGroup(                // one layer; buttons 6 px apart melt
+CoilMaterialGroup(                // one layer; separate at rest
   child: Row(children: [
     CoilButton.icon(variant: .glass, onPressed: share, icon: shareIcon,
       semanticLabel: 'Share'),
-    const SizedBox(width: 6),
+    const SizedBox(width: 8),
     CoilDropdown(
       entries: [...],
       builder: (context, menu) => CoilButton.icon(variant: .glass,
@@ -57,8 +57,15 @@ This package fills it:
 | coil_glass | Job |
 |---|---|
 | `CoilGlassScope` | Installs `CoilGlassMaterial`, shares one backdrop capture per frame among all glass below, and carries the mode (Reduce Transparency, pinned mode for previews). |
-| `CoilGlassMaterial` | Control → a glass capsule that swells under the finger (tinted when prominent). Popover → `CoilGlassStyle.dense` glass in a layer of its own. Group → one `CoilGlassLayer` + `CoilGlassGroup`. |
-| `CoilGlassStyle` | A coil component style: variant, Apple's tint slider (`tintAmount`), `wash` (coil's surface color mixed in), `refraction`, shadow, blend distance, solid fill. Set app-wide with `CoilThemeData.withComponentStyle`. |
+| `CoilGlassMaterial` | Control → a glass capsule with a touch glow that swells and stretches toward a drag (tinted when prominent). Popover → `CoilGlassStyle.dense` glass in a layer of its own, with a touch glow. Group → one `CoilGlassLayer` + `CoilGlassGroup`. |
+
+Glass never merges at rest. A `CoilGlassGroup` keeps its blend at 0; while
+one of its buttons is held, the blend rises to 5 px (theme `quick`), so a
+button stretched toward a neighbor joins it, and on release it springs back
+to 0 (theme `standard`). Keep buttons in a group 8 px or more apart, so a
+plain press (×1.04 swell) doesn't join them. Reduced motion turns stretch
+and glow off, and with them the blending.
+| `CoilGlassStyle` | A coil component style: variant, Apple's tint slider (`tintAmount`), `wash` (coil's surface color mixed in), `refraction`, shadow, blend distance while held, touch glow (`glow`, `glowRadius`), solid fill. Set app-wide with `CoilThemeData.withComponentStyle`. |
 | `CoilGlass`, `CoilGlassLayer`, `CoilGlassGroup`, `CoilOnGlass` | Building blocks for glass you compose yourself. |
 
 ## Fallbacks

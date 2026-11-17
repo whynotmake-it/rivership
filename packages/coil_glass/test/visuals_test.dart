@@ -10,11 +10,10 @@
 library;
 
 import 'package:coil/primitives.dart';
-import 'package:coil_glass/coil_glass.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 // The renderer's own tests pin this: flutter_tester renders its seeded
-// backdrop pass wrongly now and then (glass missing for a few frames).
+// backdrop pass wrongly now and then.
 // ignore_for_file: implementation_imports, invalid_use_of_internal_member
 import 'package:liquid_glass_renderer/src/internal/backdrop_seed.dart';
 import 'package:snaptest/snaptest.dart';
@@ -75,67 +74,32 @@ void main() {
     final mode = _mode(brightness);
     for (final (device, phone) in [(_phone, true), (_desktop, false)]) {
       final form = phone ? 'phone' : 'desktop';
-      for (final glass in [true, false]) {
-        final look = glass ? 'glass' : 'coil';
-        testWidgets(
-          '${form}_${look}_$mode',
-          variant: TestDevicesVariant({device}),
-          (tester) async {
-            final menu = CoilPopupController();
-            addTearDown(menu.dispose);
-            await tester.pumpWidget(
-              themed(
-                brightness: brightness,
-                glass: glass,
-                child: AlbumScreen(menu: menu, desktop: !phone),
-              ),
-            );
-            await _settle(tester);
-            await snap(
-              name: '${form}_${mode}_$look',
-              settings: _settings(frame: phone),
-            );
-            await tester.tap(find.byKey(const ValueKey('more')));
-            await _settle(tester);
-            await snap(
-              name: '${form}_${mode}_${look}_menu',
-              settings: _settings(frame: phone),
-            );
-          },
-        );
-      }
-    }
-
-    for (final glassMode in [CoilGlassMode.frosted, CoilGlassMode.solid]) {
       testWidgets(
-        'fallback_${glassMode.name}_$mode',
-        variant: TestDevicesVariant({_phone}),
+        '${form}_rest_$mode',
+        variant: TestDevicesVariant({device}),
         (tester) async {
           final menu = CoilPopupController();
           addTearDown(menu.dispose);
           await tester.pumpWidget(
             themed(
               brightness: brightness,
-              mode: glassMode,
-              child: AlbumScreen(menu: menu, desktop: false),
+              child: AlbumScreen(menu: menu, desktop: !phone),
             ),
           );
           await _settle(tester);
-          await tester.tap(find.byKey(const ValueKey('more')));
-          await _settle(tester);
           await snap(
-            name: 'phone_${mode}_fallback_${glassMode.name}_menu',
-            settings: _settings(frame: true),
+            name: '${form}_${mode}_rest',
+            settings: _settings(frame: phone),
           );
         },
       );
     }
 
-    // A menu opening from a glass button, as frames (encode with ffmpeg):
-    // snaptest's video recorder is too slow with real glass in
-    // flutter_tester.
+    // Press Share, hold, drag it toward Favorite, hold, release. As frames
+    // (encode with ffmpeg): snaptest's video recorder is too slow with real
+    // glass in flutter_tester.
     testWidgets(
-      'menu_frames_$mode',
+      'drag_frames_$mode',
       variant: TestDevicesVariant({_phone}),
       (tester) async {
         final menu = CoilPopupController();
@@ -151,28 +115,27 @@ void main() {
         Future<void> run(int frames) async {
           for (var i = 0; i < frames; i++) {
             await tester.pump(const Duration(milliseconds: 33));
-            // Real time for the renderer's asynchronous GPU work, as a
-            // device would have between frames.
-            await tester.runAsync(
-              () => Future<void>.delayed(const Duration(milliseconds: 20)),
-            );
-            await tester.pump();
             await snap(
-              name: 'menu_${mode}_${(frame++).toString().padLeft(3, '0')}',
+              name: 'drag_${mode}_${(frame++).toString().padLeft(3, '0')}',
               settings: _settings(frame: false, dir: '$_out/frames'),
             );
           }
         }
 
-        await run(4);
+        await run(3);
         final gesture = await tester.startGesture(
-          tester.getCenter(find.byKey(const ValueKey('more'))),
+          tester.getCenter(find.byKey(const ValueKey('Share'))),
         );
-        await run(4);
+        await run(8); // pressed, not moving: swells and glows, no blend
+        // A short pull, as a thumb does: the finger stays over the button
+        // (and its glow on it) while the stretch reaches the neighbor.
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(4, 0));
+          await run(1);
+        }
+        await run(8); // held near Favorite: blended
         await gesture.up();
-        await run(22);
-        menu.close();
-        await run(14);
+        await run(24); // springs apart, blend back to 0
       },
     );
   }

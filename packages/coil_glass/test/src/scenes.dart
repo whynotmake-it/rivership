@@ -265,16 +265,17 @@ class AlbumScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
-    const gap = SizedBox(width: 6);
+    const gap = SizedBox(width: 8);
     CoilButton iconButton(IconData icon, String label) => CoilButton.icon(
+      key: ValueKey(label),
       onPressed: () {},
       variant: CoilButtonVariant.glass,
       semanticLabel: label,
       icon: _icon(icon),
     );
 
-    // Buttons 6 px apart sit within the blend distance: each cluster is
-    // one piece of glass with a bead per button.
+    // Buttons 8 px apart stay separate at rest; one held and stretched
+    // toward a neighbor melts into it until released.
     final top = Row(
       children: [
         CoilMaterialGroup(

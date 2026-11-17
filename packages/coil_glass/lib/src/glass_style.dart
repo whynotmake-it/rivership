@@ -34,6 +34,8 @@ class CoilGlassStyle extends CoilComponentStyle<CoilGlassStyle> {
     this.tint,
     this.shadows,
     this.blend,
+    this.glow,
+    this.glowRadius,
     this.solidFill,
     this.label,
   });
@@ -61,7 +63,12 @@ class CoilGlassStyle extends CoilComponentStyle<CoilGlassStyle> {
           blurRadius: 16,
         ),
       ],
-      blend: 12,
+      // Only while a shape is held (see CoilGlassGroup); 0 at rest.
+      blend: 5,
+      // A soft light under the finger, a little stronger on light glass
+      // where white shows less.
+      glow: dark ? const Color(0x29FFFFFF) : const Color(0x33FFFFFF),
+      glowRadius: 0.9,
       // Reduce Transparency: the floating surface coil already has.
       solidFill: c.surface(3),
       label: c.foreground,
@@ -95,9 +102,15 @@ class CoilGlassStyle extends CoilComponentStyle<CoilGlassStyle> {
   /// Exterior shadows. The renderer cuts them out behind the glass.
   final List<BoxShadow>? shadows;
 
-  /// How close, in logical pixels, grouped shapes come before they melt
-  /// into one.
+  /// How close, in logical pixels, a held shape has to come to a neighbor
+  /// in its group before they melt. Shapes never melt at rest.
   final double? blend;
+
+  /// The color at the center of the glow under the finger.
+  final Color? glow;
+
+  /// The glow's radius as a fraction of the shape's short side.
+  final double? glowRadius;
 
   /// The fill when glass is turned off (Reduce Transparency, high
   /// contrast), and the color of the [wash].
@@ -155,6 +168,8 @@ class CoilGlassStyle extends CoilComponentStyle<CoilGlassStyle> {
           tint: other.tint ?? tint,
           shadows: other.shadows ?? shadows,
           blend: other.blend ?? blend,
+          glow: other.glow ?? glow,
+          glowRadius: other.glowRadius ?? glowRadius,
           solidFill: other.solidFill ?? solidFill,
           label: other.label ?? label,
         );
@@ -168,6 +183,8 @@ class CoilGlassStyle extends CoilComponentStyle<CoilGlassStyle> {
     tint,
     shadows,
     blend,
+    glow,
+    glowRadius,
     solidFill,
     label,
   ];

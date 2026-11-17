@@ -37,8 +37,14 @@ class CoilGlassMaterial extends CoilMaterial {
         child: child,
       ),
       CoilSurfaceRole.popover => CoilGlassLayer(
-        style: popoverStyle,
-        child: CoilGlass(radius: spec.borderRadius.topLeft.x, child: child),
+        // A glow follows the finger across the rows; a third of the
+        // panel's short side, so it reads as a touch, not a wash.
+        style: popoverStyle.merge(const CoilGlassStyle(glowRadius: 0.35)),
+        child: CoilGlass(
+          radius: spec.borderRadius.topLeft.x,
+          response: CoilGlassResponse.glow,
+          child: child,
+        ),
       ),
     };
   }

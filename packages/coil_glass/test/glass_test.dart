@@ -10,6 +10,7 @@ Widget _app(
   CoilGlassMode? mode,
   bool reduceTransparency = false,
   bool highContrast = false,
+  bool disableAnimations = false,
 }) {
   final app = Overlay(
     initialEntries: [OverlayEntry(builder: (_) => Center(child: child))],
@@ -18,6 +19,7 @@ Widget _app(
     data: MediaQueryData(
       size: const Size(800, 600),
       highContrast: highContrast,
+      disableAnimations: disableAnimations,
     ),
     child: Directionality(
       textDirection: TextDirection.ltr,
@@ -70,6 +72,50 @@ void main() {
         _app(_button(variant: CoilButtonVariant.secondary)),
       );
       expect(find.byType(LiquidGlass), findsNothing);
+    });
+
+    testWidgets('a group blends only while a button is held', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          CoilMaterialGroup(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _button(),
+                const SizedBox(width: 8),
+                _button(),
+              ],
+            ),
+          ),
+        ),
+      );
+      double blend() => tester
+          .widget<LiquidGlassBlendGroup>(find.byType(LiquidGlassBlendGroup))
+          .blend;
+      expect(blend(), 0);
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(CoilButton).first),
+      );
+      await tester.pumpAndSettle();
+      expect(blend(), closeTo(5, 0.01));
+
+      await gesture.up();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(blend(), 0);
+    });
+
+    testWidgets('glass buttons glow under the finger', (tester) async {
+      await tester.pumpWidget(_app(_button()));
+      expect(find.byType(GlassGlow), findsOneWidget);
+      expect(find.byType(LiquidStretch), findsOneWidget);
+    });
+
+    testWidgets('reduced motion: no stretch, no glow', (tester) async {
+      await tester.pumpWidget(_app(_button(), disableAnimations: true));
+      expect(find.byType(GlassGlow), findsNothing);
+      expect(find.byType(LiquidStretch), findsNothing);
     });
 
     testWidgets('a group is one layer with a blend group', (tester) async {
