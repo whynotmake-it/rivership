@@ -244,11 +244,11 @@ class _HomePage extends StatelessWidget {
           pillLabel: 'Intrinsic Height',
           pillIcon: CupertinoIcons.crop,
           pillColor: t.accentIndigo,
-          codeHint: 'Size',
+          codeHint: 'PresentationSizing.automatic',
           preview: const ContentSizedPreview(),
           title: 'Content-Sized Sheet',
-          description:
-              'The child dictates the sheet height. You have full control.',
+          description: 'The glass sheet hugs its content. Stack more to see '
+              'when the one behind recedes.',
           onTap: () => showContentSizedSheet(context),
         ),
         ExampleCard(

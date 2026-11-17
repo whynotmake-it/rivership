@@ -61,6 +61,50 @@ Navigator.of(context).push(
 
 ---
 
+### Sheet sizing (`presentationSizing`)
+
+Glass and Cupertino sheets take a `presentationSizing`, named after SwiftUI's
+[`presentationSizing(_:)`](https://developer.apple.com/documentation/swiftui/view/presentationsizing(_:)):
+
+| Sizing | Height | Pushes back what's behind it |
+| --- | --- | --- |
+| `PresentationSizing.automatic` (glass default) | Hugs the content, up to the full height. Scroll views, `Scaffold`s and other content that takes all the height it gets fill the sheet. | Only as the sheet's top edge reaches the top of the screen. |
+| `PresentationSizing.page` (Cupertino default) | Always the full height, content at the top. | Always, while it opens. |
+
+`automatic` is `PresentationSizing.page.fitted(horizontal: false, vertical: true)`.
+Sheets attached to the bottom edge always take the full width.
+
+```dart
+// A short sheet that hugs its content:
+Navigator.of(context).push(
+  StupidSimpleGlassSheetRoute(
+    child: SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [/* ... */],
+      ),
+    ),
+  ),
+);
+
+// A full height sheet, whatever the content:
+Navigator.of(context).push(
+  StupidSimpleGlassSheetRoute(
+    presentationSizing: PresentationSizing.page,
+    child: YourContent(),
+  ),
+);
+```
+
+Stacked sheets follow iOS: a sheet that stops short of the top (like the
+`.medium` detent) only dims the sheet or page behind it, while one that reaches
+the top (like `.large`) makes it recede. The receding follows the top sheet's
+top edge, so it animates continuously while the sheet opens, is dragged, is
+dismissed, or grows to full height. The first glass sheet never pushes back the
+page behind it; it blurs and dims it instead.
+
+---
+
 ### Cupertino sheet
 
 The classic iOS modal sheet with push-back transitions on the route behind.

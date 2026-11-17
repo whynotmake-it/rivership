@@ -52,53 +52,93 @@ class ContentSizedPreview extends StatelessWidget {
   }
 }
 
-/// Opens a content-sized sheet directly.
+/// Opens a content-sized glass sheet.
+///
+/// Glass sheets default to [PresentationSizing.automatic], so the sheet hugs
+/// its content. From inside, you can stack more sheets to see how each
+/// [PresentationSizing] stacks: short sheets leave the one behind in place,
+/// full height ones push it back.
 void showContentSizedSheet(BuildContext context) {
   Navigator.of(context).push(
-    StupidSimpleSheetRoute(
-      child: SheetBackground.withTopMargin(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  height: 60,
-                  color: const Color(0xFF5856D6),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'Small content',
-                    style: TextStyle(
-                      color: CupertinoColors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 60,
-                  color: const Color(0xFF007AFF),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'Just two boxes',
-                    style: TextStyle(
-                      color: CupertinoColors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                CupertinoButton.filled(
-                  child: const Text('Close'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    StupidSimpleGlassSheetRoute<void>(
+      child: const _ContentSizedSheet(),
     ),
   );
+}
+
+class _ContentSizedSheet extends StatelessWidget {
+  const _ContentSizedSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // size to content
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 60,
+              color: const Color(0xFF5856D6),
+              alignment: Alignment.center,
+              child: const Text(
+                'Small content',
+                style: TextStyle(
+                  color: CupertinoColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 60,
+              color: const Color(0xFF007AFF),
+              alignment: Alignment.center,
+              child: const Text(
+                'Just two boxes',
+                style: TextStyle(
+                  color: CupertinoColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            CupertinoButton.tinted(
+              child: const Text('Stack another short sheet'),
+              onPressed: () => showContentSizedSheet(context),
+            ),
+            CupertinoButton.tinted(
+              child: const Text('Stack a page sheet'),
+              onPressed: () => Navigator.of(context).push(
+                StupidSimpleGlassSheetRoute<void>(
+                  presentationSizing: PresentationSizing.page,
+                  child: const _ContentSizedSheet(),
+                ),
+              ),
+            ),
+            CupertinoButton.tinted(
+              child: const Text('Stack a scrolling sheet'),
+              onPressed: () => Navigator.of(context).push(
+                StupidSimpleGlassSheetRoute<void>(
+                  // A scroll view takes all the height it gets, so this
+                  // fitted sheet grows to full height.
+                  child: ListView.builder(
+                    itemCount: 50,
+                    itemBuilder: (context, index) => CupertinoListTile(
+                      title: Text('Item #$index'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            CupertinoButton.filled(
+              child: const Text('Close'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

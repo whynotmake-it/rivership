@@ -88,6 +88,10 @@ class GlassSheetPreset extends StatelessWidget {
                     child: const Text('Push Another'),
                     onPressed: () => _push(context),
                   ),
+                  CupertinoButton.tinted(
+                    child: const Text('Push a Short Sheet'),
+                    onPressed: () => _pushShort(context),
+                  ),
                   CupertinoButton(
                     child: const Text('Close'),
                     onPressed: () => Navigator.of(context).pop(),
@@ -97,6 +101,41 @@ class GlassSheetPreset extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Pushes a sheet that hugs its content, which leaves this one in place.
+  ///
+  /// Pass `presentationSizing: PresentationSizing.page` to make it full height
+  /// instead, which pushes this one back.
+  static void _pushShort(BuildContext context) {
+    Navigator.of(context).push(
+      StupidSimpleGlassSheetRoute(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 16,
+              children: [
+                const Text(
+                  'This sheet hugs its content,\n'
+                  'so the one behind stays in place.',
+                  textAlign: TextAlign.center,
+                ),
+                CupertinoButton.filled(
+                  child: const Text('Push Another'),
+                  onPressed: () => _push(context),
+                ),
+                CupertinoButton(
+                  child: const Text('Close'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
