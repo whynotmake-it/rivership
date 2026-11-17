@@ -25,7 +25,10 @@ class _DatePickerPageState extends State<DatePickerPage> {
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'DatePicker',
-    summary: 'A popover next to the field; a sheet on a phone.',
+    summary:
+        'A popover next to the field that hugs the calendar; a sheet on a '
+        'phone, where the calendar fills the width. Swipe the months, and '
+        'flick the time columns.',
     children: [
       DemoSection(
         title: 'Date',
@@ -45,6 +48,19 @@ class _DatePickerPageState extends State<DatePickerPage> {
             value: _meeting,
             withTime: true,
             minuteInterval: 15,
+            onChanged: (v) => setState(() => _meeting = v),
+          ),
+        ),
+      ),
+      DemoSection(
+        title: 'Always a sheet',
+        child: CoilField(
+          label: const Text('Reminder'),
+          child: CoilDatePicker(
+            value: _meeting,
+            withTime: true,
+            presentation: CoilPresentation.sheet,
+            sheetTitle: const Text('Reminder'),
             onChanged: (v) => setState(() => _meeting = v),
           ),
         ),
