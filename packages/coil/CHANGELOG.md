@@ -27,6 +27,28 @@ Milestone M0, unreleased.
   - `CoilScreenRadius` (primitive) reads the device screen's corner radii
     once through `corner_radius_plugin`; null on web, desktop and in tests.
     coil now depends on `corner_radius_plugin` and `scroll_drag_detector`.
+- Keys are Flutter shortcuts. Every coil widget maps its keys to intents
+  in `Shortcuts` and handles them in `Actions`, instead of reading key
+  events. Behavior is unchanged.
+  - `CoilDismissIntent` is what Escape does in a popover, menu, select
+    list, combobox or tooltip, and `CoilSliderStepIntent` and
+    `CoilSliderLimitIntent` are a slider's arrows, Page keys and
+    Home/End. An app replaces any of them with its own `Actions` entry
+    above the widget.
+  - `CoilDefaultAction` is how a coil widget registers its action for
+    those: like `Action.overridable`, but a nested popup skips the
+    actions of the popups around it.
+- The blur-fade is subtler. `CoilBlurFade` starts at a blur sigma of 1.5
+  (`CoilBlurFade.defaultBlur`), down from 4, so popovers, tooltips, reveals
+  and swaps soften as they arrive instead of smearing. Button and select
+  swaps use half of it.
+- coil scrolls the way the app does. Breaking: `CoilScrollBehavior` is
+  removed. `CoilScrollArea` and menus no longer set a `ScrollBehavior`, so
+  physics, overscroll and which pointers drag content come from the app's
+  ambient one (Flutter's platform defaults unless the app sets its own).
+  They still draw coil's scrollbar, `CoilScrollbar`, which is public again
+  and turns off only the ambient behavior's scrollbar for its child.
+
 - coil bundles no font. Breaking: the default typography is the
   platform's UI font, and apps that want Allo or Inter bundle it
   themselves and pick the tuned preset, `CoilTypography.allo()` or
@@ -87,8 +109,6 @@ Milestone M0, unreleased.
   - `CoilSelectionRun` and `CoilSelectionRuns` are hidden; they are how
     `CoilSelectionBlocks` merges runs.
   - `CoilFocusAlwaysVisible` is hidden; `CoilTextFieldCore` applies it.
-  - `CoilScrollbar` is hidden; `CoilScrollBehavior` and `CoilScrollArea`
-    build it.
 
 - Modals are routes too. `CoilModalRoute<T>` is the route every
   `showCoil…` modal pushes, and `CoilModalPage<T>` shows one from

@@ -343,7 +343,10 @@ class _CoilButtonState extends State<CoilButton> {
   Widget _swap(Widget child) => MotionSwitcher(
     motion: _motion.quick,
     exitMotion: _motion.quickExit,
-    transitionBuilder: CoilBlurFade.transition(blur: 2, scale: 0.9),
+    transitionBuilder: CoilBlurFade.transition(
+      blur: CoilBlurFade.defaultBlur / 2,
+      scale: 0.9,
+    ),
     debugLabel: 'CoilButton.loading',
     child: child,
   );

@@ -4,6 +4,7 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/slider/slider.dart';
+import 'package:coil/src/components/slider/slider_intents.dart';
 import 'package:coil/src/components/slider/slider_painters.dart';
 import 'package:coil/src/components/slider/slider_scale.dart';
 import 'package:coil/src/components/slider/slider_shortcuts.dart';
@@ -520,14 +521,24 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     widget.onChangeEnd?.call(_asked);
   }
 
-  void _step(int i, SliderStepIntent intent) {
+  void _step(int i, CoilSliderStepIntent intent) {
     if (!_enabled) return;
-    _change(i, _scale.move(widget.values[i], intent.steps, page: intent.page));
+    _change(
+      i,
+      _scale.move(
+        widget.values[i],
+        intent.steps,
+        page: intent.increment == CoilSliderIncrement.page,
+      ),
+    );
   }
 
-  void _end(int i, SliderEndIntent intent) {
+  void _end(int i, CoilSliderLimitIntent intent) {
     if (!_enabled) return;
-    _change(i, intent.max ? _scale.max : _scale.min);
+    _change(i, switch (intent.limit) {
+      CoilSliderLimit.min => _scale.min,
+      CoilSliderLimit.max => _scale.max,
+    });
   }
 
   // ---- click-to-edit ---------------------------------------------------
@@ -611,8 +622,12 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       value: _semantic(value),
       increasedValue: _semantic(up),
       decreasedValue: _semantic(down),
-      onIncrease: _enabled ? () => _step(i, const SliderStepIntent(1)) : null,
-      onDecrease: _enabled ? () => _step(i, const SliderStepIntent(-1)) : null,
+      onIncrease: _enabled
+          ? () => _step(i, const CoilSliderStepIntent(1))
+          : null,
+      onDecrease: _enabled
+          ? () => _step(i, const CoilSliderStepIntent(-1))
+          : null,
       child: Shortcuts(
         // While a value is typed, the keys belong to the field.
         shortcuts: !_enabled || _editing != null
@@ -620,10 +635,13 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
             : sliderShortcuts(rtl: _rtl, edit: _editable),
         child: Actions(
           actions: {
-            SliderStepIntent: CallbackAction<SliderStepIntent>(
+            // The app can take these over with an Actions above.
+            CoilSliderStepIntent: CoilDefaultAction<CoilSliderStepIntent>(
+              context: context,
               onInvoke: (intent) => _step(i, intent),
             ),
-            SliderEndIntent: CallbackAction<SliderEndIntent>(
+            CoilSliderLimitIntent: CoilDefaultAction<CoilSliderLimitIntent>(
+              context: context,
               onInvoke: (intent) => _end(i, intent),
             ),
             SliderEditIntent: CallbackAction<SliderEditIntent>(

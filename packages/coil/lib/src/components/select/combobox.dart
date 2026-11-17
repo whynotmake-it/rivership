@@ -444,9 +444,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     ): VoidCallbackIntent(
       _pickActive,
     ),
-    const SingleActivator(LogicalKeyboardKey.escape): VoidCallbackIntent(
-      _escape,
-    ),
+    const SingleActivator(LogicalKeyboardKey.escape): const CoilDismissIntent(),
     if (widget.multiple)
       const SingleActivator(LogicalKeyboardKey.backspace):
           const _RemoveLastIntent(),
@@ -454,20 +452,33 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
 
   /// The page's field, or with [inSheet] the sheet's search field, which
   /// starts empty and only filters.
-  Widget _field({required bool inSheet, FocusNode? focusNode}) => CoilInput(
-    controller: inSheet ? null : _text,
-    focusNode: focusNode,
-    autofocus: inSheet,
-    enabled: _enabled,
-    placeholder: widget.placeholder,
-    size: widget.size,
-    motion: widget.motion,
-    autocorrect: false,
-    textInputAction: TextInputAction.search,
-    onChanged: _onChanged,
-    onSubmitted: (_) => _pickActive(),
-    shortcuts: _shortcuts,
-    trailing: inSheet ? null : const CoilDrawnGlyph(CoilGlyph.chevronDown),
+  Widget _field({
+    required bool inSheet,
+    FocusNode? focusNode,
+  }) => Actions(
+    actions: {CoilDismissIntent: _dismiss},
+    child: CoilInput(
+      controller: inSheet ? null : _text,
+      focusNode: focusNode,
+      autofocus: inSheet,
+      enabled: _enabled,
+      placeholder: widget.placeholder,
+      size: widget.size,
+      motion: widget.motion,
+      autocorrect: false,
+      textInputAction: TextInputAction.search,
+      onChanged: _onChanged,
+      onSubmitted: (_) => _pickActive(),
+      shortcuts: _shortcuts,
+      trailing: inSheet ? null : const CoilDrawnGlyph(CoilGlyph.chevronDown),
+    ),
+  );
+
+  /// Escape in the field: closes the list, or with it closed, puts the
+  /// picked option's text back.
+  late final _dismiss = CoilDefaultAction<CoilDismissIntent>(
+    context: context,
+    onInvoke: (_) => _escape(),
   );
 
   /// The page's field; with [_ComboboxCore.multiple], the picks as chips

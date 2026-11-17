@@ -106,13 +106,34 @@ class _CoilRovingFocusState extends State<CoilRovingFocus> {
     return null;
   }
 
-  KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    final nodes = widget.nodes;
-    final current = nodes.indexWhere((n) => n.hasPrimaryFocus);
-    if (current < 0) return KeyEventResult.ignored;
+  /// The index of the item that has focus, or -1.
+  int get _current => widget.nodes.indexWhere((n) => n.hasPrimaryFocus);
+
+  /// Where [move] goes from the focused item; null when nowhere.
+  int? _target(_Move move) {
+    final current = _current;
+    if (current < 0) return null;
+    return switch (move) {
+      _Move.next => _next(current, 1),
+      _Move.previous => _next(current, -1),
+      _Move.first => _next(-1, 1),
+      _Move.last => _next(widget.nodes.length, -1),
+    };
+  }
+
+  late final _action = _RoveAction(this);
+
+  void _rove(_RoveIntent intent) {
+    final target = _target(intent.move);
+    // Keys we own are consumed at the ends too, so focus doesn't leak to
+    // a directional traversal outside the group.
+    if (target == null) return;
+    widget.nodes[target].requestFocus();
+    widget.onMoved?.call(target);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final rtl = Directionality.maybeOf(context) == TextDirection.rtl;
     final forward = widget.axis == Axis.horizontal
         ? (rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight)
@@ -120,36 +141,56 @@ class _CoilRovingFocusState extends State<CoilRovingFocus> {
     final backward = widget.axis == Axis.horizontal
         ? (rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft)
         : LogicalKeyboardKey.arrowUp;
-    final key = event.logicalKey;
-    final target = key == forward
-        ? _next(current, 1)
-        : key == backward
-        ? _next(current, -1)
-        : key == LogicalKeyboardKey.home
-        ? _next(-1, 1)
-        : key == LogicalKeyboardKey.end
-        ? _next(nodes.length, -1)
-        : null;
-    if (target == null) {
-      // Keys we own are consumed at the ends, so focus doesn't leak to a
-      // directional traversal outside the group.
-      return key == forward || key == backward
-          ? KeyEventResult.handled
-          : KeyEventResult.ignored;
-    }
-    nodes[target].requestFocus();
-    widget.onMoved?.call(target);
-    return KeyEventResult.handled;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
+    return Shortcuts(
       includeSemantics: false,
-      onKeyEvent: _onKey,
-      child: widget.child,
+      shortcuts: {
+        SingleActivator(forward): _RoveIntent(_Move.next, widget.axis),
+        SingleActivator(backward): _RoveIntent(_Move.previous, widget.axis),
+        const SingleActivator(LogicalKeyboardKey.home): _RoveIntent(
+          _Move.first,
+          widget.axis,
+        ),
+        const SingleActivator(LogicalKeyboardKey.end): _RoveIntent(
+          _Move.last,
+          widget.axis,
+        ),
+      },
+      child: Actions(actions: {_RoveIntent: _action}, child: widget.child),
     );
   }
+}
+
+enum _Move { next, previous, first, last }
+
+/// Moves focus within a [CoilRovingFocus].
+///
+/// It names its group's [axis]: an arrow an inner group leaves alone, such
+/// as Down in a horizontal group, bubbles to an outer group's [Shortcuts],
+/// whose action lookup starts at the focused inner item again.
+class _RoveIntent extends Intent {
+  const _RoveIntent(this.move, this.axis);
+
+  final _Move move;
+
+  final Axis axis;
+}
+
+/// Moves focus for a [_RoveIntent]. Disabled while focus is outside the
+/// group's items, and for Home and End when no item can take focus, so the
+/// key goes on to whatever is above.
+class _RoveAction extends Action<_RoveIntent> {
+  _RoveAction(this.state);
+
+  final _CoilRovingFocusState state;
+
+  @override
+  bool isEnabled(_RoveIntent intent) =>
+      intent.axis == state.widget.axis &&
+      switch (intent.move) {
+        _Move.next || _Move.previous => state._current >= 0,
+        _Move.first || _Move.last => state._target(intent.move) != null,
+      };
+
+  @override
+  void invoke(_RoveIntent intent) => state._rove(intent);
 }

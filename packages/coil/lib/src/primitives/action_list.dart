@@ -11,6 +11,7 @@ import 'package:coil/src/primitives/anchor.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
 import 'package:coil/src/primitives/edge_fade.dart';
 import 'package:coil/src/primitives/hover.dart';
+import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/interaction.dart';
 import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
@@ -276,6 +277,7 @@ class _CoilActionListState extends State<CoilActionList>
     with TickerProviderStateMixin {
   final _active = CoilActiveItemController();
   final _query = TextEditingController();
+  final _scroll = ScrollController();
   late List<CoilMenuEntry?> _items = _compute();
   late List<GlobalKey> _rowKeys = _keysFor(_items.length);
   Timer? _acknowledge;
@@ -422,6 +424,7 @@ class _CoilActionListState extends State<CoilActionList>
     _acknowledge?.cancel();
     _subTimer?.cancel();
     _query.dispose();
+    _scroll.dispose();
     _active
       ..removeListener(_onActive)
       ..dispose();
@@ -682,44 +685,67 @@ class _CoilActionListState extends State<CoilActionList>
           ),
         );
     final searching = widget.search != null;
-    final bindings = <ShortcutActivator, VoidCallback>{
-      const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-          _active.move(1, count: _count, isEnabled: _enabled),
-      const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-          _active.move(-1, count: _count, isEnabled: _enabled),
+    final shortcuts = <ShortcutActivator, Intent>{
+      const SingleActivator(LogicalKeyboardKey.arrowDown): const _MoveIntent(1),
+      const SingleActivator(LogicalKeyboardKey.arrowUp): const _MoveIntent(-1),
       // In a search field these keys edit the text.
       if (!searching) ...{
         SingleActivator(
           rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight,
-        ): _forward,
+        ): const _SubmenuIntent(
+          open: true,
+        ),
         SingleActivator(
           rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft,
-        ): _back,
-        const SingleActivator(LogicalKeyboardKey.home): () =>
-            _active.first(count: _count, isEnabled: _enabled),
-        const SingleActivator(LogicalKeyboardKey.end): () =>
-            _active.last(count: _count, isEnabled: _enabled),
+        ): const _SubmenuIntent(
+          open: false,
+        ),
+        const SingleActivator(LogicalKeyboardKey.home): const _EdgeIntent(
+          last: false,
+        ),
+        const SingleActivator(LogicalKeyboardKey.end): const _EdgeIntent(
+          last: true,
+        ),
         const SingleActivator(LogicalKeyboardKey.space, includeRepeats: false):
-            _pickActive,
+            const ActivateIntent(),
       },
       const SingleActivator(LogicalKeyboardKey.enter, includeRepeats: false):
-          _pickActive,
+          const ActivateIntent(),
       const SingleActivator(
         LogicalKeyboardKey.numpadEnter,
         includeRepeats: false,
-      ): _pickActive,
-      const SingleActivator(LogicalKeyboardKey.escape): () =>
-          widget.onClose(CoilPopupCloseReason.escape),
-      const SingleActivator(LogicalKeyboardKey.tab): () =>
-          widget.onClose(CoilPopupCloseReason.dismissed),
+      ): const ActivateIntent(),
+      const SingleActivator(LogicalKeyboardKey.escape):
+          const CoilDismissIntent(),
+      const SingleActivator(LogicalKeyboardKey.tab): const NextFocusIntent(),
     };
     // While a pick is acknowledged, the list's keys do nothing (and don't
     // reach anything else).
-    if (_frozen) {
-      for (final key in [...bindings.keys]) {
-        bindings[key] = () {};
-      }
-    }
+    CallbackAction<I> act<I extends Intent>(void Function(I intent) run) =>
+        CallbackAction<I>(onInvoke: (intent) => _frozen ? null : run(intent));
+    final actions = <Type, Action<Intent>>{
+      _MoveIntent: act<_MoveIntent>(
+        (intent) =>
+            _active.move(intent.delta, count: _count, isEnabled: _enabled),
+      ),
+      _SubmenuIntent: act<_SubmenuIntent>(
+        (intent) => intent.open ? _forward() : _back(),
+      ),
+      _EdgeIntent: act<_EdgeIntent>(
+        (intent) => intent.last
+            ? _active.last(count: _count, isEnabled: _enabled)
+            : _active.first(count: _count, isEnabled: _enabled),
+      ),
+      ActivateIntent: act<ActivateIntent>((_) => _pickActive()),
+      CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
+        context: context,
+        onInvoke: (_) =>
+            _frozen ? null : widget.onClose(CoilPopupCloseReason.escape),
+      ),
+      NextFocusIntent: act<NextFocusIntent>(
+        (_) => widget.onClose(CoilPopupCloseReason.dismissed),
+      ),
+    };
     final list = Semantics(
       role: SemanticsRole.menu,
       child: CoilScrollEdgeFade.solid(
@@ -727,12 +753,14 @@ class _CoilActionListState extends State<CoilActionList>
             widget.surface ??
             theme.colors.surface(CoilSurface.levelOf(context)),
         extent: widget.fadeExtent,
-        child: ScrollConfiguration(
-          behavior: CoilScrollBehavior(
-            tier: metrics.tier,
-            look: widget.scrollbar,
-          ),
+        child: CoilScrollbar(
+          controller: _scroll,
+          tier: metrics.tier,
+          look: widget.scrollbar,
+          fadeDuration:
+              motion.fade.duration ?? const Duration(milliseconds: 120),
           child: SingleChildScrollView(
+            controller: _scroll,
             padding: EdgeInsets.all(metrics.popupInset),
             // The region and its layer scroll with the rows, so the
             // highlight and the ring stay on their rows.
@@ -832,44 +860,47 @@ class _CoilActionListState extends State<CoilActionList>
     if (widget.search case final search?) {
       // The field keeps focus and drives the list. Its shortcuts are off
       // while an IME composes, so Enter commits the composition first.
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _SearchField(
-            controller: _query,
-            search: search,
-            metrics: metrics,
-            onSubmitted: _pickActive,
-            shortcuts: {
-              for (final MapEntry(:key, :value) in bindings.entries)
-                key: VoidCallbackIntent(value),
-            },
-          ),
-          const _Separator(inset: 0, padding: EdgeInsets.zero),
-          Flexible(
-            child: items.isEmpty
-                ? _Empty(label: search.empty, metrics: metrics)
-                : list,
-          ),
-        ],
+      return Actions(
+        actions: actions,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SearchField(
+              controller: _query,
+              search: search,
+              metrics: metrics,
+              onSubmitted: _pickActive,
+              shortcuts: shortcuts,
+            ),
+            const _Separator(inset: 0, padding: EdgeInsets.zero),
+            Flexible(
+              child: items.isEmpty
+                  ? _Empty(label: search.empty, metrics: metrics)
+                  : list,
+            ),
+          ],
+        ),
       );
     }
-    return CallbackShortcuts(
-      bindings: bindings,
-      child: ListenableBuilder(
-        listenable: _active,
-        builder: (context, child) => CoilTypeahead(
-          searchTexts: [for (final entry in items) _searchTextOf(entry)],
-          current: _active.index,
-          isEnabled: (i) => !_frozen && _enabled(i),
-          onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
-          child: child!,
-        ),
-        child: Focus(
-          autofocus: true,
-          debugLabel: 'CoilActionList',
-          child: list,
+    return Shortcuts(
+      shortcuts: shortcuts,
+      child: Actions(
+        actions: actions,
+        child: ListenableBuilder(
+          listenable: _active,
+          builder: (context, child) => CoilTypeahead(
+            searchTexts: [for (final entry in items) _searchTextOf(entry)],
+            current: _active.index,
+            isEnabled: (i) => !_frozen && _enabled(i),
+            onMatch: (i) => _active.activate(i, via: CoilModality.keyboard),
+            child: child!,
+          ),
+          child: Focus(
+            autofocus: true,
+            debugLabel: 'CoilActionList',
+            child: list,
+          ),
         ),
       ),
     );
@@ -1279,4 +1310,25 @@ class _FreezeScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_FreezeScope oldWidget) => false;
+}
+
+/// Moves the active row by [delta] enabled rows.
+class _MoveIntent extends Intent {
+  const _MoveIntent(this.delta);
+
+  final int delta;
+}
+
+/// Moves the active row to the first or the [last] enabled one.
+class _EdgeIntent extends Intent {
+  const _EdgeIntent({required this.last});
+
+  final bool last;
+}
+
+/// Opens the active row's submenu, or goes back out of one.
+class _SubmenuIntent extends Intent {
+  const _SubmenuIntent({required this.open});
+
+  final bool open;
 }

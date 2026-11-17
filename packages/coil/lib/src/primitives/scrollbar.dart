@@ -70,80 +70,6 @@ class CoilScrollbarLook {
   );
 }
 
-/// coil's scroll behavior. Scroll areas apply it locally, never app-wide.
-///
-/// * Physics: the platform's, as Flutter picks them (bouncing on Apple
-///   platforms, clamping elsewhere).
-/// * Overscroll: Android stretches. Nothing glows.
-/// * Scrollbar: a [CoilScrollbar] for [tier], or none when [scrollbar] is
-///   false.
-/// * Dragging: touch, stylus and trackpad drag the content. A mouse drags
-///   only the scrollbar.
-class CoilScrollBehavior extends ScrollBehavior {
-  /// Creates the behavior.
-  const CoilScrollBehavior({
-    required this.tier,
-    required this.look,
-    this.scrollbar = true,
-  });
-
-  /// Which scrollbar to draw.
-  final CoilTier tier;
-
-  /// How the scrollbar looks.
-  final CoilScrollbarLook look;
-
-  /// Whether to draw a scrollbar at all.
-  final bool scrollbar;
-
-  @override
-  Set<PointerDeviceKind> get dragDevices => const {
-    PointerDeviceKind.touch,
-    PointerDeviceKind.stylus,
-    PointerDeviceKind.invertedStylus,
-    PointerDeviceKind.trackpad,
-    PointerDeviceKind.unknown,
-  };
-
-  @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) => switch (getPlatform(context)) {
-    TargetPlatform.android => StretchingOverscrollIndicator(
-      axisDirection: details.direction,
-      clipBehavior: details.decorationClipBehavior ?? Clip.hardEdge,
-      child: child,
-    ),
-    _ => child,
-  };
-
-  @override
-  Widget buildScrollbar(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) {
-    if (!scrollbar) return child;
-    return CoilScrollbar(
-      controller: details.controller,
-      look: look,
-      tier: tier,
-      fadeDuration:
-          CoilTheme.motionOf(context).fade.duration ??
-          const Duration(milliseconds: 120),
-      child: child,
-    );
-  }
-
-  @override
-  bool shouldNotify(CoilScrollBehavior oldDelegate) =>
-      tier != oldDelegate.tier ||
-      look != oldDelegate.look ||
-      scrollbar != oldDelegate.scrollbar;
-}
-
 /// coil's scrollbar: a [RawScrollbar] with a superellipse pill thumb.
 ///
 /// On the pointer tier the thumb is 4 wide. It springs to 6 while a mouse
@@ -153,8 +79,15 @@ class CoilScrollBehavior extends ScrollBehavior {
 /// On the touch tier it's a thin overlay bar that shows only while
 /// scrolling and can't be grabbed, like the OS's.
 ///
-/// It fades out over [fadeDuration], the theme's `fade` token when built
-/// by [CoilScrollBehavior].
+/// It fades out over [fadeDuration]; pass the theme's `fade` token's
+/// duration.
+///
+/// It changes nothing about how [child] scrolls: physics, overscroll and
+/// which pointers drag the content come from the app's ambient
+/// [ScrollBehavior]. It only turns that behavior's own scrollbars off for
+/// [child], with `copyWith(scrollbars: false)`, so there is one bar. Nested
+/// scrollables in [child] get no platform scrollbar either; wrap them in a
+/// [ScrollConfiguration] of their own to bring it back.
 class CoilScrollbar extends RawScrollbar {
   /// Creates a scrollbar for [child]'s primary scrollable.
   CoilScrollbar({
@@ -214,6 +147,13 @@ class _CoilScrollbarState extends RawScrollbarState<CoilScrollbar> {
     _hover.dispose();
     super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => ScrollConfiguration(
+    // The ambient behavior, minus its scrollbar: this one replaces it.
+    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+    child: super.build(context),
+  );
 
   void _emphasize() {
     final on = _hovered || _dragging;

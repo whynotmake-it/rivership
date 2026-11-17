@@ -191,41 +191,60 @@ class _CoilTableState<T> extends State<CoilTable<T>>
         CoilTheme.metricsOf(context, size: widget.size),
       ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
 
-  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    // Only the table's own node: inner header buttons handle their keys.
-    if (FocusManager.instance.primaryFocus != node) {
-      return KeyEventResult.ignored;
-    }
+  /// Whether [command] does something now. Only the table's own node takes
+  /// the keys: inner header buttons handle theirs.
+  bool _canRun(_TableCommand command) {
+    if (FocusManager.instance.primaryFocus != _focusNode) return false;
+    final count = widget.rows.length;
+    return switch (command) {
+      .down || .up || .first || .last => count > 0,
+      .scrollForward || .scrollBack => true,
+      .toggle => _active.index != null,
+      .open => _active.index != null && widget.onRowActivated != null,
+    };
+  }
+
+  void _run(_TableCommand command) {
     final count = widget.rows.length;
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    final key = event.logicalKey;
-    switch (key) {
-      case LogicalKeyboardKey.arrowDown when count > 0:
+    switch (command) {
+      case .down:
         _active.move(1, count: count);
-      case LogicalKeyboardKey.arrowUp when count > 0:
+      case .up:
         _active.move(-1, count: count);
-      case LogicalKeyboardKey.home when count > 0:
+      case .first:
         _active.first(count: count);
-      case LogicalKeyboardKey.end when count > 0:
+      case .last:
         _active.last(count: count);
-      case LogicalKeyboardKey.arrowRight:
+      case .scrollForward:
         _scrollLine(rtl ? -1 : 1);
-      case LogicalKeyboardKey.arrowLeft:
+      case .scrollBack:
         _scrollLine(rtl ? 1 : -1);
-      case LogicalKeyboardKey.space when _active.index != null:
+      case .toggle:
         _active.activate(_active.index, via: CoilModality.keyboard);
         _toggle(widget.rows[_active.index!]);
-      case LogicalKeyboardKey.enter || LogicalKeyboardKey.numpadEnter
-          when _active.index != null && widget.onRowActivated != null:
+      case .open:
         widget.onRowActivated!(widget.rows[_active.index!]);
-      default:
-        return KeyEventResult.ignored;
     }
-    return KeyEventResult.handled;
   }
+
+  late final _action = _TableAction(this);
+
+  /// The table's keys. Left and Right scroll in screen direction; the
+  /// action flips them for RTL.
+  static const _shortcuts = <ShortcutActivator, Intent>{
+    SingleActivator(LogicalKeyboardKey.arrowDown): _TableIntent(.down),
+    SingleActivator(LogicalKeyboardKey.arrowUp): _TableIntent(.up),
+    SingleActivator(LogicalKeyboardKey.home): _TableIntent(.first),
+    SingleActivator(LogicalKeyboardKey.end): _TableIntent(.last),
+    SingleActivator(LogicalKeyboardKey.arrowRight): _TableIntent(
+      .scrollForward,
+    ),
+    SingleActivator(LogicalKeyboardKey.arrowLeft): _TableIntent(.scrollBack),
+    SingleActivator(LogicalKeyboardKey.space): _TableIntent(.toggle),
+    SingleActivator(LogicalKeyboardKey.enter): _TableIntent(.open),
+    SingleActivator(LogicalKeyboardKey.numpadEnter): _TableIntent(.open),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -345,21 +364,26 @@ class _CoilTableState<T> extends State<CoilTable<T>>
         states: _states,
         focusNode: _focusNode,
         trackPress: false,
-        child: Focus(
-          focusNode: _focusNode,
-          autofocus: widget.autofocus,
-          onKeyEvent: _onKey,
-          onFocusChange: _onFocusChange,
-          // The table is the tab stop and scrolls with Left and Right.
-          child: CoilScrollArea.scrollable(
-            controller: _scroll,
-            axis: Axis.horizontal,
-            keyboard: false,
-            child: LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
+        child: Shortcuts(
+          shortcuts: _shortcuts,
+          child: Actions(
+            actions: {_TableIntent: _action},
+            child: Focus(
+              focusNode: _focusNode,
+              autofocus: widget.autofocus,
+              onFocusChange: _onFocusChange,
+              // The table is the tab stop and scrolls with Left and Right.
+              child: CoilScrollArea.scrollable(
                 controller: _scroll,
-                scrollDirection: Axis.horizontal,
-                child: table(constraints.maxWidth),
+                axis: Axis.horizontal,
+                keyboard: false,
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    controller: _scroll,
+                    scrollDirection: Axis.horizontal,
+                    child: table(constraints.maxWidth),
+                  ),
+                ),
               ),
             ),
           ),
@@ -367,4 +391,37 @@ class _CoilTableState<T> extends State<CoilTable<T>>
       ),
     );
   }
+}
+
+/// What a key does in a [CoilTable]. Right and Left are
+/// [scrollForward] and [scrollBack] in LTR, flipped in RTL.
+enum _TableCommand {
+  down,
+  up,
+  first,
+  last,
+  scrollForward,
+  scrollBack,
+  toggle,
+  open,
+}
+
+class _TableIntent extends Intent {
+  const _TableIntent(this.command);
+
+  final _TableCommand command;
+}
+
+/// Runs a [_TableIntent] while the table itself has focus; otherwise the
+/// key goes on.
+class _TableAction extends Action<_TableIntent> {
+  _TableAction(this.state);
+
+  final _CoilTableState<Object?> state;
+
+  @override
+  bool isEnabled(_TableIntent intent) => state._canRun(intent.command);
+
+  @override
+  void invoke(_TableIntent intent) => state._run(intent.command);
 }

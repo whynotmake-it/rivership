@@ -20,6 +20,7 @@ export 'src/primitives/field_scope.dart';
 export 'src/primitives/focus_ring.dart';
 export 'src/primitives/focus_within.dart' hide CoilFocusAlwaysVisible;
 export 'src/primitives/hover.dart';
+export 'src/primitives/intents.dart';
 export 'src/primitives/interaction.dart';
 export 'src/primitives/layer.dart';
 export 'src/primitives/line_box.dart';
@@ -32,7 +33,7 @@ export 'src/primitives/presence.dart';
 export 'src/primitives/roving_focus.dart';
 export 'src/primitives/screen_radius.dart';
 export 'src/primitives/scroll_spring.dart';
-export 'src/primitives/scrollbar.dart' hide CoilScrollbar;
+export 'src/primitives/scrollbar.dart';
 export 'src/primitives/selection_blocks.dart'
     hide CoilSelectionPainter, CoilSelectionRun, CoilSelectionRuns;
 export 'src/primitives/sheet.dart';

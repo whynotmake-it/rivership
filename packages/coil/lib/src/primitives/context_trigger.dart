@@ -77,55 +77,68 @@ class CoilContextTrigger extends StatelessWidget {
       request(.touch, position);
     }
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.f10, shift: true): () =>
-            request(.keyboard),
-        const SingleActivator(LogicalKeyboardKey.contextMenu): () =>
-            request(.keyboard),
+    return Shortcuts(
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.f10, shift: true):
+            _ContextMenuIntent(),
+        SingleActivator(LogicalKeyboardKey.contextMenu): _ContextMenuIntent(),
       },
-      child: RawGestureDetector(
-        semantics: _LongPressSemantics(() => request(.keyboard)),
-        gestures: {
-          TapGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
-                () => TapGestureRecognizer(debugOwner: this),
-                (recognizer) =>
-                    recognizer.onSecondaryTapUp = (details) =>
-                        request(.pointer, details.localPosition),
-              ),
-          LongPressGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
-                () => LongPressGestureRecognizer(
-                  debugOwner: this,
-                  supportedDevices: const {
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.stylus,
-                  },
-                ),
-                (recognizer) =>
-                    recognizer.onLongPressStart = (details) =>
-                        longPress(details.localPosition),
-              ),
-          if (defaultTargetPlatform == TargetPlatform.macOS)
-            _ControlClickRecognizer:
-                GestureRecognizerFactoryWithHandlers<_ControlClickRecognizer>(
-                  () => _ControlClickRecognizer(debugOwner: this),
-                  (recognizer) =>
-                      recognizer.onClick = (position) =>
-                          request(.pointer, position),
-                ),
+      child: Actions(
+        actions: {
+          _ContextMenuIntent: CallbackAction<_ContextMenuIntent>(
+            onInvoke: (_) => request(.keyboard),
+          ),
         },
-        child: SingleMotionBuilder(
-          value: lifted ? liftScale : 1,
-          motion: lifted ? motion.quick : motion.quickExit,
-          child: child,
-          builder: (context, scale, child) =>
-              Transform.scale(scale: scale, child: child),
+        child: RawGestureDetector(
+          semantics: _LongPressSemantics(() => request(.keyboard)),
+          gestures: {
+            TapGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+                  () => TapGestureRecognizer(debugOwner: this),
+                  (recognizer) =>
+                      recognizer.onSecondaryTapUp = (details) =>
+                          request(.pointer, details.localPosition),
+                ),
+            LongPressGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<
+                  LongPressGestureRecognizer
+                >(
+                  () => LongPressGestureRecognizer(
+                    debugOwner: this,
+                    supportedDevices: const {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.stylus,
+                    },
+                  ),
+                  (recognizer) =>
+                      recognizer.onLongPressStart = (details) =>
+                          longPress(details.localPosition),
+                ),
+            if (defaultTargetPlatform == TargetPlatform.macOS)
+              _ControlClickRecognizer:
+                  GestureRecognizerFactoryWithHandlers<_ControlClickRecognizer>(
+                    () => _ControlClickRecognizer(debugOwner: this),
+                    (recognizer) =>
+                        recognizer.onClick = (position) =>
+                            request(.pointer, position),
+                  ),
+          },
+          child: SingleMotionBuilder(
+            value: lifted ? liftScale : 1,
+            motion: lifted ? motion.quick : motion.quickExit,
+            child: child,
+            builder: (context, scale, child) =>
+                Transform.scale(scale: scale, child: child),
+          ),
         ),
       ),
     );
   }
+}
+
+/// Opens the context menu from the keyboard: Shift+F10 or the Menu key.
+class _ContextMenuIntent extends Intent {
+  const _ContextMenuIntent();
 }
 
 /// A Control-click with the primary button. It claims the pointer when it

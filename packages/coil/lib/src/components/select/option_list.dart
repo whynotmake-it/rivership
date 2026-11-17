@@ -191,6 +191,23 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     widget.onPick(widget.options[index].value);
   }
 
+  static const _shortcuts = <ShortcutActivator, Intent>{
+    SingleActivator(LogicalKeyboardKey.arrowDown): _MoveIntent(1),
+    SingleActivator(LogicalKeyboardKey.arrowUp): _MoveIntent(-1),
+    SingleActivator(LogicalKeyboardKey.home): _EdgeIntent(last: false),
+    SingleActivator(LogicalKeyboardKey.pageUp): _EdgeIntent(last: false),
+    SingleActivator(LogicalKeyboardKey.end): _EdgeIntent(last: true),
+    SingleActivator(LogicalKeyboardKey.pageDown): _EdgeIntent(last: true),
+    SingleActivator(LogicalKeyboardKey.enter, includeRepeats: false):
+        ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.numpadEnter, includeRepeats: false):
+        ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.space, includeRepeats: false):
+        ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.escape): CoilDismissIntent(),
+    SingleActivator(LogicalKeyboardKey.tab): NextFocusIntent(),
+  };
+
   void _pickActive() {
     if (_active.index case final i?) _pick(i, touch: false);
   }
@@ -328,39 +345,36 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
       current: _active.index,
       isEnabled: _enabled,
       onMatch: (i) => _done ? null : _active.activate(i, via: .keyboard),
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(1),
-          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(-1),
-          const SingleActivator(LogicalKeyboardKey.home): () =>
-              _done ? null : _active.first(count: count, isEnabled: _enabled),
-          const SingleActivator(LogicalKeyboardKey.pageUp): () =>
-              _done ? null : _active.first(count: count, isEnabled: _enabled),
-          const SingleActivator(LogicalKeyboardKey.end): () =>
-              _done ? null : _active.last(count: count, isEnabled: _enabled),
-          const SingleActivator(LogicalKeyboardKey.pageDown): () =>
-              _done ? null : _active.last(count: count, isEnabled: _enabled),
-          const SingleActivator(
-            LogicalKeyboardKey.enter,
-            includeRepeats: false,
-          ): _pickActive,
-          const SingleActivator(
-            LogicalKeyboardKey.numpadEnter,
-            includeRepeats: false,
-          ): _pickActive,
-          const SingleActivator(
-            LogicalKeyboardKey.space,
-            includeRepeats: false,
-          ): _pickActive,
-          const SingleActivator(LogicalKeyboardKey.escape): () =>
-              widget.onDismiss(CoilPopupCloseReason.escape),
-          const SingleActivator(LogicalKeyboardKey.tab): () =>
-              widget.onDismiss(CoilPopupCloseReason.dismissed),
-        },
-        child: Focus(
-          autofocus: true,
-          debugLabel: 'CoilSelect list',
-          child: list,
+      child: Shortcuts(
+        shortcuts: _shortcuts,
+        child: Actions(
+          actions: {
+            _MoveIntent: CallbackAction<_MoveIntent>(
+              onInvoke: (intent) => _move(intent.delta),
+            ),
+            _EdgeIntent: CallbackAction<_EdgeIntent>(
+              onInvoke: (intent) => _done
+                  ? null
+                  : intent.last
+                  ? _active.last(count: count, isEnabled: _enabled)
+                  : _active.first(count: count, isEnabled: _enabled),
+            ),
+            ActivateIntent: CallbackAction<ActivateIntent>(
+              onInvoke: (_) => _pickActive(),
+            ),
+            CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
+              context: context,
+              onInvoke: (_) => widget.onDismiss(CoilPopupCloseReason.escape),
+            ),
+            NextFocusIntent: CallbackAction<NextFocusIntent>(
+              onInvoke: (_) => widget.onDismiss(CoilPopupCloseReason.dismissed),
+            ),
+          },
+          child: Focus(
+            autofocus: true,
+            debugLabel: 'CoilSelect list',
+            child: list,
+          ),
         ),
       ),
     );
@@ -561,4 +575,18 @@ class _Check extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Moves the active option by [delta] enabled options.
+class _MoveIntent extends Intent {
+  const _MoveIntent(this.delta);
+
+  final int delta;
+}
+
+/// Moves the active option to the first or the [last] enabled one.
+class _EdgeIntent extends Intent {
+  const _EdgeIntent({required this.last});
+
+  final bool last;
 }

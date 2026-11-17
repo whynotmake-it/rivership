@@ -366,7 +366,7 @@ class _SourceBadge extends StatelessWidget {
       debugLabel: 'CoilThinkingSteps.sourcePop',
       builder: (context, presence, child) => CoilBlurFade(
         presence: AlwaysStoppedAnimation(presence),
-        blur: reduced ? 0 : 4,
+        blur: reduced ? 0 : CoilBlurFade.defaultBlur,
         scale: reduced ? 1 : 0.85,
         child: child!,
       ),

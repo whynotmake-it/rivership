@@ -26,16 +26,20 @@ class CoilBlurFade extends StatelessWidget {
     required this.presence,
     required this.child,
     super.key,
-    this.blur = 4,
+    this.blur = defaultBlur,
     this.scale = 0.96,
     this.offset = Offset.zero,
     this.alignment = Alignment.center,
   });
 
+  /// The default blur sigma at presence 0: a hint of softness as an
+  /// overlay arrives, not a visible smear.
+  static const defaultBlur = 1.5;
+
   /// A transition builder with Flutter's `(child, animation)` signature,
   /// for `MotionSwitcher` and `AnimatedSwitcher`.
   static Widget Function(Widget child, Animation<double> animation) transition({
-    double blur = 4,
+    double blur = defaultBlur,
     double scale = 0.96,
     Offset offset = Offset.zero,
     AlignmentGeometry alignment = Alignment.center,

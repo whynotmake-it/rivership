@@ -41,8 +41,12 @@ enum CoilEdgeFades {
   none,
 }
 
-/// A scrolling region with coil's scrollbar, edge fades and platform
-/// physics.
+/// A scrolling region with coil's scrollbar and edge fades.
+///
+/// It scrolls the way the app does: physics, overscroll and which pointers
+/// drag the content come from the ambient [ScrollBehavior] (the
+/// platform's, unless the app sets its own with [ScrollConfiguration]).
+/// coil only draws its own scrollbar in place of the behavior's.
 ///
 /// When the content overflows, the viewport becomes a tab stop. While it
 /// has focus, the arrow keys scroll a line, Page Up and Page Down a page,
@@ -69,8 +73,8 @@ class CoilScrollArea extends StatefulWidget {
     this.motions,
   }) : _wrapsScrollable = false;
 
-  /// Gives [child], a scrollable driven by [controller], coil's scroll
-  /// behavior, fades and keyboard scrolling.
+  /// Gives [child], a scrollable driven by [controller], coil's scrollbar,
+  /// fades and keyboard scrolling.
   const CoilScrollArea.scrollable({
     required this.child,
     required ScrollController this.controller,
@@ -168,37 +172,24 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
           .merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context))
           .merge(widget.style);
 
-  /// Scrolls for [event] when the viewport itself has focus. Keys from a
-  /// focused descendant pass on to it.
-  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (!node.hasPrimaryFocus || event is KeyUpEvent) {
-      return KeyEventResult.ignored;
-    }
-    if (!_controller.hasClients) return KeyEventResult.ignored;
+  /// Whether a key scrolls now: only while the viewport itself has focus.
+  /// Keys from a focused descendant pass on to it.
+  bool get _canScroll => _focusNode.hasPrimaryFocus && _controller.hasClients;
+
+  void _scroll(_ScrollStep step) {
     final style = _style(context);
     final line = style.lineStep!;
     final position = _controller.position;
     final from = CoilScrollSpring.targetOf(_controller);
     final page = math.max(position.viewportDimension - line, line);
-    final vertical = widget.axis == Axis.vertical;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    final key = event.logicalKey;
-    final back = vertical
-        ? LogicalKeyboardKey.arrowUp
-        : (rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft);
-    final forward = vertical
-        ? LogicalKeyboardKey.arrowDown
-        : (rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight);
-    final target = switch (key) {
-      _ when key == back => from - line,
-      _ when key == forward => from + line,
-      LogicalKeyboardKey.pageUp => from - page,
-      LogicalKeyboardKey.pageDown => from + page,
-      LogicalKeyboardKey.home => position.minScrollExtent,
-      LogicalKeyboardKey.end => position.maxScrollExtent,
-      _ => null,
+    final target = switch (step) {
+      .lineBack => from - line,
+      .lineForward => from + line,
+      .pageBack => from - page,
+      .pageForward => from + page,
+      .start => position.minScrollExtent,
+      .end => position.maxScrollExtent,
     };
-    if (target == null) return KeyEventResult.ignored;
     CoilScrollSpring.scrollTo(
       _controller,
       target,
@@ -210,26 +201,75 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
         token: CoilTheme.motionOf(context, override: widget.motion).standard,
       ),
     );
-    return KeyEventResult.handled;
+  }
+
+  late final _action = _ScrollAction(this);
+
+  /// The keys: arrows along [CoilScrollArea.axis] (in reading direction),
+  /// Page Up and Down, Home and End.
+  Map<ShortcutActivator, Intent> _shortcuts(BuildContext context) {
+    final axis = widget.axis;
+    final vertical = axis == Axis.vertical;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final back = vertical
+        ? LogicalKeyboardKey.arrowUp
+        : (rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft);
+    final forward = vertical
+        ? LogicalKeyboardKey.arrowDown
+        : (rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight);
+    return {
+      SingleActivator(back): _ScrollIntent(.lineBack, axis),
+      SingleActivator(forward): _ScrollIntent(.lineForward, axis),
+      const SingleActivator(LogicalKeyboardKey.pageUp): _ScrollIntent(
+        .pageBack,
+        axis,
+      ),
+      const SingleActivator(LogicalKeyboardKey.pageDown): _ScrollIntent(
+        .pageForward,
+        axis,
+      ),
+      const SingleActivator(LogicalKeyboardKey.home): _ScrollIntent(
+        .start,
+        axis,
+      ),
+      const SingleActivator(LogicalKeyboardKey.end): _ScrollIntent(.end, axis),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final style = _style(context);
-    final behavior = CoilScrollBehavior(
-      tier: CoilTheme.tierOf(context),
-      scrollbar: widget.scrollbar == CoilScrollbarVisibility.auto,
-      look: style.scrollbarLook,
-    );
+    // The app's scroll behavior, as it is here. The area keeps its physics,
+    // overscroll and drag devices, and only swaps the scrollbar.
+    final ambient = ScrollConfiguration.of(context);
 
-    final scrollable = widget._wrapsScrollable
+    var scrollable = widget._wrapsScrollable
         ? widget.child
         : SingleChildScrollView(
             controller: _controller,
             scrollDirection: widget.axis,
             padding: widget.padding,
-            child: widget.child,
+            // Scrollables in the content keep the app's behavior, scrollbar
+            // included.
+            child: ScrollConfiguration(
+              behavior: ambient,
+              child: widget.child,
+            ),
           );
+    if (widget.scrollbar == CoilScrollbarVisibility.auto) {
+      scrollable = CoilScrollbar(
+        controller: _controller,
+        look: style.scrollbarLook,
+        tier: CoilTheme.tierOf(context),
+        fadeDuration:
+            CoilTheme.motionOf(
+              context,
+              override: widget.motion,
+            ).fade.duration ??
+            const Duration(milliseconds: 120),
+        child: scrollable,
+      );
+    }
 
     Widget fade(Widget child) => switch ((widget.edgeFades, style.fadeColor)) {
       (CoilEdgeFades.none, _) => child,
@@ -246,44 +286,46 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       ),
     };
 
-    Widget area = ScrollConfiguration(
-      behavior: behavior,
-      child: fade(
-        // Whether it scrolls changes only with its extents, which this
-        // reports after the frame. A scroll notification can come during
-        // layout, when the area can't rebuild.
-        NotificationListener<ScrollMetricsNotification>(
-          onNotification: (n) => _onMetrics(n.metrics, n.depth),
-          child: PrimaryScrollController(
-            controller: _controller,
-            child: scrollable,
-          ),
+    var area = fade(
+      // Whether it scrolls changes only with its extents, which this
+      // reports after the frame. A scroll notification can come during
+      // layout, when the area can't rebuild.
+      NotificationListener<ScrollMetricsNotification>(
+        onNotification: (n) => _onMetrics(n.metrics, n.depth),
+        child: PrimaryScrollController(
+          controller: _controller,
+          child: scrollable,
         ),
       ),
     );
     if (widget.keyboard) {
       final focusable = _scrolls;
-      area = Focus(
-        focusNode: _focusNode,
-        canRequestFocus: focusable,
-        skipTraversal: !focusable,
-        onKeyEvent: _onKey,
-        child: CoilInteractionDetector(
-          states: _states,
-          focusNode: _focusNode,
-          trackPress: false,
-          child: ListenableBuilder(
-            listenable: _states,
-            builder: (context, child) => CoilFocusRing(
-              visible: _states.value.contains(WidgetState.focused),
-              borderRadius: BorderRadius.circular(
-                CoilTheme.radiiOf(context).item,
+      area = Shortcuts(
+        shortcuts: _shortcuts(context),
+        child: Actions(
+          actions: {_ScrollIntent: _action},
+          child: Focus(
+            focusNode: _focusNode,
+            canRequestFocus: focusable,
+            skipTraversal: !focusable,
+            child: CoilInteractionDetector(
+              states: _states,
+              focusNode: _focusNode,
+              trackPress: false,
+              child: ListenableBuilder(
+                listenable: _states,
+                builder: (context, child) => CoilFocusRing(
+                  visible: _states.value.contains(WidgetState.focused),
+                  borderRadius: BorderRadius.circular(
+                    CoilTheme.radiiOf(context).item,
+                  ),
+                  // Inside the clipping viewport.
+                  offset: -(1 + CoilTheme.of(context).focusRing.width),
+                  child: child!,
+                ),
+                child: area,
               ),
-              // Inside the clipping viewport.
-              offset: -(1 + CoilTheme.of(context).focusRing.width),
-              child: child!,
             ),
-            child: area,
           ),
         ),
       );
@@ -298,4 +340,35 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       ),
     );
   }
+}
+
+/// How far a key scrolls a [CoilScrollArea].
+enum _ScrollStep { lineBack, lineForward, pageBack, pageForward, start, end }
+
+/// Scrolls a [CoilScrollArea] by a [_ScrollStep]. Not Flutter's
+/// `ScrollIntent`: the app's default action for that one would answer for
+/// the area while a field inside it has focus.
+///
+/// It names its area's [axis]: an arrow an inner area leaves alone, such
+/// as Down in a horizontal area, bubbles to an outer area's [Shortcuts],
+/// whose lookup starts at the focused inner area again.
+class _ScrollIntent extends Intent {
+  const _ScrollIntent(this.step, this.axis);
+
+  final _ScrollStep step;
+
+  final Axis axis;
+}
+
+class _ScrollAction extends Action<_ScrollIntent> {
+  _ScrollAction(this.state);
+
+  final _CoilScrollAreaState state;
+
+  @override
+  bool isEnabled(_ScrollIntent intent) =>
+      intent.axis == state.widget.axis && state._canScroll;
+
+  @override
+  void invoke(_ScrollIntent intent) => state._scroll(intent.step);
 }

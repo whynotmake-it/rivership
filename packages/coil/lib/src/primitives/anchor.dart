@@ -4,6 +4,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/presence.dart';
 import 'package:flutter/rendering.dart';
@@ -298,23 +299,30 @@ class _CoilPopoverState extends State<CoilPopover>
             child: FocusScope(
               node: _scope,
               autofocus: widget.takeFocus,
-              child: CallbackShortcuts(
-                bindings: {
-                  const SingleActivator(LogicalKeyboardKey.escape): () =>
-                      close(.escape),
+              child: Shortcuts(
+                shortcuts: const {
+                  SingleActivator(LogicalKeyboardKey.escape):
+                      CoilDismissIntent(),
                 },
-                child: Semantics(
-                  scopesRoute: true,
-                  explicitChildNodes: true,
-                  child: CoilBlurFade(
-                    presence: _presence,
-                    // The grow from the anchor's edge is the placement's:
-                    // only it knows which side that is.
-                    scale: 1,
-                    blur: reduce ? 0 : 4,
-                    child: _CoilPopoverGroup(
-                      group: this,
-                      child: Builder(builder: widget.popover),
+                child: Actions(
+                  actions: {
+                    CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
+                      context: context,
+                      onInvoke: (_) => close(.escape),
+                    ),
+                  },
+                  child: Semantics(
+                    scopesRoute: true,
+                    explicitChildNodes: true,
+                    child: CoilBlurFade(
+                      presence: _presence,
+                      // The grow from the anchor's edge is the placement's:
+                      // only it knows which side that is.
+                      scale: 1,
+                      child: _CoilPopoverGroup(
+                        group: this,
+                        child: Builder(builder: widget.popover),
+                      ),
                     ),
                   ),
                 ),

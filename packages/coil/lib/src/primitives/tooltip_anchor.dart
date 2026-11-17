@@ -5,6 +5,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/intents.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -274,15 +275,13 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     if (CoilInputModality.instance.value == CoilModality.keyboard) _show();
   }
 
-  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (_shown &&
-        event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.escape) {
-      _hide();
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
+  /// Escape hides a shown tooltip. While it's hidden the key goes on to
+  /// the popup around the trigger, if any.
+  late final _dismiss = CoilDefaultAction<CoilDismissIntent>(
+    context: context,
+    isEnabled: (_) => _shown,
+    onInvoke: (_) => _hide(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -320,8 +319,15 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
           canRequestFocus: false,
           skipTraversal: true,
           onFocusChange: _onFocusChange,
-          onKeyEvent: _onKey,
-          child: portal,
+          child: Shortcuts(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.escape): CoilDismissIntent(),
+            },
+            child: Actions(
+              actions: {CoilDismissIntent: _dismiss},
+              child: portal,
+            ),
+          ),
         ),
       ),
     );
