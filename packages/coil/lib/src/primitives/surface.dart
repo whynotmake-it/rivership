@@ -96,14 +96,10 @@ class CoilSurface extends StatelessWidget {
     return _SurfaceLevel(
       level: level,
       child: DecoratedBox(
-        // Under a plastic theme the surface also gets a lit edge.
-        decoration: CoilRelief.decorate(
-          ShapeDecoration(
-            color: color ?? colors.surface(level),
-            shadows: colors.shadow(weight),
-            shape: RoundedSuperellipseBorder(borderRadius: radius),
-          ),
-          CoilTheme.reliefOf(context, CoilReliefRole.floating),
+        decoration: ShapeDecoration(
+          color: color ?? colors.surface(level),
+          shadows: colors.shadow(weight),
+          shape: RoundedSuperellipseBorder(borderRadius: radius),
         ),
         // Between the fill and the content, as inset shadows are.
         child: CustomPaint(

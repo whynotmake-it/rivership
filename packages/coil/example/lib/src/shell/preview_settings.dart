@@ -329,6 +329,13 @@ class _Type extends StatelessWidget {
   }
 }
 
+/// The plasticity slider's value: its three steps by name.
+String _plasticityText(double amount) => switch (amount) {
+  <= 0 => 'Off',
+  <= 0.5 => 'Subtle',
+  _ => 'Strong',
+};
+
 class _ShapeAndSpacing extends StatelessWidget {
   const _ShapeAndSpacing();
 
@@ -344,15 +351,20 @@ class _ShapeAndSpacing extends StatelessWidget {
           text: (shape) => shape.label,
           onChanged: (value) => settings.shape = value,
         ),
-        _SelectRow<CatalogPlasticity>(
-          label: const Text('Surface'),
+        CoilSettingRow(
+          label: const Text('Plasticity'),
           description: const Text(
-            'Plasticity: subtle vertical light on the controls you press.',
+            'Subtle vertical light on the controls you press.',
           ),
-          value: settings.plasticity,
-          values: CatalogPlasticity.values,
-          text: (plasticity) => plasticity.label,
-          onChanged: (value) => settings.plasticity = value,
+          trailing: _Control(
+            child: CoilSlider(
+              steps: const [0, 0.5, 1],
+              value: settings.plasticity,
+              valueBuilder: (_, v) => Text(_plasticityText(v)),
+              semanticFormatter: _plasticityText,
+              onChanged: (value) => settings.plasticity = value,
+            ),
+          ),
         ),
         if (settings.shape == CatalogShape.custom)
           _SliderRow(

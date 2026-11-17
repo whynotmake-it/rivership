@@ -7,8 +7,8 @@ import 'package:flutter/widgets.dart';
 ///
 /// The light always comes from above. A [raised] or [filled] shape catches
 /// it on its top edge and casts a shadow below; a [recessed] one is a well,
-/// shaded along its top and lit along its bottom; a [floating] one is a
-/// container (card, popover) that only gets a quiet edge.
+/// shaded along its top and lit along its bottom. Containers (cards,
+/// popovers, dialogs) have no role: they are never lit.
 enum CoilReliefRole {
   /// A neutral control standing off the surface: secondary and
   /// destructive buttons, the switch thumb, the slider knob, the select
@@ -23,7 +23,8 @@ enum CoilReliefRole {
   filled,
 
   /// A control that only shows a surface on hover or press, or is drawn
-  /// with a hairline: tertiary and ghost buttons. Lit like [raised].
+  /// with a hairline: tertiary and ghost buttons. Not lit: they have no
+  /// surface of their own to light.
   quiet,
 
   /// A well a mark sits in: the switch's off track, the checkbox and
@@ -33,21 +34,31 @@ enum CoilReliefRole {
   /// A text field. Lit like [recessed].
   field,
 
-  /// A slider's track, under its thumb. Lit like [recessed].
+  /// A slider's track, under its thumb. Not lit: lighting it read as
+  /// noise next to the knob.
   track,
-
-  /// A container above the page: cards, popovers, menus, dialogs.
-  floating,
 }
 
-/// How plastic coil looks: from flat, the default, through softly lit, to
-/// tactile. A token group on `CoilThemeData.plasticity`.
+/// How lit coil's controls are: one [amount] from 0 (flat, the default)
+/// to 1. A token group on `CoilThemeData.plasticity`.
 ///
-/// Each field is an intensity, 0 for none and 1 for the reference recipe
-/// (opencode's desktop elevation tokens, see [subtle]). Values above 1
-/// strengthen it. coil turns them into concrete colors and shadows per
-/// [CoilReliefRole] and brightness with [resolve], so one setting reads
-/// right on a white button, a black one, a blue switch and in dark mode.
+/// The light has one character, opencode's desktop elevation recipe kept
+/// to what you press: a hairline edge lit at the top and darker at the
+/// bottom, a faint top highlight, a 1 px drop shadow and a light sheen on
+/// buttons, thumbs and the select trigger; a hairline of shade in wells
+/// (checkbox, radio, the off switch), barely any on fields; slider tracks,
+/// quiet buttons and containers stay flat. [amount] sets how much of it:
+///
+/// - 0 ([flat]) paints nothing, and components keep their flat look
+///   untouched.
+/// - 0.5 ([subtle]) is the recipe as tuned.
+/// - 1 has slightly brighter highlights (the top rim and edge) and a
+///   slightly stronger sheen; the shadows and wells stay as at 0.5.
+///
+/// Amounts in between interpolate. coil turns the amount into concrete
+/// colors and shadows per [CoilReliefRole] and brightness with [resolve],
+/// so one setting reads right on a black button, a gray one, a red one, a
+/// blue switch and in dark mode.
 ///
 /// The light comes from above. Hover brightens it, a press flattens it and
 /// turns the top edge into a shadow (the control sinks in), and a disabled
@@ -57,7 +68,9 @@ enum CoilReliefRole {
 /// CoilThemeData(plasticity: CoilPlasticity.subtle)
 /// // A quieter version for one subtree:
 /// CoilTheme.override(
-///   transform: (t) => t.copyWith(plasticity: t.plasticity.scale(0.5)),
+///   transform: (t) => t.copyWith(
+///     plasticity: t.plasticity.copyWith(amount: 0.25),
+///   ),
 ///   child: Sidebar(),
 /// )
 /// ```
@@ -66,117 +79,21 @@ enum CoilReliefRole {
 /// they don't compete with it: [flattenAbove] sets the highest surface
 /// level that is still lit (1, the page, by default), and
 /// `CoilPlasticityScope(elevated: false)` lights one subtree anyway.
-///
-/// The ladder runs [flat] < [subtle] < [soft] < [tactile]. A future
-/// glass material is meant to sit above [tactile]: it would be a preset
-/// that also refracts what lies beneath, which painting alone can't do.
 @immutable
 class CoilPlasticity with Diagnosticable {
-  /// Creates a plasticity. Every intensity defaults to 0 (none).
-  const CoilPlasticity({
-    this.edge = 0,
-    this.edgeWidth = 1,
-    this.highlight = 0,
-    this.shade = 0,
-    this.sheen = 0,
-    this.lift = 0,
-    this.recess = 0,
-    this.containers = 0,
-    this.response = 1,
-    this.roles = const {},
-    this.flattenAbove = 1,
-  }) : assert(edgeWidth > 0, 'edgeWidth must be positive'),
-       assert(flattenAbove >= 1, 'flattenAbove must be 1 (the page) or more');
+  /// Creates a plasticity of [amount], 0 (flat) to 1.
+  const CoilPlasticity({this.amount = 0, this.flattenAbove = 1})
+    : assert(amount >= 0 && amount <= 1, 'amount must be 0 to 1'),
+      assert(flattenAbove >= 1, 'flattenAbove must be 1 (the page) or more');
 
   /// No lighting: coil's flat look. The default.
   static const flat = CoilPlasticity();
 
-  /// opencode's recipe, kept to what you press: a hairline edge lit at the
-  /// top and darker at the bottom, a faint top highlight, a 1 px drop
-  /// shadow and a light sheen on buttons, thumbs and the select trigger,
-  /// with raised controls at 0.78 and filled ones at 0.8 of opencode's
-  /// strength (`roles`). Wells
-  /// (checkbox, radio, the off switch) get a hairline of shade, fields
-  /// barely any; slider tracks, quiet buttons and containers stay flat.
-  /// Hover and press move the light half as far as [soft] and [tactile].
-  static const subtle = CoilPlasticity(
-    edge: 1,
-    edgeWidth: 0.5,
-    highlight: 1,
-    shade: 0.5,
-    sheen: 1,
-    lift: 1,
-    recess: 0.6,
-    containers: 1,
-    response: 0.5,
-    roles: {
-      CoilReliefRole.raised: 0.78,
-      CoilReliefRole.filled: 0.8,
-      CoilReliefRole.quiet: 0,
-      CoilReliefRole.recessed: 0.35,
-      CoilReliefRole.field: 0.2,
-      CoilReliefRole.track: 0,
-      CoilReliefRole.floating: 0,
-    },
-  );
+  /// Half way: coil's lighting as tuned, at 0.5.
+  static const subtle = CoilPlasticity(amount: 0.5);
 
-  /// Softly lit: a quieter edge, a visible top-to-bottom sheen on every
-  /// control and a softer, larger shadow.
-  static const soft = CoilPlasticity(
-    edge: 0.6,
-    highlight: 0.8,
-    shade: 0.6,
-    sheen: 2.2,
-    lift: 2,
-    recess: 0.5,
-    containers: 1.4,
-  );
-
-  /// Tactile: a pronounced bevel (bright top rim, dark bottom rim), and
-  /// inputs and tracks clearly pressed into the surface.
-  static const tactile = CoilPlasticity(
-    edge: 1.5,
-    highlight: 1.8,
-    shade: 1.6,
-    sheen: 1.4,
-    lift: 1.5,
-    recess: 1.6,
-    containers: 1.2,
-  );
-
-  /// The edge: a gradient outline, lighter at the top and darker at the
-  /// bottom on raised shapes, the other way round on recessed ones.
-  final double edge;
-
-  /// The edge's stroke width in logical pixels, drawn inside the shape.
-  final double edgeWidth;
-
-  /// The inner rim of light along the top edge.
-  final double highlight;
-
-  /// The inner rim of shade along the bottom edge.
-  final double shade;
-
-  /// The fill's vertical gradient: lighter at the top.
-  final double sheen;
-
-  /// The drop shadow under raised and filled shapes.
-  final double lift;
-
-  /// How deep recessed shapes (inputs, tracks, boxes) look.
-  final double recess;
-
-  /// How lit floating containers (cards, popovers) are.
-  final double containers;
-
-  /// How far hover and press move the light, 0 (not at all) to 1 (fully
-  /// brightened, fully sunk).
-  final double response;
-
-  /// A multiplier per role, for lighting some kinds of shape less than
-  /// others: `{CoilReliefRole.track: 0}` keeps slider tracks flat. A
-  /// missing role is 1; 0 turns that role off.
-  final Map<CoilReliefRole, double> roles;
+  /// How lit controls are, 0 (flat) to 1. 0.5 is [subtle].
+  final double amount;
 
   /// The highest surface level whose controls are still lit. Controls on a
   /// `CoilSurface` above it read a flat plasticity (see
@@ -190,84 +107,29 @@ class CoilPlasticity with Diagnosticable {
 
   /// Whether this paints nothing, so components keep their flat look
   /// untouched.
-  bool get isFlat =>
-      edge <= 0 &&
-      highlight <= 0 &&
-      shade <= 0 &&
-      sheen <= 0 &&
-      lift <= 0 &&
-      recess <= 0 &&
-      containers <= 0;
+  bool get isFlat => amount <= 0;
 
-  /// Every intensity times [t]: `CoilPlasticity.subtle.scale(0.5)` is half
-  /// as strong. The edge width stays.
-  CoilPlasticity scale(double t) => CoilPlasticity(
-    edge: edge * t,
-    edgeWidth: edgeWidth,
-    highlight: highlight * t,
-    shade: shade * t,
-    sheen: sheen * t,
-    lift: lift * t,
-    recess: recess * t,
-    containers: containers * t,
-    response: response,
-    roles: roles,
-    flattenAbove: flattenAbove,
-  );
-
-  /// Returns a copy with the given intensities replaced.
-  CoilPlasticity copyWith({
-    double? edge,
-    double? edgeWidth,
-    double? highlight,
-    double? shade,
-    double? sheen,
-    double? lift,
-    double? recess,
-    double? containers,
-    double? response,
-    Map<CoilReliefRole, double>? roles,
-    int? flattenAbove,
-  }) => CoilPlasticity(
-    edge: edge ?? this.edge,
-    edgeWidth: edgeWidth ?? this.edgeWidth,
-    highlight: highlight ?? this.highlight,
-    shade: shade ?? this.shade,
-    sheen: sheen ?? this.sheen,
-    lift: lift ?? this.lift,
-    recess: recess ?? this.recess,
-    containers: containers ?? this.containers,
-    response: response ?? this.response,
-    roles: roles ?? this.roles,
-    flattenAbove: flattenAbove ?? this.flattenAbove,
-  );
+  /// Returns a copy with the given fields replaced.
+  CoilPlasticity copyWith({double? amount, int? flattenAbove}) =>
+      CoilPlasticity(
+        amount: amount ?? this.amount,
+        flattenAbove: flattenAbove ?? this.flattenAbove,
+      );
 
   /// Interpolates two plasticities, for animated theme changes.
   // A static lerp, like Color.lerp and TextStyle.lerp.
   // ignore: prefer_constructors_over_static_methods
-  static CoilPlasticity lerp(CoilPlasticity a, CoilPlasticity b, double t) {
-    double l(double x, double y) => x + (y - x) * t;
-    return CoilPlasticity(
-      edge: l(a.edge, b.edge),
-      edgeWidth: math.max(0.01, l(a.edgeWidth, b.edgeWidth)),
-      highlight: l(a.highlight, b.highlight),
-      shade: l(a.shade, b.shade),
-      sheen: l(a.sheen, b.sheen),
-      lift: l(a.lift, b.lift),
-      recess: l(a.recess, b.recess),
-      containers: l(a.containers, b.containers),
-      response: l(a.response, b.response),
-      roles: {
-        for (final role in {...a.roles.keys, ...b.roles.keys})
-          role: l(a.roles[role] ?? 1, b.roles[role] ?? 1),
-      },
-      // A level can't be between two; it switches half way.
-      flattenAbove: t < 0.5 ? a.flattenAbove : b.flattenAbove,
-    );
-  }
+  static CoilPlasticity lerp(CoilPlasticity a, CoilPlasticity b, double t) =>
+      CoilPlasticity(
+        // Clamped: a spring's overshoot mustn't leave the range.
+        amount: (a.amount + (b.amount - a.amount) * t).clamp(0.0, 1.0),
+        // A level can't be between two; it switches half way.
+        flattenAbove: t < 0.5 ? a.flattenAbove : b.flattenAbove,
+      );
 
   /// The concrete lighting of a [role] shape in [brightness], or null when
-  /// it gets none (this is [flat], or the control is disabled).
+  /// it gets none (this is [flat], the role isn't lit, or the control is
+  /// disabled).
   ///
   /// [hover] (0 to 1) brightens the light: pass an animated value so it
   /// fades. [press] (0 to 1) flattens it and moves the shade to the top
@@ -280,19 +142,156 @@ class CoilPlasticity with Diagnosticable {
     bool enabled = true,
   }) {
     if (!enabled || isFlat) return null;
-    final k = roles[role] ?? 1;
-    if (k <= 0) return null;
-    final base = switch (role) {
-      CoilReliefRole.quiet => CoilReliefRole.raised,
-      CoilReliefRole.field || CoilReliefRole.track => CoilReliefRole.recessed,
-      _ => role,
-    };
-    return (k == 1 ? this : scale(k))._resolve(
-      base,
+    return _Recipe.at(amount).resolve(
+      role,
       brightness,
-      hover * response,
-      press * response,
+      hover * _Recipe.response,
+      press * _Recipe.response,
     );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilPlasticity &&
+      other.amount == amount &&
+      other.flattenAbove == flattenAbove;
+
+  @override
+  int get hashCode => Object.hash(amount, flattenAbove);
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DoubleProperty('amount', amount, defaultValue: 0))
+      ..add(IntProperty('flattenAbove', flattenAbove, defaultValue: 1));
+  }
+}
+
+/// coil's lighting recipe at one amount: an intensity per ingredient, 0
+/// for none and 1 for opencode's reference, and a multiplier per role.
+/// Private: the amount is the only public knob.
+@immutable
+class _Recipe {
+  const _Recipe({
+    required this.edge,
+    required this.highlight,
+    required this.shade,
+    required this.sheen,
+    required this.lift,
+    required this.recess,
+    required this.roles,
+  });
+
+  /// The recipe at [amount]: [_subtle] scaled from nothing up to 0.5, then
+  /// eased toward [_strong] at 1.
+  factory _Recipe.at(double amount) {
+    if (amount == 0.5) return _subtle;
+    if (amount < 0.5) return _subtle.scale(amount * 2);
+    return _Recipe.lerp(_subtle, _strong, (amount - 0.5) * 2);
+  }
+
+  /// [a] eased toward [b] by [t].
+  factory _Recipe.lerp(_Recipe a, _Recipe b, double t) {
+    double l(double x, double y) => x + (y - x) * t;
+    return _Recipe(
+      edge: l(a.edge, b.edge),
+      highlight: l(a.highlight, b.highlight),
+      shade: l(a.shade, b.shade),
+      sheen: l(a.sheen, b.sheen),
+      lift: l(a.lift, b.lift),
+      recess: l(a.recess, b.recess),
+      roles: {
+        for (final role in {...a.roles.keys, ...b.roles.keys})
+          role: l(a.roles[role] ?? 0, b.roles[role] ?? 0),
+      },
+    );
+  }
+
+  /// The recipe at 0.5, `CoilPlasticity.subtle`: opencode's recipe with
+  /// raised controls at 0.78 and filled ones at 0.8 of its strength, wells
+  /// at 0.35 and fields at 0.2.
+  static const _subtle = _Recipe(
+    edge: 1,
+    highlight: 1,
+    shade: 0.5,
+    sheen: 1,
+    lift: 1,
+    recess: 0.6,
+    roles: _subtleRoles,
+  );
+
+  static const _subtleRoles = {
+    CoilReliefRole.raised: 0.78,
+    CoilReliefRole.filled: 0.8,
+    CoilReliefRole.recessed: 0.35,
+    CoilReliefRole.field: 0.2,
+  };
+
+  /// The recipe at 1: [_subtle] with a slightly brighter top rim and edge
+  /// and a slightly stronger sheen. Shadows and wells stay.
+  static const _strong = _Recipe(
+    edge: 1.1,
+    highlight: 1.4,
+    shade: 0.5,
+    sheen: 1.4,
+    lift: 1,
+    recess: 0.6,
+    roles: _subtleRoles,
+  );
+
+  /// The edge stroke's width in logical pixels, drawn inside the shape.
+  static const edgeWidth = 0.5;
+
+  /// How far hover and press move the light: half way (fully brightened
+  /// and fully sunk would be 1).
+  static const response = 0.5;
+
+  /// The edge: a gradient outline, lighter at the top and darker at the
+  /// bottom on raised shapes, the other way round on recessed ones.
+  final double edge;
+
+  /// The inner rim of light along the top edge.
+  final double highlight;
+
+  /// The inner rim of shade along the bottom edge.
+  final double shade;
+
+  /// The fill's vertical gradient: lighter at the top.
+  final double sheen;
+
+  /// The drop shadow under raised and filled shapes.
+  final double lift;
+
+  /// How deep recessed shapes (wells, fields, tracks) look.
+  final double recess;
+
+  /// A multiplier per lit role. A role that isn't here (quiet buttons,
+  /// slider tracks) is never lit.
+  final Map<CoilReliefRole, double> roles;
+
+  /// Every intensity times [t]; the role multipliers stay.
+  _Recipe scale(double t) => _Recipe(
+    edge: edge * t,
+    highlight: highlight * t,
+    shade: shade * t,
+    sheen: sheen * t,
+    lift: lift * t,
+    recess: recess * t,
+    roles: roles,
+  );
+
+  /// The lighting of a [role] shape, or null when the role is unlit.
+  CoilRelief? resolve(
+    CoilReliefRole role,
+    Brightness brightness,
+    double hover,
+    double press,
+  ) {
+    final k = roles[role] ?? 0;
+    if (k <= 0) return null;
+    final base = role == CoilReliefRole.field ? CoilReliefRole.recessed : role;
+    return (k == 1 ? this : scale(k))._resolve(base, brightness, hover, press);
   }
 
   CoilRelief _resolve(
@@ -313,14 +312,19 @@ class CoilPlasticity with Diagnosticable {
     // contrast buttons.
     final CoilRelief rest;
     switch (role) {
+      // Balanced so a primary (black or white fill), a secondary (gray
+      // tint) and a destructive (red tint) button read equally lit: the
+      // tints' dark bottom edge, top rim and bright dark-mode edge sit a
+      // little under opencode's, the primary's top rim and sheen a little
+      // over, and its dark-mode bottom edge under.
       case CoilReliefRole.raised || CoilReliefRole.quiet:
         rest = CoilRelief(
           edgeWidth: edgeWidth,
-          edgeTop: dark ? w(0.22 * edge) : b(0.06 * edge),
-          edgeBottom: dark ? w(0.05 * edge) : b(0.18 * edge),
-          rimTop: dark ? w(0.10 * highlight) : w(0.85 * highlight),
+          edgeTop: dark ? w(0.17 * edge) : b(0.06 * edge),
+          edgeBottom: dark ? w(0.05 * edge) : b(0.15 * edge),
+          rimTop: dark ? w(0.10 * highlight) : w(0.75 * highlight),
           rimBottom: dark ? b(0.22 * shade) : b(0.05 * shade),
-          sheenTop: dark ? w(0.025 * sheen) : w(0.22 * sheen),
+          sheenTop: dark ? w(0.025 * sheen) : w(0.18 * sheen),
           sheenBottom: dark ? b(0.06 * sheen) : b(0.02 * sheen),
           shadows: _drop(dark ? 0.40 : 0.10, dark ? 0.20 : 0.05),
         );
@@ -328,11 +332,11 @@ class CoilPlasticity with Diagnosticable {
         rest = CoilRelief(
           edgeWidth: edgeWidth,
           edgeTop: dark ? w(0.45 * edge) : w(0.20 * edge),
-          edgeBottom: dark ? b(0.30 * edge) : b(0.35 * edge),
-          rimTop: dark ? w(0.45 * highlight) : w(0.16 * highlight),
+          edgeBottom: dark ? b(0.22 * edge) : b(0.35 * edge),
+          rimTop: dark ? w(0.45 * highlight) : w(0.22 * highlight),
           rimBottom: b(0.10 * shade),
-          sheenTop: w(0.10 * sheen),
-          sheenBottom: b(0.06 * sheen),
+          sheenTop: w(0.12 * sheen),
+          sheenBottom: b((dark ? 0.08 : 0.06) * sheen),
           shadows: _drop(dark ? 0.40 : 0.18, dark ? 0.20 : 0.06),
         );
       case CoilReliefRole.recessed ||
@@ -348,25 +352,6 @@ class CoilPlasticity with Diagnosticable {
           sheenTop: dark ? b(0.14 * r) : b(0.035 * r),
           sheenBottom: dark ? w(0.015 * r) : w(0.2 * r),
           shadows: const [],
-        );
-      case CoilReliefRole.floating:
-        final s = containers;
-        rest = CoilRelief(
-          edgeWidth: edgeWidth,
-          edgeTop: dark ? w(0.14 * s) : b(0),
-          edgeBottom: dark ? w(0.02 * s) : b(0.07 * s),
-          rimTop: dark ? w(0.05 * s) : w(0.9 * s),
-          rimBottom: b(0),
-          sheenTop: dark ? w(0.02 * s) : w(0),
-          sheenBottom: w(0),
-          shadows: [
-            if (s > 0)
-              BoxShadow(
-                color: b((dark ? 0.30 : 0.04) * s),
-                offset: Offset(0, 2 * s),
-                blurRadius: _cssBlur(4 * s),
-              ),
-          ],
         );
     }
     var relief = rest;
@@ -404,55 +389,6 @@ class CoilPlasticity with Diagnosticable {
   /// [cssBlur] (CSS sigma is `B / 2`).
   static double _cssBlur(double cssBlur) =>
       math.max(0, (cssBlur / 2 - 0.5) / 0.57735);
-
-  @override
-  bool operator ==(Object other) =>
-      other is CoilPlasticity &&
-      other.edge == edge &&
-      other.edgeWidth == edgeWidth &&
-      other.highlight == highlight &&
-      other.shade == shade &&
-      other.sheen == sheen &&
-      other.lift == lift &&
-      other.recess == recess &&
-      other.containers == containers &&
-      other.response == response &&
-      mapEquals(other.roles, roles) &&
-      other.flattenAbove == flattenAbove;
-
-  @override
-  int get hashCode => Object.hash(
-    edge,
-    edgeWidth,
-    highlight,
-    shade,
-    sheen,
-    lift,
-    recess,
-    containers,
-    response,
-    Object.hashAllUnordered(
-      roles.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
-    flattenAbove,
-  );
-
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties
-      ..add(DoubleProperty('edge', edge, defaultValue: 0))
-      ..add(DoubleProperty('edgeWidth', edgeWidth, defaultValue: 1))
-      ..add(DoubleProperty('highlight', highlight, defaultValue: 0))
-      ..add(DoubleProperty('shade', shade, defaultValue: 0))
-      ..add(DoubleProperty('sheen', sheen, defaultValue: 0))
-      ..add(DoubleProperty('lift', lift, defaultValue: 0))
-      ..add(DoubleProperty('recess', recess, defaultValue: 0))
-      ..add(DoubleProperty('containers', containers, defaultValue: 0))
-      ..add(DoubleProperty('response', response, defaultValue: 1))
-      ..add(DiagnosticsProperty('roles', roles, defaultValue: const {}))
-      ..add(IntProperty('flattenAbove', flattenAbove, defaultValue: 1));
-  }
 }
 
 /// The lighting of one shape, resolved from a [CoilPlasticity] for its
