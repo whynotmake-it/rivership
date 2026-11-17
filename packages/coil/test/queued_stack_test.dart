@@ -654,6 +654,41 @@ void main() {
     );
   });
 
+  testWidgets('size: compact spaces by the compact gap under a regular scope', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        CoilAdaptiveScope(
+          size: CoilSize.regular,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: CoilQueuedStack(
+              messages: [_a, _b],
+              onChanged: _ignore,
+              onEdit: _ignore,
+              size: CoilSize.compact,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _hover(tester);
+    final context = tester.element(find.byType(CoilQueuedStack));
+    final compact = CoilTheme.metricsOf(context, size: CoilSize.compact).gap;
+    expect(compact, isNot(CoilTheme.metricsOf(context).gap));
+    Rect surface(CoilQueuedMessage m) => tester.getRect(
+      find
+          .ancestor(
+            of: find.text(m.semanticLabel),
+            matching: find.byType(CoilSurface),
+          )
+          .first,
+    );
+    expect(surface(_a).top - surface(_b).bottom, closeTo(compact, 0.01));
+  });
+
   group('reaches the cards behind', () {
     Finder cardOf(CoilQueuedMessage m) => find
         .ancestor(

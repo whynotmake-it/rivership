@@ -508,6 +508,8 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
           expand: _dragging != null
               ? CoilCardStackExpand.always
               : CoilCardStackExpand.auto,
+          // The stack's own size step, which the drag pitch uses too.
+          gap: metrics.gap,
           motion: widget.motion,
           motions: {
             CoilCardStackTrack.expand: ?expandMotion,
