@@ -64,10 +64,9 @@ Future<T?> showCoilModal<T>({
 /// `context` is read once, while the route is created: it picks the
 /// presentation when `presentation` is null (a sheet on the touch tier in a
 /// compact window, centered elsewhere), the motion tokens, the scrim color
-/// and the themes the modal inherits. Centered modals and drawers spring in
-/// on the theme's `gentle` token and out on `gentleExit`; sheets use
-/// `gentle`. With `dismissible` false, the scrim, Esc, back and dragging
-/// don't close it.
+/// and the themes the modal inherits. Modals spring in on the theme's
+/// `gentle` token and out on `gentleExit`. With `dismissible` false, the
+/// scrim, Esc, back and dragging don't close it.
 sealed class CoilModalRoute<T> implements PopupRoute<T> {
   /// Creates the route for [presentation], or for the presentation that
   /// fits [context] when it's null.
@@ -91,11 +90,10 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
     );
     return switch (resolved) {
       CoilModalPresentation.sheet => _CoilModalSheetRoute<T>(
-        motion: tokens.gentle,
-        barrierColor: barrierColor,
+        context: context,
+        motion: motion,
         barrierDismissible: dismissible,
         barrierLabel: barrierLabel,
-        capturedThemes: themes,
         settings: settings,
         child: Builder(builder: content),
       ),
@@ -210,10 +208,9 @@ class CoilModalPage<T> extends Page<T> {
 class _CoilModalSheetRoute<T> extends CoilSheetRoute<T>
     implements CoilModalRoute<T> {
   _CoilModalSheetRoute({
+    required super.context,
     required super.child,
-    required super.motion,
-    required super.barrierColor,
-    super.capturedThemes,
+    super.motion,
     super.barrierLabel,
     super.barrierDismissible,
     super.settings,

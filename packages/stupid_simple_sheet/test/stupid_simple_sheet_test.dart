@@ -2027,6 +2027,44 @@ void main() {
       );
     }
 
+    for (final dismissalMode in DismissalMode.values) {
+      testWidgets(
+          '${dismissalMode.name} sizes to content shorter than the '
+          'screen', (tester) async {
+        late BuildContext home;
+        await tester.pumpWidget(
+          CupertinoApp(
+            home: Builder(
+              builder: (context) {
+                home = context;
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        );
+        Navigator.of(home)
+            .push(
+              StupidSimpleGlassSheetRoute<void>(
+                motion: motion,
+                dismissalMode: dismissalMode,
+                child: const SizedBox(key: ValueKey('content'), height: 200),
+              ),
+            )
+            .ignore();
+        await tester.pumpAndSettle();
+
+        final screen = tester.getSize(find.byType(CupertinoApp));
+        final content = tester.getRect(find.byKey(const ValueKey('content')));
+        expect(content.bottom, screen.height);
+        expect(content.height, 200);
+        expect(
+          tester.getSize(find.byType(SheetBackground)).height,
+          200,
+          reason: 'the sheet hugs its content',
+        );
+      });
+    }
+
     group('originateAboveBottomViewInset', () {
       for (final dismissalMode in DismissalMode.values) {
         for (final originateAboveBottomViewInset in [false, true]) {
@@ -2343,6 +2381,86 @@ void main() {
         device: Devices.ios.iPhone16,
       );
     });
+  });
+
+  group('exitMotion', () {
+    const enter = CurvedMotion(Duration(milliseconds: 100));
+    const exit = CurvedMotion(Duration(milliseconds: 1000));
+
+    final routes =
+        <String, PopupRoute<void> Function(Widget child, {Motion? exitMotion})>{
+      'StupidSimpleSheetRoute': (child, {exitMotion}) =>
+          StupidSimpleSheetRoute<void>(
+            motion: enter,
+            exitMotion: exitMotion,
+            child: child,
+          ),
+      'StupidSimpleCupertinoSheetRoute': (child, {exitMotion}) =>
+          StupidSimpleCupertinoSheetRoute<void>(
+            motion: enter,
+            exitMotion: exitMotion,
+            child: child,
+          ),
+      'StupidSimpleGlassSheetRoute': (child, {exitMotion}) =>
+          StupidSimpleGlassSheetRoute<void>(
+            motion: enter,
+            exitMotion: exitMotion,
+            child: child,
+          ),
+    };
+
+    for (final MapEntry(key: name, value: route) in routes.entries) {
+      Future<void> open(
+        WidgetTester tester, {
+        Motion? exitMotion,
+      }) async {
+        late BuildContext home;
+        await tester.pumpWidget(
+          CupertinoApp(
+            home: Builder(
+              builder: (context) {
+                home = context;
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        );
+        Navigator.of(home)
+            .push(
+              route(
+                const SizedBox(key: ValueKey('sheet'), height: 300),
+                exitMotion: exitMotion,
+              ),
+            )
+            .ignore();
+        // Opens on the enter motion.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(find.byKey(const ValueKey('sheet')), findsOneWidget);
+        Navigator.of(home).pop();
+        await tester.pump();
+      }
+
+      testWidgets('$name closes on its exitMotion', (tester) async {
+        await open(tester, exitMotion: exit);
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(
+          find.byKey(const ValueKey('sheet')),
+          findsOneWidget,
+          reason: 'still on its way out',
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('sheet')), findsNothing);
+      });
+
+      testWidgets('$name closes on its motion without an exitMotion', (
+        tester,
+      ) async {
+        await open(tester);
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(find.byKey(const ValueKey('sheet')), findsNothing);
+      });
+    }
   });
 
   group('SnapPhysics integration', () {

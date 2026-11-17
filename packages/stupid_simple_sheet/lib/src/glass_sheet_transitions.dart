@@ -86,6 +86,7 @@ abstract class GlassSheetTransitions {
               end: opacityRange.$2,
             ),
             true,
+            sizeToChild: true,
           ),
         ),
       ),

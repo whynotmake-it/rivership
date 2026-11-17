@@ -163,7 +163,7 @@ High contrast is driven by `MediaQuery.highContrastOf` and applied last (`CoilTh
 | Field → field | 12 | 16 |
 | Section → section | 24 | 32 |
 | Dialog / card padding | 24 / 16 | 20 / 16 |
-| Sheet margin from screen edges | — | 8, bottom `max(8, safe area)` |
+| Sheet edges | — | flush with the bottom and sides; content clears the safe area |
 
 Spacing values come from {2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48}. If a value isn't in that set, it needs a reason in the code.
 
@@ -187,7 +187,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 
 **Nesting:** outer radius = inner radius + the inset between them (`CoilShape.nested`).
 
-- Popover / sheet = item + `popupInset` = the container radius: 8 + 4 = **12** pointer, 10 + 6 = **16** touch.
+- Popover = item + `popupInset` = the container radius: 8 + 4 = **12** pointer, 10 + 6 = **16** touch. A sheet's top corners are the glass sheet's 36 (scaled by container / 16 for tighter shapes, so `sharp` is near square).
 - The focus ring sits 2 px outside, so it's item + 2.
 - A number-stepper button 4 px inside an input has radius item − 4.
 - Every corner gap is even.
@@ -203,7 +203,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
   - **Blur:** the recipes use CSS blur. A CSS blur of `B` has sigma `B / 2`, so `shadow()` converts it for Flutter's `BoxShadow` (the 1 px drop becomes a hard edge).
 - **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level. `CoilSurface.scope` sets the level without painting, for a widget that paints its own surface, such as a card.
 - **Every surface takes its level from the one it sits on.** Never hard-code a level: the numbers below are what each surface gets on the page.
-- **Uses:** popover and sheet surface 3 / shadow 3; submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
+- **Uses:** popover surface 3 / shadow 3; sheet surface 3, no shadow; submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
 - **Scrim** behind sheets, dialogs and drawers: black 40 % (light) / 50 % (dark).
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
 
@@ -447,8 +447,9 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.3 Sheet
 
-- A floating panel 8 from the screen edges; the bottom is `max(8, safe area)`. The top is capped at the top safe area + 48, so the page always shows behind it. Centered at most 560 wide.
-- Surface 3 / shadow 3, radius = the touch container radius (16).
+- `stupid_simple_sheet`'s **glass sheet** (`StupidSimpleGlassSheetRoute`), used as it is: flush with the bottom edge, full width up to 560 (wider windows center it), top capped at the top safe area + 5 % of the height. The first sheet blurs and dims the page; a sheet opened from it stacks, and the one below shrinks back without a second scrim.
+- Fill: the surface two levels above the opener (3 from the page), no shadow; top corners per §5. Content clears the home indicator and the side insets that reach it.
+- It rides on the keyboard: a field inside stays above it.
 - Grabber 36×5 (foreground 16 %), 6 above and below.
 - Optional title: 17/22 semibold `foreground`, aligned with the row text, 4 above and 6 below, `Semantics(header)`.
 - **Optional pinned header row:**
@@ -458,7 +459,7 @@ Every component ships with all of these. They're required to call it done.
 - **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
 - **Optional action bar:** full-width 44 buttons above the safe area, stacked with the primary on top.
 - **Height:** content height up to the cap; long lists scroll inside. Search and command sheets open at the large detent and grow while the keyboard is up.
-- **Motion:** in on `gentle`, out on the drag's velocity. The scrim fades on `fade`.
+- **Motion:** in on `gentle`, out on `gentleExit`, which takes over the drag's fling velocity. The scrim fades and the backdrop blurs with the sheet.
 - **Dismiss:** drag down, tap the scrim, system back, Esc.
 - **Rows** are always touch rows, whatever the tier.
 
@@ -1136,7 +1137,7 @@ A component is done when:
 
 The user's decisions on the former open questions (2026-11-13):
 
-1. **Touch radii:** item 10, popover and sheet 16, focus ring 12. `CoilShape` resolves per tier; pointer values are unchanged (§5).
+1. **Touch radii:** item 10, popover 16, focus ring 12; sheets keep the glass sheet's 36 (§5). `CoilShape` resolves per tier; pointer values are unchanged (§5).
 2. **One row height:** 44 visual everywhere, Android included. There is no 48 px Android hit box: Flutter has no hit slop, and growing the hit area without changing layout would need a custom hit-test override, the kind of workaround coil avoids (§4.2, §9.2, §10).
 3. **The check in sheets and menus** stays the text color (`foreground`) (§13.1).
 4. **Sheet header hairline:** only while content scrolls beneath the header (§13.3).

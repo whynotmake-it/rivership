@@ -180,9 +180,6 @@ The M0 components still run these from the shared
 
 ## Known gaps
 
-- `stupid_simple_sheet` uses one motion for both directions and keeps the
-  drag's fling velocity on dismiss, so sheets exit on `gentle`, not
-  `gentleExit`. An `exitMotion` hook upstream would fix it.
 - `style:` classes per component type and instance are planned for M1.
 - Without Material or Cupertino localizations in the app, the text
   selection toolbar's labels are English in every locale.
