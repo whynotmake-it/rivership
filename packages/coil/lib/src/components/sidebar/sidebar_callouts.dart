@@ -10,8 +10,9 @@ import 'package:motor/motor.dart';
 
 /// When a [CoilSidebarCalloutStack] fans its pile out.
 enum CoilSidebarCalloutExpand {
-  /// While a mouse rests on the pile or the keyboard focuses a card in it.
-  /// For short inline cards.
+  /// While a mouse rests on the pile or focus is inside it (Tab, or a
+  /// field being typed in), and on touch after a tap on the pile until a
+  /// tap outside it. For short inline cards.
   onHover,
 
   /// Never; only the front card shows in full. For tall banners, which
@@ -24,8 +25,12 @@ enum CoilSidebarCalloutExpand {
 /// [children] are cards, usually dismissible `CoilCard`s, front first, each
 /// with its own key. At rest the front card shows with up to two more
 /// peeking behind it, each a step smaller. [expand] decides whether the
-/// pile fans out into a list. Dismissing the front card and removing it
-/// from [children] moves the next one forward. Touch never fans the pile.
+/// pile fans out into a list: under a hovering mouse or keyboard focus, or
+/// on touch after a tap on the pile, until a tap outside it. Fanned out,
+/// every card takes taps, hovers and focus; folded, only the front card
+/// does, and a tap on a card peeking behind it fans the pile out.
+/// Dismissing the front card and removing it from [children] moves the
+/// next one forward.
 ///
 /// The cards should share one anatomy: the pile is as tall as its tallest
 /// card.
@@ -73,6 +78,9 @@ class _CoilSidebarCalloutStackState extends State<CoilSidebarCalloutStack> {
   final _states = WidgetStatesController();
   bool _focusWithin = false;
 
+  /// Fanned out by a tap, until a tap outside the pile.
+  bool _pinned = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +95,15 @@ class _CoilSidebarCalloutStackState extends State<CoilSidebarCalloutStack> {
 
   void _rebuild() => setState(() {});
 
+  @override
+  void didUpdateWidget(CoilSidebarCalloutStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.children.length < 2 ||
+        widget.expand == CoilSidebarCalloutExpand.never) {
+      _pinned = false;
+    }
+  }
+
   // No `style:` of its own: the theme's sidebar style is the styled one.
   Motion _motionFor(Motion token) => CoilTheme.trackMotionOf(
     context,
@@ -99,35 +116,57 @@ class _CoilSidebarCalloutStackState extends State<CoilSidebarCalloutStack> {
   @override
   Widget build(BuildContext context) {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
+    final fans = widget.expand == CoilSidebarCalloutExpand.onHover;
     final expanded =
-        widget.expand == CoilSidebarCalloutExpand.onHover &&
-        (_states.value.contains(WidgetState.hovered) ||
-            (_focusWithin &&
-                CoilInputModality.instance.value == CoilModality.keyboard));
+        fans &&
+        (_pinned ||
+            _states.value.contains(WidgetState.hovered) ||
+            // Focus inside keeps it open, so a field typed into stays in
+            // view. Pressing a card or button doesn't take focus.
+            _focusWithin);
     final count = widget.children.length;
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
-      onFocusChange: (focused) => setState(() => _focusWithin = focused),
-      child: CoilInteractionDetector(
-        states: _states,
-        trackPress: false,
-        child: SingleMotionBuilder(
-          value: expanded ? 1 : 0,
-          motion: _motionFor(expanded ? motion.standard : motion.standardExit),
-          builder: (context, fan, _) => _CalloutPile(
-            fan: fan.clamp(0, 1),
-            count: count,
-            children: [
-              for (final (i, card) in widget.children.indexed)
-                _Card(
-                  key: card.key,
-                  slot: i,
-                  fan: fan.clamp(0, 1),
-                  motion: _motionFor(motion.standard),
-                  child: card,
-                ),
-            ],
+    // Folded, a tap that no front-card control takes (on the front card's
+    // body, or a card peeking behind it) fans the pile out.
+    final pin = fans && !expanded && count > 1
+        ? () => setState(() => _pinned = true)
+        : null;
+    return TapRegion(
+      onTapOutside: _pinned ? (_) => setState(() => _pinned = false) : null,
+      // Tab goes front to back, wherever the cards are on their way between
+      // folded and fanned out.
+      child: FocusTraversalGroup(
+        policy: WidgetOrderTraversalPolicy(),
+        child: Focus(
+          canRequestFocus: false,
+          skipTraversal: true,
+          onFocusChange: (focused) => setState(() => _focusWithin = focused),
+          child: CoilInteractionDetector(
+            states: _states,
+            trackPress: pin != null,
+            onTap: pin,
+            excludeFromSemantics: true,
+            cursor: MouseCursor.defer,
+            child: SingleMotionBuilder(
+              value: expanded ? 1 : 0,
+              motion: _motionFor(
+                expanded ? motion.standard : motion.standardExit,
+              ),
+              builder: (context, fan, _) => _CalloutPile(
+                fan: fan.clamp(0, 1),
+                count: count,
+                children: [
+                  for (final (i, card) in widget.children.indexed)
+                    _Card(
+                      key: card.key,
+                      slot: i,
+                      fan: fan.clamp(0, 1),
+                      reachable: expanded || i == 0,
+                      motion: _motionFor(motion.standard),
+                      child: card,
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -135,12 +174,13 @@ class _CoilSidebarCalloutStackState extends State<CoilSidebarCalloutStack> {
   }
 }
 
-/// One card at its [slot] in the pile: it slides and scales there, and
+/// One card at its [slot] in the pile: it slides there and scales, and
 /// only the front three show at rest.
 class _Card extends StatelessWidget {
   const _Card({
     required this.slot,
     required this.fan,
+    required this.reachable,
     required this.motion,
     required this.child,
     super.key,
@@ -148,6 +188,7 @@ class _Card extends StatelessWidget {
 
   final int slot;
   final double fan;
+  final bool reachable;
   final Motion motion;
   final Widget child;
 
@@ -158,27 +199,21 @@ class _Card extends StatelessWidget {
     builder: (context, slot, child) {
       const max = CoilSidebarCalloutStack.maxPeeking;
       final peeking = math.min(slot, max.toDouble());
-      final rest = -peeking * CoilSidebarCalloutStack.peek;
       final scale = 1 - peeking * CoilSidebarCalloutStack.scaleStep * (1 - fan);
       final visible = slot <= max + 0.01 || fan > 0;
-      return Opacity(
-        opacity: visible ? 1 : 0,
-        child: Transform.translate(
-          // At rest it peeks by a fixed amount; fanned out, it moves up
-          // its own height per slot, plus the gap.
-          offset: Offset(
-            0,
-            rest * (1 - fan) - slot * CoilSidebarCalloutStack.gap * fan,
-          ),
-          child: FractionalTranslation(
-            translation: Offset(0, -slot * fan),
-            child: Transform.scale(
-              scale: scale,
-              alignment: Alignment.bottomCenter,
-              child: ExcludeFocus(
-                excluding: !visible,
-                child: ExcludeSemantics(excluding: !visible, child: child),
-              ),
+      // The pile places the card at its slot in layout, not with a paint
+      // transform, so a fanned-out card takes pointers where it shows.
+      return _PileSlot(
+        slot: slot,
+        reachable: reachable,
+        child: Opacity(
+          opacity: visible ? 1 : 0,
+          child: Transform.scale(
+            scale: scale,
+            alignment: Alignment.bottomCenter,
+            child: ExcludeFocus(
+              excluding: !visible,
+              child: ExcludeSemantics(excluding: !visible, child: child),
             ),
           ),
         ),
@@ -188,8 +223,37 @@ class _Card extends StatelessWidget {
   );
 }
 
-/// Lays the cards out on top of each other at the bottom, front card
-/// painted last, and sizes itself to the pile at [fan].
+/// A card's place in a [_CalloutPile].
+class _PileSlot extends ParentDataWidget<_PileParentData> {
+  const _PileSlot({
+    required this.slot,
+    required this.reachable,
+    required super.child,
+  });
+
+  final double slot;
+  final bool reachable;
+
+  @override
+  void applyParentData(RenderObject renderObject) {
+    final data = renderObject.parentData! as _PileParentData;
+    if (data.slot != slot) {
+      data.slot = slot;
+      renderObject.parent?.markNeedsLayout();
+    }
+    // Only hit testing reads it.
+    data.reachable = reachable;
+  }
+
+  @override
+  Type get debugTypicalAncestorWidgetClass => _CalloutPile;
+}
+
+/// Lays the cards out at their [_PileSlot]s, bottom-anchored: at rest each
+/// card behind the front one peeks a step higher; fanned out, each sits its
+/// height plus the gap above the one in front; [fan] blends the two. The
+/// front card paints last, and the pile sizes itself to the cards at
+/// [fan].
 class _CalloutPile extends MultiChildRenderObjectWidget {
   const _CalloutPile({
     required this.fan,
@@ -213,7 +277,14 @@ class _CalloutPile extends MultiChildRenderObjectWidget {
     ..count = count;
 }
 
-class _PileParentData extends ContainerBoxParentData<RenderBox> {}
+class _PileParentData extends ContainerBoxParentData<RenderBox> {
+  /// Places from the front, fractional while the card moves.
+  double slot = 0;
+
+  /// Whether the card takes pointers: every card of a fanned-out pile, only
+  /// the front one of a folded pile.
+  bool reachable = true;
+}
 
 class _RenderCalloutPile extends RenderBox
     with
@@ -275,9 +346,17 @@ class _RenderCalloutPile extends RenderBox
     size = constraints.constrain(Size(constraints.maxWidth, _height(card)));
     var child = firstChild;
     while (child != null) {
-      (child.parentData! as _PileParentData).offset = Offset(
+      final data = child.parentData! as _PileParentData;
+      final height = child.size.height;
+      final peeking = math.min(
+        data.slot,
+        CoilSidebarCalloutStack.maxPeeking.toDouble(),
+      );
+      final rest = peeking * CoilSidebarCalloutStack.peek;
+      final fanned = data.slot * (height + CoilSidebarCalloutStack.gap);
+      data.offset = Offset(
         0,
-        size.height - child.size.height,
+        size.height - height - (rest + (fanned - rest) * _fan),
       );
       child = childAfter(child);
     }
@@ -299,12 +378,16 @@ class _RenderCalloutPile extends RenderBox
     var child = firstChild;
     while (child != null) {
       final data = child.parentData! as _PileParentData;
-      final hit = result.addWithPaintOffset(
-        offset: data.offset,
-        position: position,
-        hitTest: (result, transformed) =>
-            child!.hitTest(result, position: transformed),
-      );
+      // A folded pile's cards behind the front one let the pointer through
+      // to the pile, which fans out on a tap.
+      final hit =
+          data.reachable &&
+          result.addWithPaintOffset(
+            offset: data.offset,
+            position: position,
+            hitTest: (result, transformed) =>
+                child!.hitTest(result, position: transformed),
+          );
       if (hit) return true;
       child = data.nextSibling;
     }

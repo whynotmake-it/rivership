@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:coil_cli/testing.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
@@ -167,6 +168,229 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('One'), findsNothing);
       expect(tester.getRect(find.text('Two')).top, front.top);
+    });
+  });
+
+  group('callout stack reaches the cards behind', () {
+    late List<String> cards;
+    late List<String> pressed;
+    late TextEditingController field;
+
+    Widget card(String title, StateSetter setState) => CoilCard(
+      key: ValueKey(title),
+      variant: CoilCardVariant.inline,
+      title: Text(title),
+      icon: const TestIcon(TestGlyph.heart),
+      actions: [
+        CoilButton(
+          size: CoilSize.compact,
+          onPressed: () => pressed.add(title),
+          child: Text('Open $title'),
+        ),
+      ],
+      onDismissed: () => setState(() => cards.remove(title)),
+      child: title == 'Three'
+          ? CoilInput(controller: field, semanticLabel: 'Note')
+          : null,
+    );
+
+    Future<void> pump(WidgetTester tester, CoilTier tier) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(600, 800);
+      addTearDown(tester.view.reset);
+      cards = ['One', 'Two', 'Three'];
+      pressed = [];
+      field = TextEditingController();
+      addTearDown(field.dispose);
+      await tester.pumpWidget(
+        testApp(
+          tier: tier,
+          home: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 280,
+              child: StatefulBuilder(
+                builder: (context, setState) => CoilSidebarCalloutStack(
+                  children: [for (final title in cards) card(title, setState)],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Finder cardOf(String title) => find.ancestor(
+      of: find.text(title),
+      matching: find.byType(CoilCard),
+    );
+
+    Finder inCard(String title, Finder finder) =>
+        find.descendant(of: cardOf(title), matching: finder);
+
+    Rect pile(WidgetTester tester) =>
+        tester.getRect(find.byType(CoilSidebarCalloutStack));
+
+    testWidgets('a hovering mouse reaches every card: hover, buttons, '
+        'dismiss and text', (tester) async {
+      await pump(tester, CoilTier.pointer);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+
+      for (final title in ['Three', 'Two', 'One']) {
+        final open = inCard(title, find.text('Open $title'));
+        await mouse.moveTo(tester.getCenter(open));
+        await tester.pumpAndSettle();
+        // Its own dismiss button shows under the mouse: the card hears it.
+        expect(
+          inCard(title, find.bySemanticsLabel('Dismiss')),
+          findsOneWidget,
+          reason: '$title shows its dismiss button on hover',
+        );
+        await tester.tapAt(
+          tester.getCenter(open),
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(pressed, ['Three', 'Two', 'One']);
+
+      await mouse.moveTo(
+        tester.getCenter(inCard('Three', find.byType(CoilInput))),
+      );
+      await tester.tapAt(
+        tester.getCenter(inCard('Three', find.byType(CoilInput))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(inCard('Three', find.byType(EditableText)), 'hi');
+      expect(field.text, 'hi');
+
+      final dismiss = inCard('Two', find.bySemanticsLabel('Dismiss'));
+      await mouse.moveTo(tester.getCenter(dismiss));
+      await tester.pumpAndSettle();
+      await tester.tapAt(
+        tester.getCenter(dismiss),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(cards, ['One', 'Three']);
+    });
+
+    testWidgets('text typed into a card behind keeps the pile fanned out', (
+      tester,
+    ) async {
+      await pump(tester, CoilTier.pointer);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+      final input = inCard('Three', find.byType(CoilInput));
+      await mouse.moveTo(tester.getCenter(input));
+      await tester.tapAt(
+        tester.getCenter(input),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      final fanned = pile(tester).height;
+      await mouse.moveTo(Offset.zero);
+      await tester.pumpAndSettle();
+      expect(
+        pile(tester).height,
+        fanned,
+        reason: 'the field being typed in stays in view',
+      );
+      await tester.enterText(inCard('Three', find.byType(EditableText)), 'ok');
+      expect(field.text, 'ok');
+    });
+
+    testWidgets('touch: a tap on a peeking card fans the pile out, never '
+        'pressing what is under the peek', (tester) async {
+      await pump(tester, CoilTier.touch);
+      final rest = pile(tester).height;
+      final front = tester.getRect(cardOf('One'));
+      // The strip of Two peeking above the front card, at its dismiss
+      // button's column.
+      final dismissTwo = tester.getCenter(
+        inCard('Two', find.bySemanticsLabel('Dismiss')),
+      );
+      await tester.tapAt(Offset(dismissTwo.dx, front.top - 4));
+      await tester.pumpAndSettle();
+      expect(cards, ['One', 'Two', 'Three'], reason: 'nothing dismissed');
+      expect(pressed, isEmpty);
+      expect(pile(tester).height, greaterThan(rest + 40), reason: 'fanned');
+
+      for (final title in ['Three', 'Two', 'One']) {
+        await tester.tap(inCard(title, find.text('Open $title')));
+        await tester.pumpAndSettle();
+      }
+      expect(pressed, ['Three', 'Two', 'One']);
+      await tester.tap(inCard('Three', find.byType(CoilInput)));
+      await tester.pumpAndSettle();
+      await tester.enterText(inCard('Three', find.byType(EditableText)), 'yo');
+      expect(field.text, 'yo');
+      FocusManager.instance.primaryFocus?.unfocus();
+
+      await tester.tap(inCard('Two', find.bySemanticsLabel('Dismiss')));
+      await tester.pumpAndSettle();
+      expect(cards, ['One', 'Three']);
+      expect(pile(tester).height, greaterThan(rest), reason: 'still open');
+
+      final open = pile(tester).height;
+      await tester.tapAt(const Offset(300, 20));
+      await tester.pumpAndSettle();
+      expect(
+        pile(tester).height,
+        lessThan(open - 40),
+        reason: 'a tap outside folds it',
+      );
+    });
+
+    testWidgets('touch: the folded front card keeps its own controls', (
+      tester,
+    ) async {
+      await pump(tester, CoilTier.touch);
+      await tester.tap(inCard('One', find.text('Open One')));
+      await tester.pumpAndSettle();
+      expect(pressed, ['One']);
+      await tester.tap(inCard('One', find.bySemanticsLabel('Dismiss')));
+      await tester.pumpAndSettle();
+      expect(cards, ['Two', 'Three']);
+    });
+
+    testWidgets('Tab reaches the controls of every card and fans it out', (
+      tester,
+    ) async {
+      await pump(tester, CoilTier.pointer);
+      final rest = pile(tester).height;
+      // An ordered set: the order Tab reaches the cards in.
+      final focused = <String>{};
+      for (var i = 0; i < 12; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+        final context = FocusManager.instance.primaryFocus?.context;
+        if (context == null) continue;
+        for (final title in ['One', 'Two', 'Three']) {
+          if (find
+              .descendant(
+                of: cardOf(title),
+                matching: find.byWidget(context.widget),
+              )
+              .evaluate()
+              .isNotEmpty) {
+            focused.add(title);
+            if (title != 'One') {
+              expect(pile(tester).height, greaterThan(rest + 40));
+            }
+          }
+        }
+      }
+      expect(focused.toList(), ['One', 'Two', 'Three']);
     });
   });
 
