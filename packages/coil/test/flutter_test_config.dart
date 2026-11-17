@@ -14,6 +14,8 @@ import 'package:snaptest/snaptest.dart';
 /// use. The asset manifest doesn't know fonts loaded this way, so the
 /// typography's bundled-font check is off.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  // Inert unless a test records a video with `snap.recordVideo()`.
+  SnaptestWidgetsFlutterBinding.ensureInitialized();
   await loadFonts();
   await _load('Allo', 'example/fonts/allo/AlloVariable.ttf');
   await _load('Inter', 'example/fonts/inter/InterVariable.ttf');
