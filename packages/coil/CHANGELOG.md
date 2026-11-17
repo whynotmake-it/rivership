@@ -2,9 +2,6 @@
 
 Milestone M0, unreleased.
 
-- The unblurred modal scrim is a color token, `CoilColors.scrim` (black
-  20 % light, 30 % dark). Breaking: `CoilSheetPanel.barrierColorOf` is
-  gone; read `CoilTheme.of(context).colors.scrim`.
 - Controls can be lit. `CoilThemeData.plasticity` takes a
   `CoilPlasticity`: `.flat` (the default, which paints nothing),
   `.subtle`, `.soft`, `.tactile` or your own intensities, with `scale(t)`,
@@ -63,9 +60,11 @@ Milestone M0, unreleased.
   Sheets sit flush with the bottom edge, blur the page, stack on each
   other, ride on the keyboard and move on `gentle` both ways. They keep
   the glass sheet's scrim (black 15 %); dialogs and drawers, unblurred,
-  dim with black 20 % (light) / 30 % (dark) instead of 40 % / 50 %.
-  `CoilSheetPanel` lost its own surface, margins and max width
-  (`CoilSheetPanel.maxWidth` is now `CoilSheetRoute.maxWidth`).
+  dim with the new `CoilColors.scrim` token, black 20 % (light) / 30 %
+  (dark) instead of 40 % / 50 %. `CoilSheetPanel` lost its own surface,
+  margins and max width (`CoilSheetPanel.maxWidth` is now
+  `CoilSheetRoute.maxWidth`), and `CoilSheetPanel.barrierColorOf` is gone;
+  read `CoilTheme.of(context).colors.scrim`.
 - The phone sidebar is revealed from behind the page. Below its
   breakpoint, on the touch tier, `CoilSidebarScaffold`'s page slides
   aside to show the sidebar, taking the screen's corner radius while it
@@ -83,8 +82,9 @@ Milestone M0, unreleased.
   `CoilSidebarStyle`'s `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
   scaffolds give a phone a sidebar on each side.
   - Breaking: `CoilDrawer` takes `start` and `end` panels,
-    `open: CoilDrawerEdge?` and `onOpenChanged` (was `drawer`, `edge`,
-    `open: bool`, `onClose`, `semanticLabel`), and `reveal:
+    `open: CoilDrawerEdge?`, `onOpenChanged`, `startSemanticLabel` and
+    `endSemanticLabel` (was `drawer`, `edge`, `open: bool`, `onClose`,
+    `semanticLabel`), and `reveal:
     CoilDrawerReveal { behind, over }`, `drag: CoilDrawerDrag?` and look
     parameters. It renders in place instead of in an overlay.
   - Breaking: `CoilDrawer`'s look parameters are grouped: `look:
@@ -225,7 +225,10 @@ Milestone M0, unreleased.
   - A submenu sits on its menu's level plus two (5 on the page); it used
     to share the menu's fill.
 
-- `coil_cli:eject` takes several components or `--all`, and names copies
+- `dart run coil_cli:eject <component>` copies a component into the app,
+  and `dart run coil_cli:update` merges coil's later changes into the copy
+  with `git merge-file` (see SKILL.md). Eject takes several components or
+  `--all`, and names copies
   after the app with `--prefix`, `--rename` and `--library`. The
   analyzer renames declarations, references, doc links and files; update
   renames coil's new version the same way before merging. Components
@@ -236,7 +239,7 @@ Milestone M0, unreleased.
   `package:coil_cli/testing.dart`). coil depends only on what it needs at
   runtime; `flutter_test` and the tools' packages are gone from its
   dependencies.
-- `CoilSidebarController.attach` is gone; the scaffold attaches through
+- Breaking: `CoilSidebarController.attach` is gone; the scaffold attaches through
   a function `sidebar.dart` hides, so an ejected sidebar has no
   `@internal` member outside `lib/src/`.
 - Breaking: `primitives.dart` no longer exports internals.
@@ -256,9 +259,6 @@ Milestone M0, unreleased.
   - `CoilDialogKind.presentation` gives a dialog kind's presentation.
   - `showCoilModal` takes a nullable `presentation`; null is the adaptive
     choice above.
-- `dart run coil_cli:eject <component>` copies a component into the app, and
-  `dart run coil_cli:update` merges coil's later changes into the copy with
-  `git merge-file`. See SKILL.md.
 - `package:coil/date_picker.dart` re-exports `CoilCalendarLabels` from
   `calendar.dart` instead of calendar's `src/`.
 - Docs for agents ship in the package: `SKILL.md`, `doc/llms.txt` and a
@@ -303,7 +303,9 @@ Milestone M0, unreleased.
     their `searchText`).
   - `CoilInputMessage.placeholder` is a widget. `CoilQueuedStackLabels`
     fields end in `Label` (`editLabel`, `removeLabel`, `collapseLabel`,
-    `messageLabel`, `countLabel`). `CoilDrawer.label` is `semanticLabel`.
+    `messageLabel`, `countLabel`). `CoilDrawer.label` became a
+    screen-reader label (now `startSemanticLabel` / `endSemanticLabel`,
+    see the phone sidebar entry).
 - The sidebar is rebuilt to match FF's. `CoilSidebarScaffold` takes a
   `CoilSidebarController` (open state and width, which the app stores),
   `side`, `variant` (`sidebar`, `floating`, `inset`), `collapsible`
@@ -325,7 +327,8 @@ Milestone M0, unreleased.
   layout; `CoilDialog` builds on it.
 - `CoilDrawer` (primitive) shows a modal side drawer that stays a
   descendant of its owner, so it shows the app's current state. A drag
-  closes it, and system back, Escape and the scrim do too.
+  closes it, and system back, Escape and the scrim do too. Its current
+  API is in the phone sidebar entry above.
 - `CoilAskUserQuestions` asks an assistant's questions one at a time:
   single choice, multiple choice and typed answers, an optional typed
   "other" row, Back and Skip, and number keys on pointer. The card's height
@@ -362,8 +365,8 @@ Milestone M0, unreleased.
 
 - Foundation: `CoilThemeData`/`CoilTheme` with subtree overrides, high
   contrast and reduced motion applied last; `CoilColors`; spring-only
-  `CoilMotion`; `CoilTier` × `CoilSize` → `CoilMetrics`; `CoilTypography`
-  with bundled Inter; `CoilInputModality`; `CoilAdaptiveScope`.
+  `CoilMotion`; `CoilTier` × `CoilSize` → `CoilMetrics`; `CoilTypography`;
+  `CoilInputModality`; `CoilAdaptiveScope`.
 - Primitives: `CoilInteraction` (hover, press with a minimum visibility,
   focus-visible), focus ring, roving focus, typeahead, active item, the
   motion layer with the travelling highlight and merge/split selection,
@@ -392,7 +395,9 @@ Milestone M0, unreleased.
   `checkbox_group.dart` and `toggle_group.dart`. `CoilTapTargetSize` is
   removed.
 - `CoilSlider`: one value, as a scrubber or pips row or a pill. Keyboard and
-  screen-reader support. Range, step lists and click-to-edit come later.
+  screen-reader support. `CoilRangeSlider` takes two values
+  (`CoilRangeValues`); both take `steps` lists and a `valueDisplay`
+  (`text`, `editable`, `tooltip`).
 - `CoilTabs` scrolls when the tabs don't fit. Edges fade, and the selected
   or focused tab scrolls into view.
 - `CoilSurface`: a raised surface that reads the level it sits on, paints

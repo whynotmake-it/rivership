@@ -470,7 +470,7 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.3 Sheet
 
-- `stupid_simple_sheet`'s **glass sheet** (`StupidSimpleGlassSheetRoute`), used as it is: flush with the bottom edge, full width up to 560 (wider windows center it), top capped at the top safe area + 5 % of the height. The first sheet blurs and dims the page; a sheet opened from it stacks, and the one below shrinks back without a second scrim.
+- `stupid_simple_sheet`'s **glass sheet** (`StupidSimpleGlassSheetRoute`), used as it is: flush with the bottom edge, full width up to 560 (wider windows center it), top capped at the top safe area or 5 % of the height, whichever is larger. The first sheet blurs and dims the page; a sheet opened from it stacks, and the one below shrinks back without a second scrim.
 - Fill: the surface two levels above the opener (3 from the page), no shadow; top corners per §5. Content clears the home indicator and the side insets that reach it.
 - It rides on the keyboard: a field inside stays above it.
 - Grabber 36×5 (foreground 16 %), 6 above and below.

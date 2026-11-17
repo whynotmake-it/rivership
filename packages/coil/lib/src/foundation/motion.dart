@@ -76,7 +76,8 @@ class CoilMotion with Diagnosticable {
   /// little bounce, so big things feel physical.
   final Motion gentle;
 
-  /// The exit of [gentle]: a sheet or dialog dismissing.
+  /// The exit of [gentle]: a dialog or panel dismissing. Sheets use
+  /// [gentle] both ways.
   final Motion gentleExit;
 
   /// Opacity and color: tints, focus rings, label colors, a check drawing
