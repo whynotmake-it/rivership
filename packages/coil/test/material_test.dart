@@ -80,7 +80,7 @@ void main() {
       expect(material.specs.first.borderRadius.topLeft.x, height / 2);
     });
 
-    testWidgets('without a material, glass is coil\'s raised surface', (
+    testWidgets('without a material, glass is the raised surface', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -115,7 +115,7 @@ void main() {
       expect(find.byType(CoilSurface), findsOneWidget);
     });
 
-    testWidgets('a material that declines leaves coil\'s surface', (
+    testWidgets('a material that declines leaves the coil surface', (
       tester,
     ) async {
       await tester.pumpWidget(
