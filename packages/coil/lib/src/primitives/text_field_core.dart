@@ -282,7 +282,8 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       GlobalKey<EditableTextState>();
 
   @override
-  bool get forcePressEnabled => defaultTargetPlatform == TargetPlatform.iOS;
+  bool get forcePressEnabled =>
+      CoilTheme.platformOf(context) == TargetPlatform.iOS;
 
   @override
   bool get selectionEnabled => widget.enabled;
@@ -401,7 +402,7 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
     if (cause == SelectionChangedCause.longPress) {
       _editableText?.bringIntoView(selection.extent);
     }
-    switch (defaultTargetPlatform) {
+    switch (CoilTheme.platformOf(context)) {
       case TargetPlatform.macOS:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
@@ -457,7 +458,7 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
     final cursorColor = widget.cursorColor ?? colors.foreground;
     final selectionColor =
         widget.selectionColor ?? colors.brand.withValues(alpha: 0.3);
-    final platform = _PlatformText.of(defaultTargetPlatform, context);
+    final platform = _PlatformText.of(CoilTheme.platformOf(context), context);
 
     Widget editable = EditableText(
       key: editableTextKey,

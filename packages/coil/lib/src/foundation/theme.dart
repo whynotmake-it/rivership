@@ -457,11 +457,16 @@ class CoilTheme extends StatelessWidget {
       of(context).shape.radii(tierOf(context));
 
   /// The tier at [context]: the nearest [CoilAdaptiveScope]'s, else the
-  /// theme's, else the platform's.
+  /// theme's, else the platform's ([platformOf]).
   static CoilTier tierOf(BuildContext context) =>
       CoilAdaptiveScope.maybeTierOf(context) ??
       of(context).tier ??
-      CoilTier.forPlatform(defaultTargetPlatform);
+      CoilTier.forPlatform(platformOf(context));
+
+  /// The platform whose conventions apply at [context]: the nearest
+  /// [CoilAdaptiveScope]'s pin, else [defaultTargetPlatform].
+  static TargetPlatform platformOf(BuildContext context) =>
+      CoilAdaptiveScope.maybePlatformOf(context) ?? defaultTargetPlatform;
 
   /// The theme's metrics at [context]: for [tier] if given, else [tierOf];
   /// for [size] if given, else the nearest [CoilAdaptiveScope]'s size, else

@@ -113,7 +113,7 @@ class CoilHaptics with Diagnosticable {
   // ignore: prefer_constructors_over_static_methods
   static CoilHaptics of(BuildContext context) =>
       CoilTheme.of(context).haptics ??
-      (kIsWeb ? none : CoilHaptics.platform(defaultTargetPlatform));
+      (kIsWeb ? none : CoilHaptics.platform(CoilTheme.platformOf(context)));
 
   /// Plays [event]'s haptic at [context], if it has one.
   static Future<void> play(BuildContext context, CoilHapticEvent event) =>

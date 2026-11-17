@@ -7,7 +7,6 @@ import 'package:coil/src/components/sidebar/sidebar_controller.dart';
 import 'package:coil/src/components/sidebar/sidebar_rail.dart';
 import 'package:coil/src/components/sidebar/sidebar_scope.dart';
 import 'package:coil/src/components/sidebar/sidebar_style.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -448,7 +447,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   Set<ShortcutActivator> get _shortcuts {
     if (widget.shortcuts case final shortcuts?) return shortcuts;
-    final apple = switch (defaultTargetPlatform) {
+    final apple = switch (CoilTheme.platformOf(context)) {
       TargetPlatform.macOS || TargetPlatform.iOS => true,
       _ => false,
     };
@@ -487,6 +486,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     final look = CoilSidebarStyle.fallback(
       theme,
       metrics,
+      platform: CoilTheme.platformOf(context),
     ).merge(CoilTheme.styleOf<CoilSidebarStyle>(context)).merge(widget.style);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -736,6 +736,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     final drawerLook = CoilDrawerLook.fallback(
       CoilTheme.of(context),
       reveal: reveal,
+      platform: CoilTheme.platformOf(context),
     );
     return CoilDrawer(
       open: _drawerOpen ? edge : null,

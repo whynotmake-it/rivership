@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:coil/src/foundation/haptics.dart';
 import 'package:coil/src/foundation/theme.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -114,7 +113,7 @@ class CoilContextTrigger extends StatelessWidget {
                       recognizer.onLongPressStart = (details) =>
                           longPress(details.localPosition),
                 ),
-            if (defaultTargetPlatform == TargetPlatform.macOS)
+            if (CoilTheme.platformOf(context) == TargetPlatform.macOS)
               _ControlClickRecognizer:
                   GestureRecognizerFactoryWithHandlers<_ControlClickRecognizer>(
                     () => _ControlClickRecognizer(debugOwner: this),

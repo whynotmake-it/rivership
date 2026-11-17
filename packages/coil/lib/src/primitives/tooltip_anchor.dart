@@ -347,7 +347,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
 
   /// [CoilTooltipAnchor.child] with the pointer and long-press triggers.
   Widget _trigger() {
-    final android = defaultTargetPlatform == TargetPlatform.android;
+    final android = CoilTheme.platformOf(context) == TargetPlatform.android;
     Widget trigger = Listener(
       onPointerDown: (_) => _hide(),
       child: MouseRegion(

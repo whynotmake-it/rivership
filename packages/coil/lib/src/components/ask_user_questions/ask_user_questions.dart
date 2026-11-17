@@ -11,7 +11,6 @@ import 'package:coil/src/components/ask_user_questions/ask_user_questions_style.
 import 'package:coil/src/components/ask_user_questions/question.dart';
 import 'package:coil/src/components/ask_user_questions/question_row.dart';
 import 'package:coil/src/components/ask_user_questions/question_step.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -398,7 +397,7 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
       null;
 
   Map<ShortcutActivator, Intent> get _shortcuts {
-    final apple = switch (defaultTargetPlatform) {
+    final apple = switch (CoilTheme.platformOf(context)) {
       TargetPlatform.iOS || TargetPlatform.macOS => true,
       _ => false,
     };

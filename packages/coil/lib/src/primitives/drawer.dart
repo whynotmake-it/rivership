@@ -89,14 +89,18 @@ class CoilDrawerLook {
   /// veil in light, a dim in dark) and the theme's [CoilColors.scrim]
   /// over, [edgeShadows] on the content's side (lighter in light), and the
   /// page background for the content and, from behind, the panels.
+  /// [platform] picks the fallback corners; null is [defaultTargetPlatform].
   factory CoilDrawerLook.fallback(
     CoilThemeData theme, {
     required CoilDrawerReveal reveal,
+    TargetPlatform? platform,
   }) {
     final colors = theme.colors;
     final behind = reveal == CoilDrawerReveal.behind;
     return CoilDrawerLook(
-      fallbackCornerRadius: fallbackCornerRadiusFor(defaultTargetPlatform),
+      fallbackCornerRadius: fallbackCornerRadiusFor(
+        platform ?? defaultTargetPlatform,
+      ),
       scrimColor: behind ? behindScrim(colors) : colors.scrim,
       shadows: edgeShadows(colors),
       contentColor: colors.background,
@@ -689,7 +693,7 @@ class _CoilDrawerState extends State<CoilDrawer>
   /// Whether the enclosing route pops with a swipe from the leading edge,
   /// the same way a drag opens the start panel.
   bool get _routeSwipesBack {
-    final apple = switch (defaultTargetPlatform) {
+    final apple = switch (CoilTheme.platformOf(context)) {
       TargetPlatform.iOS || TargetPlatform.macOS => true,
       _ => false,
     };
@@ -871,7 +875,11 @@ class _CoilDrawerState extends State<CoilDrawer>
           );
       _look =
           widget.look ??
-          CoilDrawerLook.fallback(CoilTheme.of(context), reveal: widget.reveal);
+          CoilDrawerLook.fallback(
+            CoilTheme.of(context),
+            reveal: widget.reveal,
+            platform: CoilTheme.platformOf(context),
+          );
       final startIsLeft = _startIsLeft;
       final anyDrag =
           _uses(physicalRight: true) ||

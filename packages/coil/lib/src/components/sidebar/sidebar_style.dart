@@ -28,8 +28,13 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     this.motions,
   });
 
-  /// The defaults from [theme]'s tokens at [metrics].
-  factory CoilSidebarStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
+  /// The defaults from [theme]'s tokens at [metrics]. [platform] picks the
+  /// drawer's fallback corners; null is [defaultTargetPlatform].
+  factory CoilSidebarStyle.fallback(
+    CoilThemeData theme,
+    CoilMetrics metrics, {
+    TargetPlatform? platform,
+  }) {
     final c = theme.colors;
     return CoilSidebarStyle(
       edgeColor: c.border,
@@ -45,7 +50,7 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
         WidgetState.any: c.mutedForeground,
       }),
       drawerFallbackCornerRadius: CoilDrawerLook.fallbackCornerRadiusFor(
-        defaultTargetPlatform,
+        platform ?? defaultTargetPlatform,
       ),
       drawerShadows: CoilDrawerLook.edgeShadows(c),
     );

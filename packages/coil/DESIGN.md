@@ -127,7 +127,7 @@ High contrast is driven by `MediaQuery.highContrastOf` and applied last (`CoilTh
 
 - **Tier** (`CoilTier`) is the size set.
   - It latches by platform: desktop OS → `pointer`, phone or tablet → `touch`.
-  - `CoilAdaptiveScope(tier:)` or the theme can pin it.
+  - `CoilAdaptiveScope(tier:)` or the theme can pin it. `CoilAdaptiveScope(platform:)` pins the platform itself for a subtree (a phone preview in a desktop window): the tier latches from it, and every per-platform convention in §9.2 follows it.
   - It never flips live. Whether something hovers or presses is decided by the kind of each pointer event, so a mouse on an iPad still hovers and a finger on a laptop presses.
 - **Size step** (`CoilSize`) is `regular` or `compact`. Compact is one step denser, for toolbars, filter bars, sidebars and tables. `CoilAdaptiveScope(size:)` sets it for a subtree.
 
