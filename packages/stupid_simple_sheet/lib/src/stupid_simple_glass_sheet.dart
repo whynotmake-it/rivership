@@ -28,7 +28,6 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     super.settings,
     this.motion =
         const CupertinoMotion.smooth(duration: Duration(milliseconds: 350)),
-    Motion? exitMotion,
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
     this.callNavigatorUserGestureMethods = false,
@@ -50,8 +49,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     /// Defaults to black with 15% opacity.
     Color barrierColor =
         const Color.from(alpha: .15, red: 0, green: 0, blue: 0),
-  })  : _exitMotion = exitMotion,
-        _barrierColor = barrierColor;
+  }) : _barrierColor = barrierColor;
 
   /// The default glass shape with a 36px superellipse corner radius.
   static const glassShape = RoundedSuperellipseBorder(
@@ -65,12 +63,6 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
 
   @override
   final Motion motion;
-
-  /// The motion the sheet closes with; null uses [motion].
-  final Motion? _exitMotion;
-
-  @override
-  Motion get exitMotion => _exitMotion ?? motion;
 
   @override
   final bool clearBarrierImmediately;

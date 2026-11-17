@@ -18,7 +18,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.motion = const CupertinoMotion.smooth(
       duration: Duration(milliseconds: 350),
     ),
-    Motion? exitMotion,
     this.clearBarrierImmediately = true,
     this.backgroundColor = CupertinoColors.systemBackground,
     this.callNavigatorUserGestureMethods = false,
@@ -29,7 +28,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
-  }) : _exitMotion = exitMotion;
+  });
 
   /// The default iOS 18 shape for sheet controllers.
   static const iOS18Shape = RoundedSuperellipseBorder(
@@ -43,12 +42,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   @override
   final Motion motion;
-
-  /// The motion the sheet closes with; null uses [motion].
-  final Motion? _exitMotion;
-
-  @override
-  Motion get exitMotion => _exitMotion ?? motion;
 
   @override
   final bool clearBarrierImmediately;

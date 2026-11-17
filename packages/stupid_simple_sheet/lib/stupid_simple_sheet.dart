@@ -59,7 +59,6 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     required this.child,
     super.settings,
     this.motion = const CupertinoMotion.smooth(),
-    Motion? exitMotion,
     this.barrierColor = const Color.fromRGBO(0, 0, 0, 0.2),
     this.barrierDismissible = true,
     this.barrierLabel,
@@ -71,16 +70,10 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.originateAboveBottomViewInset = false,
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
-  }) : _exitMotion = exitMotion;
+  });
 
   @override
   final Motion motion;
-
-  /// The motion the sheet closes with; null uses [motion].
-  final Motion? _exitMotion;
-
-  @override
-  Motion get exitMotion => _exitMotion ?? motion;
 
   /// The widget to display in the sheet.
   final Widget child;
@@ -235,15 +228,6 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   /// The motion configuration for the sheet animation.
   Motion get motion;
-
-  /// The motion the sheet closes with, when it is popped or dragged away.
-  ///
-  /// A drag that dismisses the sheet hands its fling velocity to this motion.
-  /// Opening, snapping between points and springing back after an overshoot
-  /// use [motion].
-  ///
-  /// Defaults to [motion].
-  Motion get exitMotion => motion;
 
   /// How much resistance the sheet should give when the user tries to drag
   /// it past it's fully opened state.
@@ -402,12 +386,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   }
 
   @override
-  Duration get transitionDuration => _durationOf(motion);
-
-  @override
-  Duration get reverseTransitionDuration => _durationOf(exitMotion);
-
-  static Duration _durationOf(Motion motion) => switch (motion) {
+  Duration get transitionDuration => switch (motion) {
         CurvedMotion(:final duration) => duration,
         CupertinoMotion(:final duration) => duration,
         _ => const Duration(milliseconds: 500),
@@ -437,7 +416,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     _animationTargetValue = endValue;
     _stickingPoint = endValue;
     _updateSnapshotState();
-    return (forward ? motion : exitMotion).createSimulation(
+    return motion.createSimulation(
       end: endValue,
       start: animation?.value ?? 0,
       velocity: -(v ?? 0),
