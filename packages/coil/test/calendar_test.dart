@@ -265,6 +265,55 @@ void pagingTests() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
+
+  testWidgets(
+    'a tap on a day ticks; Enter picks silently',
+    (tester) async {
+      final played = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            played.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final picked = <DateTime>[];
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Center(
+            child: CoilCalendar(
+              selected: DateTime(2026, 11, 14),
+              autofocus: true,
+              onSelected: picked.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('20').first);
+      await tester.pumpAndSettle();
+      expect(picked, [DateTime(2026, 11, 20)]);
+      expect(played, isNotEmpty);
+
+      played.clear();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(picked, hasLength(2));
+      expect(played, isEmpty);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 }
 
 void sizingTests() {
@@ -294,9 +343,10 @@ void sizingTests() {
       );
       final calendar = tester.getRect(find.byType(CoilCalendar));
       expect(calendar.width, width);
-      // Square days, no taller than the cell's extent at this scale.
+      // Square days, no taller than the cell's extent at this scale: the
+      // rows follow the columns inside the focus-ring inset.
       final day = tester.getSize(_days().first);
-      expect(day.width, moreOrLessEquals(day.height, epsilon: 1));
+      expect(day.width, moreOrLessEquals(day.height, epsilon: 0.05));
       expect(day.height, lessThanOrEqualTo(44 - 22 + 22 * scale + 0.01));
       // The six weeks fit inside the calendar.
       expect(

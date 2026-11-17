@@ -4,6 +4,7 @@ import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/calendar/calendar_layout.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -318,9 +319,11 @@ class _CoilCalendarState extends State<CoilCalendar> {
     _turnTo(month);
   }
 
-  void _pick(DateTime day) {
+  void _pick(DateTime day, {required bool touch}) {
     if (!_enabled(day)) return;
-    unawaited(CoilHaptics.play(context, CoilHapticEvent.pick));
+    // A finger's pick ticks, as a platform picker does (iOS only by
+    // default; see CoilHaptics.platform). Enter, Space and clicks don't.
+    if (touch) unawaited(CoilHaptics.play(context, CoilHapticEvent.pick));
     widget.onSelected?.call(day);
   }
 
@@ -355,7 +358,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
     _moveTo(DateTime(month.year, month.month, day.day.clamp(1, last)));
   }
 
-  void _pickCurrent() => _pick(_current);
+  void _pickCurrent() => _pick(_current, touch: false);
 
   @override
   Widget build(BuildContext context) {
@@ -441,6 +444,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
       // narrow calendar gets shorter rather than tall, thin cells.
       child: CalendarGridBox(
         cell: cell,
+        inset: inset,
         child: PageView.builder(
           controller: _pages,
           itemCount: _pageCount,
@@ -653,7 +657,15 @@ class _CoilCalendarState extends State<CoilCalendar> {
       outside: day.month != month.month,
       today: _sameDay(day, DateTime.now()),
       selected: index == selected,
-      onPressed: enabled ? () => _pick(day) : null,
+      onPressed: enabled
+          ? () => _pick(
+              day,
+              touch: !CoilInputModality.canHover(
+                CoilInputModality.instance.lastPointerKind ??
+                    PointerDeviceKind.touch,
+              ),
+            )
+          : null,
     );
   }
 }
