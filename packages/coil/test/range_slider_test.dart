@@ -20,6 +20,7 @@ class _Host extends StatefulWidget {
     this.tier = CoilTier.pointer,
     this.textDirection = TextDirection.ltr,
     this.motions,
+    this.valueDisplay = CoilSliderValueDisplay.text,
   });
 
   final CoilRangeValues initial;
@@ -27,6 +28,7 @@ class _Host extends StatefulWidget {
   final CoilTier tier;
   final TextDirection textDirection;
   final Map<CoilSliderTrack<Object>, Motion>? motions;
+  final CoilSliderValueDisplay valueDisplay;
 
   @override
   State<_Host> createState() => _HostState();
@@ -64,6 +66,7 @@ class _HostState extends State<_Host> {
                     values: values,
                     divisions: widget.divisions,
                     motions: widget.motions,
+                    valueDisplay: widget.valueDisplay,
                     label: const Text('Price'),
                     onChangeStart: (v) => log.add('start ${_fmt(v)}'),
                     onChangeEnd: (v) => log.add('end ${_fmt(v)}'),
@@ -326,6 +329,95 @@ void main() {
       await settle(tester);
       expect(find.byKey(sliderBubbleKey), findsNothing);
     });
+  });
+
+  group('with steps, a bubble moves with the pointer', () {
+    final bubbles = find.descendant(
+      of: find.byKey(sliderBubbleKey),
+      matching: find.byType(DecoratedBox),
+    );
+    List<double> bubbleXs(WidgetTester tester) => [
+      for (var i = 0; i < bubbles.evaluate().length; i++)
+        tester.getCenter(bubbles.at(i)).dx,
+    ];
+    double knobX(WidgetTester tester, int i) =>
+        tester.getCenter(find.byKey(ValueKey((sliderKnobKey, i)))).dx;
+
+    for (final display in [
+      CoilSliderValueDisplay.text,
+      CoilSliderValueDisplay.tooltip,
+    ]) {
+      for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
+        for (final thumb in [0, 1]) {
+          testWidgets('${display.name}, ${kind.name}: dragging thumb $thumb', (
+            tester,
+          ) async {
+            await tester.pumpWidget(
+              _Host(divisions: 10, valueDisplay: display),
+            );
+            final other = 1 - thumb;
+            final otherX = knobX(tester, other);
+            final from = tester.getCenter(
+              find.byKey(ValueKey((sliderKnobKey, thumb))),
+            );
+            // Toward the middle.
+            final toward = thumb == 0 ? 1.0 : -1.0;
+            final g = await tester.createGesture(kind: kind);
+            addTearDown(g.removePointer);
+            if (kind == PointerDeviceKind.mouse) {
+              await g.addPointer(location: from);
+              await g.moveTo(from);
+              await tester.pump();
+            }
+            await g.down(from);
+            await tester.pump();
+            var x = from.dx + 20 * toward;
+            await g.moveTo(Offset(x, from.dy));
+            await settle(tester);
+            final seen = <double>{};
+            for (var i = 0; i < 10; i++) {
+              x += 3 * toward;
+              await g.moveTo(Offset(x, from.dy));
+              await tester.pump(const Duration(milliseconds: 16));
+              final values = _values(tester);
+              final moved = thumb == 0 ? values.start : values.end;
+              seen.add(moved);
+              expect(moved * 10, closeTo((moved * 10).roundToDouble(), 1e-9));
+              expect(
+                thumb == 0 ? values.end : values.start,
+                thumb == 0 ? .8 : .2,
+                reason: 'the other thumb stays',
+              );
+              final xs = bubbleXs(tester);
+              expect(
+                xs.any((b) => (b - x).abs() < .5),
+                isTrue,
+                reason: 'frame $i: a bubble at the pointer $x, not $xs',
+              );
+              if (display == CoilSliderValueDisplay.tooltip) {
+                expect(xs, hasLength(2));
+                expect(
+                  xs.any((b) => (b - otherX).abs() < .5),
+                  isTrue,
+                  reason: "frame $i: the other bubble on its thumb",
+                );
+              }
+            }
+            expect(seen.length, greaterThan(1), reason: 'crossed steps');
+            await g.up();
+            await settle(tester);
+            if (display == CoilSliderValueDisplay.tooltip &&
+                kind == PointerDeviceKind.mouse) {
+              // Still hovered: both bubbles show, each on its thumb.
+              final xs = bubbleXs(tester)..sort();
+              final knobs = [knobX(tester, 0), knobX(tester, 1)]..sort();
+              expect(xs[0], closeTo(knobs[0], .5));
+              expect(xs[1], closeTo(knobs[1], .5));
+            }
+          });
+        }
+      }
+    }
   });
 
   testWidgets('a thumb motion override moves both thumbs', (tester) async {
