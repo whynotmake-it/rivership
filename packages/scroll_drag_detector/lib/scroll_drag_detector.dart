@@ -630,11 +630,18 @@ class _DraggingScrollBehavior extends ScrollBehavior {
       parent.velocityTrackerBuilder(context);
 
   @override
-  bool shouldNotify(covariant ScrollBehavior oldDelegate) =>
-      parent.shouldNotify(oldDelegate) ||
-      (oldDelegate is _DraggingScrollBehavior &&
-          (oldDelegate.axes != axes ||
-              oldDelegate.blockedDirections != blockedDirections));
+  bool shouldNotify(covariant ScrollBehavior oldDelegate) {
+    // ScrollConfiguration only calls this when the old behavior has the same
+    // runtime type, so oldDelegate is a _DraggingScrollBehavior. Compare our
+    // parents with each other: a parent's shouldNotify may only accept its
+    // own type (Flutter's copyWith behaviors do).
+    if (oldDelegate is! _DraggingScrollBehavior) return true;
+    return oldDelegate.parent.runtimeType != parent.runtimeType ||
+        (oldDelegate.parent != parent &&
+            parent.shouldNotify(oldDelegate.parent)) ||
+        oldDelegate.axes != axes ||
+        oldDelegate.blockedDirections != blockedDirections;
+  }
 }
 
 /// Scroll physics that don't allow moving from the current position and just
