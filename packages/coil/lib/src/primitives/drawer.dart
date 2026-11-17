@@ -347,16 +347,28 @@ class _CoilDrawerState extends State<CoilDrawer>
 
   // Opening and closing ---------------------------------------------------
 
-  /// Runs after a frame with [CoilDrawer.open] set: the panel takes focus,
-  /// back closes it, and every other drawer in the nest closes.
+  /// Runs after a frame with [CoilDrawer.open] set: every other drawer in
+  /// the nest closes, the panel takes focus, and back closes it.
   void _opened() {
     final open = widget.open;
     if (open == null) return;
+    var root = this;
+    while (root._parent != null) {
+      root = root._parent!;
+    }
+    final (:closedAny, :focus) = root._closeAllBut(this);
     final scope = open == CoilDrawerEdge.start ? _startScope : _endScope;
     if (!scope.hasFocus) {
-      final current = FocusManager.instance.primaryFocus;
-      if (current != _startScope && current != _endScope) {
-        _focusBefore = current;
+      if (closedAny) {
+        // Focus is in the drawer that just closed: return to where that
+        // one would have.
+        _focusBefore ??= focus;
+      } else if (_focusBefore == null &&
+          !_startScope.hasFocus &&
+          !_endScope.hasFocus) {
+        // Not when switching sides: focus is in the other panel then, and
+        // the node to return to is already kept.
+        _focusBefore = FocusManager.instance.primaryFocus;
       }
       scope.requestFocus();
     }
@@ -367,29 +379,44 @@ class _CoilDrawerState extends State<CoilDrawer>
         );
       }
     }
-    var root = this;
-    while (root._parent != null) {
-      root = root._parent!;
-    }
-    root._closeAllBut(this);
   }
 
-  void _closeAllBut(_CoilDrawerState keep) {
-    if (this != keep && widget.open != null) widget.onOpenChanged(null);
-    for (final child in _children.toList()) {
-      child._closeAllBut(keep);
+  /// Closes every open drawer from here down except [keep], and takes the
+  /// focus the first of them would have returned to, so [keep] returns it
+  /// instead.
+  ({bool closedAny, FocusNode? focus}) _closeAllBut(_CoilDrawerState keep) {
+    var closedAny = false;
+    FocusNode? focus;
+    if (this != keep && widget.open != null) {
+      closedAny = true;
+      focus = _focusBefore;
+      _focusBefore = null;
+      widget.onOpenChanged(null);
     }
+    for (final child in _children.toList()) {
+      final closed = child._closeAllBut(keep);
+      closedAny |= closed.closedAny;
+      focus ??= closed.focus;
+    }
+    return (closedAny: closedAny, focus: focus);
   }
 
   void _closed() {
     final entry = _entry;
     _entry = null;
     entry?.remove();
+    // Switching to the other side keeps the node to return to for the
+    // final close.
+    if (widget.open != null) return;
     final previous = _focusBefore;
     _focusBefore = null;
     // After the frame that lets the content take focus again.
     _schedule(() {
-      if (widget.open != null) return;
+      if (widget.open != null) {
+        // Reopened before the frame ended.
+        _focusBefore ??= previous;
+        return;
+      }
       if (previous != null && previous.context != null) {
         previous.requestFocus();
       }

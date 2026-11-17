@@ -717,6 +717,76 @@ void main() {
       );
     });
 
+    testWidgets('switching sides and closing returns focus to the trigger', (
+      tester,
+    ) async {
+      await _pump(tester, const _Host());
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final before = FocusManager.instance.primaryFocus;
+      expect(before?.context?.widget, isNotNull);
+
+      final host = tester.state<_HostState>(find.byType(_Host));
+      host.set(CoilDrawerEdge.start);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, isNot(before));
+      host.set(CoilDrawerEdge.end);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, isNot(before));
+      host.set(null);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, before);
+    });
+
+    testWidgets('a nested drawer opening over another returns focus to the '
+        'first trigger', (tester) async {
+      final trigger = FocusNode(debugLabel: 'trigger');
+      addTearDown(trigger.dispose);
+      CoilDrawerEdge? outer;
+      CoilDrawerEdge? inner;
+      late StateSetter update;
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return CoilDrawer(
+                open: outer,
+                onOpenChanged: (open) => setState(() => outer = open),
+                start: const Text('Outer panel'),
+                child: CoilDrawer(
+                  open: inner,
+                  onOpenChanged: (open) => setState(() => inner = open),
+                  end: const Text('Inner panel'),
+                  child: Focus(
+                    focusNode: trigger,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      trigger.requestFocus();
+      await tester.pump();
+      expect(trigger.hasPrimaryFocus, isTrue);
+
+      update(() => inner = CoilDrawerEdge.end);
+      await tester.pumpAndSettle();
+      expect(trigger.hasFocus, isFalse);
+      // The outer one opens: the inner one closes and hands over.
+      update(() => outer = CoilDrawerEdge.start);
+      await tester.pumpAndSettle();
+      expect(inner, isNull);
+      expect(trigger.hasFocus, isFalse);
+      update(() => outer = null);
+      await tester.pumpAndSettle();
+      expect(trigger.hasPrimaryFocus, isTrue);
+    });
+
     testWidgets('system back closes it', (tester) async {
       await _pump(tester, const _Host(initial: CoilDrawerEdge.end));
       await tester.binding.handlePopRoute();
