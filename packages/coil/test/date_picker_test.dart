@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -84,6 +85,7 @@ void main() {
 
   timeTests();
   sizingTests();
+  sheetGestureTests();
 }
 
 class _TimeDemo extends StatefulWidget {
@@ -295,4 +297,78 @@ void sizingTests() {
     await tester.pumpAndSettle();
     expect(find.text('November 14, 2026, 12:30'), findsOneWidget);
   });
+}
+
+/// Every gesture the owner tried on the picker in a phone sheet: none may
+/// throw, and none of them closes the sheet.
+void sheetGestureTests() {
+  for (final platform in const [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final withTime in const [false, true]) {
+      for (final short in const [false, true]) {
+        testWidgets(
+          'gestures in a phone sheet under a wrapped scroll behavior '
+          '(${platform.name}, ${withTime ? 'date and time' : 'date'}'
+          '${short ? ', short window' : ''})',
+          (tester) async {
+            debugDefaultTargetPlatformOverride = platform;
+            addTearDown(() => debugDefaultTargetPlatformOverride = null);
+            if (short) {
+              _useWindow(tester, const Size(390, 520));
+            } else {
+              useScreen(tester, TestScreen.phone);
+            }
+            await tester.pumpWidget(
+              testApp(
+                tier: CoilTier.touch,
+                // The example's shell (and an app's scrollbar setting)
+                // hands routes a `ScrollConfiguration.copyWith` behavior,
+                // which the sheet's drag detector swaps during a drag.
+                wrappedScrollBehavior: true,
+                home: withTime ? const _TimeDemo() : const _Demo(),
+              ),
+            );
+            await tester.tap(find.byType(CoilDatePicker));
+            await tester.pumpAndSettle();
+
+            Future<void> drag(Finder target, Offset by) async {
+              final gesture = await tester.startGesture(
+                tester.getCenter(target),
+              );
+              for (var i = 0; i < 12; i++) {
+                await gesture.moveBy(by / 12);
+                await tester.pump(const Duration(milliseconds: 16));
+              }
+              await gesture.up();
+              await tester.pumpAndSettle();
+              expect(find.byType(CoilSheetPanel), findsOneWidget);
+            }
+
+            final grid = find.byType(PageView);
+            await drag(grid, const Offset(-200, 0));
+            await drag(grid, const Offset(200, 0));
+            await drag(grid, const Offset(0, -200));
+            await drag(grid, const Offset(140, -140));
+            // A short pull down hands off to the sheet and springs back.
+            await drag(grid, const Offset(0, 40));
+            await tester.fling(grid, const Offset(-200, 0), 2000);
+            await tester.pumpAndSettle();
+            if (withTime) {
+              final hours = find.byType(ListWheelScrollView).first;
+              await drag(hours, const Offset(0, -120));
+              await drag(hours, const Offset(0, 120));
+              await tester.fling(hours, const Offset(0, -150), 2500);
+              await tester.pumpAndSettle();
+            }
+            final content = find.descendant(
+              of: find.byType(CoilSheetPanel),
+              matching: find.byType(SingleChildScrollView),
+            );
+            await drag(content.first, const Offset(0, -150));
+            await drag(content.first, const Offset(0, 40));
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+  }
 }

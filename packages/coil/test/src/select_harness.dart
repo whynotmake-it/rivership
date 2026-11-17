@@ -83,6 +83,7 @@ Widget testApp({
   CoilTier? tier,
   CoilPresentation? presentation,
   CoilSelectStyle? selectStyle,
+  bool wrappedScrollBehavior = false,
 }) {
   var theme = CoilThemeData(
     colors: colors,
@@ -100,7 +101,21 @@ Widget testApp({
         presentation: presentation,
         child: CoilTheme(
           data: theme,
-          child: ColoredBox(color: colors.background, child: navigator),
+          child: ColoredBox(
+            color: colors.background,
+            // An app-wide `copyWith` behavior (Flutter's private wrapped
+            // one), as a device frame or an app's scrollbar setting makes.
+            child: wrappedScrollBehavior
+                ? Builder(
+                    builder: (context) => ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(
+                        context,
+                      ).copyWith(scrollbars: false),
+                      child: navigator!,
+                    ),
+                  )
+                : navigator,
+          ),
         ),
       ),
     ),
