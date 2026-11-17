@@ -152,7 +152,9 @@ class AccordionSection<T> extends StatelessWidget {
           child: Semantics(
             container: true,
             explicitChildNodes: true,
-            role: SemanticsRole.region,
+            // A region must be named; without a semanticLabel the panel is
+            // a plain container (Flutter asserts on an unnamed region).
+            role: item.semanticLabel == null ? null : SemanticsRole.region,
             label: item.semanticLabel,
             identifier: panelId,
             child: Padding(
