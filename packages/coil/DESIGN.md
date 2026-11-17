@@ -204,7 +204,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 - **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level. `CoilSurface.scope` sets the level without painting, for a widget that paints its own surface, such as a card.
 - **Every surface takes its level from the one it sits on.** Never hard-code a level: the numbers below are what each surface gets on the page.
 - **Uses:** popover surface 3 / shadow 3; sheet surface 3, no shadow; submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
-- **Scrim:** sheets keep the glass sheet's own, black 15 % over a blur of the page, in light and dark. Dialogs and drawers that slide over the page, which don't blur, use black 20 % (light) / 30 % (dark) (`CoilSheetPanel.barrierColorOf`); the phone drawer revealed from behind dims the page only 7 % / 15 %.
+- **Scrim:** sheets keep the glass sheet's own, black 15 % over a blur of the page, in light and dark. Dialogs and drawers that slide over the page, which don't blur, use the `scrim` color token, black 20 % (light) / 30 % (dark) (`CoilColors.scrim`); the phone drawer revealed from behind dims the page only 7 % / 15 %.
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
 
 ## 7. Motion

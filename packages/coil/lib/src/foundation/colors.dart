@@ -36,6 +36,7 @@ class CoilColors with Diagnosticable {
     required this.red,
     required this.redLabel,
     required this.shadowColor,
+    required this.scrim,
     this.borderAlpha = 0.12,
   });
 
@@ -152,6 +153,7 @@ class CoilColors with Diagnosticable {
     red: Color(0xFFFB2C36), // tailwind v4 red-500
     redLabel: Color(0xFFC10007), // tailwind v4 red-700
     shadowColor: Color(0x0F000000), // rgb(0 0 0 / 0.06)
+    scrim: Color.from(alpha: 0.2, red: 0, green: 0, blue: 0),
   );
 
   /// The dark theme (`light-dark()` second arguments).
@@ -187,6 +189,7 @@ class CoilColors with Diagnosticable {
     red: Color(0xFFFB2C36), // tailwind v4 red-500
     redLabel: Color(0xFFFF6467), // tailwind v4 red-400
     shadowColor: Color(0x0F000000),
+    scrim: Color.from(alpha: 0.3, red: 0, green: 0, blue: 0),
   );
 
   /// Whether this is the light or the dark side.
@@ -268,6 +271,15 @@ class CoilColors with Diagnosticable {
   /// `--shadow-color`.
   final Color shadowColor;
 
+  /// The scrim behind coil's unblurred modal surfaces: centered and drawer
+  /// dialogs, and a `CoilDrawer` sliding over the page. Black at 20 % in
+  /// light and 30 % in dark, where black dims less.
+  ///
+  /// Sheets don't use it: they keep the glass sheet's own scrim, black at
+  /// 15 % over a blur, and without the blur a dialog needs a little more to
+  /// stand off the page.
+  final Color scrim;
+
   /// Linearly interpolates two color sets, for animated theme changes.
   // A static lerp, like Color.lerp and TextStyle.lerp.
   // ignore: prefer_constructors_over_static_methods
@@ -298,6 +310,7 @@ class CoilColors with Diagnosticable {
       red: c(a.red, b.red),
       redLabel: c(a.redLabel, b.redLabel),
       shadowColor: c(a.shadowColor, b.shadowColor),
+      scrim: c(a.scrim, b.scrim),
       borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
     );
   }
@@ -327,6 +340,7 @@ class CoilColors with Diagnosticable {
     Color? red,
     Color? redLabel,
     Color? shadowColor,
+    Color? scrim,
     double? borderAlpha,
   }) => CoilColors(
     brightness: brightness ?? this.brightness,
@@ -351,6 +365,7 @@ class CoilColors with Diagnosticable {
     red: red ?? this.red,
     redLabel: redLabel ?? this.redLabel,
     shadowColor: shadowColor ?? this.shadowColor,
+    scrim: scrim ?? this.scrim,
     borderAlpha: borderAlpha ?? this.borderAlpha,
   );
 
@@ -452,6 +467,7 @@ class CoilColors with Diagnosticable {
       other.red == red &&
       other.redLabel == redLabel &&
       other.shadowColor == shadowColor &&
+      other.scrim == scrim &&
       other.borderAlpha == borderAlpha;
 
   @override
@@ -478,6 +494,7 @@ class CoilColors with Diagnosticable {
     red,
     redLabel,
     shadowColor,
+    scrim,
   ]);
 
   @override

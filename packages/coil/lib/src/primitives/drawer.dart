@@ -6,7 +6,6 @@ import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/screen_radius.dart';
-import 'package:coil/src/primitives/sheet.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -653,7 +652,7 @@ class _CoilDrawerState extends State<CoilDrawer>
             ? (CoilTheme.of(context).brightness == Brightness.dark
                   ? _behindScrimDark
                   : _behindScrimLight)
-            : CoilSheetPanel.barrierColorOf(context));
+            : CoilTheme.of(context).colors.scrim);
     return _faded(full, strength);
   }
 

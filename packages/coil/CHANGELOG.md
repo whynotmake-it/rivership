@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- The unblurred modal scrim is a color token, `CoilColors.scrim` (black
+  20 % light, 30 % dark). Breaking: `CoilSheetPanel.barrierColorOf` is
+  gone; read `CoilTheme.of(context).colors.scrim`.
 - Dialog and sheet buttons on phones are full width. A new primitive,
   `CoilActionBar`, lays out the buttons that end a dialog or a sheet: a
   trailing row on the pointer tier and in wide windows, and in a sheet or
