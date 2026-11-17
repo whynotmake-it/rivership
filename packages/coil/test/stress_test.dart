@@ -149,6 +149,8 @@ class StressStory {
 
   /// Screens this story is known to break on, by [StressScreen.name], with
   /// why. Those tests are skipped until the component is fixed.
+  ///
+  /// No story needs it today; it's kept for documenting known breakage.
   final Map<String, String> knownBreakage;
 }
 

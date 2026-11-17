@@ -95,11 +95,13 @@ Future<void> _pump(
   Widget host, {
   CoilTier tier = CoilTier.touch,
   TextDirection direction = TextDirection.ltr,
+  CoilColors colors = CoilColors.light,
 }) async {
   useScreen(tester, TestScreen.phone);
   await tester.pumpWidget(
     testApp(
       tier: tier,
+      colors: colors,
       home: Directionality(textDirection: direction, child: host),
     ),
   );
@@ -316,6 +318,15 @@ void main() {
       expect(_open(tester), isNull);
       expect(_edge(tester).shadows, isEmpty);
       expect(_hairline(tester), BorderSide.none);
+    });
+
+    testWidgets('the scrim is darker in dark mode', (tester) async {
+      await _pump(
+        tester,
+        const _Host(initial: CoilDrawerEdge.start),
+        colors: CoilColors.dark,
+      );
+      expect(_scrim(tester).a, closeTo(0.15, 0.001));
     });
 
     testWidgets('the panel grows from the edge the content leaves', (
@@ -559,6 +570,7 @@ void main() {
         (TargetPlatform.macOS, 0.0),
       ]) {
         debugDefaultTargetPlatformOverride = platform;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
         // The query fails here: no plugin is registered in tests.
         CoilScreenRadius.debugReset();
         await tester.pumpWidget(const SizedBox());
@@ -571,7 +583,6 @@ void main() {
         );
         expect(_radius(tester), radius, reason: '$platform');
       }
-      debugDefaultTargetPlatformOverride = null;
     });
 
     testWidgets('a square screen stays square', (tester) async {
@@ -650,7 +661,6 @@ void main() {
       expect(_open(tester), CoilDrawerEdge.end);
       await _drag(tester, const Offset(200, 500), 220);
       expect(_open(tester), isNull, reason: 'closing still drags');
-      debugDefaultTargetPlatformOverride = null;
     });
   });
 

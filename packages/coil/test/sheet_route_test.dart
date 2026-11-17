@@ -246,16 +246,21 @@ void main() {
   testWidgets('screen readers get the scrim label and the title header', (
     tester,
   ) async {
+    // Disposed in `finally`, not a tear-down: the handle check runs before
+    // tear-downs.
     final semantics = tester.ensureSemantics();
-    useScreen(tester, TestScreen.phone);
-    await tester.pumpWidget(_app());
-    await _push(tester, barrierLabel: 'Close fruit');
-    expect(find.bySemanticsLabel('Close fruit'), findsOneWidget);
-    expect(
-      tester.getSemantics(find.text('Fruit')),
-      isSemantics(label: 'Fruit', isHeader: true),
-    );
-    semantics.dispose();
+    try {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(_app());
+      await _push(tester, barrierLabel: 'Close fruit');
+      expect(find.bySemanticsLabel('Close fruit'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.text('Fruit')),
+        isSemantics(label: 'Fruit', isHeader: true),
+      );
+    } finally {
+      semantics.dispose();
+    }
   });
 
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
