@@ -479,11 +479,17 @@ Every component ships with all of these. They're required to call it done.
 - It dims the page with the `scrim` token (20 % light, 30 % dark) and doesn't blur it. A sheet opened from a sheet slides over it with its own scrim; the one below stays put.
 - Surface: `CoilSurface` two levels above the opener (3 from the page) with its shadow, in a `RoundedSuperellipseBorder` whose top corners are the glass sheet's 36 (§5), clipping the content. Content clears the home indicator and the side insets that reach it.
 - It rides on the keyboard: a field inside stays above it.
-- No grabber: the sheet drags anywhere. 12 above the title (or the content without one).
-- Optional title: 17/22 semibold `foreground`, aligned with the row text, 4 above and 6 below, `Semantics(header)`.
-- **Optional pinned header row:**
-  - a search field (44, not autofocused on touch, kept above the keyboard);
-  - or, for push navigation, a back row ("‹ Parent").
+- No grabber: the sheet drags anywhere.
+- **Header** (`CoilSheetPanel`): one line holding an optional title and the close button, the touch control height (44) tall, whose middle runs through the center of the top corner: 36 down for the default shape (`CoilSheetPanel.headerCenterOf`), so the line spans 14–58. Title and button are centered on that line together. With neither a title nor a close button there is no header and the content starts 12 down (`CoilSheetPanel.topGap`).
+- **Close button** (`CoilSheetCloseButton`, the panel's `close` slot, shown by default as the signifier that the sheet closes): a round 36 button (the touch compact control height) with a 16 ✕ at stroke 2, the secondary `tint` fill (`tintHover` on hover, the 1 px press collapse), in a 44 hit target. Its center is the corner's center (36, 36 for the default shape), so its round shape sits concentric in the 36 corner, 18 from the top and side edges (`CoilShape.nested(36, 18)`); a corner too tight for that (`sharp`) keeps it 12 from the edges. It grows with the text like its glyph (52 at 2×, still 12 from the edges). It pops the route like a dismissal (`Navigator.maybePop`, so a `PopScope` can stop it), is named "Close" for screen readers, takes Tab, Enter and Space, and plays no haptic (coil's buttons don't, nor do the platforms' close buttons). The default button hides on a route that can't be popped (a non-dismissible dialog). Pass `close: null` for none, or a `CoilSheetCloseButton(onPressed:, semanticLabel:)` or any widget to replace it.
+- **Per platform** (`CoilSheetHeaderLayout`, `headerLayout:` to pin it):
+  - **iOS and macOS, `centered`:** the close button in the **leading** corner and the title **centered** on the sheet, as Apple's HIG has it (Cancel/Close on the leading edge of a sheet's top bar; the round close button in the upper-left corner of iOS 26 sheets). An empty slot on the trailing side balances the button so the title centers on the sheet.
+  - **Android and everything else, `start`:** the title **leading**, aligned with the rows' text (16 in: `popupInset` + `itemPaddingX`), and the close button in the **trailing** corner, where Material puts a sheet's close affordance (M3 side sheets: a close icon button at the end of the header; Google's bottom sheets the same).
+  - Both mirror in RTL.
+- **Title:** 17/22 semibold `foreground`, `Semantics(header)`, **one line**: a long title ends in an ellipsis before the button (8 apart, the compact touch gap), never under it.
+- **Search sheets** (the command menu, a dropdown with search, a combobox without a sheet title): no header; the search line takes its place and the close button **ends that line on every platform**, where iOS puts a search bar's Cancel and Material a search bar's trailing action, so the field keeps the full width before it and the button stays concentric with the corner (`CoilSheetCloseSlot`; `CoilSheetPanel.lineTopOf` lines the field's middle up with the corner's center). A combobox with a sheet title keeps the header and puts its field under it.
+- **Optional pinned header row** under the header: for push navigation, a back row ("‹ Parent"). A search field is 44, not autofocused on touch, kept above the keyboard.
+- **Content under the header** lines up with the title: a dialog shown as a sheet pads its body and action bar 16 at the sides (the rows' text inset), 8 under the header line; a settings dialog's title moves into the header next to the close button.
 - A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. At the top there is no line.
 - **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
 - **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
@@ -507,7 +513,7 @@ The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them 
 - **Phone** (inside a sheet, a modal shown as one or any `CoilSheetRoute`, such as a popup's sheet; or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
 - **Always a stack on a phone, never a two-up row.** One shape whatever the labels, locale and text size: a row would turn into a stack when a label grows, so the same dialog would look different in German or at large text. Every button is a full-width thumb target, and the primary is always in the same place, whatever the count. The order matches both platforms: iOS puts Cancel last in action sheets and stacked alerts, and Material's stacked dialog buttons put the confirming action on top. A destructive primary goes on top like any primary; its color marks it, not its position.
 - **Labels** stay on one line and end in an ellipsis when they don't fit (§ Button); the stack gives them the most room.
-- **In a sheet** the bar is pinned under the content (§13.3), keeping the dialog's padding on the sides and half the usual 16 gap above it.
+- **In a sheet** the bar is pinned under the content (§13.3), 16 from the sides (the rows' text inset, where the sheet's title starts) with half the usual 16 gap above it.
 
 ---
 
@@ -782,7 +788,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Presentation:**
   - Pointer and tablets: centered.
   - **Phone (touch, < 600):**
-    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
+    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, beside the sheet's close button (leading on iOS, trailing elsewhere; it calls `onClose` when the dialog has one, else pops), so the sheet never shows two; and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
     - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
@@ -1029,7 +1035,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** an `xl` dialog frame, `min(640, window − 64)` tall: a static sidebar of sections (208 wide, a 3 % `overlay` tint, no hairline) beside a panel with the section's heading, description and a scrolling body of setting rows.
 - **Setting row:** label (body) and an optional description (caption, muted) at the start, the control at the end, 16 vertical padding, hairlines between rows. A toggle row is one tap target, and one semantics node named by the label and description (§ Field).
 - **Compact (< 600):** the sidebar hides and a select at the top of the panel picks the section, under the dialog's title.
-- **Touch, phone:** it opens as a sheet, like a form dialog.
+- **Touch, phone:** it opens as a sheet, like a form dialog: the title moves into the sheet's header beside its one close button, and the section select and rows sit under it at the rows' 16 inset.
 - **Keyboard and semantics:** as the dialog and the sidebar; the title names the route; the close button sits in the corner.
 
 #### Calendar

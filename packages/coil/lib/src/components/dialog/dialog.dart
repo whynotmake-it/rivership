@@ -60,6 +60,9 @@ Future<T?> showCoilDialog<T>({
 /// trailing row on the pointer tier and in wide windows; on a phone, full
 /// width and stacked with the primary action on top, pinned under the
 /// body in a sheet. Give [onClose] to show a close button in the corner.
+/// As a sheet, the dialog always has the sheet's close button
+/// ([CoilSheetCloseButton], where the platform puts it), which pops the
+/// route or calls [onClose] when given.
 class CoilDialog extends StatelessWidget {
   /// Creates a dialog.
   const CoilDialog({
@@ -142,20 +145,32 @@ class CoilDialog extends StatelessWidget {
 
     if (sheet) {
       final padding = look.padding!;
-      // The body and the pinned actions split the usual gap between them.
+      // The body and the pinned actions split the usual gap between them,
+      // and the header's line is room enough above the body.
       final gap = look.headerSpacing! / 2;
+      // The sides line up with the sheet's title, at the rows' text inset.
+      final touch = theme.metrics.resolve(CoilTier.touch, CoilSize.regular);
+      final side = touch.popupInset + touch.itemPaddingX;
       return CoilSheetPanel(
         title: titleText,
+        // The sheet's own close button; [onClose] replaces what it does.
+        close: CoilSheetCloseButton(
+          onPressed: onClose,
+          semanticLabel: closeLabel,
+        ),
         footer: actionBar == null
             ? null
             : Padding(
-                padding: EdgeInsets.fromLTRB(padding, gap, padding, 0),
+                padding: EdgeInsets.fromLTRB(side, gap, side, 0),
                 child: actionBar,
               ),
         child: SingleChildScrollView(
-          padding: actionBar == null
-              ? EdgeInsets.all(padding)
-              : EdgeInsets.fromLTRB(padding, padding, padding, gap),
+          padding: EdgeInsets.fromLTRB(
+            side,
+            gap,
+            side,
+            actionBar == null ? padding : gap,
+          ),
           child: body,
         ),
       );
@@ -184,7 +199,8 @@ class CoilDialog extends StatelessWidget {
 /// a body and actions, such as a settings dialog with its own navigation.
 /// [child] fills the panel edge to edge. Where [showCoilDialog] opens a
 /// phone sheet, the frame is the sheet's panel instead, and [child] lays
-/// out at its top.
+/// out under its header, which holds the sheet's close button (calling
+/// [onClose] when given, else popping the route).
 class CoilDialogFrame extends StatelessWidget {
   /// Creates a dialog frame.
   const CoilDialogFrame({
@@ -214,7 +230,13 @@ class CoilDialogFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet) {
-      return CoilSheetPanel(child: child);
+      return CoilSheetPanel(
+        close: CoilSheetCloseButton(
+          onPressed: onClose,
+          semanticLabel: closeLabel,
+        ),
+        child: child,
+      );
     }
     final look = CoilDialogStyle.fallback(
       CoilTheme.of(context),

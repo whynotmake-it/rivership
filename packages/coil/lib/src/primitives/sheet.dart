@@ -4,7 +4,12 @@ import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/shape.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/foundation/typography.dart';
+import 'package:coil/src/primitives/drawn_glyph.dart';
+import 'package:coil/src/primitives/focus_ring.dart';
+import 'package:coil/src/primitives/interaction.dart';
 import 'package:coil/src/primitives/surface.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
@@ -104,18 +109,23 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   /// The sheet's outline: a superellipse with rounded top corners.
   final RoundedSuperellipseBorder shape;
 
-  /// [glassRadius] for coil's default shape, scaled with the theme's touch
-  /// container radius and capped at [glassRadius].
-  static RoundedSuperellipseBorder _shapeOf(BuildContext context) {
+  /// The sheet's top corner radius at [context]: [glassRadius] for coil's
+  /// default shape, scaled with the theme's touch container radius and
+  /// capped at [glassRadius].
+  static double cornerRadiusOf(BuildContext context) {
     final container = CoilTheme.of(
       context,
     ).shape.radii(CoilTier.touch).container;
     final rounded = CoilShape.rounded.touch.container;
-    final radius = math.min(glassRadius, glassRadius * container / rounded);
-    return RoundedSuperellipseBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
-    );
+    return math.min(glassRadius, glassRadius * container / rounded);
   }
+
+  static RoundedSuperellipseBorder _shapeOf(BuildContext context) =>
+      RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(cornerRadiusOf(context)),
+        ),
+      );
 
   @override
   Widget buildTransitions(
@@ -186,9 +196,41 @@ class _SheetSurface extends StatelessWidget {
   }
 }
 
-/// The content layout of a [CoilSheetRoute]: an optional [title], then
-/// [child], then an optional pinned [footer], clear of the home indicator
-/// and side insets.
+/// Where a sheet's header puts its title and close button.
+enum CoilSheetHeaderLayout {
+  /// The title centered over the sheet and the close button in the leading
+  /// corner, as iOS sheets have them (Apple's HIG: Cancel or Close on the
+  /// leading edge of the top bar, a round close button in the upper-left
+  /// corner). iOS and macOS.
+  centered,
+
+  /// The title at the start, aligned with the rows' text, and the close
+  /// button in the trailing corner, as Material's sheets put their close
+  /// affordance in the header. Android and the other platforms.
+  start;
+
+  /// The layout [platform]'s own sheets use.
+  static CoilSheetHeaderLayout forPlatform(TargetPlatform platform) =>
+      switch (platform) {
+        TargetPlatform.iOS || TargetPlatform.macOS => centered,
+        _ => start,
+      };
+}
+
+/// The content layout of a [CoilSheetRoute]: a header with an optional
+/// [title] and a [close] button, then [child], then an optional pinned
+/// [footer], clear of the home indicator and side insets.
+///
+/// The header is one line, the touch tier's control height (44) tall,
+/// whose middle runs through the center of the sheet's top corner (36 down
+/// for the default shape, [headerCenterOf]). The close button sits on that
+/// center, so its round shape is concentric with the corner.
+/// [headerLayout] picks the sides: on iOS and macOS the title is centered
+/// and the close button leads; elsewhere the title starts where the rows'
+/// text starts and the close button trails. A title that doesn't fit ends
+/// in an ellipsis before the button. With neither a title nor a close
+/// button there is no header, and [child] starts [topGap] below the top
+/// edge.
 ///
 /// A hairline under the header shows only while [child]'s scrollable has
 /// content scrolled beneath it (read from its scroll notifications), and
@@ -200,11 +242,25 @@ class CoilSheetPanel extends StatefulWidget {
     required this.child,
     super.key,
     this.title,
+    this.close = const CoilSheetCloseButton(),
+    this.headerLayout,
     this.footer,
   });
 
-  /// An optional heading.
+  /// An optional heading, on one line.
   final Widget? title;
+
+  /// The close button, in the header's corner: by default a
+  /// [CoilSheetCloseButton] that pops the route, so every sheet shows a
+  /// way out. Pass one with your own `onPressed` or label, any other
+  /// widget, or null for none. The default hides itself where the route
+  /// can't be popped (a `PopScope` that blocks it, as a non-dismissible
+  /// dialog has).
+  final Widget? close;
+
+  /// Where the header puts the title and [close]; null follows the
+  /// platform ([CoilSheetHeaderLayout.forPlatform]).
+  final CoilSheetHeaderLayout? headerLayout;
 
   /// The contents, usually a list.
   final Widget child;
@@ -216,9 +272,13 @@ class CoilSheetPanel extends StatefulWidget {
   /// counts toward it, and 8 always separates the two).
   final Widget? footer;
 
-  /// The space above the title, or above [child] without one. A sheet has
-  /// no grabber; the drag works anywhere on it.
+  /// The space above [child] when there's no header. A sheet has no
+  /// grabber; the drag works anywhere on it.
   static const topGap = 12.0;
+
+  /// The least space between the close button and the sheet's top and
+  /// side edges, for shapes whose corner is too tight to center it in.
+  static const closeMinInset = 12.0;
 
   /// The least space under a [footer], safe area included.
   static const footerBottomGap = 16.0;
@@ -226,6 +286,26 @@ class CoilSheetPanel extends StatefulWidget {
   /// The most of the window's height a [footer] takes; past it (huge text
   /// in a short window), the footer scrolls.
   static const footerMaxHeightFraction = 0.4;
+
+  /// The distance from the sheet's top edge, and from the close button's
+  /// side edge, to the middle of the header line at [context]: the center
+  /// of the sheet's top corner ([CoilSheetRoute.cornerRadiusOf]), or
+  /// further in where a tight corner would put the close button closer
+  /// than [closeMinInset] to the edges.
+  static double headerCenterOf(BuildContext context) {
+    final radius = CoilSheetCloseButton.sizeOf(context) / 2;
+    final inset = math.max(
+      CoilShape.nested(CoilSheetRoute.cornerRadiusOf(context), radius),
+      closeMinInset,
+    );
+    return inset + radius;
+  }
+
+  /// The space above a line of [lineHeight] that starts a sheet without a
+  /// header (a search field with a [CoilSheetCloseSlot] at its end), on
+  /// top of [topGap], so the line's middle runs where the header's would.
+  static double lineTopOf(BuildContext context, double lineHeight) =>
+      math.max(0, headerCenterOf(context) - topGap - lineHeight / 2);
 
   @override
   State<CoilSheetPanel> createState() => _CoilSheetPanelState();
@@ -284,19 +364,98 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
     );
   }
 
+  /// [CoilSheetPanel.close], unless it's the default button on a route
+  /// that can't be popped.
+  Widget? _close() {
+    final close = widget.close;
+    if (close is CoilSheetCloseButton &&
+        close.onPressed == null &&
+        ModalRoute.of(context)?.popDisposition ==
+            RoutePopDisposition.doNotPop) {
+      return null;
+    }
+    return close;
+  }
+
+  /// The title and the close button on one line, centered on the corner's
+  /// center.
+  Widget _header({
+    required Widget? title,
+    required Widget? close,
+    required CoilMetrics metrics,
+  }) {
+    final theme = CoilTheme.of(context);
+    final layout =
+        widget.headerLayout ??
+        CoilSheetHeaderLayout.forPlatform(defaultTargetPlatform);
+    final slot = CoilSheetCloseSlot.extentOf(context);
+    final edge = CoilSheetCloseSlot.edgeOf(context);
+    // Title text starts where row text starts.
+    final textInset = metrics.popupInset + metrics.itemPaddingX;
+    final gap = theme.metrics.resolve(CoilTier.touch, CoilSize.compact).gap;
+    final centered = layout == CoilSheetHeaderLayout.centered;
+
+    final titleText = title == null
+        ? const SizedBox.shrink()
+        : Semantics(
+            header: true,
+            child: DefaultTextStyle(
+              // The touch title, the size of an iOS headline.
+              style: theme.typography
+                  .resolve(metrics.tier, metrics.size)
+                  .title
+                  .copyWith(color: theme.colors.foreground),
+              textAlign: centered ? TextAlign.center : TextAlign.start,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              child: title,
+            ),
+          );
+
+    final List<Widget> children;
+    if (close == null) {
+      children = [
+        SizedBox(width: textInset),
+        Expanded(child: titleText),
+        SizedBox(width: textInset),
+      ];
+    } else if (centered) {
+      // The title centers on the sheet: an empty slot balances the
+      // button.
+      children = [
+        CoilSheetCloseSlot(side: CoilSheetCloseSide.start, child: close),
+        SizedBox(width: gap),
+        Expanded(child: titleText),
+        SizedBox(width: gap + slot + edge),
+      ];
+    } else {
+      children = [
+        SizedBox(width: textInset),
+        Expanded(child: titleText),
+        SizedBox(width: gap),
+        CoilSheetCloseSlot(child: close),
+      ];
+    }
+    return Padding(
+      padding: EdgeInsets.only(top: edge),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: slot),
+        child: Row(children: children),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.title;
-    final theme = CoilTheme.of(context);
-    final colors = theme.colors;
+    final close = _close();
     // A sheet is a touch surface whatever the tier, like its rows.
     final metrics = CoilTheme.metricsOf(
       context,
       tier: CoilTier.touch,
       size: CoilSize.regular,
     );
-    // Title text starts where row text starts.
-    final textInset = metrics.popupInset + metrics.itemPaddingX;
     final footer = widget.footer;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     return SafeArea(
@@ -305,30 +464,11 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Room above the title or content, so it clears the corners.
-          const SizedBox(height: CoilSheetPanel.topGap),
-          if (title != null)
-            Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(
-                textInset,
-                4,
-                textInset,
-                6,
-              ),
-              child: Semantics(
-                header: true,
-                child: DefaultTextStyle(
-                  // The touch title, the size of an iOS headline.
-                  style: theme.typography
-                      .resolve(metrics.tier, metrics.size)
-                      .title
-                      .copyWith(color: colors.foreground),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  child: title,
-                ),
-              ),
-            ),
+          if (title == null && close == null)
+            // Room above the content, so it clears the corners.
+            const SizedBox(height: CoilSheetPanel.topGap)
+          else
+            _header(title: title, close: close, metrics: metrics),
           // The scroll-edge hairlines: painted over the edges of the
           // content, so showing them never shifts layout.
           Flexible(
@@ -375,4 +515,201 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
       ),
     );
   }
+}
+
+/// Which side of its line a [CoilSheetCloseSlot] sits on.
+enum CoilSheetCloseSide {
+  /// The start edge: the header's close button on iOS and macOS.
+  start,
+
+  /// The end edge: the header's close button elsewhere, and the close
+  /// button at the end of a search line on every platform.
+  end,
+}
+
+/// A sheet's close button where the header puts it: centered in a square
+/// of its hit target, as far from the sheet's [side] edge as the corner's
+/// center ([CoilSheetPanel.headerCenterOf]), so its round shape is
+/// concentric with the corner.
+///
+/// [CoilSheetPanel] uses it in its header. Put one at the end of a line
+/// that starts a sheet without a header, such as a search field, with
+/// [CoilSheetPanel.lineTopOf] above the line.
+class CoilSheetCloseSlot extends StatelessWidget {
+  /// Places [child] in the close button's slot.
+  const CoilSheetCloseSlot({
+    super.key,
+    this.side = CoilSheetCloseSide.end,
+    this.child = const CoilSheetCloseButton(),
+  });
+
+  /// The edge it keeps its distance from.
+  final CoilSheetCloseSide side;
+
+  /// The button, a [CoilSheetCloseButton] by default.
+  final Widget child;
+
+  /// The square the button is centered in: its hit target (44), or the
+  /// button where large text makes it bigger.
+  static double extentOf(BuildContext context) => math.max(
+    CoilTheme.of(
+      context,
+    ).metrics.resolve(CoilTier.touch, CoilSize.regular).minHitTarget,
+    CoilSheetCloseButton.sizeOf(context),
+  );
+
+  /// The space between the slot and the sheet's edges: the corner's center
+  /// less half the slot (14 for the default shape).
+  static double edgeOf(BuildContext context) => math.max(
+    0,
+    CoilSheetPanel.headerCenterOf(context) - extentOf(context) / 2,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final extent = extentOf(context);
+    final edge = edgeOf(context);
+    return Padding(
+      padding: switch (side) {
+        CoilSheetCloseSide.start => EdgeInsetsDirectional.only(start: edge),
+        CoilSheetCloseSide.end => EdgeInsetsDirectional.only(end: edge),
+      },
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: extent, minHeight: extent),
+        child: Center(widthFactor: 1, heightFactor: 1, child: child),
+      ),
+    );
+  }
+}
+
+/// A sheet's close button: a round, quietly filled ✕ that pops the sheet's
+/// route, as dragging it away or tapping the scrim would.
+///
+/// [CoilSheetPanel] shows one in its header by default. It is the touch
+/// tier's compact control height (36) across, grows with the text as its
+/// glyph does ([sizeOf]), and takes taps on a square of at least the touch
+/// hit target (44). The fill is the secondary button's `tint`, `tintHover`
+/// while hovered, and pressing collapses it by 1 px, as coil's buttons do.
+/// Tab reaches it; Enter and Space press it. It plays no haptic, like
+/// coil's other buttons and the platforms' own close buttons.
+class CoilSheetCloseButton extends StatelessWidget {
+  /// Creates a sheet's close button.
+  const CoilSheetCloseButton({
+    super.key,
+    this.onPressed,
+    this.icon,
+    this.semanticLabel = 'Close',
+    this.focusNode,
+  });
+
+  /// Called on a press; null pops the route with `Navigator.maybePop`,
+  /// which a `PopScope` can block.
+  final VoidCallback? onPressed;
+
+  /// The glyph; a drawn ✕ when null. Sized and colored by `IconTheme`.
+  final Widget? icon;
+
+  /// The button's name for screen readers.
+  final String semanticLabel;
+
+  /// The focus node; one is created if null.
+  final FocusNode? focusNode;
+
+  /// The diameter of the round button at [context]: the touch tier's
+  /// compact control height, grown by as much as the text scale grows its
+  /// glyph.
+  static double sizeOf(BuildContext context) {
+    final compact = CoilTheme.of(
+      context,
+    ).metrics.resolve(CoilTier.touch, CoilSize.compact);
+    final glyph = MediaQuery.textScalerOf(context).scale(compact.iconSize);
+    return compact.controlHeight - compact.iconSize + glyph;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
+    final motion = CoilTheme.motionOf(context);
+    final compact = theme.metrics.resolve(CoilTier.touch, CoilSize.compact);
+    final size = sizeOf(context);
+    return Semantics(
+      container: true,
+      button: true,
+      label: semanticLabel,
+      child: CoilInteraction(
+        onPressed: onPressed ?? () => Navigator.maybePop(context),
+        focusNode: focusNode,
+        minHitTarget: compact.minHitTarget,
+        builder: (context, states, _) {
+          final hovered = states.contains(WidgetState.hovered);
+          final pressed = states.contains(WidgetState.pressed);
+          return CoilFocusRing(
+            visible: states.contains(WidgetState.focused),
+            borderRadius: BorderRadius.circular(size / 2),
+            child: SingleMotionBuilder(
+              value: hovered ? 1 : 0,
+              motion: hovered ? motion.fade : motion.fadeExit,
+              debugLabel: 'CoilSheetCloseButton.hover',
+              builder: (context, hover, _) => SingleMotionBuilder(
+                value: pressed ? 0 : 1,
+                motion: pressed ? motion.quick : motion.standard,
+                debugLabel: 'CoilSheetCloseButton.collapse',
+                builder: (context, spread, _) {
+                  final lit = hover.clamp(0.0, 1.0);
+                  return CustomPaint(
+                    painter: _CloseFillPainter(
+                      color: Color.lerp(colors.tint, colors.tintHover, lit)!,
+                      spread: spread.clamp(0.0, 1.0),
+                    ),
+                    child: SizedBox.square(
+                      dimension: size,
+                      child: Center(
+                        child: IconTheme(
+                          data: IconThemeData(
+                            size: compact.iconSize,
+                            applyTextScaling: true,
+                            color: colors.foreground,
+                            // A 2 stroke: the ✕ is the button's only
+                            // content, and reads as a signifier at 16.
+                            weight: CoilIconWeight.emphasis,
+                          ),
+                          child: icon ?? const CoilDrawnGlyph(CoilGlyph.cross),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The close button's round fill, 1 px inside its bounds plus [spread]
+/// (1 at rest, 0 pressed).
+class _CloseFillPainter extends CustomPainter {
+  _CloseFillPainter({required this.color, required this.spread});
+
+  final Color color;
+  final double spread;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final box = (Offset.zero & size).deflate(1 - spread);
+    canvas.drawRSuperellipse(
+      RSuperellipse.fromRectAndRadius(
+        box,
+        Radius.circular(box.shortestSide / 2),
+      ),
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CloseFillPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.spread != spread;
 }

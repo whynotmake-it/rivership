@@ -221,6 +221,7 @@ class CoilActionList extends StatefulWidget {
     this.submenu,
     this.onBack,
     this.search,
+    this.searchTrailing,
     this.motion,
   });
 
@@ -239,6 +240,10 @@ class CoilActionList extends StatefulWidget {
   /// the matches and Enter picks one. Headings and separators stay with
   /// their matching rows.
   final CoilMenuSearch? search;
+
+  /// A widget at the end of the [search] line, flush with its end edge,
+  /// such as a sheet's `CoilSheetCloseSlot`.
+  final Widget? searchTrailing;
 
   /// Called when a pick, Escape or Tab closes the menu.
   final ValueChanged<CoilPopupCloseReason> onClose;
@@ -872,6 +877,7 @@ class _CoilActionListState extends State<CoilActionList>
               metrics: metrics,
               onSubmitted: _pickActive,
               shortcuts: shortcuts,
+              trailing: widget.searchTrailing,
             ),
             const _Separator(inset: 0, padding: EdgeInsets.zero),
             Flexible(
@@ -1224,9 +1230,13 @@ class _SearchField extends StatelessWidget {
     required this.metrics,
     required this.shortcuts,
     required this.onSubmitted,
+    this.trailing,
   });
 
   final TextEditingController controller;
+
+  /// At the end of the line, flush with its end edge.
+  final Widget? trailing;
   final CoilMenuSearch search;
   final CoilMetrics metrics;
   final Map<ShortcutActivator, Intent> shortcuts;
@@ -1238,13 +1248,15 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
-    return Semantics(
+    final inset = metrics.popupInset + metrics.itemPaddingX;
+    final field = Semantics(
       label: search.semanticLabel,
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: metrics.controlHeight),
         child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: metrics.popupInset + metrics.itemPaddingX,
+          padding: EdgeInsetsDirectional.only(
+            start: inset,
+            end: trailing == null ? inset : metrics.gap / 2,
           ),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
@@ -1268,6 +1280,15 @@ class _SearchField extends StatelessWidget {
         ),
       ),
     );
+    return switch (trailing) {
+      null => field,
+      final end => Row(
+        children: [
+          Expanded(child: field),
+          end,
+        ],
+      ),
+    };
   }
 }
 

@@ -2,6 +2,23 @@
 
 Milestone M0, unreleased.
 
+- Sheets have a header and a close button. `CoilSheetPanel` lays out its
+  title and a new `CoilSheetCloseButton` on one 44 line whose middle runs
+  through the top corner's center (36 down), with the round 36 button on
+  that center, concentric with the 36 corner. On iOS and macOS the
+  button leads and the title is centered; elsewhere the title starts
+  with the rows' text and the button trails (`CoilSheetHeaderLayout`,
+  `headerLayout:` to pin it). The title is one line and ends in an
+  ellipsis before the button. The button is shown by default
+  (`close: null` hides it, or pass your own), pops the route like a
+  dismissal, is named "Close", takes the keyboard, and hides on a route
+  that can't be popped. Search sheets (command menu, dropdown search,
+  untitled combobox) put it at the end of the search line
+  (`CoilSheetCloseSlot`, `CoilActionList.searchTrailing`,
+  `CoilSheetPanel.lineTopOf`). A form dialog or settings dialog shown as
+  a sheet uses the sheet's button (calling its `onClose`) and lines its
+  body up with the title at 16; the settings title moves into the header.
+  `CoilSheetRoute.cornerRadiusOf` gives the sheet's corner radius.
 - Sheets have no grabber. `CoilSheetPanel` starts with a 12 gap
   (`CoilSheetPanel.topGap`) above its title or content; the sheet still
   drags anywhere.

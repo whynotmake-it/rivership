@@ -150,10 +150,21 @@ class CoilCommandMenu extends StatelessWidget {
       fadeExtent: scroll.fadeExtent!,
       motion: motion,
       onClose: (_) => Navigator.pop(context),
+      // In a sheet the close button ends the search line, which takes the
+      // header's place.
+      searchTrailing: sheet ? const CoilSheetCloseSlot() : null,
     );
 
     if (sheet) {
-      return CoilSheetPanel(child: list);
+      return CoilSheetPanel(
+        close: null,
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: CoilSheetPanel.lineTopOf(context, metrics.controlHeight),
+          ),
+          child: list,
+        ),
+      );
     }
 
     final window = MediaQuery.sizeOf(context);

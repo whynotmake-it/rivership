@@ -21,7 +21,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Presentation:**
   - Pointer and tablets: centered.
   - **Phone (touch, < 600):**
-    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
+    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, beside the sheet's close button (leading on iOS, trailing elsewhere; it calls `onClose` when the dialog has one, else pops), so the sheet never shows two; and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
     - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.

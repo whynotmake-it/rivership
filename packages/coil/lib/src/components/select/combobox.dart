@@ -635,10 +635,32 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: _field(inSheet: true),
-                ),
+                if (widget.sheetTitle == null)
+                  // No header: the close button ends the field's line,
+                  // where the header would put it.
+                  Padding(
+                    padding: EdgeInsetsDirectional.only(
+                      start: 16,
+                      top: CoilSheetPanel.lineTopOf(
+                        context,
+                        CoilSheetCloseSlot.extentOf(context),
+                      ),
+                      bottom: 8,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 8,
+                      children: [
+                        Expanded(child: _field(inSheet: true)),
+                        const CoilSheetCloseSlot(),
+                      ],
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: _field(inSheet: true),
+                  ),
                 Flexible(child: _list(context, popup)),
               ],
             )
@@ -656,8 +678,12 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
           child: content,
         );
       },
-      sheet: (context, content) =>
-          CoilSheetPanel(title: widget.sheetTitle, child: content),
+      sheet: (context, content) => CoilSheetPanel(
+        title: widget.sheetTitle,
+        // Without a title the close button joins the field's line.
+        close: widget.sheetTitle == null ? null : const CoilSheetCloseButton(),
+        child: content,
+      ),
       // On a phone the field would hide under the keyboard with the list:
       // the page shows a trigger, and the sheet holds the field.
       child: sheet ? _trigger(metrics) : _pageField(),

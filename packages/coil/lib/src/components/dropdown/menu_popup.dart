@@ -98,6 +98,10 @@ class CoilMenuPopup extends StatelessWidget {
         theme,
         metrics,
       ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
+      // In a sheet with search the close button ends the search line,
+      // which takes the header's place.
+      final searchSheet =
+          popup.presentation == CoilPresentation.sheet && search != null;
       return MotorInspectionScope(
         group: 'CoilMenu',
         child: CoilActionList(
@@ -116,12 +120,30 @@ class CoilMenuPopup extends StatelessWidget {
           radius: look.radius,
           submenu: _surface,
           search: search,
+          searchTrailing: searchSheet ? const CoilSheetCloseSlot() : null,
           motion: motion,
         ),
       );
     },
     popover: _surface,
-    sheet: (context, content) => CoilSheetPanel(child: content),
+    sheet: (context, content) => search == null
+        ? CoilSheetPanel(child: content)
+        : CoilSheetPanel(
+            close: null,
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: CoilSheetPanel.lineTopOf(
+                  context,
+                  CoilTheme.of(
+                        context,
+                      ).metrics
+                      .resolve(CoilTier.touch, CoilSize.regular)
+                      .controlHeight,
+                ),
+              ),
+              child: content,
+            ),
+          ),
     child: child,
   );
 }

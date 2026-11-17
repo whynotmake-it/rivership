@@ -139,6 +139,20 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final window = MediaQuery.sizeOf(context);
+    if (CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet) {
+      // The title goes in the sheet's header, on the close button's line.
+      return CoilSheetPanel(
+        title: Semantics(namesRoute: true, child: widget.title),
+        close: CoilSheetCloseButton(
+          onPressed: widget.onClose,
+          semanticLabel: widget.closeLabel,
+        ),
+        child: SizedBox(
+          height: math.min(640, window.height - 64),
+          child: _Panel(section: _current, picker: _picker(), sheet: true),
+        ),
+      );
+    }
     return CoilDialogFrame(
       size: CoilDialogSize.xl,
       onClose: widget.onClose,
@@ -236,11 +250,20 @@ TextStyle _heading(CoilTextTheme text) =>
 /// The picked section: its heading and description, then its content, all
 /// scrolling. Compact, the dialog's [title] and a [picker] lead.
 class _Panel<T> extends StatelessWidget {
-  const _Panel({required this.section, this.picker, this.title});
+  const _Panel({
+    required this.section,
+    this.picker,
+    this.title,
+    this.sheet = false,
+  });
 
   final CoilSettingsSection<T> section;
   final Widget? picker;
   final Widget? title;
+
+  /// In a sheet, under its header: the rows' text inset (16) and no room
+  /// for a close button.
+  final bool sheet;
 
   @override
   Widget build(BuildContext context) {
@@ -250,13 +273,21 @@ class _Panel<T> extends StatelessWidget {
     // description or large text never pushes the content out of a short
     // window.
     return CoilScrollArea(
-      padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 24),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        sheet ? 16 : 24,
+        0,
+        sheet ? 16 : 24,
+        24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            // The end clears the dialog's close button.
-            padding: const EdgeInsetsDirectional.fromSTEB(0, 20, 24, 16),
+            // The end clears the dialog's close button; a sheet's is in
+            // its header.
+            padding: sheet
+                ? const EdgeInsetsDirectional.fromSTEB(0, 8, 0, 16)
+                : const EdgeInsetsDirectional.fromSTEB(0, 20, 24, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 4,
@@ -264,8 +295,10 @@ class _Panel<T> extends StatelessWidget {
                 if (title case final title?) ...[
                   _Title(title),
                   const SizedBox(height: 8),
-                  ?picker,
-                ] else ...[
+                ],
+                if (picker case final picker?)
+                  picker
+                else ...[
                   DefaultTextStyle(
                     style: _heading(text),
                     child: section.label,
