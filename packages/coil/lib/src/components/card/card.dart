@@ -358,8 +358,7 @@ class _CoilCardState extends State<CoilCard> {
         spatial: false,
       );
       card = CoilCollapsible(
-        expanded:
-            !_dismissing || CoilCardStack.maybeLeaveOf(context) != null,
+        expanded: !_dismissing || CoilCardStack.maybeLeaveOf(context) != null,
         heightMotion: _motionFor(CoilCardTrack.dismissHeight, motion.standard),
         // The blur-fade below does the fading.
         fade: false,
