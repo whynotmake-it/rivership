@@ -118,6 +118,7 @@ class CoilSidebarScaffold extends StatefulWidget {
     this.drawerReveal,
     this.drawerDrag,
     this.drawerWidth,
+    this.drawerTransition = const CoilDrawerTransition(),
     this.drawerLabel = 'Sidebar',
     this.peekLabel = 'Peek sidebar',
     this.style,
@@ -177,8 +178,9 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// How the drawer meets the page. Null reveals it from behind the page
   /// on the touch tier ([CoilDrawerReveal.behind]), and slides it over the
   /// page on the pointer tier, as in a narrow desktop window
-  /// ([CoilDrawerReveal.over]). Its look (corner radius, scale, scrim,
-  /// shadow) is in [CoilSidebarStyle]'s `drawer…` fields.
+  /// ([CoilDrawerReveal.over]). Its look (corner radius, scrim, shadow) is
+  /// in [CoilSidebarStyle]'s `drawer…` fields, and how the page and the
+  /// sidebar move with the slide in [drawerTransition].
   final CoilDrawerReveal? drawerReveal;
 
   /// Which drags open and close the drawer. Null: on touch, a drag anywhere
@@ -188,8 +190,14 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// closes by drag; on the pointer tier, drags only close it.
   final CoilDrawerDrag? drawerDrag;
 
-  /// The drawer's width. Null is 85 % of the scaffold's width, at most 320.
+  /// The drawer's width. Null is 85 % of the scaffold's width, at most 320
+  /// (`CoilDrawer.widthFraction`, `CoilDrawer.maxWidth`).
   final double? drawerWidth;
+
+  /// How the page and the sidebar move as the drawer slides from behind:
+  /// by default the page keeps its size and the sidebar fades in from 40 %
+  /// and grows from 0.95 at the page's edge.
+  final CoilDrawerTransition drawerTransition;
 
   /// The drawer's name for screen readers.
   final String drawerLabel;
@@ -724,6 +732,11 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
         (CoilTheme.tierOf(context) == CoilTier.touch
             ? CoilDrawerReveal.behind
             : CoilDrawerReveal.over);
+    // What the style leaves to the drawer's reveal.
+    final drawerLook = CoilDrawerLook.fallback(
+      CoilTheme.of(context),
+      reveal: reveal,
+    );
     return CoilDrawer(
       open: _drawerOpen ? edge : null,
       onOpenChanged: (open) => open == null ? _closeDrawer() : _openDrawer(),
@@ -735,14 +748,17 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       width: widget.drawerWidth,
       startSemanticLabel: widget.drawerLabel,
       endSemanticLabel: widget.drawerLabel,
-      cornerRadius: look.drawerCornerRadius,
-      fallbackCornerRadius: look.drawerFallbackCornerRadius,
-      scale: look.drawerScale!,
-      panelScale: look.drawerPanelScale!,
-      panelOpacity: look.drawerPanelOpacity!,
-      scrimColor: look.drawerScrimColor,
-      shadows: look.drawerShadows,
-      panelColor: reveal == CoilDrawerReveal.behind ? look.background : null,
+      look: CoilDrawerLook(
+        cornerRadius: look.drawerCornerRadius,
+        fallbackCornerRadius: look.drawerFallbackCornerRadius!,
+        scrimColor: look.drawerScrimColor ?? drawerLook.scrimColor,
+        shadows: look.drawerShadows!,
+        contentColor: drawerLook.contentColor,
+        panelColor: reveal == CoilDrawerReveal.behind
+            ? look.background ?? drawerLook.panelColor
+            : null,
+      ),
+      transition: widget.drawerTransition,
       // The drawer track's spring, if set, both ways; the drawer applies
       // reduced motion again on top.
       motion: motion.copyWith(

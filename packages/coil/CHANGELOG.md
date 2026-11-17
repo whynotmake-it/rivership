@@ -35,21 +35,34 @@ Milestone M0, unreleased.
   moves and squaring up once it covers the sidebar again; a horizontal
   drag anywhere on the page opens it, and horizontal scrollables hand
   over at their edge. The sidebar emerges as it is revealed, fading in
-  from 40 % and growing from 0.95 at the page's edge (`drawerPanelOpacity`,
-  `drawerPanelScale`; no growth under reduced motion), and the page lifts
+  from 40 % and growing from 0.95 at the page's edge (`drawerTransition`;
+  no growth under reduced motion), and the page lifts
   off it: a light scrim (7 % light, 15 % dark), shadow step 8
   centered on its side and a hairline in `border`, all following the drag.
   Where the screen's radius is unknown, phones round the page 40 (iOS) /
   24 (Android) by default (`drawerFallbackCornerRadius`). The pointer tier
   keeps the drawer over the page.
-  New: `drawerReveal`, `drawerDrag`, `drawerWidth`, `CoilSidebarStyle`'s
-  `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
+  New: `drawerReveal`, `drawerDrag`, `drawerWidth`, `drawerTransition`,
+  `CoilSidebarStyle`'s `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
   scaffolds give a phone a sidebar on each side.
   - Breaking: `CoilDrawer` takes `start` and `end` panels,
     `open: CoilDrawerEdge?` and `onOpenChanged` (was `drawer`, `edge`,
     `open: bool`, `onClose`, `semanticLabel`), and `reveal:
     CoilDrawerReveal { behind, over }`, `drag: CoilDrawerDrag?` and look
     parameters. It renders in place instead of in an overlay.
+  - Breaking: `CoilDrawer`'s look parameters are grouped: `look:
+    CoilDrawerLook?` (`cornerRadius`, `fallbackCornerRadius`,
+    `scrimColor`, `shadows`, `panelColor`, `contentColor`; null is
+    `CoilDrawerLook.fallback(theme, reveal:)`) and `transition:
+    CoilDrawerTransition` (`scale`, `panelScale`, `panelOpacity`). Its
+    numbers are named constants: `CoilDrawer.maxWidth` (320),
+    `.widthFraction` (0.85), `.flingVelocity` (400),
+    `CoilDrawerLook.behindScrimLight` / `behindScrimDark`,
+    `.edgeShadowLevel` and `.phoneCornerRadii`.
+  - Breaking: `CoilSidebarStyle.drawerScale`, `drawerPanelScale` and
+    `drawerPanelOpacity` moved to `CoilSidebarScaffold.drawerTransition`;
+    `CoilSidebarStyle.fallback` now fills `drawerFallbackCornerRadius` and
+    `drawerShadows`.
   - Breaking: `CoilDrawer.motion` is a `CoilMotion?` token set and
     `exitMotion` is gone; it slides on `standard` / `standardExit`, and
     reduced motion now applies to an app's own drawer motion too.

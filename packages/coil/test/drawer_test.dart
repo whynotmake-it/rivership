@@ -46,8 +46,15 @@ class _HostState extends State<_Host> {
     onOpenChanged: set,
     reveal: widget.reveal,
     drag: widget.drag,
-    cornerRadius: widget.cornerRadius,
-    fallbackCornerRadius: widget.fallbackCornerRadius,
+    look: widget.cornerRadius == null && widget.fallbackCornerRadius == null
+        ? null
+        : CoilDrawerLook.fallback(
+            CoilTheme.of(context),
+            reveal: widget.reveal,
+          ).copyWith(
+            cornerRadius: widget.cornerRadius,
+            fallbackCornerRadius: widget.fallbackCornerRadius,
+          ),
     startSemanticLabel: 'Navigation',
     endSemanticLabel: 'Details',
     start: Column(
@@ -850,6 +857,112 @@ void main() {
       await tester.tap(find.text('Press'));
       await tester.pumpAndSettle();
       expect(presses, 1, reason: 'the content still takes presses');
+    });
+  });
+
+  group('look', () {
+    test('the fallback look follows the reveal and the theme', () {
+      final light = CoilDrawerLook.fallback(
+        CoilThemeData.light,
+        reveal: CoilDrawerReveal.behind,
+      );
+      expect(light.scrimColor, CoilDrawerLook.behindScrimLight);
+      expect(light.scrimColor.a, closeTo(0.07, 0.001));
+      expect(light.panelColor, CoilThemeData.light.colors.background);
+      expect(light.contentColor, CoilThemeData.light.colors.background);
+      expect(light.cornerRadius, isNull);
+      expect(
+        light.shadows,
+        CoilDrawerLook.edgeShadows(CoilThemeData.light.colors),
+      );
+      final dark = CoilDrawerLook.fallback(
+        CoilThemeData.dark,
+        reveal: CoilDrawerReveal.behind,
+      );
+      expect(dark.scrimColor.a, closeTo(0.15, 0.001));
+      final over = CoilDrawerLook.fallback(
+        CoilThemeData.dark,
+        reveal: CoilDrawerReveal.over,
+      );
+      expect(over.scrimColor, CoilThemeData.dark.colors.scrim);
+      expect(over.panelColor, isNull, reason: "the raised surface's own");
+      expect(
+        light.copyWith(scrimColor: const Color(0x33000000)),
+        isNot(light),
+      );
+      expect(
+        CoilDrawerLook.fallback(
+          CoilThemeData.light,
+          reveal: CoilDrawerReveal.behind,
+        ),
+        light,
+      );
+    });
+
+    testWidgets('a transition shrinks the content toward the far edge', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: CoilDrawer(
+            open: CoilDrawerEdge.start,
+            onOpenChanged: (_) {},
+            transition: const CoilDrawerTransition(scale: 0.9),
+            start: const Text('Start panel'),
+            child: const SizedBox.expand(key: ValueKey('content')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final size = tester.getSize(find.byType(CoilDrawer));
+      final rect = tester.getRect(find.byKey(const ValueKey('content')));
+      expect(rect.left, 320);
+      expect(rect.height, closeTo(size.height * 0.9, 0.5));
+    });
+
+    testWidgets("the sidebar style's drawer fields reach the drawer", (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: const CoilSidebarScaffold(
+            sidebar: CoilSidebar(children: [Text('Nav')]),
+            drawerTransition: CoilDrawerTransition(panelOpacity: 1),
+            style: CoilSidebarStyle(
+              drawerScrimColor: Color(0x33000000),
+              drawerFallbackCornerRadius: BorderRadius.all(
+                Radius.circular(9),
+              ),
+            ),
+            body: SizedBox.expand(),
+          ),
+        ),
+      );
+      final element = tester.element(find.byType(CoilSidebarScaffold));
+      final theme = CoilTheme.of(element);
+      final fallback = CoilSidebarStyle.fallback(
+        theme,
+        CoilTheme.metricsOf(element),
+      );
+      expect(
+        fallback.drawerFallbackCornerRadius,
+        CoilDrawerLook.fallbackCornerRadiusFor(defaultTargetPlatform),
+      );
+      expect(fallback.drawerShadows, CoilDrawerLook.edgeShadows(theme.colors));
+      expect(fallback.drawerScrimColor, isNull, reason: 'set by the reveal');
+
+      final drawer = tester.widget<CoilDrawer>(find.byType(CoilDrawer));
+      expect(drawer.look!.scrimColor, const Color(0x33000000));
+      expect(
+        drawer.look!.fallbackCornerRadius,
+        const BorderRadius.all(Radius.circular(9)),
+      );
+      expect(drawer.look!.shadows, fallback.drawerShadows);
+      expect(drawer.transition, const CoilDrawerTransition(panelOpacity: 1));
     });
   });
 

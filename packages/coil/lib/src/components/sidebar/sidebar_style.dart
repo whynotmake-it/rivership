@@ -1,6 +1,8 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:coil/src/components/sidebar/sidebar_scaffold.dart'
     show CoilSidebarTrack;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -21,9 +23,6 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     this.labelColor,
     this.drawerCornerRadius,
     this.drawerFallbackCornerRadius,
-    this.drawerScale,
-    this.drawerPanelScale,
-    this.drawerPanelOpacity,
     this.drawerScrimColor,
     this.drawerShadows,
     this.motions,
@@ -45,9 +44,10 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
         WidgetState.hovered | WidgetState.focused: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),
-      drawerScale: 1,
-      drawerPanelScale: 0.95,
-      drawerPanelOpacity: 0.4,
+      drawerFallbackCornerRadius: CoilDrawerLook.fallbackCornerRadiusFor(
+        defaultTargetPlatform,
+      ),
+      drawerShadows: CoilDrawerLook.edgeShadows(c),
     );
   }
 
@@ -93,34 +93,22 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
 
   /// The page's corners while pushed aside where the screen's radius is
   /// unknown (web, desktop, a failed query, tests) and [drawerCornerRadius]
-  /// is null. Null is 40 on iOS and 24 on Android, square elsewhere.
+  /// is null. By default 40 on iOS and 24 on Android, square elsewhere
+  /// (`CoilDrawerLook.fallbackCornerRadiusFor`).
   final BorderRadius? drawerFallbackCornerRadius;
 
-  /// How small the page gets while the drawer is fully open, 1 for not at
-  /// all (the default). It shrinks away from the drawer, so the drawer
-  /// stays fully revealed; 0.94 is a subtle depth cue.
-  final double? drawerScale;
-
-  /// How big the sidebar starts as the page begins to uncover it (0.95):
-  /// it grows to full size with the slide, from the page's edge. 1 for no
-  /// growth. Only when revealed from behind, and not under reduced motion.
-  final double? drawerPanelScale;
-
-  /// How opaque the sidebar is as the page begins to uncover it (0.4): it
-  /// fades to fully opaque with the slide. 1 for no fade. Only when
-  /// revealed from behind.
-  final double? drawerPanelOpacity;
-
-  /// The scrim over the page once the drawer is fully open. Null is the
-  /// theme's barrier color when the drawer slides over the page, and a
-  /// light dim (black 7 % in light, 15 % in dark) when it is revealed from
-  /// behind, where the page's edge does most of the separating.
+  /// The scrim over the page once the drawer is fully open. Null, the
+  /// default, is the drawer's for its reveal (`CoilDrawerLook.fallback`):
+  /// the theme's `scrim` when it slides over the page, and a light dim
+  /// (black 7 % in light, 15 % in dark) when it is revealed from behind,
+  /// where the page's edge does most of the separating. The reveal is an
+  /// adaptive choice the style can't see, so the default stays null.
   final Color? drawerScrimColor;
 
   /// The page's shadow while the drawer pushes it aside, faded in with the
-  /// slide. Null is the blurs of the theme's shadow step 8, centered on
-  /// the page so they show along its side, with a hairline in the border
-  /// color.
+  /// slide, with a hairline in the border color. By default the blurs of
+  /// the theme's shadow step 8, centered on the page so they show along
+  /// its side (`CoilDrawerLook.edgeShadows`).
   final List<BoxShadow>? drawerShadows;
 
   /// Springs for the sidebar's animated parts, keyed by [CoilSidebarTrack]s:
@@ -146,9 +134,6 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
           drawerCornerRadius: other.drawerCornerRadius ?? drawerCornerRadius,
           drawerFallbackCornerRadius:
               other.drawerFallbackCornerRadius ?? drawerFallbackCornerRadius,
-          drawerScale: other.drawerScale ?? drawerScale,
-          drawerPanelScale: other.drawerPanelScale ?? drawerPanelScale,
-          drawerPanelOpacity: other.drawerPanelOpacity ?? drawerPanelOpacity,
           drawerScrimColor: other.drawerScrimColor ?? drawerScrimColor,
           drawerShadows: other.drawerShadows ?? drawerShadows,
           motions: other.motions == null
@@ -170,9 +155,6 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     labelColor,
     drawerCornerRadius,
     drawerFallbackCornerRadius,
-    drawerScale,
-    drawerPanelScale,
-    drawerPanelOpacity,
     drawerScrimColor,
     drawerShadows,
     motions,
