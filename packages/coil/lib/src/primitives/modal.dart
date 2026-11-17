@@ -1,3 +1,4 @@
+import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
@@ -66,7 +67,7 @@ Future<T?> showCoilModal<T>({
 /// compact window, centered elsewhere), the motion tokens, the scrim color
 /// and the themes the modal inherits. Centered and drawer modals spring in
 /// on the theme's `gentle` token and out on `gentleExit` over
-/// [CoilSheetPanel.barrierColorOf]; a sheet is a [CoilSheetRoute], on
+/// the theme's [CoilColors.scrim]; a sheet is a [CoilSheetRoute], on
 /// `gentle` both ways over the glass sheet's blur and scrim. With
 /// `dismissible` false, the scrim, Esc, back and dragging don't close it.
 sealed class CoilModalRoute<T> implements PopupRoute<T> {
@@ -84,7 +85,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
     final navigator = Navigator.of(context);
     final themes = InheritedTheme.capture(from: context, to: navigator.context);
     final tokens = CoilTheme.motionOf(context, override: motion);
-    final barrierColor = CoilSheetPanel.barrierColorOf(context);
+    final barrierColor = CoilTheme.of(context).colors.scrim;
     final resolved = presentation ?? adaptivePresentationOf(context);
     Widget content(BuildContext context) => PopScope(
       canPop: dismissible,

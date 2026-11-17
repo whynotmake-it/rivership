@@ -119,4 +119,28 @@ void main() {
       violet,
     );
   });
+
+  test('the scrim is a color token: black 20 % in light, 30 % in dark', () {
+    expect(
+      CoilColors.light.scrim,
+      const Color.from(alpha: 0.2, red: 0, green: 0, blue: 0),
+    );
+    expect(
+      CoilColors.dark.scrim,
+      const Color.from(alpha: 0.3, red: 0, green: 0, blue: 0),
+    );
+    expect(
+      CoilColors.lerp(CoilColors.light, CoilColors.dark, 0.5).scrim.a,
+      closeTo(0.25, 0.001),
+    );
+    const custom = Color(0x66000000);
+    expect(CoilColors.light.copyWith(scrim: custom).scrim, custom);
+    expect(
+      CoilColors.fromSeed(
+        brightness: Brightness.dark,
+        neutralChroma: 0.02,
+      ).scrim,
+      CoilColors.dark.scrim,
+    );
+  });
 }

@@ -164,18 +164,6 @@ class CoilSheetPanel extends StatefulWidget {
   /// in a short window), the footer scrolls.
   static const footerMaxHeightFraction = 0.4;
 
-  /// The scrim behind coil's unblurred modal surfaces at [context]
-  /// (centered and drawer dialogs, `CoilDrawer`): black at 20% in light
-  /// mode and 30% in dark mode, where black dims less.
-  ///
-  /// Sheets don't use it: a [CoilSheetRoute] keeps the glass sheet's own
-  /// scrim, black at 15% over a blur, and without the blur a dialog needs
-  /// a little more to stand off the page.
-  static Color barrierColorOf(BuildContext context) =>
-      CoilTheme.of(context).brightness == Brightness.dark
-      ? const Color.from(alpha: 0.3, red: 0, green: 0, blue: 0)
-      : const Color.from(alpha: 0.2, red: 0, green: 0, blue: 0);
-
   @override
   State<CoilSheetPanel> createState() => _CoilSheetPanelState();
 }

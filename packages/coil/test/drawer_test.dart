@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 import 'src/select_harness.dart';
 import 'src/test_icons.dart';
@@ -45,8 +46,15 @@ class _HostState extends State<_Host> {
     onOpenChanged: set,
     reveal: widget.reveal,
     drag: widget.drag,
-    cornerRadius: widget.cornerRadius,
-    fallbackCornerRadius: widget.fallbackCornerRadius,
+    look: widget.cornerRadius == null && widget.fallbackCornerRadius == null
+        ? null
+        : CoilDrawerLook.fallback(
+            CoilTheme.of(context),
+            reveal: widget.reveal,
+          ).copyWith(
+            cornerRadius: widget.cornerRadius,
+            fallbackCornerRadius: widget.fallbackCornerRadius,
+          ),
     startSemanticLabel: 'Navigation',
     endSemanticLabel: 'Details',
     start: Column(
@@ -717,6 +725,76 @@ void main() {
       );
     });
 
+    testWidgets('switching sides and closing returns focus to the trigger', (
+      tester,
+    ) async {
+      await _pump(tester, const _Host());
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final before = FocusManager.instance.primaryFocus;
+      expect(before?.context?.widget, isNotNull);
+
+      final host = tester.state<_HostState>(find.byType(_Host))
+        ..set(CoilDrawerEdge.start);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, isNot(before));
+      host.set(CoilDrawerEdge.end);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, isNot(before));
+      host.set(null);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, before);
+    });
+
+    testWidgets('a nested drawer opening over another returns focus to the '
+        'first trigger', (tester) async {
+      final trigger = FocusNode(debugLabel: 'trigger');
+      addTearDown(trigger.dispose);
+      CoilDrawerEdge? outer;
+      CoilDrawerEdge? inner;
+      late StateSetter update;
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return CoilDrawer(
+                open: outer,
+                onOpenChanged: (open) => setState(() => outer = open),
+                start: const Text('Outer panel'),
+                child: CoilDrawer(
+                  open: inner,
+                  onOpenChanged: (open) => setState(() => inner = open),
+                  end: const Text('Inner panel'),
+                  child: Focus(
+                    focusNode: trigger,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      trigger.requestFocus();
+      await tester.pump();
+      expect(trigger.hasPrimaryFocus, isTrue);
+
+      update(() => inner = CoilDrawerEdge.end);
+      await tester.pumpAndSettle();
+      expect(trigger.hasFocus, isFalse);
+      // The outer one opens: the inner one closes and hands over.
+      update(() => outer = CoilDrawerEdge.start);
+      await tester.pumpAndSettle();
+      expect(inner, isNull);
+      expect(trigger.hasFocus, isFalse);
+      update(() => outer = null);
+      await tester.pumpAndSettle();
+      expect(trigger.hasPrimaryFocus, isTrue);
+    });
+
     testWidgets('system back closes it', (tester) async {
       await _pump(tester, const _Host(initial: CoilDrawerEdge.end));
       await tester.binding.handlePopRoute();
@@ -740,6 +818,369 @@ void main() {
         isNotNull,
       );
       semantics.dispose();
+    });
+  });
+
+  group('controlled', () {
+    testWidgets('an owner that ignores a drag leaves the drawer closed', (
+      tester,
+    ) async {
+      final requests = <CoilDrawerEdge?>[];
+      var presses = 0;
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: CoilDrawer(
+            open: null,
+            onOpenChanged: requests.add,
+            start: const Text('Start panel'),
+            child: Column(
+              key: const ValueKey('content'),
+              children: [
+                const SizedBox(height: 100),
+                CoilButton(
+                  onPressed: () => presses++,
+                  child: const Text('Press'),
+                ),
+                const Expanded(child: SizedBox.expand()),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _drag(tester, const Offset(200, 500), 260);
+      expect(requests, [CoilDrawerEdge.start]);
+      expect(_contentLeft(tester), 0, reason: 'back where the owner keeps it');
+      expect(_shown('Start panel'), isFalse);
+      await tester.tap(find.text('Press'));
+      await tester.pumpAndSettle();
+      expect(presses, 1, reason: 'the content still takes presses');
+    });
+  });
+
+  group('look', () {
+    test('the fallback look follows the reveal and the theme', () {
+      final light = CoilDrawerLook.fallback(
+        CoilThemeData.light,
+        reveal: CoilDrawerReveal.behind,
+      );
+      expect(light.scrimColor, CoilDrawerLook.behindScrimLight);
+      expect(light.scrimColor.a, closeTo(0.07, 0.001));
+      expect(light.panelColor, CoilThemeData.light.colors.background);
+      expect(light.contentColor, CoilThemeData.light.colors.background);
+      expect(light.cornerRadius, isNull);
+      expect(
+        light.shadows,
+        CoilDrawerLook.edgeShadows(CoilThemeData.light.colors),
+      );
+      final dark = CoilDrawerLook.fallback(
+        CoilThemeData.dark,
+        reveal: CoilDrawerReveal.behind,
+      );
+      expect(dark.scrimColor.a, closeTo(0.15, 0.001));
+      final over = CoilDrawerLook.fallback(
+        CoilThemeData.dark,
+        reveal: CoilDrawerReveal.over,
+      );
+      expect(over.scrimColor, CoilThemeData.dark.colors.scrim);
+      expect(over.panelColor, isNull, reason: "the raised surface's own");
+      expect(
+        light.copyWith(scrimColor: const Color(0x33000000)),
+        isNot(light),
+      );
+      expect(
+        CoilDrawerLook.fallback(
+          CoilThemeData.light,
+          reveal: CoilDrawerReveal.behind,
+        ),
+        light,
+      );
+    });
+
+    testWidgets('a transition shrinks the content toward the far edge', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: CoilDrawer(
+            open: CoilDrawerEdge.start,
+            onOpenChanged: (_) {},
+            transition: const CoilDrawerTransition(scale: 0.9),
+            start: const Text('Start panel'),
+            child: const SizedBox.expand(key: ValueKey('content')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final size = tester.getSize(find.byType(CoilDrawer));
+      final rect = tester.getRect(find.byKey(const ValueKey('content')));
+      expect(rect.left, 320);
+      expect(rect.height, closeTo(size.height * 0.9, 0.5));
+    });
+
+    testWidgets("the sidebar style's drawer fields reach the drawer", (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: const CoilSidebarScaffold(
+            sidebar: CoilSidebar(children: [Text('Nav')]),
+            drawerTransition: CoilDrawerTransition(panelOpacity: 1),
+            style: CoilSidebarStyle(
+              drawerScrimColor: Color(0x33000000),
+              drawerFallbackCornerRadius: BorderRadius.all(
+                Radius.circular(9),
+              ),
+            ),
+            body: SizedBox.expand(),
+          ),
+        ),
+      );
+      final element = tester.element(find.byType(CoilSidebarScaffold));
+      final theme = CoilTheme.of(element);
+      final fallback = CoilSidebarStyle.fallback(
+        theme,
+        CoilTheme.metricsOf(element),
+      );
+      expect(
+        fallback.drawerFallbackCornerRadius,
+        CoilDrawerLook.fallbackCornerRadiusFor(defaultTargetPlatform),
+      );
+      expect(fallback.drawerShadows, CoilDrawerLook.edgeShadows(theme.colors));
+      expect(fallback.drawerScrimColor, isNull, reason: 'set by the reveal');
+
+      final drawer = tester.widget<CoilDrawer>(find.byType(CoilDrawer));
+      expect(drawer.look!.scrimColor, const Color(0x33000000));
+      expect(
+        drawer.look!.fallbackCornerRadius,
+        const BorderRadius.all(Radius.circular(9)),
+      );
+      expect(drawer.look!.shadows, fallback.drawerShadows);
+      expect(drawer.transition, const CoilDrawerTransition(panelOpacity: 1));
+    });
+  });
+
+  group('motion', () {
+    Future<void> pumpScaffold(
+      WidgetTester tester, {
+      required bool reduced,
+    }) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(disableAnimations: reduced),
+              child: CoilSidebarScaffold(
+                sidebar: const CoilSidebar(children: [Text('Nav')]),
+                motions: {
+                  CoilSidebarTrack.drawer: const Motion.linear(
+                    Duration(seconds: 2),
+                  ),
+                },
+                body: const Column(
+                  children: [
+                    CoilSidebarTrigger(
+                      icon: TestIcon(TestGlyph.home),
+                      openLabel: Text('Open navigation'),
+                    ),
+                    Expanded(child: SizedBox.expand(key: ValueKey('page'))),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Open navigation'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    double pageLeft(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(const ValueKey('page'))).dx;
+
+    testWidgets("the drawer track's motion drives the slide", (tester) async {
+      await pumpScaffold(tester, reduced: false);
+      expect(pageLeft(tester), closeTo(80, 2), reason: 'a quarter of 2 s');
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("a drawer's own motion tokens obey reduced motion", (
+      tester,
+    ) async {
+      for (final reduced in [false, true]) {
+        await tester.pumpWidget(const SizedBox());
+        useScreen(tester, TestScreen.phone);
+        late StateSetter update;
+        CoilDrawerEdge? open;
+        await tester.pumpWidget(
+          testApp(
+            tier: CoilTier.touch,
+            home: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(disableAnimations: reduced),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    update = setState;
+                    return CoilDrawer(
+                      open: open,
+                      onOpenChanged: (value) => setState(() => open = value),
+                      motion: CoilTheme.of(context).motion.copyWith(
+                        standard: const Motion.linear(Duration(seconds: 2)),
+                      ),
+                      start: const Text('Start panel'),
+                      child: const SizedBox.expand(key: ValueKey('content')),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+        update(() => open = CoilDrawerEdge.start);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(
+          _contentLeft(tester),
+          reduced ? 320 : closeTo(80, 2),
+          reason: 'reduced: $reduced',
+        );
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('reduced motion makes a custom drawer motion instant', (
+      tester,
+    ) async {
+      await pumpScaffold(tester, reduced: true);
+      expect(pageLeft(tester), 320);
+    });
+  });
+
+  group('layers and state', () {
+    testWidgets('a slide repaints neither the content nor the panel', (
+      tester,
+    ) async {
+      final page = _CountingPainter();
+      final side = _CountingPainter();
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              CoilDrawerEdge? open;
+              return CoilDrawer(
+                open: open,
+                onOpenChanged: (value) => setState(() => open = value),
+                start: CustomPaint(painter: side, child: const SizedBox()),
+                child: CustomPaint(
+                  painter: page,
+                  child: const SizedBox.expand(),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final pagePaints = page.paints;
+      final gesture = await tester.startGesture(const Offset(100, 500));
+      await gesture.moveBy(const Offset(10, 0));
+      await tester.pump();
+      await gesture.moveBy(const Offset(10, 0));
+      await tester.pump();
+      final sidePaints = side.paints;
+      expect(sidePaints, greaterThan(0));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump();
+      }
+      expect(page.paints, pagePaints, reason: 'the page moves as a layer');
+      expect(side.paints, sidePaints, reason: 'the panel fades as a layer');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('changing the reveal keeps the content and panel state', (
+      tester,
+    ) async {
+      var reveal = CoilDrawerReveal.behind;
+      CoilDrawerEdge? open;
+      late StateSetter update;
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return CoilDrawer(
+                open: open,
+                reveal: reveal,
+                onOpenChanged: (value) => setState(() => open = value),
+                start: const _Probe(key: ValueKey('panel probe')),
+                child: Column(
+                  children: [
+                    const _Probe(key: ValueKey('page probe')),
+                    Expanded(
+                      child: ListView(
+                        key: const ValueKey('list'),
+                        children: [
+                          for (var i = 0; i < 40; i++)
+                            SizedBox(height: 50, child: Text('Row $i')),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.drag(
+        find.byKey(const ValueKey('list')),
+        const Offset(0, -200),
+      );
+      await tester.pumpAndSettle();
+      final page = tester.state(find.byKey(const ValueKey('page probe')));
+      update(() => open = CoilDrawerEdge.start);
+      await tester.pumpAndSettle();
+      final panel = tester.state(find.byKey(const ValueKey('panel probe')));
+      ScrollPosition position() =>
+          tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      final scrolled = position().pixels;
+      expect(scrolled, greaterThan(0));
+
+      for (final next in [CoilDrawerReveal.over, CoilDrawerReveal.behind]) {
+        update(() => reveal = next);
+        await tester.pumpAndSettle();
+        expect(
+          tester.state(find.byKey(const ValueKey('page probe'))),
+          same(page),
+          reason: '$next',
+        );
+        expect(
+          tester.state(find.byKey(const ValueKey('panel probe'))),
+          same(panel),
+          reason: '$next',
+        );
+        expect(position().pixels, scrolled, reason: '$next');
+      }
     });
   });
 
@@ -847,4 +1288,28 @@ class _Disabled<T extends Intent> extends Action<T> {
 
   @override
   Object? invoke(T intent) => null;
+}
+
+/// Counts its paints.
+class _CountingPainter extends CustomPainter {
+  int paints = 0;
+
+  @override
+  void paint(Canvas canvas, Size size) => paints++;
+
+  @override
+  bool shouldRepaint(_CountingPainter oldDelegate) => false;
+}
+
+/// A widget with state, to tell whether a rebuild kept it.
+class _Probe extends StatefulWidget {
+  const _Probe({super.key});
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 10);
 }

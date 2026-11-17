@@ -3,10 +3,10 @@ import 'dart:math' as math;
 
 import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/metrics.dart';
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/screen_radius.dart';
-import 'package:coil/src/primitives/sheet.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -50,39 +50,232 @@ enum CoilDrawerDrag {
   none,
 }
 
-/// The distance a release has to beat to count as a fling, in logical
-/// pixels per second.
-const _flingVelocity = 400.0;
-
 /// Below this many logical pixels from rest, the content covers the panel
 /// again: its corners square up and the panel goes offstage.
 const _restSlop = 0.5;
 
-/// The shadow on the content's edge while a panel is revealed from behind:
-/// the top of the ladder, so the page reads as a sheet lifted off the panel.
-const _contentShadowLevel = 8;
+/// How a [CoilDrawer] looks: the content's corners, fill, shadow and scrim
+/// while it is aside, and the panels' fill.
+///
+/// [CoilDrawerLook.fallback] computes every field from the theme for a
+/// reveal; change one with [copyWith]:
+///
+/// ```dart
+/// CoilDrawer(
+///   look: CoilDrawerLook.fallback(
+///     CoilTheme.of(context),
+///     reveal: CoilDrawerReveal.behind,
+///   ).copyWith(scrimColor: const Color(0x33000000)),
+///   ...
+/// )
+/// ```
+///
+/// How the content and panel move as it slides is [CoilDrawerTransition].
+@immutable
+class CoilDrawerLook {
+  /// Creates a drawer look. Prefer [CoilDrawerLook.fallback] and
+  /// [copyWith].
+  const CoilDrawerLook({
+    required this.fallbackCornerRadius,
+    required this.scrimColor,
+    required this.shadows,
+    required this.contentColor,
+    this.cornerRadius,
+    this.panelColor,
+  });
 
-/// The scrim over the content once a panel revealed from behind is fully
-/// open: a light dim, with the edge doing most of the separating.
-const _behindScrimLight = Color.from(alpha: 0.07, red: 0, green: 0, blue: 0);
-const _behindScrimDark = Color.from(alpha: 0.15, red: 0, green: 0, blue: 0);
+  /// The look for [reveal] from [theme]'s tokens: the screen's corners
+  /// (phone radii where unknown), the [behindScrimLight] / [behindScrimDark]
+  /// dim from behind and the theme's [CoilColors.scrim] over, shadow step
+  /// [edgeShadowLevel] on the content's side, and the page background for
+  /// the content and, from behind, the panels.
+  factory CoilDrawerLook.fallback(
+    CoilThemeData theme, {
+    required CoilDrawerReveal reveal,
+  }) {
+    final colors = theme.colors;
+    final behind = reveal == CoilDrawerReveal.behind;
+    return CoilDrawerLook(
+      fallbackCornerRadius: fallbackCornerRadiusFor(defaultTargetPlatform),
+      scrimColor: behind
+          ? (colors.brightness == Brightness.dark
+                ? behindScrimDark
+                : behindScrimLight)
+          : colors.scrim,
+      shadows: edgeShadows(colors),
+      contentColor: colors.background,
+      panelColor: behind ? colors.background : null,
+    );
+  }
 
-/// The content's corners while aside where the screen can't tell its own
-/// radius on a phone (the platform query failed or isn't registered): close
-/// to a recent iPhone's or Android phone's. Desktop and web stay square.
-const _phoneFallbackRadius = {
-  TargetPlatform.iOS: 40.0,
-  TargetPlatform.android: 24.0,
-};
+  /// The scrim over the content once a panel revealed from behind is fully
+  /// open, in light: black 7 %. A light dim; the content's edge does most
+  /// of the separating.
+  static const behindScrimLight = Color.from(
+    alpha: 0.07,
+    red: 0,
+    green: 0,
+    blue: 0,
+  );
+
+  /// [behindScrimLight] in dark: black 15 %, since black dims less there.
+  static const behindScrimDark = Color.from(
+    alpha: 0.15,
+    red: 0,
+    green: 0,
+    blue: 0,
+  );
+
+  /// The shadow step on the content's edge while it is aside: the top of
+  /// the ladder, so the page reads as a sheet lifted off the panel.
+  static const edgeShadowLevel = 8;
+
+  /// The content's corners while aside on a phone whose screen can't tell
+  /// its own radius (the platform query failed or isn't registered): close
+  /// to a recent iPhone's and Android phone's.
+  static const phoneCornerRadii = {
+    TargetPlatform.iOS: 40.0,
+    TargetPlatform.android: 24.0,
+  };
+
+  /// The default [fallbackCornerRadius] on [platform]: [phoneCornerRadii]
+  /// on a phone, square on desktop and the web.
+  static BorderRadius fallbackCornerRadiusFor(TargetPlatform platform) =>
+      switch (kIsWeb ? null : phoneCornerRadii[platform]) {
+        final radius? => BorderRadius.circular(radius),
+        null => BorderRadius.zero,
+      };
+
+  /// Shadow step [edgeShadowLevel] of [colors], centered on the content
+  /// instead of dropped below it. The ladder's drops pull in their sides
+  /// (negative spread) to fall under a floating surface; on a page pushed
+  /// sideways, the side is the edge that has to show, so the same blurs
+  /// and colors spread evenly around it.
+  static List<BoxShadow> edgeShadows(CoilColors colors) => [
+    for (final shadow in colors.shadow(edgeShadowLevel))
+      if (shadow.blurRadius > 0)
+        shadow.copyWith(offset: Offset.zero, spreadRadius: 0),
+  ];
+
+  /// The content's corners while it is aside, in physical corners. Null
+  /// takes the screen's from [CoilScreenRadius], and [fallbackCornerRadius]
+  /// where the screen can't tell (web, desktop, a failed query, tests).
+  final BorderRadius? cornerRadius;
+
+  /// The content's corners while aside when [cornerRadius] is null and the
+  /// screen's radius is unknown.
+  final BorderRadius fallbackCornerRadius;
+
+  /// The scrim over the content once a panel is fully open; it fades in
+  /// with the slide.
+  final Color scrimColor;
+
+  /// The content's shadow while it is aside ([CoilDrawerReveal.behind]),
+  /// faded in with the slide. A hairline in the theme's border color fades
+  /// in with it.
+  final List<BoxShadow> shadows;
+
+  /// The content's fill while it slides ([CoilDrawerReveal.behind]), so
+  /// the panel never shows through it.
+  final Color contentColor;
+
+  /// The panels' fill. Null over the content is the raised surface's own.
+  final Color? panelColor;
+
+  /// Returns a copy with the given fields replaced.
+  CoilDrawerLook copyWith({
+    BorderRadius? cornerRadius,
+    BorderRadius? fallbackCornerRadius,
+    Color? scrimColor,
+    List<BoxShadow>? shadows,
+    Color? contentColor,
+    Color? panelColor,
+  }) => CoilDrawerLook(
+    cornerRadius: cornerRadius ?? this.cornerRadius,
+    fallbackCornerRadius: fallbackCornerRadius ?? this.fallbackCornerRadius,
+    scrimColor: scrimColor ?? this.scrimColor,
+    shadows: shadows ?? this.shadows,
+    contentColor: contentColor ?? this.contentColor,
+    panelColor: panelColor ?? this.panelColor,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilDrawerLook &&
+      other.cornerRadius == cornerRadius &&
+      other.fallbackCornerRadius == fallbackCornerRadius &&
+      other.scrimColor == scrimColor &&
+      listEquals(other.shadows, shadows) &&
+      other.contentColor == contentColor &&
+      other.panelColor == panelColor;
+
+  @override
+  int get hashCode => Object.hash(
+    cornerRadius,
+    fallbackCornerRadius,
+    scrimColor,
+    Object.hashAll(shadows),
+    contentColor,
+    panelColor,
+  );
+}
+
+/// How a [CoilDrawer]'s content and panel move with the slide, from
+/// behind ([CoilDrawerReveal.behind]): the content may shrink away, and
+/// the panel emerges from under it, fading and growing in. Each follows
+/// the slide, so it tracks a drag.
+@immutable
+class CoilDrawerTransition {
+  /// Creates a drawer transition; the defaults are coil's.
+  const CoilDrawerTransition({
+    this.scale = 1,
+    this.panelScale = 0.95,
+    this.panelOpacity = 0.4,
+  }) : assert(scale > 0 && scale <= 1, 'scale shrinks the content, 0 to 1'),
+       assert(
+         panelScale > 0 && panelScale <= 1,
+         'panelScale grows the panel in, 0 to 1',
+       ),
+       assert(
+         panelOpacity >= 0 && panelOpacity <= 1,
+         'panelOpacity is an opacity, 0 to 1',
+       );
+
+  /// How small the content gets once a panel is fully open, 1 for not at
+  /// all. It shrinks toward the open panel's far edge, so the panel stays
+  /// fully revealed; 0.94 is a subtle depth cue.
+  final double scale;
+
+  /// How big the panel's content starts as the content begins to uncover
+  /// it; it grows to full size with the slide, from the edge the content
+  /// leaves, so it seems to emerge from under it. 1 for no growth. Not
+  /// under reduced motion.
+  final double panelScale;
+
+  /// How opaque the panel's content is as the content begins to uncover
+  /// it; it fades to fully opaque with the slide, so the panel is already
+  /// partly there as the content starts to move. 1 for no fade.
+  final double panelOpacity;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilDrawerTransition &&
+      other.scale == scale &&
+      other.panelScale == panelScale &&
+      other.panelOpacity == panelOpacity;
+
+  @override
+  int get hashCode => Object.hash(scale, panelScale, panelOpacity);
+}
 
 /// Shows [child] with a panel on either side, [start] and [end], one of
 /// which is [open] at a time.
 ///
 /// With [CoilDrawerReveal.behind] (the default), the panels lie underneath
 /// and [child] slides aside to reveal one, taking the device's screen
-/// corner radius while it is away from the edges ([cornerRadius], from
-/// [CoilScreenRadius] when null) and squaring up again the moment it
-/// covers the panels. As it slides, the panel fades in under it, and a
+/// corner radius while it is away from the edges (from [CoilScreenRadius]
+/// unless [look] pins one) and squaring up again the moment it covers the
+/// panels. As it slides, the panel emerges under it ([transition]), and a
 /// light scrim, a shadow and a hairline on the content's edge follow the
 /// drag.
 /// With [CoilDrawerReveal.over], the panel slides in over [child] under a
@@ -94,7 +287,8 @@ const _phoneFallbackRadius = {
 ///
 /// * pressing the content (or the scrim) calls [onOpenChanged] with null,
 ///   and so do Escape, system back and dragging the panel closed (a fling
-///   decides by its direction, a slow release by how far it moved);
+///   faster than [flingVelocity] decides by its direction, a slow release
+///   by how far it moved);
 /// * focus moves into the panel, and returns to where it was on close;
 /// * screen readers reach only the panel, a route named by its semantic
 ///   label, and the content's dismiss action.
@@ -107,10 +301,11 @@ const _phoneFallbackRadius = {
 /// the others, so an inner `end` drawer and an outer `start` drawer behave
 /// as one drawer with two sides.
 ///
-/// It slides on [motion] and back on [exitMotion] (the theme's `standard`
-/// and `standardExit` by default); a drag follows the finger and its
-/// release velocity carries into the spring. [width] is the panel's width,
-/// 85 % of this widget's width when null, at most 320.
+/// It slides open on the `standard` token and closed on `standardExit`,
+/// of [motion] or the theme's (reduced motion makes both instant); a drag
+/// follows the finger and its release velocity carries into the spring.
+/// [width] is the panels' width, [widthFraction] of this widget's width
+/// when null, at most [maxWidth].
 class CoilDrawer extends StatefulWidget {
   /// Creates a drawer host.
   const CoilDrawer({
@@ -125,32 +320,29 @@ class CoilDrawer extends StatefulWidget {
     this.width,
     this.startSemanticLabel,
     this.endSemanticLabel,
-    this.cornerRadius,
-    this.fallbackCornerRadius,
-    this.scale = 1,
-    this.panelScale = 0.95,
-    this.panelOpacity = 0.4,
-    this.scrimColor,
-    this.shadows,
-    this.panelColor,
-    this.contentColor,
+    this.look,
+    this.transition = const CoilDrawerTransition(),
     this.motion,
-    this.exitMotion,
-  }) : assert(scale > 0 && scale <= 1, 'scale shrinks the content, 0 to 1'),
-       assert(
-         panelScale > 0 && panelScale <= 1,
-         'panelScale grows the panel in, 0 to 1',
-       ),
-       assert(
-         panelOpacity >= 0 && panelOpacity <= 1,
-         'panelOpacity is an opacity, 0 to 1',
-       );
+  });
+
+  /// The widest a panel gets when [width] is null.
+  static const maxWidth = 320.0;
+
+  /// The share of the drawer's width a panel takes when [width] is null,
+  /// up to [maxWidth].
+  static const widthFraction = 0.85;
+
+  /// How fast a release has to be to count as a fling, in logical pixels
+  /// per second. A fling decides by its direction; a slower release by how
+  /// far the drag moved.
+  static const flingVelocity = 400.0;
 
   /// The open panel, or null when [child] covers both.
   final CoilDrawerEdge? open;
 
   /// Called when the user opens or closes a panel (null: closed). Set
-  /// [open] to the new value.
+  /// [open] to the new value; a drawer whose owner keeps [open] as it was
+  /// goes back to it.
   final ValueChanged<CoilDrawerEdge?> onOpenChanged;
 
   /// The content.
@@ -174,7 +366,8 @@ class CoilDrawer extends StatefulWidget {
   /// close it.
   final CoilDrawerDrag? drag;
 
-  /// The panels' width. Null is 85 % of this widget's width, at most 320.
+  /// The panels' width. Null is [widthFraction] of this widget's width, at
+  /// most [maxWidth].
   final double? width;
 
   /// The [start] panel's name for screen readers.
@@ -183,61 +376,17 @@ class CoilDrawer extends StatefulWidget {
   /// The [end] panel's name for screen readers.
   final String? endSemanticLabel;
 
-  /// The content's corners while it is aside, in physical corners. Null
-  /// takes the screen's from [CoilScreenRadius], and [fallbackCornerRadius]
-  /// where the screen can't tell (web, desktop, a failed query, tests).
-  final BorderRadius? cornerRadius;
+  /// The content's corners, fill, shadow and scrim, and the panels' fill.
+  /// Null is [CoilDrawerLook.fallback] for [reveal] from the theme.
+  final CoilDrawerLook? look;
 
-  /// The content's corners while aside when [cornerRadius] is null and the
-  /// screen's radius is unknown. Null is 40 on iOS and 24 on Android (close
-  /// to current phones, for when the platform query fails) and square on
-  /// desktop and web.
-  final BorderRadius? fallbackCornerRadius;
-
-  /// How small the content gets once a panel is fully open, 1 for not at
-  /// all. It shrinks toward the open panel's far edge, so the panel stays
-  /// fully revealed. Only with [CoilDrawerReveal.behind].
-  final double scale;
-
-  /// How big the panel's content starts as the content begins to uncover
-  /// it; it grows to full size with the slide, from the edge the content
-  /// leaves, so it seems to emerge from under it. 1 for no growth. Only
-  /// with [CoilDrawerReveal.behind], and not under reduced motion.
-  final double panelScale;
-
-  /// How opaque the panel's content is as the content begins to uncover
-  /// it; it fades to fully opaque with the slide, so the panel is already
-  /// partly there as the content starts to move. 1 for no fade. Only with
+  /// How the content and panel move with the slide from behind. Only with
   /// [CoilDrawerReveal.behind].
-  final double panelOpacity;
+  final CoilDrawerTransition transition;
 
-  /// The scrim over the content once a panel is fully open; it fades in
-  /// with the slide. Null is the theme's barrier color for
-  /// [CoilDrawerReveal.over], and a light dim for [CoilDrawerReveal.behind]
-  /// (black 7 % in light, 15 % in dark), where the content's edge does
-  /// most of the separating.
-  final Color? scrimColor;
-
-  /// The content's shadow while it is aside ([CoilDrawerReveal.behind]),
-  /// faded in with the slide. Null is the blurs of the theme's shadow step
-  /// 8, centered on the content so they show along its side: it reads as a
-  /// sheet lifted off the panel.
-  /// A hairline in the theme's border color fades in with it.
-  final List<BoxShadow>? shadows;
-
-  /// The panels' fill. Null is the page background under the content, or
-  /// a raised surface over it.
-  final Color? panelColor;
-
-  /// The content's fill while it slides ([CoilDrawerReveal.behind]), so
-  /// the panel never shows through it. Null is the page background.
-  final Color? contentColor;
-
-  /// The slide open. The theme's `standard` when null.
-  final Motion? motion;
-
-  /// The slide closed. The theme's `standardExit` when null.
-  final Motion? exitMotion;
+  /// Overrides the theme's motion tokens: the slide opens on `standard`
+  /// and closes on `standardExit`. Reduced motion still applies.
+  final CoilMotion? motion;
 
   @override
   State<CoilDrawer> createState() => _CoilDrawerState();
@@ -258,11 +407,20 @@ class _CoilDrawerState extends State<CoilDrawer>
   final _startScope = FocusScopeNode(debugLabel: 'CoilDrawer.start');
   final _endScope = FocusScopeNode(debugLabel: 'CoilDrawer.end');
 
+  /// Keep the content and the panels (and their state: scroll positions,
+  /// text fields) when [CoilDrawer.reveal] changes the frame around them.
+  final _contentKey = GlobalKey(debugLabel: 'CoilDrawer.content');
+  final _startKey = GlobalKey(debugLabel: 'CoilDrawer.start');
+  final _endKey = GlobalKey(debugLabel: 'CoilDrawer.end');
+
   /// Where [_position] is heading.
   late double _target;
 
   LocalHistoryEntry? _entry;
   FocusNode? _focusBefore;
+
+  /// The look at the last build.
+  late CoilDrawerLook _look;
 
   /// The panel width at the last layout.
   double _panelWidth = 320;
@@ -296,7 +454,7 @@ class _CoilDrawerState extends State<CoilDrawer>
     // there by the first slide.
     CoilScreenRadius.listenable.addListener(_onScreenRadius);
     if (widget.reveal == CoilDrawerReveal.behind &&
-        widget.cornerRadius == null) {
+        widget.look?.cornerRadius == null) {
       unawaited(CoilScreenRadius.resolve());
     }
   }
@@ -348,16 +506,28 @@ class _CoilDrawerState extends State<CoilDrawer>
 
   // Opening and closing ---------------------------------------------------
 
-  /// Runs after a frame with [CoilDrawer.open] set: the panel takes focus,
-  /// back closes it, and every other drawer in the nest closes.
+  /// Runs after a frame with [CoilDrawer.open] set: every other drawer in
+  /// the nest closes, the panel takes focus, and back closes it.
   void _opened() {
     final open = widget.open;
     if (open == null) return;
+    var root = this;
+    while (root._parent != null) {
+      root = root._parent!;
+    }
+    final (:closedAny, :focus) = root._closeAllBut(this);
     final scope = open == CoilDrawerEdge.start ? _startScope : _endScope;
     if (!scope.hasFocus) {
-      final current = FocusManager.instance.primaryFocus;
-      if (current != _startScope && current != _endScope) {
-        _focusBefore = current;
+      if (closedAny) {
+        // Focus is in the drawer that just closed: return to where that
+        // one would have.
+        _focusBefore ??= focus;
+      } else if (_focusBefore == null &&
+          !_startScope.hasFocus &&
+          !_endScope.hasFocus) {
+        // Not when switching sides: focus is in the other panel then, and
+        // the node to return to is already kept.
+        _focusBefore = FocusManager.instance.primaryFocus;
       }
       scope.requestFocus();
     }
@@ -368,29 +538,44 @@ class _CoilDrawerState extends State<CoilDrawer>
         );
       }
     }
-    var root = this;
-    while (root._parent != null) {
-      root = root._parent!;
-    }
-    root._closeAllBut(this);
   }
 
-  void _closeAllBut(_CoilDrawerState keep) {
-    if (this != keep && widget.open != null) widget.onOpenChanged(null);
-    for (final child in _children.toList()) {
-      child._closeAllBut(keep);
+  /// Closes every open drawer from here down except [keep], and takes the
+  /// focus the first of them would have returned to, so [keep] returns it
+  /// instead.
+  ({bool closedAny, FocusNode? focus}) _closeAllBut(_CoilDrawerState keep) {
+    var closedAny = false;
+    FocusNode? focus;
+    if (this != keep && widget.open != null) {
+      closedAny = true;
+      focus = _focusBefore;
+      _focusBefore = null;
+      widget.onOpenChanged(null);
     }
+    for (final child in _children.toList()) {
+      final closed = child._closeAllBut(keep);
+      closedAny |= closed.closedAny;
+      focus ??= closed.focus;
+    }
+    return (closedAny: closedAny, focus: focus);
   }
 
   void _closed() {
     final entry = _entry;
     _entry = null;
     entry?.remove();
+    // Switching to the other side keeps the node to return to for the
+    // final close.
+    if (widget.open != null) return;
     final previous = _focusBefore;
     _focusBefore = null;
     // After the frame that lets the content take focus again.
     _schedule(() {
-      if (widget.open != null) return;
+      if (widget.open != null) {
+        // Reopened before the frame ended.
+        _focusBefore ??= previous;
+        return;
+      }
       if (previous != null && previous.context != null) {
         previous.requestFocus();
       }
@@ -416,10 +601,8 @@ class _CoilDrawerState extends State<CoilDrawer>
   );
 
   Motion _motionToward(double target) {
-    final tokens = CoilTheme.motionOf(context);
-    return target == 0
-        ? widget.exitMotion ?? tokens.standardExit
-        : widget.motion ?? tokens.standard;
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
+    return target == 0 ? tokens.standardExit : tokens.standard;
   }
 
   void _animateTo(double target, {double? velocity}) {
@@ -556,7 +739,7 @@ class _CoilDrawerState extends State<CoilDrawer>
     }
     // Pixels per second toward this side's open position.
     final opening = velocity * (_startIsLeft ? 1 : -1) * side;
-    final open = opening.abs() > _flingVelocity
+    final open = opening.abs() > CoilDrawer.flingVelocity
         ? opening > 0
         : position.abs() >= 0.5;
     final edge = side > 0 ? CoilDrawerEdge.start : CoilDrawerEdge.end;
@@ -565,7 +748,15 @@ class _CoilDrawerState extends State<CoilDrawer>
       _targetOf(result),
       velocity: velocity / _panelWidth * (_startIsLeft ? 1 : -1),
     );
-    if (result != widget.open) widget.onOpenChanged(result);
+    if (result == widget.open) return;
+    widget.onOpenChanged(result);
+    // An owner that doesn't apply the change (it keeps `open` as it was)
+    // would leave the drawer where the drag sent it: go back.
+    _schedule(() {
+      if (!_dragging && widget.open != result && _target == _targetOf(result)) {
+        _animateTo(_targetOf(widget.open));
+      }
+    });
   }
 
   // Build -----------------------------------------------------------------
@@ -574,7 +765,14 @@ class _CoilDrawerState extends State<CoilDrawer>
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       _panelWidth =
-          widget.width ?? math.min(320, constraints.maxWidth * 0.85).toDouble();
+          widget.width ??
+          math.min(
+            CoilDrawer.maxWidth,
+            constraints.maxWidth * CoilDrawer.widthFraction,
+          );
+      _look =
+          widget.look ??
+          CoilDrawerLook.fallback(CoilTheme.of(context), reveal: widget.reveal);
       final startIsLeft = _startIsLeft;
       final anyDrag =
           _uses(physicalRight: true) ||
@@ -583,7 +781,12 @@ class _CoilDrawerState extends State<CoilDrawer>
               (_parent!._modeFor(physicalRight: true) != ScrollDragMode.none ||
                   _parent!._modeFor(physicalRight: false) !=
                       ScrollDragMode.none));
-      final content = _CoilDrawerScope(state: this, child: widget.child);
+      // Its own layer, so a slide or a drag moves it without repainting
+      // the page every frame.
+      final content = RepaintBoundary(
+        key: _contentKey,
+        child: _CoilDrawerScope(state: this, child: widget.child),
+      );
       return ScrollDragDetector(
         up: ScrollDragMode.none,
         down: ScrollDragMode.none,
@@ -645,35 +848,6 @@ class _CoilDrawerState extends State<CoilDrawer>
     },
   );
 
-  Color _scrim(double strength) {
-    // Revealed from behind, a light dim; the content's edge does the rest.
-    final full =
-        widget.scrimColor ??
-        (widget.reveal == CoilDrawerReveal.behind
-            ? (CoilTheme.of(context).brightness == Brightness.dark
-                  ? _behindScrimDark
-                  : _behindScrimLight)
-            : CoilSheetPanel.barrierColorOf(context));
-    return _faded(full, strength);
-  }
-
-  static BorderRadius get _defaultFallbackRadius =>
-      switch (kIsWeb ? null : _phoneFallbackRadius[defaultTargetPlatform]) {
-        final radius? => BorderRadius.circular(radius),
-        null => BorderRadius.zero,
-      };
-
-  /// Step 8 of the shadow ladder, centered on the content instead of
-  /// dropped below it. The ladder's drops pull in their sides (negative
-  /// spread) to fall under a floating surface; on a page pushed sideways,
-  /// the side is the edge that has to show, so the same blurs and colors
-  /// spread evenly around it.
-  static List<BoxShadow> _edgeShadows(CoilColors colors) => [
-    for (final shadow in colors.shadow(_contentShadowLevel))
-      if (shadow.blurRadius > 0)
-        shadow.copyWith(offset: Offset.zero, spreadRadius: 0),
-  ];
-
   /// [color] at [strength] (0 to 1) of its alpha.
   static Color _faded(Color color, double strength) =>
       color.withValues(alpha: color.a * strength.clamp(0, 1));
@@ -686,7 +860,7 @@ class _CoilDrawerState extends State<CoilDrawer>
       behavior: HitTestBehavior.opaque,
       onTap: _close,
       excludeFromSemantics: true,
-      child: ColoredBox(color: _scrim(strength)),
+      child: ColoredBox(color: _faded(_look.scrimColor, strength)),
     ),
   );
 
@@ -701,20 +875,20 @@ class _CoilDrawerState extends State<CoilDrawer>
     final strength = position.abs();
     // Toward the physical right for a left panel.
     final dx = position * _panelWidth * (startIsLeft ? 1 : -1);
-    final scale = 1 - (1 - widget.scale) * strength.clamp(0, 1);
+    final scale = 1 - (1 - widget.transition.scale) * strength.clamp(0, 1);
+    final look = _look;
     final radius = atRest
         ? BorderRadius.zero
-        : widget.cornerRadius ??
+        : look.cornerRadius ??
               CoilScreenRadius.value ??
-              widget.fallbackCornerRadius ??
-              _defaultFallbackRadius;
+              look.fallbackCornerRadius;
     final shape = RoundedSuperellipseBorder(borderRadius: radius);
     // The edge fades in with the reveal: a raised surface's shadow and a
     // hairline in the border color.
     final shadows = atRest
         ? const <BoxShadow>[]
         : [
-            for (final shadow in widget.shadows ?? _edgeShadows(theme.colors))
+            for (final shadow in look.shadows)
               shadow.copyWith(color: _faded(shadow.color, strength)),
           ];
     return Transform.translate(
@@ -726,7 +900,7 @@ class _CoilDrawerState extends State<CoilDrawer>
         child: DecoratedBox(
           decoration: ShapeDecoration(
             shape: shape,
-            color: widget.contentColor ?? theme.colors.background,
+            color: look.contentColor,
             shadows: shadows,
           ),
 
@@ -807,21 +981,28 @@ class _CoilDrawerState extends State<CoilDrawer>
         : widget.endSemanticLabel;
     // Reduced motion keeps the fade and drops the growth.
     final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final panelScale = reduced ? 1.0 : widget.panelScale;
+    final transition = widget.transition;
+    final panelScale = reduced ? 1.0 : transition.panelScale;
+    // Its own layer, so the fade, growth or slide doesn't repaint it.
+    final layer = RepaintBoundary(
+      key: edge == CoilDrawerEdge.start ? _startKey : _endKey,
+      child: panel,
+    );
     var surface = switch (widget.reveal) {
       // The panel's content fades and grows in as the content uncovers it,
       // following the drag, from the edge the content leaves. Its fill
       // stays, so nothing shows through. Semantics follow `open` below,
       // not the fade.
       CoilDrawerReveal.behind => ColoredBox(
-        color: widget.panelColor ?? theme.colors.background,
+        color: _look.panelColor ?? theme.colors.background,
         child: Opacity(
-          opacity: widget.panelOpacity + (1 - widget.panelOpacity) * shown,
+          opacity:
+              transition.panelOpacity + (1 - transition.panelOpacity) * shown,
           alwaysIncludeSemantics: true,
           child: Transform.scale(
             scale: panelScale + (1 - panelScale) * shown,
             alignment: left ? Alignment.centerRight : Alignment.centerLeft,
-            child: panel,
+            child: layer,
           ),
         ),
       ),
@@ -829,8 +1010,8 @@ class _CoilDrawerState extends State<CoilDrawer>
         offset: CoilSurface.popoverOffset,
         shadowLevel: 3,
         borderRadius: BorderRadius.zero,
-        color: widget.panelColor,
-        child: panel,
+        color: _look.panelColor,
+        child: layer,
       ),
     };
     surface = Semantics(
@@ -856,7 +1037,8 @@ class _CoilDrawerState extends State<CoilDrawer>
     if (widget.reveal == CoilDrawerReveal.over) {
       surface = FractionalTranslation(
         translation: Offset((1 - shown) * (left ? -1 : 1), 0),
-        child: BlockSemantics(child: surface),
+        // The raised surface and its shadow slide as one layer.
+        child: RepaintBoundary(child: BlockSemantics(child: surface)),
       );
     }
     return Positioned(

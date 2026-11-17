@@ -97,7 +97,7 @@ void main() {
         presentation: CoilModalPresentation.centered,
         builder: (_) => const SizedBox(),
       );
-      final scrim = CoilSheetPanel.barrierColorOf(_home);
+      final scrim = CoilTheme.of(_home).colors.scrim;
       expect(dialog.barrierColor, scrim);
       expect(sheet.a, closeTo(0.15, 0.001));
       expect(scrim.a, greaterThan(sheet.a));
