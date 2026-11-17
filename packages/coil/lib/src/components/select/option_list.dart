@@ -209,7 +209,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     SingleActivator(LogicalKeyboardKey.space, includeRepeats: false):
         ActivateIntent(),
     SingleActivator(LogicalKeyboardKey.escape): CoilDismissIntent(),
-    SingleActivator(LogicalKeyboardKey.tab): NextFocusIntent(),
+    SingleActivator(LogicalKeyboardKey.tab): _TabOutIntent(),
   };
 
   void _pickActive() {
@@ -370,7 +370,7 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
               context: context,
               onInvoke: (_) => widget.onDismiss(CoilPopupCloseReason.escape),
             ),
-            NextFocusIntent: CallbackAction<NextFocusIntent>(
+            _TabOutIntent: CallbackAction<_TabOutIntent>(
               onInvoke: (_) => widget.onDismiss(CoilPopupCloseReason.dismissed),
             ),
           },
@@ -586,6 +586,13 @@ class _MoveIntent extends Intent {
   const _MoveIntent(this.delta);
 
   final int delta;
+}
+
+/// Tab: closes the list without picking, the way a native select does.
+/// Not Flutter's `NextFocusIntent`, which means "move focus", not
+/// "dismiss".
+class _TabOutIntent extends Intent {
+  const _TabOutIntent();
 }
 
 /// Moves the active option to the first or the [last] enabled one.
