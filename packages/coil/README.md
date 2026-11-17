@@ -141,7 +141,7 @@ instant, fades stay.
 |---|---|---|
 | `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight, press collapse |
 | `standard` / `standardExit` | 180 ms / 140 ms, no bounce | tab pill, switch thumb, merge/split, popovers |
-| `gentle` / `gentleExit` | 340 ms bounce 0.1 / 260 ms | sheets, dialogs |
+| `gentle` / `gentleExit` | 340 ms bounce 0.1 / 260 ms | dialogs; sheets use `gentle` both ways |
 | `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity, color, check drawing |
 
 ## Shapes

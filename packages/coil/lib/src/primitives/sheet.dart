@@ -14,14 +14,16 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 ///
 /// `context` is read once, while the route is created, for:
 ///
-/// - the motion: in on the theme's `gentle`, out on `gentleExit` (a drag
-///   that dismisses hands its fling velocity to it);
-/// - the scrim, [CoilSheetPanel.barrierColorOf];
+/// - the motion: the theme's `gentle`, both in and out (a drag that
+///   dismisses hands its fling velocity to it);
 /// - the fill: the surface two levels above the one `context` sits on
 ///   (`CoilSurface.popoverOffset`), which [child] sits on too;
 /// - the top corners: the glass sheet's 36 for the `rounded` and `pill`
 ///   shapes, scaled down with tighter shapes;
 /// - the themes [child] inherits.
+///
+/// The scrim is the glass sheet's own: the first sheet blurs the page and
+/// dims it with black at 15%, in light and dark mode alike.
 ///
 /// A sheet opened from another sheet stacks on it: the one below shrinks
 /// back and only the first blurs and dims the page. The sheet rides above
@@ -44,8 +46,6 @@ class CoilSheetRoute<T> extends StupidSimpleGlassSheetRoute<T> {
     super.settings,
   }) : super(
          motion: CoilTheme.motionOf(context, override: motion).gentle,
-         exitMotion: CoilTheme.motionOf(context, override: motion).gentleExit,
-         barrierColor: CoilSheetPanel.barrierColorOf(context),
          backgroundColor: CoilTheme.of(context).colors.surface(
            CoilSurface.levelOf(context) + CoilSurface.popoverOffset,
          ),
@@ -143,13 +143,17 @@ class CoilSheetPanel extends StatefulWidget {
   /// The contents, usually a list.
   final Widget child;
 
-  /// The scrim behind sheets at [context]: black at 40% in light mode and
-  /// 50% in dark mode (a light scrim over a dark UI would read as a flash,
-  /// not a dimming).
+  /// The scrim behind coil's unblurred modal surfaces at [context]
+  /// (centered and drawer dialogs, `CoilDrawer`): black at 20% in light
+  /// mode and 30% in dark mode, where black dims less.
+  ///
+  /// Sheets don't use it: a [CoilSheetRoute] keeps the glass sheet's own
+  /// scrim, black at 15% over a blur, and without the blur a dialog needs
+  /// a little more to stand off the page.
   static Color barrierColorOf(BuildContext context) =>
       CoilTheme.of(context).brightness == Brightness.dark
-      ? const Color(0x80000000)
-      : const Color(0x66000000);
+      ? const Color.from(alpha: 0.3, red: 0, green: 0, blue: 0)
+      : const Color.from(alpha: 0.2, red: 0, green: 0, blue: 0);
 
   @override
   State<CoilSheetPanel> createState() => _CoilSheetPanelState();

@@ -64,9 +64,11 @@ Future<T?> showCoilModal<T>({
 /// `context` is read once, while the route is created: it picks the
 /// presentation when `presentation` is null (a sheet on the touch tier in a
 /// compact window, centered elsewhere), the motion tokens, the scrim color
-/// and the themes the modal inherits. Modals spring in on the theme's
-/// `gentle` token and out on `gentleExit`. With `dismissible` false, the
-/// scrim, Esc, back and dragging don't close it.
+/// and the themes the modal inherits. Centered and drawer modals spring in
+/// on the theme's `gentle` token and out on `gentleExit` over
+/// [CoilSheetPanel.barrierColorOf]; a sheet is a [CoilSheetRoute], on
+/// `gentle` both ways over the glass sheet's blur and scrim. With
+/// `dismissible` false, the scrim, Esc, back and dragging don't close it.
 sealed class CoilModalRoute<T> implements PopupRoute<T> {
   /// Creates the route for [presentation], or for the presentation that
   /// fits [context] when it's null.

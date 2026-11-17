@@ -139,7 +139,7 @@ current state.
   always works. `drawerDrag: .anywhere` overrides this.
 - **Look** lives in `CoilSidebarStyle`: `drawerCornerRadius` (null follows
   the screen), `drawerFallbackCornerRadius` (square), `drawerScale` (1),
-  `drawerScrimColor` (the barrier at 40 %), `drawerShadows` (step 8). The
+  `drawerScrimColor` (the 20 % / 30 % barrier at 40 %), `drawerShadows` (step 8). The
   springs are the `drawer` track.
 - **Closing and focus.** A press on the page, Escape, system back (a
   `LocalHistoryEntry`, like `Scaffold`), a drag and a pick in a menu close

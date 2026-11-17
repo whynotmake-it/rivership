@@ -98,9 +98,9 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
   /// stays fully revealed; 0.94 is a subtle depth cue.
   final double? drawerScale;
 
-  /// The scrim over the page once the drawer is fully open. Null is the
-  /// theme's barrier color, at 40 % strength when the drawer is revealed
-  /// from behind.
+  /// The scrim over the page once the drawer is fully open. Null is
+  /// `CoilSheetPanel.barrierColorOf`, at 40 % strength when the drawer is
+  /// revealed from behind.
   final Color? drawerScrimColor;
 
   /// The page's shadow while the drawer pushes it aside. Null is the

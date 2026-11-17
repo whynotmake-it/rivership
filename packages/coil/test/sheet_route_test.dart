@@ -68,9 +68,13 @@ void main() {
     final route = await _push(tester);
     final theme = CoilTheme.of(_home);
     final motion = CoilTheme.motionOf(_home);
-    expect(route.motion, motion.gentle);
-    expect(route.exitMotion, motion.gentleExit);
-    expect(route.barrierColor, CoilSheetPanel.barrierColorOf(_home));
+    expect(route.motion, motion.gentle, reason: 'in and out alike');
+    expect(
+      route.barrierColor,
+      StupidSimpleGlassSheetRoute<void>(child: const SizedBox()).barrierColor,
+      reason: "the glass sheet's own scrim",
+    );
+    expect(route.blurBehindBarrier, isTrue);
     expect(route.backgroundColor, theme.colors.surface(1 + 2));
     expect(
       (route.shape as RoundedSuperellipseBorder).borderRadius,
@@ -79,6 +83,27 @@ void main() {
     // Content inside sits on the sheet's level.
     expect(CoilSurface.levelOf(tester.element(find.byKey(_content))), 3);
   });
+
+  for (final theme in [CoilThemeData.light, CoilThemeData.dark]) {
+    testWidgets('${theme.brightness.name}: dialogs, without the blur, dim a '
+        'little more than sheets', (tester) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(_app(theme: theme));
+      final sheet = (await _push(tester)).barrierColor!;
+      Navigator.of(_home).pop();
+      await tester.pumpAndSettle();
+      final dialog = CoilModalRoute<void>(
+        context: _home,
+        presentation: CoilModalPresentation.centered,
+        builder: (_) => const SizedBox(),
+      );
+      final scrim = CoilSheetPanel.barrierColorOf(_home);
+      expect(dialog.barrierColor, scrim);
+      expect(sheet.a, closeTo(0.15, 0.001));
+      expect(scrim.a, greaterThan(sheet.a));
+      expect(scrim.a, theme.brightness == Brightness.dark ? 0.3 : 0.2);
+    });
+  }
 
   testWidgets('the corners follow tighter shape families', (tester) async {
     useScreen(tester, TestScreen.phone);

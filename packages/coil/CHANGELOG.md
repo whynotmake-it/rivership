@@ -7,7 +7,9 @@ Milestone M0, unreleased.
   `barrierDismissible`, `barrierLabel`, `settings`) instead of `motion`,
   `barrierColor` and `capturedThemes`, and reads them from the theme.
   Sheets sit flush with the bottom edge, blur the page, stack on each
-  other, ride on the keyboard and exit on `gentleExit`.
+  other, ride on the keyboard and move on `gentle` both ways. They keep
+  the glass sheet's scrim (black 15 %); dialogs and drawers, unblurred,
+  dim with black 20 % (light) / 30 % (dark) instead of 40 % / 50 %.
   `CoilSheetPanel` lost its own surface, margins and max width
   (`CoilSheetPanel.maxWidth` is now `CoilSheetRoute.maxWidth`).
 - The phone sidebar is revealed from behind the page. Below its
