@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,12 +91,18 @@ void main() {
         final result = await Process.run(
           'ffmpeg',
           [
-            '-v', 'error',
-            '-c:v', 'libvpx-vp9',
-            '-i', file.path,
-            '-frames:v', '1',
-            '-f', 'rawvideo',
-            '-pix_fmt', 'rgba',
+            '-v',
+            'error',
+            '-c:v',
+            'libvpx-vp9',
+            '-i',
+            file.path,
+            '-frames:v',
+            '1',
+            '-f',
+            'rawvideo',
+            '-pix_fmt',
+            'rgba',
             '-',
           ],
           stdoutEncoding: null,
@@ -215,64 +223,216 @@ void main() {
 
       await expectLater(recording.stop(), throwsA(isA<SnapVideoException>()));
     });
+
+    testWidgets('streams exact off-grid samples, coalescing and finalHold', (
+      tester,
+    ) async {
+      _smallView(tester);
+      final recording = await snap.recordVideo(
+        name: 'unit_resampling',
+        settings: const SnapVideoSettings(
+          frameRate: 30,
+          finalHold: Duration(milliseconds: 100),
+        ),
+      );
+      await tester.pumpWidget(const ColoredBox(color: Colors.red));
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.pumpWidget(const ColoredBox(color: Colors.green));
+      await tester.pump(const Duration(milliseconds: 45));
+      await tester.pumpWidget(const ColoredBox(color: Colors.blue));
+      await tester.pumpWidget(const ColoredBox(color: Colors.yellow));
+      await tester.pump(const Duration(milliseconds: 35));
+      final file = await recording.stop();
+      final pixels = await _decode(tester, file);
+      const stride = 32 * 24 * 4;
+      expect(pixels!.length, 6 * stride);
+      final colors = [
+        Colors.red,
+        Colors.green,
+        Colors.yellow,
+        Colors.yellow,
+        Colors.yellow,
+        Colors.yellow,
+      ];
+      for (var frame = 0; frame < colors.length; frame++) {
+        final pixel = pixels.sublist(frame * stride, frame * stride + 3);
+        final argb = colors[frame].toARGB32();
+        expect(pixel[0], closeTo((argb >> 16) & 255, 4));
+        expect(pixel[1], closeTo((argb >> 8) & 255, 4));
+        expect(pixel[2], closeTo(argb & 255, 4));
+      }
+    });
+
+    testWidgets('retains partial alpha, not premultiplied colors', (
+      tester,
+    ) async {
+      _smallView(tester);
+      final recording = await snap.recordVideo(
+        name: 'unit_straight_alpha',
+        settings: const SnapVideoSettings(encoding: VideoEncoding.vp9()),
+      );
+      await tester.pumpWidget(const ColoredBox(color: Color(0x80FF0000)));
+      final pixels = await _decode(tester, await recording.stop(), alpha: true);
+      expect(pixels![0], greaterThan(245));
+      expect(pixels[1], lessThan(5));
+      expect(pixels[2], lessThan(5));
+      expect(pixels[3], closeTo(128, 2));
+    });
+
+    for (final limit in ['frames', 'duration', 'bytes']) {
+      testWidgets('truncates and retains metadata at the $limit limit', (
+        tester,
+      ) async {
+        _smallView(tester);
+        final recording = await snap.recordVideo(
+          name: 'unit_limit_$limit',
+          settings: SnapVideoSettings(
+            maxCapturedFrames: limit == 'frames' ? 1 : 20000,
+            maxSimulatedDuration: limit == 'duration'
+                ? const Duration(milliseconds: 10)
+                : const Duration(minutes: 1),
+            maxSpoolBytes: limit == 'bytes' ? 1 : 1 << 30,
+          ),
+        );
+        await tester.pumpWidget(const ColoredBox(color: Colors.red));
+        await tester.pump(const Duration(milliseconds: 20));
+        await tester.pumpWidget(const ColoredBox(color: Colors.blue));
+        final file = await recording.stop();
+        expect(recording.wasTruncated, isTrue);
+        expect(file.path, endsWith('.truncated.mp4'));
+        expect(file.existsSync(), isTrue);
+        final manifest = _manifest('unit_limit_$limit');
+        expect(manifest['truncated'], isTrue);
+        expect(manifest['frames'], isNotEmpty);
+        expect(manifest['version'], 2);
+      });
+    }
+
+    for (final policy in VideoFailurePolicy.values) {
+      testWidgets('handles encoder failure with $policy', (tester) async {
+        _smallView(tester);
+        final name = 'unit_encoder_failure_${policy.name}';
+        final recording = await snap.recordVideo(
+          name: name,
+          settings: SnapVideoSettings(
+            onFailure: policy,
+            encoding: const VideoEncoding.h264(preset: 'invalid-preset'),
+          ),
+        );
+        await tester.pumpWidget(const ColoredBox(color: Colors.red));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(const ColoredBox(color: Colors.blue));
+        if (policy == VideoFailurePolicy.fail) {
+          await expectLater(
+            recording.stop(),
+            throwsA(isA<SnapVideoException>()),
+          );
+        } else {
+          await recording.stop();
+        }
+        expect(_manifest(name)['version'], 2);
+      });
+    }
+
+    File? automaticOutput;
+    testWidgets('automatically finalizes outside the FakeAsync test body', (
+      tester,
+    ) async {
+      _smallView(tester);
+      await snap.recordVideo(name: 'unit_automatic');
+      await tester.pumpWidget(const ColoredBox(color: Colors.red));
+      automaticOutput = File(
+        '${Directory.current.path}/test/.snaptest/'
+        'unit_automatic.mp4',
+      );
+    });
+    test('automatic finalization published a video', () {
+      expect(automaticOutput!.existsSync(), isTrue);
+      expect(automaticOutput!.lengthSync(), greaterThan(0));
+    });
+
+    testWidgets('automatic encoder failures honor the warning policy', (
+      tester,
+    ) async {
+      _smallView(tester);
+      await snap.recordVideo(
+        name: 'unit_automatic_warning',
+        settings: const SnapVideoSettings(
+          onFailure: VideoFailurePolicy.warn,
+          encoding: VideoEncoding.h264(preset: 'invalid-preset'),
+        ),
+      );
+      await tester.pumpWidget(const ColoredBox(color: Colors.red));
+    });
   });
 
   group('demo app recordings', () {
-    testWidgets(
-      'demo video — real app, device frame, smooth 30fps',
-      (tester) async {
-        final recording = await snap.recordVideo(
-          name: 'demo_app_framed',
-          settings: const SnapVideoSettings(
-            timing: VideoTiming.smooth,
-            includeDeviceFrame: true,
-            showPointers: true,
-            finalHold: Duration(milliseconds: 400),
-          ),
-        );
+    for (final rendered in [false, true]) {
+      testWidgets(
+        'demo video — real app, device frame, rendered: $rendered',
+        (tester) async {
+          final recording = await snap.recordVideo(
+            name: rendered ? 'demo_shadows_and_taps' : 'demo_app_framed',
+            settings: SnapVideoSettings(
+              frameRate: rendered ? 30 : 60,
+              renderShadows: rendered,
+              minimumPointerDuration: rendered
+                  ? const Duration(milliseconds: 100)
+                  : Duration.zero,
+              timing: VideoTiming.smooth,
+              includeDeviceFrame: true,
+              showPointers: true,
+              finalHold: const Duration(milliseconds: 400),
+            ),
+          );
 
-        await tester.pumpWidget(const _DemoFeedApp());
-        await tester.pump(const Duration(milliseconds: 800));
+          await tester.pumpWidget(const _DemoFeedApp());
+          await tester.pump(const Duration(milliseconds: 800));
 
-        // Open the first card.
-        await tester.tap(find.byKey(const ValueKey('feed-card-0')));
-        await tester.pump(const Duration(seconds: 1));
+          // Open the first card.
+          await tester.tap(find.byKey(const ValueKey('feed-card-0')));
+          await tester.pump(const Duration(seconds: 1));
 
-        // Back to the feed.
-        await tester.pageBack();
-        await tester.pump(const Duration(milliseconds: 800));
+          // Back to the feed.
+          await tester.pageBack();
+          await tester.pump(const Duration(milliseconds: 800));
 
-        // Scroll the feed with real gestures.
-        await tester.fling(find.byType(ListView), const Offset(0, -400), 900);
-        await tester.pump(const Duration(milliseconds: 800));
-        await tester.fling(find.byType(ListView), const Offset(0, -600), 2000);
-        await tester.pump(const Duration(seconds: 1));
+          // Scroll the feed with real gestures.
+          await tester.fling(find.byType(ListView), const Offset(0, -400), 900);
+          await tester.pump(const Duration(milliseconds: 800));
+          await tester.fling(
+            find.byType(ListView),
+            const Offset(0, -600),
+            2000,
+          );
+          await tester.pump(const Duration(seconds: 1));
 
-        // Scroll back to the top.
-        await tester.fling(find.byType(ListView), const Offset(0, 600), 3000);
-        await tester.pump(const Duration(seconds: 1));
+          // Scroll back to the top.
+          await tester.fling(find.byType(ListView), const Offset(0, 600), 3000);
+          await tester.pump(const Duration(seconds: 1));
 
-        // Open the modal sheet and drag it down with a real multi-step
-        // gesture (a single moveBy would teleport the sheet in one frame).
-        await tester.tap(find.byType(FloatingActionButton));
-        await tester.pump(const Duration(seconds: 1));
-        final sheetDrag = await tester.startGesture(
-          tester.getCenter(find.text('Drag me down')),
-        );
-        for (var i = 0; i < 12; i++) {
-          await sheetDrag.moveBy(const Offset(0, 30));
-          await tester.pump(const Duration(milliseconds: 16));
-        }
-        await sheetDrag.up();
-        await tester.pump(const Duration(seconds: 1));
+          // Open the modal sheet and drag it down with a real multi-step
+          // gesture (a single moveBy would teleport the sheet in one frame).
+          await tester.tap(find.byType(FloatingActionButton));
+          await tester.pump(const Duration(seconds: 1));
+          final sheetDrag = await tester.startGesture(
+            tester.getCenter(find.text('Drag me down')),
+          );
+          for (var i = 0; i < 12; i++) {
+            await sheetDrag.moveBy(const Offset(0, 30));
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          await sheetDrag.up();
+          await tester.pump(const Duration(seconds: 1));
 
-        final file = await recording.stop();
-        expect(file.existsSync(), isTrue);
-        // ignore: avoid_print
-        print('Demo video (app, framed): ${file.path}');
-      },
-      variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
-    );
+          final file = await recording.stop();
+          expect(file.existsSync(), isTrue);
+          // ignore: avoid_print
+          print('Demo video (app, framed): ${file.path}');
+        },
+        variant: TestDevicesVariant({Devices.ios.iPhone16Pro}),
+      );
+    }
 
     testWidgets(
       'demo video — real app, device frame, landscape 24fps observed',
@@ -366,6 +526,48 @@ void main() {
   });
 }
 
+void _smallView(WidgetTester tester) {
+  tester.view
+    ..physicalSize = const Size(32, 24)
+    ..devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
+Future<Uint8List?> _decode(
+  WidgetTester tester,
+  File file, {
+  bool alpha = false,
+}) => tester.runAsync(() async {
+  final result = await Process.run('ffmpeg', [
+    '-v',
+    'error',
+    if (alpha) ...['-c:v', 'libvpx-vp9'],
+    '-i',
+    file.path,
+    '-f',
+    'rawvideo',
+    '-pix_fmt',
+    'rgba',
+    '-',
+  ], stdoutEncoding: null);
+  if (result.exitCode != 0) throw StateError('${result.stderr}');
+  return result.stdout as Uint8List;
+});
+
+Map<String, dynamic> _manifest(String name) {
+  final directory =
+      Directory.systemTemp
+          .listSync()
+          .whereType<Directory>()
+          .where((d) => d.path.contains('snaptest_video_spool_${name}_pid$pid'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+  return jsonDecode(
+        File('${directory.last.path}/manifest.json').readAsStringSync(),
+      )
+      as Map<String, dynamic>;
+}
+
 /// A deterministic demo scene: a circle travelling across a dark backdrop
 /// with a progress bar and a frame counter, driven by [progress].
 class _DemoScene extends StatelessWidget {
@@ -380,44 +582,44 @@ class _DemoScene extends StatelessWidget {
       child: ColoredBox(
         color: const Color(0xFF0D1117),
         child: Stack(
-        children: [
-          Align(
-            alignment: Alignment(2 * progress - 1, 0),
-            child: Container(
-              width: 96,
-              height: 96,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF58A6FF), Color(0xFFBC8CFF)],
+          children: [
+            Align(
+              alignment: Alignment(2 * progress - 1, 0),
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF58A6FF), Color(0xFFBC8CFF)],
+                  ),
                 ),
               ),
             ),
-          ),
-          Align(
-            alignment: const Alignment(0, 0.8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 80),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: const Color(0xFF30363D),
-                color: const Color(0xFF58A6FF),
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(4),
+            Align(
+              alignment: const Alignment(0, 0.8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 80),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: const Color(0xFF30363D),
+                  color: const Color(0xFF58A6FF),
+                  minHeight: 8,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
-          ),
-          Align(
-            alignment: const Alignment(0, -0.8),
-            child: Text(
-              'snaptest video — ${(progress * 100).round()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                decoration: TextDecoration.none,
+            Align(
+              alignment: const Alignment(0, -0.8),
+              child: Text(
+                'snaptest video — ${(progress * 100).round()}%',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  decoration: TextDecoration.none,
+                ),
               ),
             ),
-          ),
           ],
         ),
       ),

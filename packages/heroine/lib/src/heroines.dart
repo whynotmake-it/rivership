@@ -183,12 +183,22 @@ class HeroineController extends NavigatorObserver {
     } else {
       // Otherwise, delay measuring until the end of the next frame to allow
       // the 'to' route to build and layout.
+      // Flutter's HeroController already stages the route. Doing it twice
+      // resets offstage because an offstage route's animation reads as 1.0.
+      final hasHeroController = navigator!.widget.observers
+              .any((observer) => observer is HeroController) ||
+          navigator!.context
+                  .getInheritedWidgetOfExactType<HeroControllerScope>()
+                  ?.controller !=
+              null;
+      if (!hasHeroController) {
+        toRoute.offstage = toRoute.animation!.value == 0.0;
+      }
       WidgetsBinding.instance.addPostFrameCallback(
         (Duration value) {
           if (fromRoute.navigator == null || toRoute.navigator == null) {
             return;
           }
-          toRoute.offstage = toRoute.animation!.value == 0.0;
           _startHeroTransition(
             fromRoute,
             toRoute,

@@ -1,3 +1,25 @@
+## 1.0.0-dev.6
+
+ - **PERF**(snaptest): stream raw video frames without PNG spooling (#340).
+
+    * perf(snaptest): stream raw video frames with bounded backpressure
+    
+    * feat(snaptest): record real shadows and visible quick taps
+    
+    ---------
+
+ - **FIX**(snaptest): constrain characters for publish validation (#342).
+ - **FEAT**(snaptest): support font family aliases (#341).
+
+    * feat(snaptest): register reusable font family aliases
+    
+    * perf(snaptest): retain the no-op font-loading fast path
+    
+    * test(snaptest): keep parallel setup from deleting active artifacts
+    
+    ---------
+
+
 ## 1.0.0-dev.5
 
  - **FEAT**: record widget-test interactions as videos.

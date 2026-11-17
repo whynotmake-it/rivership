@@ -354,8 +354,14 @@ class Snap {
   ///
   /// Unlike [call], which performs extra pumps and changes the test
   /// environment, recording passively observes the frames your test already
-  /// paints — it never calls `snap()` internally and never schedules frames
-  /// of its own.
+  /// paints — it never calls `snap()` internally or advances time of its own.
+  /// Opting into [SnapVideoSettings.renderShadows] repaints the current scene.
+  ///
+  /// An already-painted scene is captured immediately, without another pump.
+  /// Otherwise recording waits for the first real painted scene. With no
+  /// subsequent elapsed time and no [SnapVideoSettings.finalHold], an existing
+  /// scene produces one video frame and a diagnostic. Stopping before any
+  /// scene is painted fails with a no-frames error.
   ///
   /// Recording requires [SnaptestWidgetsFlutterBinding] to be installed
   /// before any other binding use, e.g. in `flutter_test_config.dart`:
@@ -481,7 +487,7 @@ Future<File> _saveScreenshot({
     if (goldenFileComparator case LocalFileComparator(:final basedir)) {
       path = goldenFileComparator
           .getTestUri(
-            basedir.resolve(join(pathPrefix, fileName)),
+            basedir.resolveUri(Uri.file(join(pathPrefix, fileName))),
             null,
           )
           .toFilePath();

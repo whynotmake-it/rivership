@@ -12,11 +12,11 @@ library;
 import 'dart:ui' as ui;
 
 import 'package:device_frame/device_frame.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meta/meta.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
 import 'package:snaptest/src/video/video_settings.dart';
 
@@ -261,13 +261,26 @@ Future<ui.Image> drawPointerIndicators(
   Iterable<Offset> logicalPositions, {
   PointerIndicatorPainter? painter,
 }) async {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder)..drawImage(image, Offset.zero, Paint());
+  _paintPointerIndicators(canvas, captured, logicalPositions, painter: painter);
+  final picture = recorder.endRecording();
+  final output = await picture.toImage(image.width, image.height);
+  picture.dispose();
+  image.dispose();
+  return output;
+}
+
+void _paintPointerIndicators(
+  Canvas canvas,
+  CapturedImage captured,
+  Iterable<Offset> logicalPositions, {
+  PointerIndicatorPainter? painter,
+}) {
   final scaleX =
       captured.imageContentBounds.width / captured.logicalBounds.width;
   final scaleY =
       captured.imageContentBounds.height / captured.logicalBounds.height;
-
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder)..drawImage(image, Offset.zero, Paint());
 
   const logicalRadius = 14.0;
   final ringPaint = Paint()
@@ -293,12 +306,6 @@ Future<ui.Image> drawPointerIndicators(
       _drawTouchIndicator(canvas, center, radius, fillPaint, ringPaint);
     }
   }
-
-  final picture = recorder.endRecording();
-  final output = await picture.toImage(image.width, image.height);
-  picture.dispose();
-  image.dispose();
-  return output;
 }
 
 void _drawTouchIndicator(
@@ -329,6 +336,30 @@ Future<FramedImage> wrapImageWithDeviceFrame(
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
 
+  final (deviceFrameSize, screenPath) = _paintDeviceFrame(
+    canvas,
+    device,
+    orientation,
+  );
+  final screenRect = screenPath.getBounds();
+  canvas
+    ..clipPath(screenPath)
+    ..drawImageRect(image, imageBounds(image), screenRect, Paint());
+  final picture = recorder.endRecording();
+  final framedImage = await picture.toImage(
+    deviceFrameSize.width.round(),
+    deviceFrameSize.height.round(),
+  );
+  picture.dispose();
+  image.dispose();
+  return FramedImage(image: framedImage, screenBounds: screenRect);
+}
+
+(Size, Path) _paintDeviceFrame(
+  Canvas canvas,
+  DeviceInfo device,
+  Orientation orientation,
+) {
   // Get frame size and screen path based on orientation
   Size deviceFrameSize;
   Path screenPath;
@@ -373,27 +404,247 @@ Future<FramedImage> wrapImageWithDeviceFrame(
   // Restore canvas state
   canvas.restore();
 
-  // Calculate the screen area within the device frame
-  final screenRect = screenPath.getBounds();
+  return (deviceFrameSize, screenPath);
+}
 
-  canvas
-    ..clipPath(screenPath)
-    // Draw the captured image in the screen area
-    ..drawImageRect(
-      image,
-      Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
-      screenRect,
-      Paint(),
-    );
+/// A recording-scoped compositor and conservative retained-scene cache.
+@internal
+class VideoFrameCapture {
+  /// Creates a compositor with fixed output settings.
+  VideoFrameCapture(this.settings, this.crop);
 
-  // Convert to image
-  final picture = recorder.endRecording();
-  final framedImage = await picture.toImage(
-    deviceFrameSize.width.round(),
-    deviceFrameSize.height.round(),
+  /// Fixed composition settings for the recording.
+  final SnapVideoSettings settings;
+
+  /// The optional logical capture rectangle.
+  final Rect? crop;
+  OffsetLayer? _lastLayer;
+  ui.EngineLayer? _lastEngineLayer;
+  Rect? _lastBounds;
+  Rect? _lastPaintBounds;
+  DeviceInfo? _device;
+  Orientation? _orientation;
+  late bool _deviceFrameDirty = true;
+  late List<Offset> _pointers = [];
+  ui.Picture? _devicePicture;
+  CapturedImage? _scene;
+  late Path _screenPath;
+  late Size _deviceSize;
+
+  /// Returns null only when the complete captured scene is unchanged.
+  Future<ui.Image?> capture(
+    Element element, {
+    required DeviceInfo? device,
+    required Orientation orientation,
+    required Iterable<Offset> pointers,
+  }) async {
+    var renderObject = element.renderObject!;
+    while (!renderObject.isRepaintBoundary) {
+      renderObject = renderObject.parent!;
+    }
+    // ignore: invalid_use_of_protected_member
+    final layer = renderObject.layer! as OffsetLayer;
+    final bounds = element.widget is View
+        ? viewLogicalBounds()
+        : MatrixUtils.transformRect(
+            renderObject.getTransformTo(null),
+            renderObject.paintBounds,
+          );
+    final positions = pointers.toList();
+    final framedDevice = settings.includeDeviceFrame ? device : null;
+    layer.updateSubtreeNeedsAddToScene();
+    if (identical(layer, _lastLayer) &&
+        // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+        identical(layer.engineLayer, _lastEngineLayer) &&
+        // ignore: invalid_use_of_visible_for_testing_member
+        layer.debugSubtreeNeedsAddToScene == false &&
+        bounds == _lastBounds &&
+        renderObject.paintBounds == _lastPaintBounds &&
+        framedDevice == _device &&
+        orientation == _orientation &&
+        !_deviceFrameDirty &&
+        listEquals(positions, _pointers) &&
+        settings.pointerIndicator == null &&
+        !_hasExternalContent(layer)) {
+      return null;
+    }
+    if (_deviceFrameDirty ||
+        framedDevice != _device ||
+        orientation != _orientation) {
+      _device?.framePainter.removeListener(_markDeviceFrameDirty);
+      _devicePicture?.dispose();
+      _devicePicture = null;
+      _device = framedDevice;
+      _orientation = orientation;
+      _deviceFrameDirty = false;
+      if (framedDevice != null) {
+        framedDevice.framePainter.addListener(_markDeviceFrameDirty);
+        final recorder = ui.PictureRecorder();
+        final (Size, Path) geometry;
+        try {
+          geometry = _paintDeviceFrame(
+            Canvas(recorder),
+            framedDevice,
+            orientation,
+          );
+        } catch (_) {
+          recorder.endRecording().dispose();
+          rethrow;
+        }
+        _devicePicture = recorder.endRecording();
+        _deviceSize = geometry.$1;
+        _screenPath = geometry.$2;
+      }
+    }
+    final captured = await captureElementImage(element);
+    if (settings.showPointers || settings.pointerIndicator != null) {
+      _scene?.image.dispose();
+      _scene = CapturedImage(
+        image: captured.image.clone(),
+        logicalBounds: captured.logicalBounds,
+        imageContentBounds: captured.imageContentBounds,
+      );
+    }
+    _lastLayer = layer;
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    _lastEngineLayer = layer.engineLayer;
+    _lastBounds = bounds;
+    _lastPaintBounds = renderObject.paintBounds;
+    _pointers = positions;
+    return _compose(captured, positions);
+  }
+
+  /// Repaints only overlays on the previous painted scene, not a future scene.
+  Future<ui.Image> captureOverlay(List<Offset> pointers) => _compose(
+    CapturedImage(
+      image: _scene!.image.clone(),
+      logicalBounds: _scene!.logicalBounds,
+      imageContentBounds: _scene!.imageContentBounds,
+    ),
+    pointers,
   );
 
-  picture.dispose();
-  image.dispose();
-  return FramedImage(image: framedImage, screenBounds: screenRect);
+  void _markDeviceFrameDirty() => _deviceFrameDirty = true;
+
+  bool _hasExternalContent(Layer layer) {
+    if (layer is TextureLayer ||
+        layer is PerformanceOverlayLayer ||
+        layer is PlatformViewLayer) {
+      return true;
+    }
+    if (layer is ContainerLayer) {
+      var child = layer.firstChild;
+      while (child != null) {
+        if (_hasExternalContent(child)) return true;
+        child = child.nextSibling;
+      }
+    }
+    return false;
+  }
+
+  Future<ui.Image> _compose(
+    CapturedImage captured,
+    List<Offset> positions,
+  ) async {
+    final image = captured.image;
+    final framed = _devicePicture != null;
+    final content = framed ? _screenPath.getBounds() : imageBounds(image);
+    final size = framed ? _deviceSize : imageBounds(image).size;
+    final mapping = CapturedImage(
+      image: image,
+      logicalBounds: captured.logicalBounds,
+      imageContentBounds: content,
+    );
+    final background =
+        settings.backgroundColor ??
+        (settings.encoding.supportsAlpha
+            ? const Color(0x00000000)
+            : const Color(0xFFFFFFFF));
+    if (!framed &&
+        positions.isEmpty &&
+        crop == null &&
+        background.a == 0 &&
+        image.width.isEven &&
+        image.height.isEven) {
+      return image;
+    }
+    var width = size.width.round();
+    var height = size.height.round();
+    final recorder = ui.PictureRecorder();
+    ui.Picture? picture;
+    final ui.Image output;
+    try {
+      final canvas = Canvas(recorder)
+        ..save()
+        ..clipRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()))
+        ..save();
+      if (framed) {
+        canvas
+          ..drawPicture(_devicePicture!)
+          ..clipPath(_screenPath);
+      }
+      canvas
+        ..drawImageRect(image, imageBounds(image), content, Paint())
+        ..restore();
+      _paintPointerIndicators(
+        canvas,
+        mapping,
+        positions,
+        painter: settings.pointerIndicator,
+      );
+      canvas.restore();
+      if (crop == null) {
+        width += width & 1;
+        height += height & 1;
+      }
+      if (crop == null && background.a > 0) {
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+          Paint()
+            ..color = background
+            ..blendMode = BlendMode.dstOver,
+        );
+      }
+      picture = recorder.endRecording();
+      output = await picture.toImage(width, height);
+    } finally {
+      (picture ?? recorder.endRecording()).dispose();
+      image.dispose();
+    }
+    // Crop the rasterized overlays, not their vector commands: scaling
+    // vectors first would change antialiasing and pointer edge pixels.
+    if (crop != null) {
+      final cropped = await cropCapturedImage(output, crop!, mapping);
+      final paddedWidth = cropped.width + (cropped.width & 1);
+      final paddedHeight = cropped.height + (cropped.height & 1);
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder)
+        ..drawImage(cropped, Offset.zero, Paint())
+        ..drawRect(
+          Rect.fromLTWH(0, 0, paddedWidth.toDouble(), paddedHeight.toDouble()),
+          Paint()
+            ..color = background
+            ..blendMode = BlendMode.dstOver,
+        );
+      final picture = recorder.endRecording();
+      try {
+        return await picture.toImage(paddedWidth, paddedHeight);
+      } finally {
+        picture.dispose();
+        cropped.dispose();
+      }
+    }
+    return output;
+  }
+
+  /// Releases cached engine resources when recording ends.
+  void dispose() {
+    _scene?.image.dispose();
+    _scene = null;
+    _device?.framePainter.removeListener(_markDeviceFrameDirty);
+    _devicePicture?.dispose();
+    _devicePicture = null;
+    _lastLayer = null;
+    _lastEngineLayer = null;
+  }
 }

@@ -4,7 +4,7 @@ import 'package:snaptest/snaptest.dart';
 
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   SnaptestWidgetsFlutterBinding.ensureInitialized();
-  await cleanSnaps();
+  // Files run concurrently; cleanup here can delete another test's output.
   await loadFonts();
 
   return testMain();

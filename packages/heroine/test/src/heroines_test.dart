@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heroine/heroine.dart';
 
@@ -1134,6 +1135,146 @@ void main() {
             receivedDetails.first.currentRoute,
             isNot(receivedDetails.first.otherRoute),
           );
+        },
+      );
+    });
+    group('flight outliving its controlling hero', () {
+      // Source and destination need different geometry, otherwise the spring
+      // settles in a single frame and the flight ends before it can go stale.
+      Widget buildListPage() {
+        return const Scaffold(
+          body: Padding(
+            padding: EdgeInsets.only(top: 500, left: 20),
+            child: Column(
+              children: [
+                Heroine(
+                  tag: tag,
+                  motion: Motion.bouncySpring(),
+                  child: SizedBox(width: 60, height: 60),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      Widget buildDetailPage() {
+        return const Scaffold(
+          body: Column(
+            children: [
+              Heroine(
+                tag: tag,
+                continuouslyTrackTarget: true,
+                child: SizedBox(width: 400, height: 300),
+              ),
+            ],
+          ),
+        );
+      }
+
+      /// Pumps frame by frame so the spring actually animates.
+      Future<void> pumpFrames(WidgetTester tester, Duration duration) async {
+        await tester.pump();
+        const frame = Duration(milliseconds: 16);
+        for (var elapsed = Duration.zero;
+            elapsed < duration;
+            elapsed += frame) {
+          await tester.pump(frame);
+        }
+      }
+
+      Future<void> sendBackGesture(
+        WidgetTester tester,
+        String method, [
+        Map<String, Object?>? arguments,
+      ]) {
+        return tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          'flutter/backgesture',
+          const StandardMethodCodec().encodeMethodCall(
+            MethodCall(method, arguments),
+          ),
+          (_) {},
+        );
+      }
+
+      /// Replays the platform messages Android sends for a predictive back.
+      Future<void> predictiveBack(WidgetTester tester) async {
+        await sendBackGesture(tester, 'startBackGesture', {
+          'touchOffset': <double>[0, 300],
+          'progress': 0.0,
+          'swipeEdge': 0,
+        });
+        await tester.pump();
+        await sendBackGesture(tester, 'updateBackGestureProgress', {
+          'touchOffset': <double>[100, 300],
+          'progress': 0.5,
+          'swipeEdge': 0,
+        });
+        await tester.pump(const Duration(milliseconds: 16));
+        await sendBackGesture(tester, 'commitBackGesture');
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets(
+        'reopening a tag after a back gesture popped it mid-spring does '
+        'not throw',
+        (tester) async {
+          final navigatorKey = GlobalKey<NavigatorState>();
+          await tester.pumpWidget(
+            MaterialApp(
+              navigatorKey: navigatorKey,
+              navigatorObservers: [HeroineController()],
+              home: buildListPage(),
+            ),
+          );
+
+          void openDetail() => unawaited(
+                navigatorKey.currentState!.push(
+                  MaterialPageRoute<void>(builder: (_) => buildDetailPage()),
+                ),
+              );
+
+          // The route transition (300ms) is over, but the spring is still
+          // landing when the back gesture pops the route.
+          openDetail();
+          await pumpFrames(tester, const Duration(milliseconds: 480));
+          await predictiveBack(tester);
+          expect(tester.takeException(), isNull);
+
+          openDetail();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          expect(find.heroineWithTag(tag), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'reopening a tag after a back button pop mid-spring does not throw',
+        (tester) async {
+          final navigatorKey = GlobalKey<NavigatorState>();
+          await tester.pumpWidget(
+            MaterialApp(
+              navigatorKey: navigatorKey,
+              navigatorObservers: [HeroineController()],
+              home: buildListPage(),
+            ),
+          );
+
+          void openDetail() => unawaited(
+                navigatorKey.currentState!.push(
+                  MaterialPageRoute<void>(builder: (_) => buildDetailPage()),
+                ),
+              );
+
+          openDetail();
+          await pumpFrames(tester, const Duration(milliseconds: 480));
+          navigatorKey.currentState!.pop();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+
+          openDetail();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
         },
       );
     });
