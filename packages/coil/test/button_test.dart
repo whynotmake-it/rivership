@@ -8,6 +8,42 @@ import 'src/test_icons.dart';
 
 void main() {
   group('CoilButton', () {
+    testWidgets('a label too long for its room ends in an ellipsis', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: CoilTheme(
+            data: goldenLight,
+            child: Center(
+              child: SizedBox(
+                width: 120,
+                child: CoilButton(
+                  onPressed: () {},
+                  leading: const TestIcon(TestGlyph.plus),
+                  trailing: const TestIcon(TestGlyph.arrowRight),
+                  child: const Text('Update your payment method'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byType(CoilButton)).width, 120);
+      final text = tester.widget<DefaultTextStyle>(
+        find
+            .ancestor(
+              of: find.text('Update your payment method'),
+              matching: find.byType(DefaultTextStyle),
+            )
+            .first,
+      );
+      expect(text.overflow, TextOverflow.ellipsis);
+      expect(text.maxLines, 1);
+    });
+
     testWidgets('overview sheet', (tester) async {
       Widget button(
         CoilButtonVariant variant,

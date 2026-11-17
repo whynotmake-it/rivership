@@ -45,8 +45,16 @@ class ChatMessageMeta extends StatelessWidget {
         children: [
           if (time case final time?)
             // The container's label already says the time.
-            ExcludeSemantics(
-              child: DefaultTextStyle(style: style.metaStyle!, child: time),
+            // A long time ellipsizes before the actions give way.
+            Flexible(
+              child: ExcludeSemantics(
+                child: DefaultTextStyle(
+                  style: style.metaStyle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  child: time,
+                ),
+              ),
             ),
           if (actions.isNotEmpty)
             Row(

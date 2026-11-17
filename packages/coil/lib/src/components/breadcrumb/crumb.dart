@@ -1,6 +1,7 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/breadcrumb/breadcrumb_style.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -259,17 +260,19 @@ class CrumbContent extends StatelessWidget {
                 SizedBox(width: metrics.gap),
               ],
               Flexible(
-                child: ExcludeSemantics(
-                  excluding: !labelInSemantics,
-                  child: DefaultTextStyle(
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    // A truncated label is as wide as its ink, so the
-                    // separator follows it closely.
-                    textWidthBasis: TextWidthBasis.longestLine,
-                    style: style.textStyle!.copyWith(color: color),
-                    child: label,
+                child: CrumbLabelBox(
+                  child: ExcludeSemantics(
+                    excluding: !labelInSemantics,
+                    child: DefaultTextStyle(
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      // A truncated label is as wide as its ink, so the
+                      // separator follows it closely.
+                      textWidthBasis: TextWidthBasis.longestLine,
+                      style: style.textStyle!.copyWith(color: color),
+                      child: label,
+                    ),
                   ),
                 ),
               ),
@@ -292,4 +295,20 @@ class CrumbContent extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A crumb's label, which may truncate to nothing: its minimum intrinsic
+/// width is 0, so a crumb's minimum width is the part that can't shrink
+/// (padding, leading glyph, separator), which the trail never cuts into.
+class CrumbLabelBox extends SingleChildRenderObjectWidget {
+  /// Wraps a crumb's label.
+  const CrumbLabelBox({required super.child, super.key});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderLabelBox();
+}
+
+class _RenderLabelBox extends RenderProxyBox {
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
 }

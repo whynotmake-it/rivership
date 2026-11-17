@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:coil/src/foundation/option.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/hover.dart';
 import 'package:coil/src/primitives/layer.dart';
 import 'package:coil/src/primitives/roving_focus.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -244,7 +247,7 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
           color: widget.highlightColor,
           radius: widget.radius,
           child: horizontal
-              ? Row(mainAxisSize: MainAxisSize.min, children: items)
+              ? _FitRow(children: items)
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -254,4 +257,137 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
       ),
     );
   }
+}
+
+/// A row of items at their natural widths. When they don't all fit, the
+/// widest are cut to a common cap so the row fills its room (their labels
+/// ellipsize); short items keep their full width.
+class _FitRow extends MultiChildRenderObjectWidget {
+  const _FitRow({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderFitRow(textDirection: Directionality.of(context));
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderFitRow renderObject) {
+    renderObject.textDirection = Directionality.of(context);
+  }
+}
+
+class _FitRowParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderFitRow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _FitRowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _FitRowParentData> {
+  _RenderFitRow({required TextDirection textDirection})
+    // The field sits behind a setter that marks layout dirty.
+    // ignore: prefer_initializing_formals
+    : _textDirection = textDirection;
+
+  TextDirection get textDirection => _textDirection;
+  TextDirection _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _FitRowParentData) {
+      child.parentData = _FitRowParentData();
+    }
+  }
+
+  /// The widths the children get in [maxWidth].
+  List<double> _widths(double maxWidth) {
+    final children = getChildrenAsList();
+    final natural = [
+      for (final c in children) c.getMaxIntrinsicWidth(double.infinity),
+    ];
+    final total = natural.fold<double>(0, (a, b) => a + b);
+    if (!maxWidth.isFinite || total <= maxWidth) return natural;
+    final sorted = [...natural]..sort();
+    var left = maxWidth;
+    var cap = 0.0;
+    for (final (i, w) in sorted.indexed) {
+      final share = left / (sorted.length - i);
+      if (w > share) {
+        cap = share;
+        break;
+      }
+      left -= w;
+      cap = w;
+    }
+    return [for (final w in natural) math.min(w, cap)];
+  }
+
+  Size _compute(BoxConstraints constraints, ChildLayouter layoutChild) {
+    final widths = _widths(constraints.maxWidth);
+    var width = 0.0;
+    var height = 0.0;
+    for (final (i, child) in getChildrenAsList().indexed) {
+      final size = layoutChild(
+        child,
+        BoxConstraints(maxWidth: widths[i], maxHeight: constraints.maxHeight),
+      );
+      width += size.width;
+      height = math.max(height, size.height);
+    }
+    return constraints.constrain(Size(width, height));
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => getChildrenAsList().fold(
+    0,
+    (sum, c) => sum + c.getMaxIntrinsicWidth(height),
+  );
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _compute(
+    BoxConstraints(maxWidth: width),
+    ChildLayoutHelper.dryLayoutChild,
+  ).height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      computeMinIntrinsicHeight(width);
+
+  @override
+  @protected
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _compute(constraints, ChildLayoutHelper.dryLayoutChild);
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) =>
+      defaultComputeDistanceToHighestActualBaseline(baseline);
+
+  @override
+  void performLayout() {
+    size = _compute(constraints, ChildLayoutHelper.layoutChild);
+    final rtl = textDirection == TextDirection.rtl;
+    var x = rtl ? size.width : 0.0;
+    for (final child in getChildrenAsList()) {
+      final w = child.size.width;
+      if (rtl) x -= w;
+      (child.parentData! as _FitRowParentData).offset = Offset(
+        x,
+        (size.height - child.size.height) / 2,
+      );
+      if (!rtl) x += w;
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }

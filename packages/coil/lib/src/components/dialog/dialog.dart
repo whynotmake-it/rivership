@@ -161,7 +161,12 @@ class CoilDialog extends StatelessWidget {
       closeLabel: closeLabel,
       size: size,
       style: style,
-      child: Padding(padding: EdgeInsets.all(look.padding!), child: body),
+      // Content taller than the window scrolls inside the panel, as it
+      // does in the sheet.
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(look.padding!),
+        child: body,
+      ),
     );
   }
 }

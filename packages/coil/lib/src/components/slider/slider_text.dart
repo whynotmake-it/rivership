@@ -70,7 +70,12 @@ class SliderValueText extends StatelessWidget {
         style: sliderWeight(context, style.copyWith(color: color), emphasis),
         maxLines: 1,
         softWrap: false,
-        child: Row(mainAxisSize: MainAxisSize.min, children: parts),
+        // A value too wide for the row ends in an ellipsis.
+        overflow: TextOverflow.ellipsis,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [for (final part in parts) Flexible(child: part)],
+        ),
       ),
     ],
   );

@@ -175,9 +175,12 @@ class CoilKbd extends StatelessWidget {
     return Semantics(
       label: keys.join(' '),
       excludeSemantics: true,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      // Keys stay on one line while they fit; a combination wider than its
+      // room wraps between keys instead of overflowing.
+      child: Wrap(
         spacing: look.gap!,
+        runSpacing: look.gap!,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           for (final key in keys)
             ConstrainedBox(
@@ -193,6 +196,7 @@ class CoilKbd extends StatelessWidget {
                       key,
                       maxLines: 1,
                       softWrap: false,
+                      overflow: TextOverflow.ellipsis,
                       style: look.textStyle,
                     ),
                   ),

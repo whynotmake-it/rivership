@@ -153,13 +153,21 @@ class RenderCrumbTrail extends RenderBox
   /// The widths the shown children get: their natural widths if they fit,
   /// else every child wider than a common cap is cut to it, with the cap
   /// chosen so the row fills [maxWidth]. Long labels truncate first and
-  /// short ones keep their full text.
+  /// short ones keep their full text. Only the labels give way: a crumb
+  /// keeps at least its minimum width (padding, glyph, separator).
   List<double> _widths(List<RenderBox> shown, double maxWidth) {
     final natural = [for (final c in shown) _natural(c)];
     final total = natural.fold<double>(0, (a, b) => a + b);
     if (!maxWidth.isFinite || total <= maxWidth) return natural;
-    final sorted = [...natural]..sort();
-    var left = maxWidth;
+    final floors = [
+      for (final (i, c) in shown.indexed)
+        math.min(natural[i], c.getMinIntrinsicWidth(double.infinity)),
+    ];
+    final extras = [for (final (i, w) in natural.indexed) w - floors[i]];
+    final sorted = [...extras]..sort();
+    var left = math
+        .max(0, maxWidth - floors.fold<double>(0, (a, b) => a + b))
+        .toDouble();
     var cap = 0.0;
     for (final (i, w) in sorted.indexed) {
       final share = left / (sorted.length - i);
@@ -170,7 +178,9 @@ class RenderCrumbTrail extends RenderBox
       left -= w;
       cap = w;
     }
-    return [for (final w in natural) math.min(w, cap)];
+    return [
+      for (final (i, w) in extras.indexed) floors[i] + math.min(w, cap),
+    ];
   }
 
   @override
