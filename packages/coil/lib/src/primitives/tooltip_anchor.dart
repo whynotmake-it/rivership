@@ -5,6 +5,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/anchored_overlay_portal.dart';
 import 'package:coil/src/primitives/intents.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -291,7 +292,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     final bubble = ExcludeSemantics(
       child: widget.bubble(context, presence, widget.content),
     );
-    final portal = OverlayPortal.overlayChildLayoutBuilder(
+    final portal = AnchoredOverlayPortal(
       controller: _portal,
       overlayChildBuilder: (context, info) => IgnorePointer(
         child: _BubblePlacement(
@@ -499,7 +500,7 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
               ),
             ),
           );
-    return OverlayPortal.overlayChildLayoutBuilder(
+    return AnchoredOverlayPortal(
       controller: _portal,
       overlayChildBuilder: (context, info) {
         final rect = _anchorRect(info);
