@@ -557,7 +557,6 @@ class _CardState extends State<_Card> {
                 alignment: widget.anchor == CoilCardStackAnchor.bottom
                     ? Alignment.topCenter
                     : Alignment.bottomCenter,
-                filterQuality: scale == 1 ? null : FilterQuality.medium,
                 child: ExcludeFocus(
                   excluding: hidden,
                   child: ExcludeSemantics(excluding: hidden, child: child),
