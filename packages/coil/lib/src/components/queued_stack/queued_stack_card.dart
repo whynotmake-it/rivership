@@ -347,65 +347,80 @@ class _CardBodyState extends State<_CardBody> {
       },
     );
 
-    return CallbackShortcuts(
-      bindings: {
-        if (edit != null) ...{
-          const SingleActivator(LogicalKeyboardKey.enter): edit,
-          const SingleActivator(LogicalKeyboardKey.numpadEnter): edit,
-          const SingleActivator(LogicalKeyboardKey.f2): edit,
+    return Shortcuts(
+      shortcuts: {
+        if (edit != null) ...const {
+          SingleActivator(LogicalKeyboardKey.enter): _EditIntent(),
+          SingleActivator(LogicalKeyboardKey.numpadEnter): _EditIntent(),
+          SingleActivator(LogicalKeyboardKey.f2): _EditIntent(),
         },
-        if (remove != null) ...{
-          const SingleActivator(LogicalKeyboardKey.delete): remove,
-          const SingleActivator(LogicalKeyboardKey.backspace): remove,
+        if (remove != null) ...const {
+          SingleActivator(LogicalKeyboardKey.delete): _RemoveIntent(),
+          SingleActivator(LogicalKeyboardKey.backspace): _RemoveIntent(),
         },
-        if (move != null) ...{
-          const SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): () =>
-              move(1),
-          const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): () =>
-              move(-1),
+        if (move != null) ...const {
+          SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): _MoveIntent(
+            1,
+          ),
+          SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): _MoveIntent(
+            -1,
+          ),
         },
       },
-      child: Focus(
-        // Fires for the card and for a button inside it.
-        focusNode: card.focusNode,
-        onFocusChange: (focused) {
-          setState(() => _focusWithin = focused);
-          card.onFocusChange(focused);
+      child: Actions(
+        actions: {
+          _EditIntent: CallbackAction<_EditIntent>(
+            onInvoke: (_) => edit?.call(),
+          ),
+          _RemoveIntent: CallbackAction<_RemoveIntent>(
+            onInvoke: (_) => remove?.call(),
+          ),
+          _MoveIntent: CallbackAction<_MoveIntent>(
+            onInvoke: (intent) => move?.call(intent.by),
+          ),
         },
-        child: Semantics(
-          container: true,
-          label: card.semanticLabel,
-          customSemanticsActions: {
-            if (edit != null)
-              CustomSemanticsAction(label: card.labels.editLabel): edit,
-            if (remove != null && !reachable)
-              CustomSemanticsAction(label: card.labels.removeLabel): remove,
+        child: Focus(
+          // Fires for the card and for a button inside it.
+          focusNode: card.focusNode,
+          onFocusChange: (focused) {
+            setState(() => _focusWithin = focused);
+            card.onFocusChange(focused);
           },
-          child: GestureDetector(
-            onVerticalDragStart: card.onDragStart == null
-                ? null
-                : (_) => card.onDragStart!(context.size!.height),
-            onVerticalDragUpdate: card.onDragStart == null
-                ? null
-                : (details) => card.onDragUpdate(details.delta.dy),
-            onVerticalDragEnd: card.onDragStart == null
-                ? null
-                : (_) => card.onDragEnd(),
-            onVerticalDragCancel: card.onDragStart == null
-                ? null
-                : card.onDragEnd,
-            child: CoilInteractionDetector(
-              states: _states,
-              focusNode: card.focusNode,
-              onTap: card.onTap,
-              trackPress: card.onTap != null,
-              excludeFromSemantics: true,
-              cursor: card.expanded
-                  ? (card.lifted
-                        ? SystemMouseCursors.grabbing
-                        : SystemMouseCursors.grab)
-                  : MouseCursor.defer,
-              child: content,
+          child: Semantics(
+            container: true,
+            label: card.semanticLabel,
+            customSemanticsActions: {
+              if (edit != null)
+                CustomSemanticsAction(label: card.labels.editLabel): edit,
+              if (remove != null && !reachable)
+                CustomSemanticsAction(label: card.labels.removeLabel): remove,
+            },
+            child: GestureDetector(
+              onVerticalDragStart: card.onDragStart == null
+                  ? null
+                  : (_) => card.onDragStart!(context.size!.height),
+              onVerticalDragUpdate: card.onDragStart == null
+                  ? null
+                  : (details) => card.onDragUpdate(details.delta.dy),
+              onVerticalDragEnd: card.onDragStart == null
+                  ? null
+                  : (_) => card.onDragEnd(),
+              onVerticalDragCancel: card.onDragStart == null
+                  ? null
+                  : card.onDragEnd,
+              child: CoilInteractionDetector(
+                states: _states,
+                focusNode: card.focusNode,
+                onTap: card.onTap,
+                trackPress: card.onTap != null,
+                excludeFromSemantics: true,
+                cursor: card.expanded
+                    ? (card.lifted
+                          ? SystemMouseCursors.grabbing
+                          : SystemMouseCursors.grab)
+                    : MouseCursor.defer,
+                child: content,
+              ),
             ),
           ),
         ),
@@ -444,6 +459,24 @@ class _More extends StatelessWidget {
       child: Center(child: Text('+$count', style: style)),
     ),
   );
+}
+
+/// Edits the focused card: Enter or F2.
+class _EditIntent extends Intent {
+  const _EditIntent();
+}
+
+/// Removes the focused card: Delete or Backspace.
+class _RemoveIntent extends Intent {
+  const _RemoveIntent();
+}
+
+/// Moves the focused card [by] places toward the back: Alt+Up and
+/// Alt+Down.
+class _MoveIntent extends Intent {
+  const _MoveIntent(this.by);
+
+  final int by;
 }
 
 /// A card's content row: the message (first child) and, when shown, its

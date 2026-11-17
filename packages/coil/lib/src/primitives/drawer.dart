@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/screen_radius.dart';
 import 'package:coil/src/primitives/sheet.dart';
 import 'package:coil/src/primitives/surface.dart';
@@ -355,6 +356,13 @@ class _CoilDrawerState extends State<CoilDrawer>
   void _close() {
     if (widget.open != null) widget.onOpenChanged(null);
   }
+
+  /// Escape in an open panel closes it, unless the app handles
+  /// [CoilDismissIntent] above the drawer.
+  late final _dismiss = CoilDefaultAction<CoilDismissIntent>(
+    context: context,
+    onInvoke: (_) => _close(),
+  );
 
   Motion _motionToward(double target) {
     final tokens = CoilTheme.motionOf(context);
@@ -721,11 +729,16 @@ class _CoilDrawerState extends State<CoilDrawer>
       label: label,
       // Above the scope, so Escape also works while the scope itself
       // holds focus.
-      child: CallbackShortcuts(
-        bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
-        child: FocusScope(
-          node: edge == CoilDrawerEdge.start ? _startScope : _endScope,
-          child: surface,
+      child: Shortcuts(
+        shortcuts: const {
+          SingleActivator(LogicalKeyboardKey.escape): CoilDismissIntent(),
+        },
+        child: Actions(
+          actions: {CoilDismissIntent: _dismiss},
+          child: FocusScope(
+            node: edge == CoilDrawerEdge.start ? _startScope : _endScope,
+            child: surface,
+          ),
         ),
       ),
     );

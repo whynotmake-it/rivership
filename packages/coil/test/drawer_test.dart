@@ -456,6 +456,49 @@ void main() {
       expect(FocusManager.instance.primaryFocus, before);
     });
 
+    testWidgets('an app can take over Escape with CoilDismissIntent', (
+      tester,
+    ) async {
+      var overridden = 0;
+      var enabled = true;
+      await _pump(
+        tester,
+        Actions(
+          actions: {
+            CoilDismissIntent: CallbackAction<CoilDismissIntent>(
+              onInvoke: (_) => overridden++,
+            ),
+          },
+          child: StatefulBuilder(
+            builder: (context, setState) => Actions(
+              actions: {
+                if (!enabled) CoilDismissIntent: _Disabled<CoilDismissIntent>(),
+              },
+              child: const _Host(initial: CoilDrawerEdge.start),
+            ),
+          ),
+        ),
+      );
+      expect(FocusManager.instance.primaryFocus, isNotNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(overridden, 1);
+      expect(_open(tester), CoilDrawerEdge.start, reason: "the app's action");
+
+      enabled = false;
+      (tester.element(find.byType(StatefulBuilder)) as StatefulElement)
+          .markNeedsBuild();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(overridden, 1);
+      expect(
+        _open(tester),
+        isNull,
+        reason: "a disabled override leaves coil's action",
+      );
+    });
+
     testWidgets('system back closes it', (tester) async {
       await _pump(tester, const _Host(initial: CoilDrawerEdge.end));
       await tester.binding.handlePopRoute();
@@ -577,4 +620,13 @@ void main() {
       expect(pageLeft(tester), 320);
     });
   });
+}
+
+/// An action that never handles its intent.
+class _Disabled<T extends Intent> extends Action<T> {
+  @override
+  bool isEnabled(T intent) => false;
+
+  @override
+  Object? invoke(T intent) => null;
 }

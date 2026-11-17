@@ -193,73 +193,80 @@ class _ColumnState extends State<_Column> {
       decreasedValue: widget.text((widget.index - 1) % widget.count),
       onIncrease: widget.onChanged == null ? null : () => _step(1),
       onDecrease: widget.onChanged == null ? null : () => _step(-1),
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _step(-1),
-          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _step(1),
+      child: Shortcuts(
+        shortcuts: const {
+          SingleActivator(LogicalKeyboardKey.arrowUp): _StepIntent(-1),
+          SingleActivator(LogicalKeyboardKey.arrowDown): _StepIntent(1),
         },
-        child: Focus(
-          focusNode: _focus,
-          canRequestFocus: widget.onChanged != null,
-          child: ListenableBuilder(
-            listenable: _focus,
-            builder: (context, child) => DecoratedBox(
-              decoration: ShapeDecoration(
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(
-                    theme.shape.radii(metrics.tier).focusRing,
-                  ),
-                  side:
-                      _focus.hasFocus &&
-                          CoilInputModality.instance.value ==
-                              CoilModality.keyboard
-                      ? BorderSide(
-                          color: theme.focusRing.colorOf(colors),
-                          width: theme.focusRing.width,
-                        )
-                      : BorderSide.none,
-                ),
-              ),
-              child: child,
+        child: Actions(
+          actions: {
+            _StepIntent: CallbackAction<_StepIntent>(
+              onInvoke: (intent) => _step(intent.by),
             ),
-            child: SizedBox(
-              width: widget.extent * 1.5,
-              child: ExcludeSemantics(
-                child: ListWheelScrollView.useDelegate(
-                  controller: _scroll,
-                  itemExtent: widget.extent,
-                  physics: CalendarWheelPhysics(
-                    motion: CoilTheme.motionOf(
-                      context,
-                      override: widget.motion,
-                    ).standard,
+          },
+          child: Focus(
+            focusNode: _focus,
+            canRequestFocus: widget.onChanged != null,
+            child: ListenableBuilder(
+              listenable: _focus,
+              builder: (context, child) => DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(
+                      theme.shape.radii(metrics.tier).focusRing,
+                    ),
+                    side:
+                        _focus.hasFocus &&
+                            CoilInputModality.instance.value ==
+                                CoilModality.keyboard
+                        ? BorderSide(
+                            color: theme.focusRing.colorOf(colors),
+                            width: theme.focusRing.width,
+                          )
+                        : BorderSide.none,
                   ),
-                  // Nearly flat rows, as the design asks: no 3D drum.
-                  diameterRatio: 8,
-                  onSelectedItemChanged: (i) {
-                    final index = i % widget.count;
-                    if (index == widget.index) return;
-                    unawaited(
-                      CoilHaptics.play(context, CoilHapticEvent.toggle),
-                    );
-                    widget.onChanged?.call(index);
-                  },
-                  childDelegate: ListWheelChildLoopingListDelegate(
-                    children: [
-                      for (var i = 0; i < widget.count; i++)
-                        Center(
-                          child: Text(
-                            widget.text(i),
-                            maxLines: 1,
-                            softWrap: false,
-                            style: i == widget.index
-                                ? text.body.tabular.copyWith(
-                                    fontWeight: text.emphasis,
-                                  )
-                                : text.muted.body.tabular,
+                ),
+                child: child,
+              ),
+              child: SizedBox(
+                width: widget.extent * 1.5,
+                child: ExcludeSemantics(
+                  child: ListWheelScrollView.useDelegate(
+                    controller: _scroll,
+                    itemExtent: widget.extent,
+                    physics: CalendarWheelPhysics(
+                      motion: CoilTheme.motionOf(
+                        context,
+                        override: widget.motion,
+                      ).standard,
+                    ),
+                    // Nearly flat rows, as the design asks: no 3D drum.
+                    diameterRatio: 8,
+                    onSelectedItemChanged: (i) {
+                      final index = i % widget.count;
+                      if (index == widget.index) return;
+                      unawaited(
+                        CoilHaptics.play(context, CoilHapticEvent.toggle),
+                      );
+                      widget.onChanged?.call(index);
+                    },
+                    childDelegate: ListWheelChildLoopingListDelegate(
+                      children: [
+                        for (var i = 0; i < widget.count; i++)
+                          Center(
+                            child: Text(
+                              widget.text(i),
+                              maxLines: 1,
+                              softWrap: false,
+                              style: i == widget.index
+                                  ? text.body.tabular.copyWith(
+                                      fontWeight: text.emphasis,
+                                    )
+                                  : text.muted.body.tabular,
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -269,4 +276,11 @@ class _ColumnState extends State<_Column> {
       ),
     );
   }
+}
+
+/// Steps a column [by] rows: Up and Down.
+class _StepIntent extends Intent {
+  const _StepIntent(this.by);
+
+  final int by;
 }

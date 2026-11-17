@@ -465,60 +465,80 @@ class _CoilCalendarState extends State<CoilCalendar> {
         children: [
           header,
           weekdays,
-          CallbackShortcuts(
-            bindings: {
+          Shortcuts(
+            shortcuts: {
               SingleActivator(
                 rtl
                     ? LogicalKeyboardKey.arrowRight
                     : LogicalKeyboardKey.arrowLeft,
-              ): () =>
-                  _moveDays(-1),
+              ): const _DaysIntent(
+                -1,
+              ),
               SingleActivator(
                 rtl
                     ? LogicalKeyboardKey.arrowLeft
                     : LogicalKeyboardKey.arrowRight,
-              ): () =>
-                  _moveDays(1),
-              const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-                  _moveDays(-7),
-              const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-                  _moveDays(7),
-              const SingleActivator(LogicalKeyboardKey.home): () =>
-                  _moveDays(-((_current.weekday - widget.firstDayOfWeek) % 7)),
-              const SingleActivator(LogicalKeyboardKey.end): () =>
-                  _moveDays(6 - (_current.weekday - widget.firstDayOfWeek) % 7),
-              const SingleActivator(LogicalKeyboardKey.pageUp): () =>
-                  _moveMonths(-1),
-              const SingleActivator(LogicalKeyboardKey.pageDown): () =>
-                  _moveMonths(1),
-              const SingleActivator(
-                LogicalKeyboardKey.pageUp,
-                shift: true,
-              ): () =>
-                  _moveMonths(-12),
-              const SingleActivator(
-                LogicalKeyboardKey.pageDown,
-                shift: true,
-              ): () =>
-                  _moveMonths(12),
-              const SingleActivator(LogicalKeyboardKey.enter): _pickCurrent,
-              const SingleActivator(LogicalKeyboardKey.space): _pickCurrent,
+              ): const _DaysIntent(
+                1,
+              ),
+              const SingleActivator(LogicalKeyboardKey.arrowUp):
+                  const _DaysIntent(-7),
+              const SingleActivator(LogicalKeyboardKey.arrowDown):
+                  const _DaysIntent(7),
+              const SingleActivator(LogicalKeyboardKey.home):
+                  const _WeekEdgeIntent(last: false),
+              const SingleActivator(LogicalKeyboardKey.end):
+                  const _WeekEdgeIntent(last: true),
+              const SingleActivator(LogicalKeyboardKey.pageUp):
+                  const _MonthsIntent(-1),
+              const SingleActivator(LogicalKeyboardKey.pageDown):
+                  const _MonthsIntent(1),
+              const SingleActivator(LogicalKeyboardKey.pageUp, shift: true):
+                  const _MonthsIntent(-12),
+              const SingleActivator(LogicalKeyboardKey.pageDown, shift: true):
+                  const _MonthsIntent(12),
+              const SingleActivator(LogicalKeyboardKey.enter):
+                  const ActivateIntent(),
+              const SingleActivator(LogicalKeyboardKey.space):
+                  const ActivateIntent(),
             },
-            child: Focus(
-              focusNode: _focus,
-              autofocus: widget.autofocus,
-              canRequestFocus: widget.onSelected != null,
-              onFocusChange: (focused) {
-                // The ring shows where the keyboard is; it starts on the
-                // selected day.
-                if (focused &&
-                    _active.index == null &&
-                    CoilInputModality.instance.value == CoilModality.keyboard) {
-                  _moveTo(_current);
-                }
-                setState(() {});
+            child: Actions(
+              actions: {
+                _DaysIntent: CallbackAction<_DaysIntent>(
+                  onInvoke: (intent) => _moveDays(intent.days),
+                ),
+                _WeekEdgeIntent: CallbackAction<_WeekEdgeIntent>(
+                  onInvoke: (intent) {
+                    final fromStart =
+                        (_current.weekday - widget.firstDayOfWeek) % 7;
+                    _moveDays(intent.last ? 6 - fromStart : -fromStart);
+                    return null;
+                  },
+                ),
+                _MonthsIntent: CallbackAction<_MonthsIntent>(
+                  onInvoke: (intent) => _moveMonths(intent.months),
+                ),
+                ActivateIntent: CallbackAction<ActivateIntent>(
+                  onInvoke: (_) => _pickCurrent(),
+                ),
               },
-              child: Semantics(container: true, child: pager),
+              child: Focus(
+                focusNode: _focus,
+                autofocus: widget.autofocus,
+                canRequestFocus: widget.onSelected != null,
+                onFocusChange: (focused) {
+                  // The ring shows where the keyboard is; it starts on the
+                  // selected day.
+                  if (focused &&
+                      _active.index == null &&
+                      CoilInputModality.instance.value ==
+                          CoilModality.keyboard) {
+                    _moveTo(_current);
+                  }
+                  setState(() {});
+                },
+                child: Semantics(container: true, child: pager),
+              ),
             ),
           ),
         ],
@@ -730,4 +750,27 @@ class _DayState extends State<_Day> {
       ),
     );
   }
+}
+
+/// Moves the keyboard's day by [days]: the arrow keys.
+class _DaysIntent extends Intent {
+  const _DaysIntent(this.days);
+
+  final int days;
+}
+
+/// Moves the keyboard's day to the start or [last] day of its week: Home
+/// and End.
+class _WeekEdgeIntent extends Intent {
+  const _WeekEdgeIntent({required this.last});
+
+  final bool last;
+}
+
+/// Moves the keyboard's day by [months], turning the page: Page Up and
+/// Page Down, with Shift for a year.
+class _MonthsIntent extends Intent {
+  const _MonthsIntent(this.months);
+
+  final int months;
 }

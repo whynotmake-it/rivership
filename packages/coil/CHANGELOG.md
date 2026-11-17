@@ -31,7 +31,7 @@ Milestone M0, unreleased.
   in `Shortcuts` and handles them in `Actions`, instead of reading key
   events. Behavior is unchanged.
   - `CoilDismissIntent` is what Escape does in a popover, menu, select
-    list, combobox or tooltip, and `CoilSliderStepIntent` and
+    list, combobox, tooltip or drawer panel, and `CoilSliderStepIntent` and
     `CoilSliderLimitIntent` are a slider's arrows, Page keys and
     Home/End. An app replaces any of them with its own `Actions` entry
     above the widget.
