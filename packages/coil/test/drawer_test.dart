@@ -813,6 +813,45 @@ void main() {
     });
   });
 
+  group('controlled', () {
+    testWidgets('an owner that ignores a drag leaves the drawer closed', (
+      tester,
+    ) async {
+      final requests = <CoilDrawerEdge?>[];
+      var presses = 0;
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: CoilDrawer(
+            open: null,
+            onOpenChanged: requests.add,
+            start: const Text('Start panel'),
+            child: Column(
+              key: const ValueKey('content'),
+              children: [
+                const SizedBox(height: 100),
+                CoilButton(
+                  onPressed: () => presses++,
+                  child: const Text('Press'),
+                ),
+                const Expanded(child: SizedBox.expand()),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _drag(tester, const Offset(200, 500), 260);
+      expect(requests, [CoilDrawerEdge.start]);
+      expect(_contentLeft(tester), 0, reason: 'back where the owner keeps it');
+      expect(_shown('Start panel'), isFalse);
+      await tester.tap(find.text('Press'));
+      await tester.pumpAndSettle();
+      expect(presses, 1, reason: 'the content still takes presses');
+    });
+  });
+
   group('over the content', () {
     testWidgets('the panel slides over a still page', (tester) async {
       await _pump(tester, const _Host(reveal: CoilDrawerReveal.over));

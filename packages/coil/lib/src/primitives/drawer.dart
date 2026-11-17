@@ -591,7 +591,17 @@ class _CoilDrawerState extends State<CoilDrawer>
       _targetOf(result),
       velocity: velocity / _panelWidth * (_startIsLeft ? 1 : -1),
     );
-    if (result != widget.open) widget.onOpenChanged(result);
+    if (result == widget.open) return;
+    widget.onOpenChanged(result);
+    // An owner that doesn't apply the change (it keeps `open` as it was)
+    // would leave the drawer where the drag sent it: go back.
+    _schedule(() {
+      if (!_dragging &&
+          widget.open != result &&
+          _target == _targetOf(result)) {
+        _animateTo(_targetOf(widget.open));
+      }
+    });
   }
 
   // Build -----------------------------------------------------------------
