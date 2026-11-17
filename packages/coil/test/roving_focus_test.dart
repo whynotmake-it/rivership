@@ -114,4 +114,77 @@ void main() {
       expect(focused(), index);
     }
   });
+
+  testWidgets('an arrow a nested group leaves alone moves the outer group', (
+    tester,
+  ) async {
+    // A vertical list of rows; the first row holds a horizontal group.
+    final rows = List.generate(2, (i) => FocusNode(debugLabel: 'row $i'));
+    final field = FocusNode(debugLabel: 'field');
+    addTearDown(() {
+      for (final node in [...rows, field]) {
+        node.dispose();
+      }
+    });
+    await tester.pumpWidget(
+      WidgetsApp(
+        color: const Color(0xFF000000),
+        onGenerateRoute: (_) => PageRouteBuilder<void>(
+          pageBuilder: (context, _, _) => CoilRovingFocus(
+            nodes: rows,
+            tabStop: 0,
+            axis: Axis.vertical,
+            child: Column(
+              children: [
+                Focus(
+                  focusNode: rows[0],
+                  child: CoilRovingFocus(
+                    nodes: nodes,
+                    tabStop: 0,
+                    child: Row(
+                      children: [
+                        for (final node in nodes)
+                          Focus(
+                            focusNode: node,
+                            child: const SizedBox.square(dimension: 10),
+                          ),
+                        // Not an item: its arrows stay with it.
+                        Focus(
+                          focusNode: field,
+                          child: const SizedBox.square(dimension: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Focus(
+                  focusNode: rows[1],
+                  child: const SizedBox(height: 10),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    nodes[0].requestFocus();
+    await tester.pump();
+
+    // Right stays in the inner group.
+    await press(tester, LogicalKeyboardKey.arrowRight);
+    expect(focused(), 1);
+    expect(rows[1].hasFocus, isFalse);
+
+    // Down isn't the inner group's: the outer group moves to the next row.
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(rows[1].hasPrimaryFocus, isTrue);
+    await press(tester, LogicalKeyboardKey.arrowUp);
+    expect(rows[0].hasPrimaryFocus, isTrue);
+
+    // Focus inside a row that isn't a nested item keeps its arrows.
+    field.requestFocus();
+    await tester.pump();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(field.hasPrimaryFocus, isTrue);
+  });
 }

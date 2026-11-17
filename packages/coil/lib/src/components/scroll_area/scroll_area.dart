@@ -172,9 +172,19 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
           .merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context))
           .merge(widget.style);
 
-  /// Whether a key scrolls now: only while the viewport itself has focus.
-  /// Keys from a focused descendant pass on to it.
-  bool get _canScroll => _focusNode.hasPrimaryFocus && _controller.hasClients;
+  /// Whether a key scrolls now: while the viewport itself has focus, or
+  /// the viewport of an area nested in it (a key that area leaves alone,
+  /// such as Down in a horizontal area, scrolls this one). Keys from any
+  /// other focused descendant, such as a text field, pass on to it.
+  bool get _canScroll {
+    if (!_controller.hasClients) return false;
+    if (_focusNode.hasPrimaryFocus) return true;
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null || !_focusNode.hasFocus) return false;
+    final nested = primary.context
+        ?.findAncestorStateOfType<_CoilScrollAreaState>();
+    return nested != null && nested != this && nested._focusNode == primary;
+  }
 
   void _scroll(_ScrollStep step) {
     final style = _style(context);
@@ -217,22 +227,15 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
     final forward = vertical
         ? LogicalKeyboardKey.arrowDown
         : (rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight);
+    _ScrollIntent intent(_ScrollStep step) =>
+        vertical ? _VerticalScrollIntent(step) : _HorizontalScrollIntent(step);
     return {
-      SingleActivator(back): _ScrollIntent(.lineBack, axis),
-      SingleActivator(forward): _ScrollIntent(.lineForward, axis),
-      const SingleActivator(LogicalKeyboardKey.pageUp): _ScrollIntent(
-        .pageBack,
-        axis,
-      ),
-      const SingleActivator(LogicalKeyboardKey.pageDown): _ScrollIntent(
-        .pageForward,
-        axis,
-      ),
-      const SingleActivator(LogicalKeyboardKey.home): _ScrollIntent(
-        .start,
-        axis,
-      ),
-      const SingleActivator(LogicalKeyboardKey.end): _ScrollIntent(.end, axis),
+      SingleActivator(back): intent(.lineBack),
+      SingleActivator(forward): intent(.lineForward),
+      const SingleActivator(LogicalKeyboardKey.pageUp): intent(.pageBack),
+      const SingleActivator(LogicalKeyboardKey.pageDown): intent(.pageForward),
+      const SingleActivator(LogicalKeyboardKey.home): intent(.start),
+      const SingleActivator(LogicalKeyboardKey.end): intent(.end),
     };
   }
 
@@ -310,7 +313,11 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       area = Shortcuts(
         shortcuts: _shortcuts(context),
         child: Actions(
-          actions: {_ScrollIntent: _action},
+          actions: {
+            if (widget.axis == Axis.vertical) _VerticalScrollIntent: _action,
+            if (widget.axis == Axis.horizontal)
+              _HorizontalScrollIntent: _action,
+          },
           child: Focus(
             focusNode: _focusNode,
             canRequestFocus: focusable,
@@ -356,15 +363,23 @@ enum _ScrollStep { lineBack, lineForward, pageBack, pageForward, start, end }
 /// `ScrollIntent`: the app's default action for that one would answer for
 /// the area while a field inside it has focus.
 ///
-/// It names its area's [axis]: an arrow an inner area leaves alone, such
-/// as Down in a horizontal area, bubbles to an outer area's [Shortcuts],
-/// whose lookup starts at the focused inner area again.
-class _ScrollIntent extends Intent {
-  const _ScrollIntent(this.step, this.axis);
+/// Each axis has its own intent type, [_VerticalScrollIntent] and
+/// [_HorizontalScrollIntent], and an area handles only its own. Actions are
+/// looked up by type from the focused widget, so a key an inner area leaves
+/// alone, such as Down in a horizontal area, passes its [Actions] by and
+/// reaches an outer vertical area's.
+sealed class _ScrollIntent extends Intent {
+  const _ScrollIntent(this.step);
 
   final _ScrollStep step;
+}
 
-  final Axis axis;
+class _VerticalScrollIntent extends _ScrollIntent {
+  const _VerticalScrollIntent(super.step);
+}
+
+class _HorizontalScrollIntent extends _ScrollIntent {
+  const _HorizontalScrollIntent(super.step);
 }
 
 class _ScrollAction extends Action<_ScrollIntent> {
@@ -373,8 +388,7 @@ class _ScrollAction extends Action<_ScrollIntent> {
   final _CoilScrollAreaState state;
 
   @override
-  bool isEnabled(_ScrollIntent intent) =>
-      intent.axis == state.widget.axis && state._canScroll;
+  bool isEnabled(_ScrollIntent intent) => state._canScroll;
 
   @override
   void invoke(_ScrollIntent intent) => state._scroll(intent.step);

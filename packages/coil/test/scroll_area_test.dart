@@ -129,6 +129,53 @@ void main() {
     expect(_offsetOf(tester), 0);
   });
 
+  testWidgets('a key a nested area leaves alone scrolls the outer one', (
+    tester,
+  ) async {
+    final outer = ScrollController();
+    final inner = ScrollController();
+    final innerFocus = FocusNode(debugLabel: 'inner');
+    addTearDown(outer.dispose);
+    addTearDown(inner.dispose);
+    addTearDown(innerFocus.dispose);
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea(
+          controller: outer,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 40,
+                child: CoilScrollArea(
+                  controller: inner,
+                  focusNode: innerFocus,
+                  axis: Axis.horizontal,
+                  child: const SizedBox(width: 800, height: 40),
+                ),
+              ),
+              _rows(40),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    innerFocus.requestFocus();
+    await tester.pumpAndSettle();
+
+    // Right is the inner area's.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(inner.offset, greaterThan(0));
+    expect(outer.offset, 0);
+
+    // Down isn't: the outer area scrolls, and focus stays inside.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(outer.offset, greaterThan(0));
+    expect(innerFocus.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('content that fits is not a tab stop', (tester) async {
     await tester.pumpWidget(_app(CoilScrollArea(child: _rows(2))));
     await tester.pump();
@@ -342,7 +389,7 @@ void main() {
     expect(find.byWidgetPredicate((w) => w is RawScrollbar), findsNWidgets(2));
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets('scrollbar: none draws no bar, not even the behavior\'s', (
+  testWidgets("scrollbar: none draws no bar, not even the behavior's", (
     tester,
   ) async {
     await tester.pumpWidget(
