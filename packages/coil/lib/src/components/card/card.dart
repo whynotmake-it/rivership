@@ -63,7 +63,9 @@ final class CoilCardTrack<T extends Object> extends Track<T> {
 /// corner: on hover or focus for pointers, always on touch. Pressing it
 /// plays the exit (a blur-fade while the height collapses) and *then* calls
 /// [onDismissed], as [Dismissible] does. Remove the card from the tree in
-/// that callback.
+/// that callback. In a `CoilCardStack` (such as a sidebar callout pile) the
+/// card fades in place and the pile closes the gap instead of the height
+/// collapsing.
 ///
 /// Put cards in a `CoilCardGroup` to divide them into one block or lay
 /// them out in a grid with one highlight between them.
@@ -172,6 +174,13 @@ class _CoilCardState extends State<CoilCard> {
     // The focus would be lost with the card; leave it before it goes.
     if (_focusWithin) FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _dismissing = true);
+    // In a pile, the card fades in place while the pile closes its gap,
+    // instead of collapsing its own height.
+    CoilCardStackItemScope.maybeOf(context)?.leave(() {
+      if (!mounted || _dismissed) return;
+      _dismissed = true;
+      widget.onDismissed?.call();
+    });
   }
 
   void _onExitEnd() {
@@ -349,7 +358,8 @@ class _CoilCardState extends State<CoilCard> {
         spatial: false,
       );
       card = CoilCollapsible(
-        expanded: !_dismissing,
+        expanded:
+            !_dismissing || CoilCardStackItemScope.maybeOf(context) != null,
         heightMotion: _motionFor(CoilCardTrack.dismissHeight, motion.standard),
         // The blur-fade below does the fading.
         fade: false,

@@ -227,13 +227,14 @@ tab stop.
 ## Callouts → `CoilSidebarCalloutStack`
 
 `CoilSidebarCalloutStack({required List<Widget> children, expand: CoilSidebarCalloutExpand { onHover, never }})`.
-Keyed `CoilCard`s, front first. Up to 2 peek 12 behind the front, each 5 %
-smaller. `onHover` fans the pile out under a mouse or while focus is
+Keyed `CoilCard`s, front first, laid out by the `CoilCardStack` primitive.
+Up to 2 peek 12 behind the front (top edges, whatever the heights), each
+5 % smaller; fanned out, the cards stack by their measured heights with the
+tier's gap. `onHover` fans the pile out under a mouse or while focus is
 inside, and on touch after a tap on the pile until a tap outside it.
 Fanned out, every card takes pointers where it shows; folded, only the
-front card does. Dismissing the front promotes the next. The pile is as
-tall as its tallest card, laid out (cards placed at their slots) by its
-own render box.
+front card does. A dismissed card fades in place while the next moves
+forward.
 
 ## Settings dialog
 

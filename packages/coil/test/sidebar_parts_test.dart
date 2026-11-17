@@ -132,7 +132,11 @@ void main() {
       await mouse.moveTo(tester.getCenter(find.text('One')));
       await tester.pumpAndSettle();
       final card = tester.getSize(find.byType(CoilCard).first).height;
-      expect(pileHeight(tester), 3 * card + 2 * 4);
+      // Fanned out, the cards are spaced by the theme's gap.
+      final gap = CoilTheme.metricsOf(
+        tester.element(find.byType(CoilSidebarCalloutStack)),
+      ).gap;
+      expect(pileHeight(tester), 3 * card + 2 * gap);
       await mouse.moveTo(Offset.zero);
       await tester.pumpAndSettle();
       expect(pileHeight(tester), rest);
