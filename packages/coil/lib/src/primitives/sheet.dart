@@ -128,20 +128,41 @@ class CoilSheetRoute<T> extends StupidSimpleGlassSheetRoute<T> {
 }
 
 /// The content layout of a [CoilSheetRoute]: a grabber, an optional
-/// [title], then [child], clear of the home indicator and side insets.
+/// [title], then [child], then an optional pinned [footer], clear of the
+/// home indicator and side insets.
 ///
 /// A hairline under the header shows only while [child]'s scrollable has
 /// content scrolled beneath it (read from its scroll notifications), and
-/// fades on the theme's `fade` / `fadeExit`.
+/// one over the [footer] only while content continues below it; both fade
+/// on the theme's `fade` / `fadeExit`.
 class CoilSheetPanel extends StatefulWidget {
   /// Creates a sheet panel.
-  const CoilSheetPanel({required this.child, super.key, this.title});
+  const CoilSheetPanel({
+    required this.child,
+    super.key,
+    this.title,
+    this.footer,
+  });
 
   /// An optional heading.
   final Widget? title;
 
   /// The contents, usually a list.
   final Widget child;
+
+  /// Pinned under [child]: the sheet's buttons, usually a `CoilActionBar`
+  /// with horizontal padding. It stays put while [child] scrolls and rides
+  /// on the keyboard with the sheet. The panel keeps it above the home
+  /// indicator, with [footerBottomGap] below it at least (the safe area
+  /// counts toward it, and 8 always separates the two).
+  final Widget? footer;
+
+  /// The least space under a [footer], safe area included.
+  static const footerBottomGap = 16.0;
+
+  /// The most of the window's height a [footer] takes; past it (huge text
+  /// in a short window), the footer scrolls.
+  static const footerMaxHeightFraction = 0.4;
 
   /// The scrim behind coil's unblurred modal surfaces at [context]
   /// (centered and drawer dialogs, `CoilDrawer`): black at 20% in light
@@ -163,12 +184,53 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
   /// Whether content is scrolled beneath the header.
   bool _scrolledUnder = false;
 
+  /// Whether content continues below, beneath the footer.
+  bool _continuesBelow = false;
+
   bool _onScroll(ScrollMetrics metrics, int depth) {
     // Only the sheet's own list, not scrollables nested inside rows.
     if (depth != 0 || metrics.axis != Axis.vertical) return false;
     final under = metrics.extentBefore > 0;
-    if (under != _scrolledUnder) setState(() => _scrolledUnder = under);
+    final below = metrics.extentAfter > 0;
+    if (under != _scrolledUnder || below != _continuesBelow) {
+      setState(() {
+        _scrolledUnder = under;
+        _continuesBelow = below;
+      });
+    }
     return false;
+  }
+
+  /// A hairline over the top or bottom edge of [child] that fades in while
+  /// [visible].
+  Widget _hairline({
+    required bool visible,
+    required bool top,
+    required String debugLabel,
+    required Widget child,
+  }) {
+    final colors = CoilTheme.of(context).colors;
+    final motion = CoilTheme.motionOf(context);
+    return SingleMotionBuilder(
+      value: visible ? 1 : 0,
+      motion: visible ? motion.fade : motion.fadeExit,
+      debugLabel: debugLabel,
+      builder: (context, hairline, child) {
+        final side = BorderSide(
+          color: colors.border.withValues(
+            alpha: colors.border.a * hairline.clamp(0.0, 1.0),
+          ),
+        );
+        return DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            border: top ? Border(top: side) : Border(bottom: side),
+          ),
+          child: child,
+        );
+      },
+      child: child,
+    );
   }
 
   @override
@@ -184,6 +246,8 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
     );
     // Title text starts where row text starts.
     final textInset = metrics.popupInset + metrics.itemPaddingX;
+    final footer = widget.footer;
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
     return SafeArea(
       top: false,
       child: Column(
@@ -229,39 +293,48 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
                 ),
               ),
             ),
-          // The scroll-edge hairline: painted over the top of the content,
-          // so showing it never shifts layout.
+          // The scroll-edge hairlines: painted over the edges of the
+          // content, so showing them never shifts layout.
           Flexible(
-            child: SingleMotionBuilder(
-              value: _scrolledUnder ? 1 : 0,
-              motion: _scrolledUnder
-                  ? CoilTheme.motionOf(context).fade
-                  : CoilTheme.motionOf(context).fadeExit,
+            child: _hairline(
+              visible: _scrolledUnder,
+              top: true,
               debugLabel: 'CoilSheetPanel.hairline',
-              builder: (context, hairline, child) => DecoratedBox(
-                position: DecorationPosition.foreground,
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: colors.border.withValues(
-                        alpha: colors.border.a * hairline.clamp(0.0, 1.0),
-                      ),
-                    ),
-                  ),
-                ),
-                child: child,
-              ),
-              // Scroll updates and extent changes; other scroll
-              // notifications can come during layout.
-              child: NotificationListener<ScrollMetricsNotification>(
-                onNotification: (n) => _onScroll(n.metrics, n.depth),
-                child: NotificationListener<ScrollUpdateNotification>(
+              child: _hairline(
+                visible: footer != null && _continuesBelow,
+                top: false,
+                debugLabel: 'CoilSheetPanel.footerHairline',
+                // Scroll updates and extent changes; other scroll
+                // notifications can come during layout.
+                child: NotificationListener<ScrollMetricsNotification>(
                   onNotification: (n) => _onScroll(n.metrics, n.depth),
-                  child: widget.child,
+                  child: NotificationListener<ScrollUpdateNotification>(
+                    onNotification: (n) => _onScroll(n.metrics, n.depth),
+                    child: widget.child,
+                  ),
                 ),
               ),
             ),
           ),
+          if (footer != null)
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: math.max(
+                  8,
+                  CoilSheetPanel.footerBottomGap - safeBottom,
+                ),
+              ),
+              // Huge text in a short window: the footer scrolls on its
+              // own rather than push the content out of the sheet.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight:
+                      MediaQuery.sizeOf(context).height *
+                      CoilSheetPanel.footerMaxHeightFraction,
+                ),
+                child: SingleChildScrollView(primary: false, child: footer),
+              ),
+            ),
         ],
       ),
     );

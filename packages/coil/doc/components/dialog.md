@@ -15,14 +15,14 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Anatomy:**
   - header: title (title role), description (body muted), gap 6, 16 below;
   - body;
-  - footer: buttons trailing-aligned, gap 8, Cancel before primary;
+  - footer: the action bar (§13.5): buttons trailing-aligned, gap 8, Cancel before primary; on a phone full width and stacked, primary on top;
   - an optional close button (ghost icon-only, 12 from the top and trailing edges).
 - **Sizes:** max width `sm` 400 / `lg` 540 / `xl` 880; width = window − 32 up to the max; padding 24; container radius; surface level + 4.
 - **Presentation:**
   - Pointer and tablets: centered.
   - **Phone (touch, < 600):**
-    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the action bar, stacked full-width with the primary on top and Cancel below. `lg` / `xl` forms open at the large detent.
-    - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form.
+    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
+    - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.

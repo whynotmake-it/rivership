@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -250,7 +252,9 @@ class CoilInteraction extends StatefulWidget {
   /// `CoilThemeData.controlCursor` when enabled.
   final MouseCursor? mouseCursor;
 
-  /// The smallest square the hit area may be. The visual is centered in it.
+  /// The smallest square the hit area may be. A smaller visual is centered
+  /// in it. The visual still takes the size its parent sets, so a button
+  /// stretched across a column fills it.
   /// See [CoilMetrics.minHitTarget].
   final double minHitTarget;
 
@@ -323,13 +327,7 @@ class _CoilInteractionState extends State<CoilInteraction> {
       child: widget.child,
     );
     if (widget.minHitTarget > 0) {
-      visual = ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: widget.minHitTarget,
-          minHeight: widget.minHitTarget,
-        ),
-        child: Center(widthFactor: 1, heightFactor: 1, child: visual),
-      );
+      visual = _MinHitTarget(size: widget.minHitTarget, child: visual);
     }
     return FocusableActionDetector(
       enabled: widget.enabled,
@@ -347,6 +345,98 @@ class _CoilInteractionState extends State<CoilInteraction> {
         excludeFromSemantics: widget.excludeFromSemantics,
         child: visual,
       ),
+    );
+  }
+}
+
+/// Grows the hit area to at least [size] square around a smaller child,
+/// centered in it.
+///
+/// Unlike a `ConstrainedBox` around a `Center`, the child is laid out with
+/// the parent's own constraints: a tight width (a button stretched across
+/// a column) sizes the child, not just the hit area.
+class _MinHitTarget extends SingleChildRenderObjectWidget {
+  const _MinHitTarget({required this.size, super.child});
+
+  final double size;
+
+  @override
+  _RenderMinHitTarget createRenderObject(BuildContext context) =>
+      _RenderMinHitTarget(size);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderMinHitTarget renderObject,
+  ) {
+    renderObject.minSize = size;
+  }
+}
+
+class _RenderMinHitTarget extends RenderShiftedBox {
+  _RenderMinHitTarget(this._minSize) : super(null);
+
+  double get minSize => _minSize;
+  double _minSize;
+  set minSize(double value) {
+    if (_minSize == value) return;
+    _minSize = value;
+    markNeedsLayout();
+  }
+
+  Size _grow(BoxConstraints constraints, Size child) => constraints.constrain(
+    Size(math.max(child.width, minSize), math.max(child.height, minSize)),
+  );
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      math.max(child?.getMinIntrinsicWidth(height) ?? 0, minSize);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      math.max(child?.getMaxIntrinsicWidth(height) ?? 0, minSize);
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      math.max(child?.getMinIntrinsicHeight(width) ?? 0, minSize);
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      math.max(child?.getMaxIntrinsicHeight(width) ?? 0, minSize);
+
+  @override
+  double? computeDryBaseline(
+    BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    final child = this.child;
+    if (child == null) return null;
+    final result = child.getDryBaseline(constraints, baseline);
+    if (result == null) return null;
+    final childSize = child.getDryLayout(constraints);
+    final size = _grow(constraints, childSize);
+    return result + (size.height - childSize.height) / 2;
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final child = this.child;
+    if (child == null) return constraints.constrain(Size.square(minSize));
+    return _grow(constraints, child.getDryLayout(constraints));
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size.square(minSize));
+      return;
+    }
+    child.layout(constraints, parentUsesSize: true);
+    size = _grow(constraints, child.size);
+    (child.parentData! as BoxParentData).offset = Offset(
+      (size.width - child.size.width) / 2,
+      (size.height - child.size.height) / 2,
     );
   }
 }

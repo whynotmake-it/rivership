@@ -468,7 +468,7 @@ Every component ships with all of these. They're required to call it done.
   - or, for push navigation, a back row ("‹ Parent").
 - A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. At the top there is no line.
 - **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
-- **Optional action bar:** full-width 44 buttons above the safe area, stacked with the primary on top.
+- **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
 - **Height:** content height up to the cap; long lists scroll inside. Search and command sheets open at the large detent and grow while the keyboard is up.
 - **Motion:** `gentle` both ways, as the glass sheet intends; a dismissing drag hands its fling velocity to it. The scrim fades and the backdrop blurs with the sheet.
 - **Dismiss:** drag down, tap the scrim, system back, Esc.
@@ -479,6 +479,16 @@ Every component ships with all of these. They're required to call it done.
 1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the extra gap and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
 
 **Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1); the text field core marks itself with `CoilFocusAlwaysVisible`, which a custom field can use too. A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
+
+### 13.5 Action bar
+
+The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them out, and every dialog and sheet uses it. Actions are given Cancel first and the primary last.
+
+- **Pointer tier, tablets, wide windows:** a row at the buttons' own width, trailing-aligned, gap 8, Cancel before the primary. Buttons that don't fit wrap onto another trailing row.
+- **Phone** (inside a sheet, or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
+- **Always a stack on a phone, never a two-up row.** One shape whatever the labels, locale and text size: a row would turn into a stack when a label grows, so the same dialog would look different in German or at large text. Every button is a full-width thumb target, and the primary is always in the same place, whatever the count. The order matches both platforms: iOS puts Cancel last in action sheets and stacked alerts, and Material's stacked dialog buttons put the confirming action on top. A destructive primary goes on top like any primary; its color marks it, not its position.
+- **Labels** stay on one line and end in an ellipsis when they don't fit (§ Button); the stack gives them the most room.
+- **In a sheet** the bar is pinned under the content (§13.3), keeping the dialog's padding on the sides and half the usual 16 gap above it.
 
 ---
 
@@ -746,14 +756,14 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:**
   - header: title (title role), description (body muted), gap 6, 16 below;
   - body;
-  - footer: buttons trailing-aligned, gap 8, Cancel before primary;
+  - footer: the action bar (§13.5): buttons trailing-aligned, gap 8, Cancel before primary; on a phone full width and stacked, primary on top;
   - an optional close button (ghost icon-only, 12 from the top and trailing edges).
 - **Sizes:** max width `sm` 400 / `lg` 540 / `xl` 880; width = window − 32 up to the max; padding 24; container radius; surface level + 4.
 - **Presentation:**
   - Pointer and tablets: centered.
   - **Phone (touch, < 600):**
-    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the action bar, stacked full-width with the primary on top and Cancel below. `lg` / `xl` forms open at the large detent.
-    - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form.
+    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
+    - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.

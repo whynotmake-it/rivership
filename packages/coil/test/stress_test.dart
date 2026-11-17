@@ -621,6 +621,42 @@ final stories = <StressStory>[
     open: true,
   ),
   StressStory(
+    'form dialog',
+    (context, h) => trigger(
+      CoilButton(
+        onPressed: () => showCoilDialog<void>(
+          context: context,
+          kind: CoilDialogKind.form,
+          builder: (context) => CoilDialog(
+            title: _t(h.text),
+            description: _t(h.text),
+            actions: [
+              CoilButton(
+                onPressed: () {},
+                variant: CoilButtonVariant.ghost,
+                child: _t(h.short),
+              ),
+              CoilButton(
+                onPressed: () {},
+                variant: CoilButtonVariant.secondary,
+                child: _t(h.text),
+              ),
+              CoilButton(onPressed: () {}, child: _t(h.text)),
+            ],
+            child: Column(
+              children: [
+                for (var i = 0; i < h.count.clamp(0, 12); i++)
+                  CoilField(label: _t(h.short), child: const CoilInput()),
+              ],
+            ),
+          ),
+        ),
+        child: const Text('Open'),
+      ),
+    ),
+    open: true,
+  ),
+  StressStory(
     'command menu',
     (context, h) => trigger(
       CoilButton(
