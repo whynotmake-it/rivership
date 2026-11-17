@@ -6,6 +6,7 @@ import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
 import 'package:coil/select.dart';
 import 'package:coil/sidebar.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 /// One section of a [CoilSettingsDialog]: an entry in its sidebar and the
@@ -358,39 +359,211 @@ class _CoilSettingRowState extends State<CoilSettingRow> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             // The control keeps its natural width up to half the row; a
             // wider one (a long button label) ellipsizes there.
-            child: LayoutBuilder(
-              builder: (context, constraints) => Row(
-                spacing: 24,
+            child: _SettingRowLayout(
+              spacing: 24,
+              label: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 2,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 2,
-                      children: [
-                        DefaultTextStyle(
-                          style: text.body,
-                          child: widget.label,
-                        ),
-                        if (description != null)
-                          DefaultTextStyle(
-                            style: text.muted.caption,
-                            child: description,
-                          ),
-                      ],
+                  DefaultTextStyle(style: text.body, child: widget.label),
+                  if (description != null)
+                    DefaultTextStyle(
+                      style: text.muted.caption,
+                      child: description,
                     ),
-                  ),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: constraints.maxWidth / 2,
-                    ),
-                    child: widget.trailing,
-                  ),
                 ],
               ),
+              control: widget.trailing,
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+enum _SettingRowSlot { label, control }
+
+/// A setting row's label and control: the control at the end, at its
+/// natural width up to half the row, and the label filling the rest, both
+/// centered vertically.
+///
+/// A render object rather than a `LayoutBuilder`, so the row answers
+/// intrinsic sizes (inside an `IntrinsicHeight`, a dialog that sizes to
+/// its content).
+class _SettingRowLayout
+    extends SlottedMultiChildRenderObjectWidget<_SettingRowSlot, RenderBox> {
+  const _SettingRowLayout({
+    required this.label,
+    required this.control,
+    required this.spacing,
+  });
+
+  final Widget label;
+  final Widget control;
+  final double spacing;
+
+  @override
+  Iterable<_SettingRowSlot> get slots => _SettingRowSlot.values;
+
+  @override
+  Widget childForSlot(_SettingRowSlot slot) => switch (slot) {
+    _SettingRowSlot.label => label,
+    _SettingRowSlot.control => control,
+  };
+
+  @override
+  _RenderSettingRow createRenderObject(BuildContext context) =>
+      _RenderSettingRow(spacing, Directionality.of(context));
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderSettingRow renderObject,
+  ) {
+    renderObject
+      ..spacing = spacing
+      ..textDirection = Directionality.of(context);
+  }
+}
+
+class _RenderSettingRow extends RenderBox
+    with SlottedContainerRenderObjectMixin<_SettingRowSlot, RenderBox> {
+  _RenderSettingRow(this._spacing, this._textDirection);
+
+  double get spacing => _spacing;
+  double _spacing;
+  set spacing(double value) {
+    if (value == _spacing) return;
+    _spacing = value;
+    markNeedsLayout();
+  }
+
+  TextDirection get textDirection => _textDirection;
+  TextDirection _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  RenderBox get _label => childForSlot(_SettingRowSlot.label)!;
+  RenderBox get _control => childForSlot(_SettingRowSlot.control)!;
+
+  /// The widest the control gets in a row [width] wide.
+  static double _controlMax(double width) => width / 2;
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      _label.getMinIntrinsicWidth(height) +
+      spacing +
+      _control.getMinIntrinsicWidth(height);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      _label.getMaxIntrinsicWidth(height) +
+      spacing +
+      _control.getMaxIntrinsicWidth(height);
+
+  /// The height at [width] from the children's intrinsic heights.
+  double _intrinsicHeight(
+    double width,
+    double Function(RenderBox child, double width) heightAt,
+  ) {
+    if (!width.isFinite) {
+      return math.max(
+        heightAt(_label, double.infinity),
+        heightAt(_control, double.infinity),
+      );
+    }
+    final control = math.min(
+      _control.getMaxIntrinsicWidth(double.infinity),
+      _controlMax(width),
+    );
+    final label = math.max(0, width - control - spacing).toDouble();
+    return math.max(heightAt(_label, label), heightAt(_control, control));
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      _intrinsicHeight(width, (child, w) => child.getMinIntrinsicHeight(w));
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      _intrinsicHeight(width, (child, w) => child.getMaxIntrinsicHeight(w));
+
+  @override
+  @protected
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _layout(constraints, ChildLayoutHelper.dryLayoutChild);
+
+  @override
+  void performLayout() {
+    size = _layout(constraints, ChildLayoutHelper.layoutChild, place: true);
+  }
+
+  Size _layout(
+    BoxConstraints constraints,
+    ChildLayouter layoutChild, {
+    bool place = false,
+  }) {
+    final width = constraints.maxWidth;
+    final controlSize = layoutChild(
+      _control,
+      BoxConstraints(
+        maxWidth: width.isFinite ? _controlMax(width) : double.infinity,
+      ),
+    );
+    final labelWidth = width.isFinite
+        ? math.max(0, width - controlSize.width - spacing).toDouble()
+        : null;
+    final labelSize = layoutChild(
+      _label,
+      labelWidth == null
+          ? const BoxConstraints()
+          : BoxConstraints.tightFor(width: labelWidth),
+    );
+    final size = constraints.constrain(
+      Size(
+        labelSize.width + spacing + controlSize.width,
+        math.max(labelSize.height, controlSize.height),
+      ),
+    );
+    if (!place) return size;
+    final rtl = textDirection == TextDirection.rtl;
+    void put(RenderBox child, Size childSize, double start) {
+      (child.parentData! as BoxParentData).offset = Offset(
+        rtl ? size.width - start - childSize.width : start,
+        (size.height - childSize.height) / 2,
+      );
+    }
+
+    put(_label, labelSize, 0);
+    put(_control, controlSize, size.width - controlSize.width);
+    return size;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    for (final child in children) {
+      context.paintChild(
+        child,
+        offset + (child.parentData! as BoxParentData).offset,
+      );
+    }
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    for (final child in children) {
+      final offset = (child.parentData! as BoxParentData).offset;
+      final hit = result.addWithPaintOffset(
+        offset: offset,
+        position: position,
+        hitTest: (result, local) => child.hitTest(result, position: local),
+      );
+      if (hit) return true;
+    }
+    return false;
   }
 }
