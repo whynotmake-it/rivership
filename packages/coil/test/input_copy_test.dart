@@ -454,6 +454,46 @@ void main() {
     });
   });
 
+  testWidgets('any clipboard failure reports a failed copy', (tester) async {
+    final controller = CoilCopyController();
+    addTearDown(controller.dispose);
+    late BuildContext context;
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (c) {
+            context = c;
+            return CoilCopyGlyph.listening(controller: controller);
+          },
+        ),
+      ),
+    );
+    // A reply the codec can't read: a FormatException, not a
+    // PlatformException.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler(
+          SystemChannels.platform.name,
+          (message) async => ByteData(0),
+        );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMessageHandler(SystemChannels.platform.name, null),
+    );
+    final status = await controller.copy('x', context: context);
+    expect(status, CoilCopyStatus.failed);
+    expect(controller.value, CoilCopyStatus.failed);
+    await tester.pumpAndSettle();
+    expect(announcements, ['Copy failed']);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.cross,
+      ),
+      findsOneWidget,
+    );
+    await tester.pump(CoilCopyController.defaultResetDelay);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('reduced motion makes copy swap overrides instant', (
     tester,
   ) async {

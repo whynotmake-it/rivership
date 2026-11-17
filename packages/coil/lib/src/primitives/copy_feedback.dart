@@ -50,7 +50,9 @@ class CoilCopyController extends ValueNotifier<CoilCopyStatus> {
   Timer? _reset;
   var _disposed = false;
 
-  /// Copies [text] and shows the result. Returns the result.
+  /// Copies [text] and shows the result. Returns the result: any failure
+  /// to set the clipboard (not only a `PlatformException`) shows and
+  /// returns [CoilCopyStatus.failed].
   ///
   /// With [context], announces [copiedLabel] or [failedLabel] when the
   /// shown result changes, and plays the copy haptic on every success.
@@ -63,7 +65,9 @@ class CoilCopyController extends ValueNotifier<CoilCopyStatus> {
     var status = CoilCopyStatus.copied;
     try {
       await Clipboard.setData(ClipboardData(text: text));
-    } on PlatformException {
+    } catch (_) {
+      // Any failure is a refused copy: a platform error, a missing plugin,
+      // or what a browser throws when the page lacks permission.
       status = CoilCopyStatus.failed;
     }
     if (_disposed) return status;
