@@ -62,6 +62,49 @@ Milestone M0, unreleased.
   - `CoilDefaultAction` is how a coil widget registers its action for
     those: like `Action.overridable`, but a nested popup skips the
     actions of the popups around it.
+- New primitive `CoilCardStack`: a pile of cards that peeks folded and
+  fans out into a list, for components to build on. `items:` are
+  `CoilCardStackItem(key:, child:, slot:, lifted:, leaving:)`, front
+  first; `anchor: CoilCardStackAnchor { bottom, top }`, `expand:
+  CoilCardStackExpand { auto, always, never }`, `fold: CoilCardStackFold
+  { onTapOutside, manual }`, `peek`, `peekScale`, `maxPeeks`, `gap`,
+  `shift`, `background`, `leading`, `trailing`, `sideWidth`, `motion:`
+  and `motions:` keyed by `CoilCardStackTrack { expand, slot, leave }`.
+  `CoilCardStackController` holds the tap's pin (`pinned`, the tap's part
+  of `auto`; cleared, with a notification, under `never` or below two
+  cards) and reports `expanded`. Cards read their pile with
+  `CoilCardStack.maybeExpandedOf` and leave it with
+  `CoilCardStack.maybeLeaveOf`; a background reads the folded pile's
+  extent with `CoilCardStack.pileExtentOf(constraints)`. It needs a
+  bounded width, and a bounded height with a background; otherwise debug
+  builds explain the fix (`Expanded`, `SizedBox`). Peeking cards scale
+  with a plain transform, no image filter.
+- New primitives for copy feedback: `CoilCopyController` (copy, the 2 s
+  hold that a repeat only extends, the announcement and haptic; any
+  clipboard failure shows `CoilCopyStatus.failed`), `CoilCopySwitcher`
+  (the swap, keyed by status) and `CoilCopyGlyph` (copy glyph, drawn
+  check or ×; `CoilCopyGlyph.listening(controller:)` follows a
+  controller). Both take `motion:` and `motions:` keyed by
+  `CoilCopyTrack { swap, draw }`. `CoilInputCopy` and a chat message's
+  Copy action use them.
+- `CoilSidebarCalloutStack` and `CoilQueuedStack` are built on
+  `CoilCardStack`: fanned-out cards stack by their measured heights with
+  the gap token, and folded peeks are even whatever the heights.
+  - Breaking: `CoilSidebarCalloutStack.gap` (4) is removed; the pile uses
+    the tier's `gap` (8 at pointer regular). Its `peek`, `maxPeeking` and
+    `scaleStep` constants are removed too (they mirrored
+    `CoilCardStack.defaultPeek`, `.defaultMaxPeeks`,
+    `.defaultPeekScale`).
+  - Breaking: `CoilSidebarCalloutStack` is a `StatelessWidget` (was
+    stateful), and every card must have a key: a missing one is an
+    assertion error instead of a silent `ValueKey(index)` that broke the
+    dismiss animation.
+  - Behavior: on touch, a tap on the callout pile fans it out until a tap
+    outside it (touch never fanned before), and a tap on a peeking card
+    fans the pile out instead of pressing what is under the peek.
+  - `CoilQueuedStack` with `size:` spaces its cards by that size's gap
+    (it used the ambient one while dragging by the sized one), and hides
+    its collapse button once fewer than two messages are queued.
 - A queued stack card fits a narrow screen at a large text scale: when
   the message would get less room than the edit and remove buttons, they
   move to a line under it (and wrap if needed) instead of overflowing.

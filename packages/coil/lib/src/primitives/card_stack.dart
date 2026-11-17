@@ -3,6 +3,7 @@
 
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/interaction.dart';
 import 'package:flutter/rendering.dart';
@@ -22,12 +23,17 @@ enum CoilCardStackAnchor {
 
 /// When a [CoilCardStack] fans out.
 enum CoilCardStackExpand {
-  /// While a mouse rests on the pile or focus is inside it, and after a tap
-  /// on the folded pile until it folds again (see [CoilCardStackFold]).
+  /// While a mouse rests on the pile or focus is inside it, and while it is
+  /// pinned ([CoilCardStackController.pinned]: after a tap on the folded
+  /// pile, until it folds again, see [CoilCardStackFold]).
   auto,
 
+  /// Always, such as while a card is dragged. A pin is kept for when it
+  /// goes back to [auto].
+  always,
+
   /// Never: only the front card shows in full, and cards past the peeks
-  /// are hidden from focus and screen readers.
+  /// are hidden from focus and screen readers. Clears the pin.
   never,
 }
 
@@ -41,8 +47,47 @@ enum CoilCardStackFold {
   manual,
 }
 
+/// The animated parts of a [CoilCardStack]. Use them as keys of
+/// [CoilCardStack.motions].
+final class CoilCardStackTrack<T extends Object> extends Track<T> {
+  CoilCardStackTrack._(
+    super.converter, {
+    required String super.debugLabel,
+    super.initial,
+  });
+
+  /// The pile fanning out and folding back. Default motion: `standard`
+  /// out, `standardExit` back; an override applies to both.
+  static final expand = CoilCardStackTrack<double>._(
+    .single,
+    initial: 0,
+    debugLabel: 'CoilCardStack.expand',
+  );
+
+  /// A card moving to a new place. Default motion: `standard`.
+  static final slot = CoilCardStackTrack<double>._(
+    .single,
+    initial: 0,
+    debugLabel: 'CoilCardStack.slot',
+  );
+
+  /// The cards around a leaving card closing its gap. Default motion:
+  /// `standard`.
+  static final leave = CoilCardStackTrack<double>._(
+    .single,
+    initial: 1,
+    debugLabel: 'CoilCardStack.presence',
+  );
+}
+
 /// Holds whether a [CoilCardStack] is pinned open by a tap, and reports
 /// whether it is fanned out.
+///
+/// There is one model: [CoilCardStack.expand] is the policy, and [pinned]
+/// is the tap's part of [CoilCardStackExpand.auto]. A pin only fans the
+/// pile out under `auto`, and the stack clears it (notifying, after the
+/// frame) when there is nothing left to fan out to: under
+/// [CoilCardStackExpand.never], or with fewer than two cards.
 class CoilCardStackController extends ChangeNotifier {
   bool _pinned = false;
   bool _expanded = false;
@@ -56,10 +101,16 @@ class CoilCardStackController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether the pile was fanned out when it last built (pinned, hovered,
-  /// focused inside or held). The stack updates it as it builds and doesn't
-  /// notify; read it when you need it, such as in `didUpdateWidget`.
+  /// Whether the pile is fanned out (pinned, hovered, focused inside or
+  /// [CoilCardStackExpand.always]). The stack reports a change after the
+  /// frame it happens in, and notifies.
   bool get expanded => _expanded;
+
+  void _report(bool expanded) {
+    if (expanded == _expanded) return;
+    _expanded = expanded;
+    notifyListeners();
+  }
 }
 
 /// One card of a [CoilCardStack].
@@ -87,8 +138,9 @@ class CoilCardStackItem {
   /// aren't [leaving].
   final double? slot;
 
-  /// How it moves to a new [slot]. Null uses the stack's `slotMotion`.
-  /// `Motion.instant()` makes it follow a drag.
+  /// How it moves to a new [slot]. Null uses the stack's
+  /// [CoilCardStackTrack.slot] motion. `Motion.instant()` makes it follow a
+  /// drag. Reduced motion makes it instant.
   final Motion? slotMotion;
 
   /// Whether it paints above the others, such as while it is dragged.
@@ -101,20 +153,17 @@ class CoilCardStackItem {
 }
 
 /// Constraints a [CoilCardStack] gives its `background`: tight to the
-/// stack, carrying the folded pile's extent from the anchor edge plus the
-/// gap. Read them with a `LayoutBuilder` to keep content clear of the
-/// pile, the way `Scaffold.extendBody` hands its body the bar's height.
-class CoilCardStackConstraints extends BoxConstraints {
-  /// Tight constraints of [size] with [pileExtent].
-  CoilCardStackConstraints.tight(super.size, {required this.pileExtent})
+/// stack, carrying the folded pile's extent. Read with
+/// [CoilCardStack.pileExtentOf].
+class _CardStackConstraints extends BoxConstraints {
+  _CardStackConstraints.tight(super.size, {required this.pileExtent})
     : super.tight();
 
-  /// The folded pile's extent plus the gap; 0 with no cards.
   final double pileExtent;
 
   @override
   bool operator ==(Object other) =>
-      other is CoilCardStackConstraints &&
+      other is _CardStackConstraints &&
       super == other &&
       other.pileExtent == pileExtent;
 
@@ -133,7 +182,8 @@ class CoilCardStackConstraints extends BoxConstraints {
 /// cut off at the anchor edge, behind the front card). Cards past the
 /// peeks fade out. **Fanned out**, the cards stack by their measured
 /// heights with [gap] between each pair. Each card springs between the two
-/// with the pile's expand spring, and to a new place with [slotMotion].
+/// on [CoilCardStackTrack.expand], and to a new place on
+/// [CoilCardStackTrack.slot].
 ///
 /// Input follows what shows:
 ///
@@ -147,12 +197,18 @@ class CoilCardStackConstraints extends BoxConstraints {
 ///   is reachable by keyboard and screen readers.
 ///
 /// [expand] decides when it fans out; [fold] how a tap-pinned pile folds.
-/// [background] fills the stack under the pile and gets
-/// [CoilCardStackConstraints]; [leading] and [trailing] sit beside the
-/// front card, [sideWidth] wide, and the cards take the width between.
-/// Without a background the stack is as tall as the pile.
+/// [background] fills the stack under the pile; read the folded pile's
+/// extent there with [pileExtentOf] in a `LayoutBuilder`. [leading] and
+/// [trailing] sit beside the front card, [sideWidth] wide, and the cards
+/// take the width between.
 ///
-/// Cards read the pile's state with [CoilCardStack.maybeOf].
+/// The stack needs a bounded width (in a `Row`, wrap it in `Expanded`).
+/// Without a background it is as tall as the pile; with one it fills the
+/// space it's given, so that height must be bounded too (in a `Column` or
+/// a list, wrap it in `Expanded` or a `SizedBox`).
+///
+/// Cards read the pile's state with [maybeExpandedOf] and leave it with
+/// [maybeLeaveOf].
 class CoilCardStack extends StatefulWidget {
   /// Creates a card stack.
   const CoilCardStack({
@@ -162,7 +218,6 @@ class CoilCardStack extends StatefulWidget {
     this.expand = CoilCardStackExpand.auto,
     this.fold = CoilCardStackFold.onTapOutside,
     this.controller,
-    this.holdExpanded = false,
     this.peek = defaultPeek,
     this.peekScale = defaultPeekScale,
     this.maxPeeks = defaultMaxPeeks,
@@ -172,10 +227,8 @@ class CoilCardStack extends StatefulWidget {
     this.leading,
     this.trailing,
     this.sideWidth = 0,
-    this.expandMotion,
-    this.foldMotion,
-    this.slotMotion,
-    this.leaveMotion,
+    this.motion,
+    this.motions,
   });
 
   /// The cards, front first.
@@ -193,9 +246,6 @@ class CoilCardStack extends StatefulWidget {
   /// Pins the pile open and reports whether it is fanned out. One is kept
   /// internally when null.
   final CoilCardStackController? controller;
-
-  /// Keeps the pile fanned out, such as while a card is dragged.
-  final bool holdExpanded;
 
   /// How far each card behind the front one peeks out, folded.
   final double peek;
@@ -226,18 +276,12 @@ class CoilCardStack extends StatefulWidget {
   /// The width of [leading] and [trailing]; the cards take the rest.
   final double sideWidth;
 
-  /// Fanning out. Defaults to the theme's `standard`.
-  final Motion? expandMotion;
+  /// Overrides the theme's motion tokens for this stack.
+  final CoilMotion? motion;
 
-  /// Folding. Defaults to the theme's `standardExit`.
-  final Motion? foldMotion;
-
-  /// A card moving to a new place. Defaults to the theme's `standard`.
-  final Motion? slotMotion;
-
-  /// The gap a leaving card leaves closing. Defaults to the theme's
-  /// `standard`.
-  final Motion? leaveMotion;
+  /// Per-track motions, keyed by [CoilCardStackTrack]s. They win over the
+  /// tokens; reduced motion still makes them instant.
+  final Map<CoilCardStackTrack<Object>, Motion>? motions;
 
   /// How far cards peek by default.
   static const defaultPeek = 12.0;
@@ -248,54 +292,49 @@ class CoilCardStack extends StatefulWidget {
   /// How many cards peek by default.
   static const defaultMaxPeeks = 2;
 
-  /// The nearest pile's state, for a card in it.
-  static CoilCardStackScope? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<CoilCardStackScope>();
+  /// Whether the pile a card at [context] is in is fanned out (or on its
+  /// way there); null outside a pile. Rebuilds [context] when it changes.
+  static bool? maybeExpandedOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_CardStackScope>()?.expanded;
+
+  /// Starts the card at [context] on its way out of its pile, as an item's
+  /// [CoilCardStackItem.leaving] does: the cards around it close its gap,
+  /// then `onLeft` is called. Remove the card from the pile there. Null
+  /// outside a pile. A card that dismisses itself (a dismissible
+  /// `CoilCard`) calls it instead of collapsing its own height.
+  static void Function(VoidCallback onLeft)? maybeLeaveOf(
+    BuildContext context,
+  ) => context.getInheritedWidgetOfExactType<_CardStackItemScope>()?.leave;
+
+  /// The folded pile's extent from the anchor edge, plus the gap, given the
+  /// [constraints] a [background] gets (read them with a `LayoutBuilder`);
+  /// 0 with no cards, or for constraints that don't come from a stack.
+  /// Keep the background's content clear of it, the way
+  /// `Scaffold.extendBody` hands its body the bar's height.
+  static double pileExtentOf(BoxConstraints constraints) =>
+      constraints is _CardStackConstraints ? constraints.pileExtent : 0;
 
   @override
   State<CoilCardStack> createState() => _CoilCardStackState();
 }
 
-/// What a card in a [CoilCardStack] can read about its pile.
-class CoilCardStackScope extends InheritedWidget {
-  /// Creates the scope.
-  const CoilCardStackScope({
-    required this.expanded,
-    required super.child,
-    super.key,
-  });
+class _CardStackScope extends InheritedWidget {
+  const _CardStackScope({required this.expanded, required super.child});
 
-  /// Whether the pile is fanned out (or on its way there).
   final bool expanded;
 
   @override
-  bool updateShouldNotify(CoilCardStackScope oldWidget) =>
+  bool updateShouldNotify(_CardStackScope oldWidget) =>
       oldWidget.expanded != expanded;
 }
 
-/// What a card in a [CoilCardStack] can do in its pile: read with
-/// [CoilCardStackItemScope.maybeOf].
-class CoilCardStackItemScope extends InheritedWidget {
-  /// Creates the scope.
-  const CoilCardStackItemScope({
-    required this.leave,
-    required super.child,
-    super.key,
-  });
+class _CardStackItemScope extends InheritedWidget {
+  const _CardStackItemScope({required this.leave, required super.child});
 
-  /// Starts the card on its way out of the pile, as an item's
-  /// [CoilCardStackItem.leaving] does: the cards around it close its gap,
-  /// then `onLeft` is called. Remove the card from the pile there. A card
-  /// that dismisses itself (a dismissible `CoilCard`) calls it instead of
-  /// collapsing its own height.
   final void Function(VoidCallback onLeft) leave;
 
-  /// The scope of the pile card [context] is in, if any.
-  static CoilCardStackItemScope? maybeOf(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<CoilCardStackItemScope>();
-
   @override
-  bool updateShouldNotify(CoilCardStackItemScope oldWidget) => false;
+  bool updateShouldNotify(_CardStackItemScope oldWidget) => false;
 }
 
 class _CoilCardStackState extends State<CoilCardStack> {
@@ -305,6 +344,9 @@ class _CoilCardStackState extends State<CoilCardStack> {
 
   /// Cards that asked to leave, with what to call once they have.
   final _leaving = <Key, VoidCallback>{};
+
+  /// Whether a post-frame sync with the controller is scheduled.
+  var _syncing = false;
 
   CoilCardStackController get _controller =>
       widget.controller ?? (_ownController ??= CoilCardStackController());
@@ -324,11 +366,6 @@ class _CoilCardStackState extends State<CoilCardStack> {
       old?.removeListener(_rebuild);
       _controller.addListener(_rebuild);
     }
-    final live = widget.items.where((item) => !item.leaving).length;
-    if (widget.expand == CoilCardStackExpand.never || live < 2) {
-      // Nothing left to fan out to. Not while building: listeners build.
-      _controller._pinned = false;
-    }
     final keys = {for (final item in widget.items) item.key};
     _focused.retainWhere(keys.contains);
     _leaving.removeWhere((key, _) => !keys.contains(key));
@@ -346,28 +383,68 @@ class _CoilCardStackState extends State<CoilCardStack> {
 
   void _rebuild() => setState(() {});
 
-  bool get _expanded =>
+  bool _isLeaving(CoilCardStackItem item) =>
+      item.leaving || _leaving.containsKey(item.key);
+
+  /// Whether the controller's pin can fan the pile out: only under
+  /// [CoilCardStackExpand.auto], with at least two cards staying.
+  bool get _pinnable =>
       widget.expand == CoilCardStackExpand.auto &&
-      (_controller.pinned ||
-          widget.holdExpanded ||
+      widget.items.where((item) => !_isLeaving(item)).length > 1;
+
+  bool get _pinned => _controller.pinned && _pinnable;
+
+  bool get _expanded => switch (widget.expand) {
+    CoilCardStackExpand.never => false,
+    CoilCardStackExpand.always => true,
+    CoilCardStackExpand.auto =>
+      _pinned ||
           _focused.isNotEmpty ||
-          _hover.value.contains(WidgetState.hovered));
+          _hover.value.contains(WidgetState.hovered),
+  };
+
+  /// Brings the controller in line with what the pile shows, after the
+  /// frame (its listeners build): clears a pin with nothing left to fan out
+  /// to, and reports whether it is fanned out.
+  void _syncController() {
+    final stale =
+        (_controller.pinned &&
+            widget.expand != CoilCardStackExpand.always &&
+            !_pinnable) ||
+        _controller.expanded != _expanded;
+    if (!stale || _syncing) return;
+    _syncing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncing = false;
+      if (!mounted) return;
+      if (widget.expand != CoilCardStackExpand.always && !_pinnable) {
+        _controller.pinned = false;
+      }
+      _controller._report(_expanded);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = CoilTheme.motionOf(context);
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    Motion motionOf(CoilCardStackTrack<Object> track, Motion token) =>
+        CoilTheme.trackMotionOf(
+          context,
+          track,
+          instance: widget.motions,
+          styled: null,
+          token: token,
+        );
     final metrics = CoilTheme.metricsOf(context);
     final expanded = _expanded;
-    _controller._expanded = expanded;
+    _syncController();
     final fans = widget.expand == CoilCardStackExpand.auto;
-    bool leaving(CoilCardStackItem item) =>
-        item.leaving || _leaving.containsKey(item.key);
-    final live = widget.items.where((item) => !leaving(item)).toList();
+    final live = widget.items.where((item) => !_isLeaving(item)).toList();
     final pin = fans && !expanded && live.length > 1
         ? () => _controller.pinned = true
         : null;
-    final tapOutside =
-        _controller.pinned && widget.fold == CoilCardStackFold.onTapOutside;
+    final tapOutside = _pinned && widget.fold == CoilCardStackFold.onTapOutside;
     void onTapOutside(PointerDownEvent _) => _controller.pinned = false;
     Widget tapRegion(Widget child) => TapRegion(
       groupId: this,
@@ -375,13 +452,13 @@ class _CoilCardStackState extends State<CoilCardStack> {
       child: child,
     );
 
-    final slotMotion = widget.slotMotion ?? tokens.standard;
-    final leaveMotion = widget.leaveMotion ?? tokens.standard;
+    final slotMotion = motionOf(CoilCardStackTrack.slot, tokens.standard);
+    final leaveMotion = motionOf(CoilCardStackTrack.leave, tokens.standard);
     final hideExtra = widget.expand == CoilCardStackExpand.never;
 
     return MotorInspectionScope(
       group: 'CoilCardStack',
-      child: CoilCardStackScope(
+      child: _CardStackScope(
         expanded: expanded,
         // Tab follows the pile, front first, wherever the cards are on
         // their way between folded and fanned out.
@@ -389,9 +466,10 @@ class _CoilCardStackState extends State<CoilCardStack> {
           policy: WidgetOrderTraversalPolicy(),
           child: SingleMotionBuilder(
             value: expanded ? 1 : 0,
-            motion: expanded
-                ? widget.expandMotion ?? tokens.standard
-                : widget.foldMotion ?? tokens.standardExit,
+            motion: motionOf(
+              CoilCardStackTrack.expand,
+              expanded ? tokens.standard : tokens.standardExit,
+            ),
             debugLabel: 'CoilCardStack.expand',
             builder: (context, fan, _) {
               final f = fan.clamp(0.0, 1.0);
@@ -431,7 +509,11 @@ class _CoilCardStackState extends State<CoilCardStack> {
                       slot:
                           item.slot ??
                           (item.leaving ? null : (liveIndex++).toDouble()),
-                      slotMotion: item.slotMotion ?? slotMotion,
+                      slotMotion: switch (item.slotMotion) {
+                        null => slotMotion,
+                        final _ when reduced => const Motion.instant(),
+                        final Motion motion => motion,
+                      },
                       leaveMotion: leaveMotion,
                       fan: f,
                       expanded: expanded,
@@ -439,7 +521,7 @@ class _CoilCardStackState extends State<CoilCardStack> {
                       peekScale: widget.peekScale,
                       maxPeeks: widget.maxPeeks,
                       lifted: item.lifted,
-                      leaving: leaving(item),
+                      leaving: _isLeaving(item),
                       onLeft: _leaving[item.key],
                       hideExtra: hideExtra,
                       onFocusChange: (focused) => setState(
@@ -447,7 +529,7 @@ class _CoilCardStackState extends State<CoilCardStack> {
                             ? _focused.add(item.key)
                             : _focused.remove(item.key),
                       ),
-                      child: CoilCardStackItemScope(
+                      child: _CardStackItemScope(
                         leave: (onLeft) =>
                             setState(() => _leaving[item.key] = onLeft),
                         child: tapRegion(item.child),
@@ -557,7 +639,6 @@ class _CardState extends State<_Card> {
                 alignment: widget.anchor == CoilCardStackAnchor.bottom
                     ? Alignment.topCenter
                     : Alignment.bottomCenter,
-                filterQuality: scale == 1 ? null : FilterQuality.medium,
                 child: ExcludeFocus(
                   excluding: hidden,
                   child: ExcludeSemantics(excluding: hidden, child: child),
@@ -961,7 +1042,11 @@ class RenderCoilCardStack extends RenderBox
       size = constraints.smallest;
       return;
     }
-    final width = constraints.maxWidth;
+    assert(
+      _debugCheckConstraints(constraints),
+      'CoilCardStack needs bounded constraints',
+    );
+    final width = _widthFor(constraints);
     final cardWidth = math.max(0, width - 2 * _sideWidth).toDouble();
     final cards = _cards;
     final heights = <double>[];
@@ -977,9 +1062,9 @@ class RenderCoilCardStack extends RenderBox
     final live = cards.where((c) => _data(c).presence > 0).isNotEmpty;
 
     if (_hasBackground) {
-      size = constraints.biggest;
+      size = _backgroundSize(constraints, width, extent.now);
       background.layout(
-        CoilCardStackConstraints.tight(
+        _CardStackConstraints.tight(
           size,
           pileExtent: live ? extent.folded + _gap : 0,
         ),
@@ -1143,13 +1228,84 @@ class RenderCoilCardStack extends RenderBox
 
   @override
   Size computeDryLayout(BoxConstraints constraints) {
-    if (_hasBackground) return constraints.biggest;
-    final width = constraints.maxWidth;
+    final width = _widthFor(constraints);
+    if (_hasBackground && constraints.hasBoundedHeight) {
+      return constraints.constrain(Size(width, constraints.maxHeight));
+    }
     final cardWidth = math.max(0, width - 2 * _sideWidth).toDouble();
     final cards = _cards;
     final heights = _heightsBy(
       (c) => c.getDryLayout(BoxConstraints.tightFor(width: cardWidth)).height,
     );
     return constraints.constrain(Size(width, _extent(cards, heights).now));
+  }
+
+  /// The stack's width: the width it's given. Unbounded (an error in
+  /// debug), the widest card's plus the sides.
+  double _widthFor(BoxConstraints constraints) => constraints.hasBoundedWidth
+      ? constraints.maxWidth
+      : constraints.constrainWidth(
+          computeMaxIntrinsicWidth(double.infinity),
+        );
+
+  /// The size with a background: all the space it's given. Unbounded
+  /// height (an error in debug) falls back to the pile's [extent].
+  Size _backgroundSize(
+    BoxConstraints constraints,
+    double width,
+    double extent,
+  ) => constraints.constrain(
+    Size(
+      width,
+      constraints.hasBoundedHeight ? constraints.maxHeight : extent,
+    ),
+  );
+
+  bool _debugCheckConstraints(BoxConstraints constraints) {
+    if (!constraints.hasBoundedWidth) {
+      throw FlutterError.fromParts([
+        ErrorSummary('CoilCardStack was given an unbounded width.'),
+        ErrorDescription(
+          'The cards take the width the stack is given, so it needs a '
+          'bounded one. This happens when it is placed directly in a Row, '
+          'a horizontal list or another parent that lets its child pick '
+          'any width.',
+        ),
+        ErrorHint(
+          'Wrap the stack (or the component that builds it) in Expanded or '
+          'Flexible inside a Row, or give it a width with a SizedBox.',
+        ),
+        DiagnosticsProperty<BoxConstraints>(
+          'The constraints were',
+          constraints,
+          style: DiagnosticsTreeStyle.errorProperty,
+        ),
+      ]);
+    }
+    if (_hasBackground && !constraints.hasBoundedHeight) {
+      throw FlutterError.fromParts([
+        ErrorSummary(
+          'CoilCardStack with a background was given an unbounded height.',
+        ),
+        ErrorDescription(
+          'With a background (such as a CoilQueuedStack with a child) the '
+          'stack fills the space it is given, so it needs a bounded '
+          'height. This happens when it is placed directly in a Column, a '
+          'ListView or another parent that lets its child pick any height.',
+        ),
+        ErrorHint(
+          'Wrap the stack (or the component that builds it) in Expanded '
+          'inside a Column, or give it a height with a SizedBox. Without a '
+          'background it is as tall as its pile and needs no bounded '
+          'height.',
+        ),
+        DiagnosticsProperty<BoxConstraints>(
+          'The constraints were',
+          constraints,
+          style: DiagnosticsTreeStyle.errorProperty,
+        ),
+      ]);
+    }
+    return true;
   }
 }

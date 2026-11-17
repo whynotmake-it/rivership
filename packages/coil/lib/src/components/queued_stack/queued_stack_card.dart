@@ -183,7 +183,7 @@ class _CardBodyState extends State<_CardBody> {
     final move = card.onMove;
     // The pile's state: folded, a tap fans it out; fanned out, a drag
     // reorders and a double-click edits.
-    final expanded = CoilCardStack.maybeOf(context)?.expanded ?? true;
+    final expanded = CoilCardStack.maybeExpandedOf(context) ?? true;
     final onTap = expanded ? null : card.onTap;
     final onDragStart = expanded ? card.onDragStart : null;
 

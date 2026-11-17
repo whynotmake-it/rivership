@@ -52,37 +52,38 @@ class CoilSidebarCalloutStack extends StatelessWidget {
   /// They win over the theme's [CoilSidebarStyle.motions] and the tokens.
   final Map<CoilSidebarTrack<Object>, Motion>? motions;
 
-  /// How far each card behind the front one peeks out, at rest.
-  static const peek = CoilCardStack.defaultPeek;
-
-  /// How many cards peek behind the front one.
-  static const maxPeeking = CoilCardStack.defaultMaxPeeks;
-
-  /// How much smaller each peeking card is.
-  static const scaleStep = CoilCardStack.defaultPeekScale;
-
   @override
   Widget build(BuildContext context) {
-    final tokens = CoilTheme.motionOf(context, override: motion);
-    // No `style:` of its own: the theme's sidebar style is the styled one.
-    Motion motionFor(Motion token) => CoilTheme.trackMotionOf(
-      context,
-      CoilSidebarTrack.callouts,
-      instance: motions,
-      styled: CoilTheme.styleOf<CoilSidebarStyle>(context)?.motions,
-      token: token,
+    assert(
+      children.every((card) => card.key != null),
+      'Every CoilSidebarCalloutStack card needs its own key, such as '
+      'ValueKey(callout.id): the pile follows a card by its key, so a '
+      'dismissed card can fade in place while the next one moves forward.',
     );
+    // No `style:` of its own: the theme's sidebar style is the styled one.
+    final custom =
+        motions?[CoilSidebarTrack.callouts] ??
+        CoilTheme.styleOf<CoilSidebarStyle>(
+          context,
+        )?.motions?[CoilSidebarTrack.callouts];
     return CoilCardStack(
       expand: switch (expand) {
         CoilSidebarCalloutExpand.onHover => CoilCardStackExpand.auto,
         CoilSidebarCalloutExpand.never => CoilCardStackExpand.never,
       },
-      expandMotion: motionFor(tokens.standard),
-      foldMotion: motionFor(tokens.standardExit),
-      slotMotion: motionFor(tokens.standard),
-      leaveMotion: motionFor(tokens.standard),
+      motion: motion,
+      motions: {
+        if (custom != null)
+          for (final track in [
+            CoilCardStackTrack.expand,
+            CoilCardStackTrack.slot,
+            CoilCardStackTrack.leave,
+          ])
+            track: custom,
+      },
       items: [
         for (final (i, card) in children.indexed)
+          // Without a key (an error in debug), by position.
           CoilCardStackItem(key: card.key ?? ValueKey(i), child: card),
       ],
     );

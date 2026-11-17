@@ -227,7 +227,8 @@ tab stop.
 ## Callouts → `CoilSidebarCalloutStack`
 
 `CoilSidebarCalloutStack({required List<Widget> children, expand: CoilSidebarCalloutExpand { onHover, never }})`.
-Keyed `CoilCard`s, front first, laid out by the `CoilCardStack` primitive.
+Keyed `CoilCard`s, front first, laid out by the `CoilCardStack` primitive
+(a card without a key is an assertion error: the pile follows cards by key).
 Up to 2 peek 12 behind the front (top edges, whatever the heights), each
 5 % smaller; fanned out, the cards stack by their measured heights with the
 tier's gap. `onHover` fans the pile out under a mouse or while focus is

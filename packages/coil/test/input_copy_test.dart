@@ -454,6 +454,84 @@ void main() {
     });
   });
 
+  testWidgets('any clipboard failure reports a failed copy', (tester) async {
+    final controller = CoilCopyController();
+    addTearDown(controller.dispose);
+    late BuildContext context;
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (c) {
+            context = c;
+            return CoilCopyGlyph.listening(controller: controller);
+          },
+        ),
+      ),
+    );
+    // A reply the codec can't read: a FormatException, not a
+    // PlatformException.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler(
+          SystemChannels.platform.name,
+          (message) async => ByteData(0),
+        );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMessageHandler(SystemChannels.platform.name, null),
+    );
+    final status = await controller.copy('x', context: context);
+    expect(status, CoilCopyStatus.failed);
+    expect(controller.value, CoilCopyStatus.failed);
+    await tester.pumpAndSettle();
+    expect(announcements, ['Copy failed']);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.cross,
+      ),
+      findsOneWidget,
+    );
+    await tester.pump(CoilCopyController.defaultResetDelay);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('reduced motion makes copy swap overrides instant', (
+    tester,
+  ) async {
+    final controller = CoilCopyController();
+    addTearDown(controller.dispose);
+    const slow = CupertinoMotion(duration: Duration(seconds: 3));
+    await tester.pumpWidget(
+      _app(
+        CoilCopyGlyph.listening(
+          controller: controller,
+          motions: {CoilCopyTrack.swap: slow, CoilCopyTrack.draw: slow},
+        ),
+        reduceMotion: true,
+      ),
+    );
+    controller.show(CoilCopyStatus.copied);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    final copy = find.byWidgetPredicate(
+      (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.copy,
+    );
+    expect(copy, findsNothing, reason: 'swapped at once');
+    // Drawing the check is a fade, which reduced motion keeps.
+    expect(
+      tester
+          .widget<CoilDrawnGlyph>(
+            find.byWidgetPredicate(
+              (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.check,
+            ),
+          )
+          .progress,
+      lessThan(0.9),
+    );
+    await tester.pump(CoilCopyController.defaultResetDelay);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('input copy sheet', (tester) async {
     Widget rows(BuildContext context) => const SizedBox(
       width: 300,

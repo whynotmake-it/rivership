@@ -370,6 +370,10 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
     final look = CoilQueuedStackStyle.fallback(theme, metrics)
         .merge(CoilTheme.styleOf<CoilQueuedStackStyle>(context))
         .merge(widget.style);
+
+    /// The motion set for [track] on this stack or in its style, if any.
+    Motion? customOf(CoilQueuedStackTrack<Object> track) =>
+        widget.motions?[track] ?? look.motions?[track];
     Motion motionOf(
       CoilQueuedStackTrack<Object> track,
       Motion token, {
@@ -387,12 +391,15 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
     final hidden = count - (CoilCardStack.defaultMaxPeeks + 1);
     final touch = metrics.tier == CoilTier.touch;
     void pin() => _stack.pinned = true;
+    // A pile of one has nothing to fold: the stack clears the pin after the
+    // frame, and the button goes now.
+    final collapsible = _stack.pinned && count >= 2;
 
     final gutter = MotionSwitcher(
       motion: tokens.fade,
       exitMotion: tokens.fadeExit,
       transitionBuilder: CoilBlurFade.transition(blur: 0),
-      child: _stack.pinned
+      child: collapsible
           ? Center(
               key: const ValueKey('collapse'),
               child: CoilButton.icon(
@@ -482,7 +489,8 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
 
     final bumpMotion = motionOf(CoilQueuedStackTrack.bump, tokens.gentle);
     final body = widget.child;
-    final slotMotion = motionOf(CoilQueuedStackTrack.slot, tokens.standard);
+    final expandMotion = customOf(CoilQueuedStackTrack.expand);
+    final slotMotion = customOf(CoilQueuedStackTrack.slot);
     return MotorInspectionScope(
       group: 'CoilQueuedStack',
       child: TrackBuilder(
@@ -496,17 +504,18 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
         builder: (context, bump, _) => CoilCardStack(
           controller: _stack,
           fold: CoilCardStackFold.manual,
-          holdExpanded: _dragging != null,
-          expandMotion: motionOf(
-            CoilQueuedStackTrack.expand,
-            tokens.standard,
-          ),
-          foldMotion: motionOf(
-            CoilQueuedStackTrack.expand,
-            tokens.standardExit,
-          ),
-          slotMotion: slotMotion,
-          leaveMotion: slotMotion,
+          // Held open while a card is dragged; a tap's pin stays for after.
+          expand: _dragging != null
+              ? CoilCardStackExpand.always
+              : CoilCardStackExpand.auto,
+          // The stack's own size step, which the drag pitch uses too.
+          gap: metrics.gap,
+          motion: widget.motion,
+          motions: {
+            CoilCardStackTrack.expand: ?expandMotion,
+            CoilCardStackTrack.slot: ?slotMotion,
+            CoilCardStackTrack.leave: ?slotMotion,
+          },
           // The recoil lifts the pile (a negative bump is up).
           shift: -bump(CoilQueuedStackTrack.bump),
           // The gutter's glyph and count grow with the text.
@@ -542,7 +551,7 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final extent = (constraints as CoilCardStackConstraints).pileExtent;
+      final extent = CoilCardStack.pileExtentOf(constraints);
       final media = MediaQuery.of(context);
       return MediaQuery(
         data: media.copyWith(

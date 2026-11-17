@@ -512,6 +512,34 @@ void main() {
       );
     });
 
+    testWidgets('collapse goes when one message is left, and the pin with '
+        'it', (tester) async {
+      await _pump(tester, [_a, _b], tier: CoilTier.touch);
+      await tester.tap(find.text(_a.semanticLabel));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Collapse queued messages'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Remove').first);
+      await tester.pumpAndSettle();
+      expect(find.text(_a.semanticLabel), findsNothing);
+      expect(
+        find.bySemanticsLabel('Collapse queued messages'),
+        findsNothing,
+        reason: 'a pile of one has nothing to fold',
+      );
+      expect(find.bySemanticsLabel('1 queued message'), findsOneWidget);
+
+      // Queued again, the pile comes back folded: the pin was cleared.
+      await _pump(tester, [_b, _c], tier: CoilTier.touch);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Collapse queued messages'), findsNothing);
+      expect(
+        _top(tester, _b) - _top(tester, _c),
+        closeTo(12, 0.5),
+        reason: 'folded: the second card peeks',
+      );
+    });
+
     testWidgets('every tap target is at least 44, folded or fanned out', (
       tester,
     ) async {
@@ -624,6 +652,41 @@ void main() {
       surface(texts[1]).top - surface(texts[2]).bottom,
       closeTo(gap, 0.01),
     );
+  });
+
+  testWidgets('size: compact spaces by the compact gap under a regular scope', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        CoilAdaptiveScope(
+          size: CoilSize.regular,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: CoilQueuedStack(
+              messages: [_a, _b],
+              onChanged: _ignore,
+              onEdit: _ignore,
+              size: CoilSize.compact,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _hover(tester);
+    final context = tester.element(find.byType(CoilQueuedStack));
+    final compact = CoilTheme.metricsOf(context, size: CoilSize.compact).gap;
+    expect(compact, isNot(CoilTheme.metricsOf(context).gap));
+    Rect surface(CoilQueuedMessage m) => tester.getRect(
+      find
+          .ancestor(
+            of: find.text(m.semanticLabel),
+            matching: find.byType(CoilSurface),
+          )
+          .first,
+    );
+    expect(surface(_a).top - surface(_b).bottom, closeTo(compact, 0.01));
   });
 
   group('reaches the cards behind', () {
