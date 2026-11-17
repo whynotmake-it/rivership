@@ -15,20 +15,48 @@ import 'src/golden_sheet.dart';
 
 final String? _out = Platform.environment['PLASTICITY_OUT'];
 
-/// The directions shown to the owner.
+/// The first round's A: opencode's recipe on every role at full strength,
+/// before `CoilPlasticity.subtle` was refined.
+const _subtleV1 = CoilPlasticity(
+  edge: 1,
+  edgeWidth: 0.5,
+  highlight: 1,
+  shade: 0.5,
+  sheen: 1,
+  lift: 1,
+  recess: 0.6,
+  containers: 1,
+);
+
+/// The directions shown to the owner in the first round.
 final _variants = <String, (String, CoilPlasticity)>{
   'flat': ('Flat (today, default)', CoilPlasticity.flat),
-  'a_subtle': ('A · subtle (opencode-faithful)', CoilPlasticity.subtle),
+  'a_subtle': ('A · subtle (opencode-faithful)', _subtleV1),
   'b_soft': ('B · soft-lit', CoilPlasticity.soft),
   'c_tactile': ('C · tactile', CoilPlasticity.tactile),
 };
 
 /// Intensity steps of the recommended direction.
 final _steps = <String, (String, CoilPlasticity)>{
-  'a_subtle_x0.5': ('A · subtle × 0.5', CoilPlasticity.subtle.scale(0.5)),
-  'a_subtle_x1.0': ('A · subtle × 1', CoilPlasticity.subtle),
-  'a_subtle_x1.6': ('A · subtle × 1.6', CoilPlasticity.subtle.scale(1.6)),
-  'a_subtle_x2.2': ('A · subtle × 2.2', CoilPlasticity.subtle.scale(2.2)),
+  'a_subtle_x0.5': ('A · subtle × 0.5', _subtleV1.scale(0.5)),
+  'a_subtle_x1.0': ('A · subtle × 1', _subtleV1),
+  'a_subtle_x1.6': ('A · subtle × 1.6', _subtleV1.scale(1.6)),
+  'a_subtle_x2.2': ('A · subtle × 2.2', _subtleV1.scale(2.2)),
+};
+
+/// The second round: flat, the first A and the refined A
+/// (`CoilPlasticity.subtle`).
+final _refined = <String, (String, CoilPlasticity)>{
+  'flat': ('Flat (today, default)', CoilPlasticity.flat),
+  'a_subtle': ('A · subtle (round 1)', _subtleV1),
+  'a_refined': ('A-refined (CoilPlasticity.subtle)', CoilPlasticity.subtle),
+};
+
+/// Intensity steps of the refined A.
+final _refinedSteps = <String, (String, CoilPlasticity)>{
+  'x0.5': ('A-refined × 0.5', CoilPlasticity.subtle.scale(0.5)),
+  'x0.75': ('A-refined × 0.75', CoilPlasticity.subtle.scale(0.75)),
+  'x1': ('A-refined × 1', CoilPlasticity.subtle),
 };
 
 const _boardWidth = 540.0;
@@ -129,10 +157,70 @@ void main() {
     }
   });
 
+  group('plasticity refined', skip: skip, () {
+    testWidgets('board', (tester) async {
+      final (title, p) = _refined['a_refined']!;
+      await shoot(
+        tester,
+        'refined_board_a_refined',
+        _Pair(title: title, plasticity: p),
+        size: const Size(_boardWidth * 2 + 3 * 24, 900),
+      );
+    });
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      testWidgets('side by side ${brightness.name}', (tester) async {
+        await shoot(
+          tester,
+          'refined_side_by_side_${brightness.name}',
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (title, p) in _refined.values)
+                _Board(title: title, plasticity: p, brightness: brightness),
+            ],
+          ),
+          size: const Size(_boardWidth * 3, 900),
+        );
+      });
+      testWidgets('intensity ${brightness.name}', (tester) async {
+        await shoot(
+          tester,
+          'refined_intensity_${brightness.name}',
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (title, p) in _refinedSteps.values)
+                _Board(title: title, plasticity: p, brightness: brightness),
+            ],
+          ),
+          size: const Size(_boardWidth * 3, 900),
+        );
+      });
+      testWidgets('detail ${brightness.name}', (tester) async {
+        await shoot(
+          tester,
+          'refined_detail_4x_${brightness.name}',
+          Column(
+            children: [
+              for (final id in ['a_subtle', 'a_refined'])
+                _Detail(
+                  title: _refined[id]!.$1,
+                  plasticity: _refined[id]!.$2,
+                  brightness: brightness,
+                ),
+            ],
+          ),
+          size: const Size(620, 2 * 132),
+          dpr: 4,
+        );
+      });
+    }
+  });
+
   group('plasticity recordings', skip: skip, () {
-    for (final id in ['a_subtle', 'c_tactile', 'b_soft']) {
+    for (final id in ['a_subtle', 'c_tactile', 'b_soft', 'a_refined']) {
       testWidgets('interaction $id', (tester) async {
-        final (title, p) = _variants[id]!;
+        final (title, p) = {..._variants, ..._refined}[id]!;
         const size = Size(2 * 330, 230);
         tester.view
           ..devicePixelRatio = 2
@@ -155,7 +243,9 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 300));
         final recording = await snap.recordVideo(
-          name: 'interaction_$id',
+          name: id == 'a_refined'
+              ? 'refined_interaction_a_refined'
+              : 'interaction_$id',
           settings: SnapVideoSettings(
             pathPrefix: _out!,
             timing: VideoTiming.smooth,
