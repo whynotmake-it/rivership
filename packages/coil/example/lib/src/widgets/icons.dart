@@ -143,6 +143,50 @@ class Glyph {
     LucideIcons300.cornerDownRightDir,
     LucideIcons400.cornerDownRightDir,
   );
+  static const smartphone = Glyph(
+    LucideIcons300.smartphone,
+    LucideIcons400.smartphone,
+  );
+  static const tablet = Glyph(LucideIcons300.tablet, LucideIcons400.tablet);
+  static const rotate = Glyph(
+    LucideIcons300.rotateCcw,
+    LucideIcons400.rotateCcw,
+  );
+  static const grid = Glyph(
+    LucideIcons300.layoutGrid,
+    LucideIcons400.layoutGrid,
+  );
+  static const component = Glyph(
+    LucideIcons300.component,
+    LucideIcons400.component,
+  );
+  static const arrowUpRight = Glyph(
+    LucideIcons300.arrowUpRight,
+    LucideIcons400.arrowUpRight,
+  );
+  static const keyboard = Glyph(
+    LucideIcons300.keyboard,
+    LucideIcons400.keyboard,
+  );
+  static const star = Glyph(LucideIcons300.star, LucideIcons400.star);
+  static const paperclip = Glyph(
+    LucideIcons300.paperclip,
+    LucideIcons400.paperclip,
+  );
+  static const arrowUp = Glyph(LucideIcons300.arrowUp, LucideIcons400.arrowUp);
+  static const mic = Glyph(LucideIcons300.mic, LucideIcons400.mic);
+  static const image = Glyph(LucideIcons300.image, LucideIcons400.image);
+  static const filter = Glyph(LucideIcons300.filter, LucideIcons400.filter);
+  static const check = Glyph(LucideIcons300.check, LucideIcons400.check);
+  static const zap = Glyph(LucideIcons300.zap, LucideIcons400.zap);
+  static const bookmark = Glyph(
+    LucideIcons300.bookmark,
+    LucideIcons400.bookmark,
+  );
+  static const pointer = Glyph(
+    LucideIcons300.mousePointer2,
+    LucideIcons400.mousePointer2,
+  );
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].

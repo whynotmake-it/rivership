@@ -4,6 +4,9 @@ import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/catalog_shell.dart';
 
+/// The home page's route name.
+const catalogHomeRouteName = 'coil:home';
+
 /// The route name of [entry]'s page.
 String catalogRouteName(CatalogEntry entry) => 'coil:${entry.slug}';
 
@@ -11,7 +14,7 @@ String catalogRouteName(CatalogEntry entry) => 'coil:${entry.slug}';
 /// use the platform's page route: an edge swipe pops on iOS.
 final List<AutoRoute> coilCatalogRoutes = [
   NamedRouteDef(
-    name: 'coil:home',
+    name: catalogHomeRouteName,
     path: '',
     type: const RouteType.cupertino(),
     builder: (context, data) => const HomePage(),
@@ -32,6 +35,6 @@ NamedRouteDef coilCatalogRoute({String path = '/coil'}) => NamedRouteDef(
   name: 'Coil',
   path: path,
   type: const RouteType.cupertino(),
-  builder: (context, data) => const CatalogShell(child: AutoRouter()),
+  builder: (context, data) => const CatalogShell(),
   children: coilCatalogRoutes,
 );

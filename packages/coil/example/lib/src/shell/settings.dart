@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
@@ -19,6 +20,39 @@ enum CatalogTier {
 
   /// The pinned tier, or null to latch it from the platform.
   final CoilTier? tier;
+}
+
+/// Where the catalog renders: full window on the pointer tier, or inside a
+/// device frame on the touch tier.
+enum CatalogViewport {
+  desktop('Desktop'),
+  mobile('Mobile');
+
+  const CatalogViewport(this.label);
+
+  final String label;
+}
+
+/// The devices the mobile viewport can frame, from `device_frame` (the
+/// package snaptest frames its screenshots with).
+enum CatalogDevice {
+  iPhone('iPhone 16 Pro'),
+  pixel('Pixel 9'),
+  iPad('iPad Air');
+
+  const CatalogDevice(this.label);
+
+  final String label;
+
+  /// The device's screen, safe areas, pixel ratio and frame.
+  DeviceInfo get info => switch (this) {
+    iPhone => Devices.ios.iPhone16Pro,
+    pixel => Devices.android.googlePixel9,
+    iPad => Devices.ios.iPadAir4,
+  };
+
+  /// The platform whose conventions the framed catalog follows.
+  TargetPlatform get platform => info.identifier.platform;
 }
 
 /// The text scale: the platform's, or a fixed factor.
@@ -167,6 +201,24 @@ class CatalogSettings extends ChangeNotifier {
   CatalogTier get tier => _tier;
   CatalogTier _tier = CatalogTier.auto;
   set tier(CatalogTier value) => _set(() => _tier = value);
+
+  /// Full window on the pointer tier, or inside a device frame on the touch
+  /// tier. [tier] pins the full-window tier instead. A narrow window
+  /// ignores the viewport and shows the catalog full screen on the touch
+  /// tier, as on a phone.
+  CatalogViewport get viewport => _viewport;
+  CatalogViewport _viewport = CatalogViewport.desktop;
+  set viewport(CatalogViewport value) => _set(() => _viewport = value);
+
+  /// The device the mobile viewport frames.
+  CatalogDevice get device => _device;
+  CatalogDevice _device = CatalogDevice.iPhone;
+  set device(CatalogDevice value) => _set(() => _device = value);
+
+  /// The framed device's orientation.
+  Orientation get orientation => _orientation;
+  Orientation _orientation = Orientation.portrait;
+  set orientation(Orientation value) => _set(() => _orientation = value);
 
   CatalogTextScale get textScale => _textScale;
   CatalogTextScale _textScale = CatalogTextScale.system;

@@ -85,11 +85,18 @@ void main() {
     }
   }
 
-  testWidgets('a home row opens its page and Back returns', (tester) async {
+  testWidgets('a home link opens its page and Back returns', (tester) async {
     await _pumpCatalog(tester, tier: CatalogTier.touch);
-    final row = find.text('Button');
-    await tester.scrollUntilVisible(row, 200);
-    await tester.tap(row);
+    // The index at the end of the home page.
+    final link = find
+        .descendant(
+          of: find.byType(HomePage),
+          matching: find.widgetWithText(CoilButton, 'Button'),
+        )
+        .last;
+    await tester.ensureVisible(link);
+    await tester.pumpAndSettle();
+    await tester.tap(link);
     await tester.pumpAndSettle();
 
     expect(find.byType(HomePage), findsNothing);
@@ -159,7 +166,9 @@ void main() {
     expect(Directionality.of(home), TextDirection.rtl);
     // The sheet itself follows too: it isn't a frozen snapshot.
     expect(
-      Directionality.of(tester.element(find.text('Right to left'))),
+      Directionality.of(
+        tester.element(find.widgetWithText(CoilSettingRow, 'Right to left')),
+      ),
       TextDirection.rtl,
     );
   });

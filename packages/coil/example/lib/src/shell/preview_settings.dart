@@ -473,7 +473,7 @@ class _Device extends StatelessWidget {
         _SelectRow<CatalogTier>(
           label: const Text('Size tier'),
           description: const Text(
-            'Auto picks pointer on desktop and touch on phones.',
+            'Auto follows the desktop and mobile toggle, and phones.',
           ),
           value: settings.tier,
           values: CatalogTier.values,
