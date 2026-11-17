@@ -244,7 +244,12 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
     // As tall as the tier's minimum hit target, as wide as the dots.
     Widget strip = SizedBox(
       height: math.max(style.targetSize!, metrics.minHitTarget),
-      child: Center(widthFactor: 1, child: ring),
+      // More dots than the row holds shrink together to fit, as a
+      // platform page control does; the touch scrub still finds each one.
+      child: Center(
+        widthFactor: 1,
+        child: FittedBox(fit: BoxFit.scaleDown, child: ring),
+      ),
     );
     if (touch && enabled) {
       // The scrub needs the finger's position and a horizontal drag, which
