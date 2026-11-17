@@ -232,8 +232,8 @@ class _Title extends StatelessWidget {
 TextStyle _heading(CoilTextTheme text) =>
     text.title.copyWith(fontWeight: text.body.fontWeight);
 
-/// The picked section: its heading and description, then its content
-/// scrolling below. Compact, the dialog's [title] and a [picker] lead.
+/// The picked section: its heading and description, then its content, all
+/// scrolling. Compact, the dialog's [title] and a [picker] lead.
 class _Panel<T> extends StatelessWidget {
   const _Panel({required this.section, this.picker, this.title});
 
@@ -245,41 +245,42 @@ class _Panel<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = CoilTheme.textOf(context);
     final description = section.description;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          // The end clears the dialog's close button.
-          padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 48, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 4,
-            children: [
-              if (title case final title?) ...[
-                _Title(title),
-                const SizedBox(height: 8),
-                ?picker,
-              ] else ...[
-                DefaultTextStyle(
-                  style: _heading(text),
-                  child: section.label,
-                ),
-                if (description != null)
+    // The heading scrolls with the content, so a long title, a long
+    // description or large text never pushes the content out of a short
+    // window.
+    return CoilScrollArea(
+      padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            // The end clears the dialog's close button.
+            padding: const EdgeInsetsDirectional.fromSTEB(0, 20, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 4,
+              children: [
+                if (title case final title?) ...[
+                  _Title(title),
+                  const SizedBox(height: 8),
+                  ?picker,
+                ] else ...[
                   DefaultTextStyle(
-                    style: text.muted.body,
-                    child: description,
+                    style: _heading(text),
+                    child: section.label,
                   ),
+                  if (description != null)
+                    DefaultTextStyle(
+                      style: text.muted.body,
+                      child: description,
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        Expanded(
-          child: CoilScrollArea(
-            padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 24),
-            child: Builder(builder: section.builder),
-          ),
-        ),
-      ],
+          Builder(builder: section.builder),
+        ],
+      ),
     );
   }
 }
@@ -355,28 +356,37 @@ class _CoilSettingRowState extends State<CoilSettingRow> {
         child: CoilFieldRow(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Row(
-              spacing: 24,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 2,
-                    children: [
-                      DefaultTextStyle(
-                        style: text.body,
-                        child: widget.label,
-                      ),
-                      if (description != null)
+            // The control keeps its natural width up to half the row; a
+            // wider one (a long button label) ellipsizes there.
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                spacing: 24,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 2,
+                      children: [
                         DefaultTextStyle(
-                          style: text.muted.caption,
-                          child: description,
+                          style: text.body,
+                          child: widget.label,
                         ),
-                    ],
+                        if (description != null)
+                          DefaultTextStyle(
+                            style: text.muted.caption,
+                            child: description,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                widget.trailing,
-              ],
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth / 2,
+                    ),
+                    child: widget.trailing,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
