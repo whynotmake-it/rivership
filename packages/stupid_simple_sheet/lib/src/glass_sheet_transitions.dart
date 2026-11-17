@@ -7,8 +7,10 @@ library;
 // ignore_for_file: type=lint
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';
+import 'package:stupid_simple_sheet/src/sheet_recede.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 abstract class GlassSheetTransitions {
@@ -42,34 +44,32 @@ abstract class GlassSheetTransitions {
     required (double, double) slideBackRange,
     required Color backgroundColor,
     required bool secondSheet,
+    ValueListenable<double>? recedeFactor,
+    PresentationSizing sizing = PresentationSizing.automatic,
     Widget? child,
   }) {
+    final recede = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .scaledBy(recedeFactor);
     final slideAnimation = secondSheet
-        ? secondaryAnimation
-            .remapped(
-              start: slideBackRange.$1,
-              end: slideBackRange.$2,
-            )
-            .drive(
-              Tween<Offset>(
-                begin: Offset(0, 0),
-                end: Offset(
-                  0,
-                  -kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
-                ),
+        ? recede.drive(
+            Tween<Offset>(
+              begin: Offset(0, 0),
+              end: Offset(
+                0,
+                -kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
               ),
-            )
+            ),
+          )
         : AlwaysStoppedAnimation(Offset.zero);
     return SlideTransition(
       position: slideAnimation,
       transformHitTests: false,
       child: ScaleTransition(
-        scale: secondaryAnimation
-            .remapped(
-              start: slideBackRange.$1,
-              end: slideBackRange.$2,
-            )
-            .drive(kScaleTween),
+        scale: recede.drive(kScaleTween),
         alignment: Alignment.topCenter,
         filterQuality: FilterQuality.medium,
         child: SheetBackground(
@@ -86,7 +86,7 @@ abstract class GlassSheetTransitions {
               end: opacityRange.$2,
             ),
             true,
-            sizeToChild: true,
+            sizing: sizing,
           ),
         ),
       ),
@@ -107,6 +107,9 @@ abstract class GlassSheetTransitions {
         top: Radius.circular(36),
       ),
     ),
+    PresentationSizing sizing = PresentationSizing.automatic,
+    ValueListenable<double>? recedeFactor,
+    ValueNotifier<double>? reportRecedeFactorTo,
     Widget? child,
   }) {
     final secondaryChild = secondarySlideUpTransition(
@@ -118,7 +121,21 @@ abstract class GlassSheetTransitions {
       slideBackRange: slideBackRange,
       backgroundColor: backgroundColor,
       secondSheet: secondSheet,
+      recedeFactor: recedeFactor,
+      sizing: sizing,
       child: child,
+    );
+
+    final sheet = SheetDismissalTransition(
+      animation: animation,
+      dismissalMode: dismissalMode,
+      // Attached to the bottom edge, the sheet always takes the full width,
+      // and the full height unless it fits its content's height.
+      child: SizedBox(
+        width: double.infinity,
+        height: sizing.sizesHeightToContent ? null : double.infinity,
+        child: secondaryChild,
+      ),
     );
 
     return Builder(
@@ -134,11 +151,12 @@ abstract class GlassSheetTransitions {
                 EdgeInsets.only(top: secondSheet ? kSheetPaddingToPrevious : 0),
             child: Align(
               alignment: Alignment.bottomCenter,
-              child: SheetDismissalTransition(
-                animation: animation,
-                dismissalMode: dismissalMode,
-                child: secondaryChild,
-              ),
+              child: reportRecedeFactorTo == null
+                  ? sheet
+                  : SheetRecedeReporter(
+                      recedeFactor: reportRecedeFactorTo,
+                      child: sheet,
+                    ),
             ),
           ),
         );

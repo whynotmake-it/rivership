@@ -29,6 +29,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
+    this.presentationSizing = PresentationSizing.page,
   });
 
   /// The default iOS 18 shape for sheet controllers.
@@ -59,6 +60,21 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   ///
   /// Defaults to [iOS18Shape].
   final ShapeBorder shape;
+
+  /// How the sheet sizes itself.
+  ///
+  /// [PresentationSizing.page] (the default) always takes the full height a
+  /// sheet can have, like iOS 18 sheets. [PresentationSizing.automatic] hugs
+  /// the content vertically, up to that height; content that takes all the
+  /// height it is given, such as a scroll view or a `Scaffold`, gets a full
+  /// height sheet.
+  ///
+  /// The page or sheet behind recedes (scales back) only as far as this
+  /// sheet's top edge gets close to the top of the screen, so a short fitted
+  /// sheet only dims it, like a sheet at iOS's `.medium` detent.
+  ///
+  /// Mirrors SwiftUI's `presentationSizing(_:)`.
+  final PresentationSizing presentationSizing;
 
   @override
   Color? get barrierColor => CupertinoColors.transparent;
@@ -111,6 +127,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
           slideBackRange: snappingConfigForTransition.topTwoPoints,
           opacityRange: snappingConfigForTransition.bottomTwoPoints,
           primaryShape: shape,
+          recedeFactor: recedeFactor,
           child: SnapshotWidget(
             controller: backgroundSnapshotController,
             mode: SnapshotMode.permissive,
@@ -149,6 +166,9 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
             backgroundColor: backgroundColor,
             dismissalMode: dismissalMode,
             shape: shape,
+            sizing: presentationSizing,
+            recedeFactor: _nextSheet?.recedeFactor,
+            reportRecedeFactorTo: recedeFactor,
             child: maybeSnapshotChild(child),
           );
         },

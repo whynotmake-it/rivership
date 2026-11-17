@@ -6,10 +6,12 @@ library;
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
+import 'package:stupid_simple_sheet/src/sheet_recede.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 // Smoothing factor applied to the device's top padding (which approximates the corner radius)
@@ -57,7 +59,7 @@ Widget getOverlayedChild(
   Widget? child,
   Animation<double> animation,
   bool secondLayer, {
-  bool sizeToChild = false,
+  PresentationSizing sizing = PresentationSizing.page,
 }) {
   final bool isDarkMode =
       CupertinoTheme.brightnessOf(context) == Brightness.dark;
@@ -81,9 +83,11 @@ Widget getOverlayedChild(
     clipBehavior: Clip.none,
     children: <Widget>[
       if (child != null) child,
-      // Positioned, the overlay leaves the stack the child's size, so a
-      // sheet shorter than the screen keeps its own height.
-      if (sizeToChild) Positioned.fill(child: overlay) else overlay,
+      // Positioned, the overlay leaves the stack the child's size, so a sheet
+      // sized to its content keeps its own size. Otherwise the overlay makes
+      // the stack, and with it the sheet, as big as it may be, with the child
+      // at its top.
+      if (sizing.sizesToContent) Positioned.fill(child: overlay) else overlay,
     ],
   );
 }
@@ -119,8 +123,15 @@ abstract class CopiedCupertinoSheetTransitions {
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     required ShapeBorder primaryShape,
+    ValueListenable<double>? recedeFactor,
     Widget? child,
   }) {
+    final recede = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .scaledBy(recedeFactor);
     final Animatable<Offset> topDownTween = Tween<Offset>(
       begin: Offset.zero,
       end: Offset(
@@ -145,25 +156,10 @@ abstract class CopiedCupertinoSheetTransitions {
       end: primaryShape.scale(1 / 1.5),
     );
 
-    final shapeAnimation = secondaryAnimation
-        .remapped(
-          start: slideBackRange.$1,
-          end: slideBackRange.$2,
-        )
-        .drive(decorationTween);
+    final shapeAnimation = recede.drive(decorationTween);
 
-    final Animation<Offset> slideAnimation = secondaryAnimation
-        .remapped(
-          start: slideBackRange.$1,
-          end: slideBackRange.$2,
-        )
-        .drive(topDownTween);
-    final Animation<double> scaleAnimation = secondaryAnimation
-        .remapped(
-          start: slideBackRange.$1,
-          end: slideBackRange.$2,
-        )
-        .drive(kScaleTween);
+    final Animation<Offset> slideAnimation = recede.drive(topDownTween);
+    final Animation<double> scaleAnimation = recede.drive(kScaleTween);
 
     final Widget? contrastedChild = getOverlayedChild(
       context,
@@ -217,31 +213,29 @@ abstract class CopiedCupertinoSheetTransitions {
     required (double, double) opacityRange,
     required (double, double) slideBackRange,
     required Color backgroundColor,
+    ValueListenable<double>? recedeFactor,
+    PresentationSizing sizing = PresentationSizing.page,
     Widget? child,
   }) {
+    final recede = secondaryAnimation
+        .remapped(
+          start: slideBackRange.$1,
+          end: slideBackRange.$2,
+        )
+        .scaledBy(recedeFactor);
     return SlideTransition(
-      position: secondaryAnimation
-          .remapped(
-            start: slideBackRange.$1,
-            end: slideBackRange.$2,
-          )
-          .drive(
-            Tween<Offset>(
-              begin: Offset(0, 0),
-              end: Offset(
-                0,
-                -kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
-              ),
-            ),
+      position: recede.drive(
+        Tween<Offset>(
+          begin: Offset(0, 0),
+          end: Offset(
+            0,
+            -kSheetPaddingToPrevious / MediaQuery.sizeOf(context).height,
           ),
+        ),
+      ),
       transformHitTests: false,
       child: ScaleTransition(
-        scale: secondaryAnimation
-            .remapped(
-              start: slideBackRange.$1,
-              end: slideBackRange.$2,
-            )
-            .drive(kScaleTween),
+        scale: recede.drive(kScaleTween),
         alignment: Alignment.topCenter,
         filterQuality: FilterQuality.medium,
         child: AnimatedBuilder(
@@ -262,6 +256,7 @@ abstract class CopiedCupertinoSheetTransitions {
               end: opacityRange.$2,
             ),
             true,
+            sizing: sizing,
           ),
         ),
       ),
@@ -281,6 +276,9 @@ abstract class CopiedCupertinoSheetTransitions {
         top: Radius.circular(12),
       ),
     ),
+    PresentationSizing sizing = PresentationSizing.page,
+    ValueListenable<double>? recedeFactor,
+    ValueNotifier<double>? reportRecedeFactorTo,
     Widget? child,
   }) {
     final shapeTween = ShapeBorderTween(
@@ -293,6 +291,7 @@ abstract class CopiedCupertinoSheetTransitions {
           start: slideBackRange.$1,
           end: slideBackRange.$2,
         )
+        .scaledBy(recedeFactor)
         .drive(shapeTween);
 
     final secondaryChild = secondarySlideUpTransition(
@@ -303,7 +302,21 @@ abstract class CopiedCupertinoSheetTransitions {
       opacityRange: opacityRange,
       slideBackRange: slideBackRange,
       backgroundColor: backgroundColor,
+      recedeFactor: recedeFactor,
+      sizing: sizing,
       child: child,
+    );
+
+    final sheet = SheetDismissalTransition(
+      animation: animation,
+      dismissalMode: dismissalMode,
+      // Attached to the bottom edge, the sheet always takes the full width,
+      // and the full height unless it fits its content's height.
+      child: SizedBox(
+        width: double.infinity,
+        height: sizing.sizesHeightToContent ? null : double.infinity,
+        child: secondaryChild,
+      ),
     );
 
     return Builder(
@@ -318,11 +331,12 @@ abstract class CopiedCupertinoSheetTransitions {
             padding: const EdgeInsets.only(top: kSheetPaddingToPrevious),
             child: Align(
               alignment: Alignment.bottomCenter,
-              child: SheetDismissalTransition(
-                animation: animation,
-                dismissalMode: dismissalMode,
-                child: secondaryChild,
-              ),
+              child: reportRecedeFactorTo == null
+                  ? sheet
+                  : SheetRecedeReporter(
+                      recedeFactor: reportRecedeFactorTo,
+                      child: sheet,
+                    ),
             ),
           ),
         );

@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
@@ -11,6 +12,7 @@ import 'package:stupid_simple_sheet/src/snapping_point.dart';
 export 'package:motor/src/motion.dart';
 
 export 'src/dismissal_mode.dart';
+export 'src/presentation_sizing.dart';
 export 'src/route_snapshot_mode.dart';
 export 'src/sheet_background.dart';
 export 'src/sheet_dismissal_transition.dart';
@@ -305,6 +307,15 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   late final SnapshotController _backgroundSnapshotController =
       SnapshotController();
+
+  /// How much of the receding this sheet applies to the sheet or page behind
+  /// it, from 0 (none) to 1 (all of it).
+  ///
+  /// Routes that measure how close their fully open sheet gets to the top of
+  /// the screen update this, so that a short sheet leaves what is behind it
+  /// in place. Stays 1 for routes that don't.
+  @internal
+  late final ValueNotifier<double> recedeFactor = ValueNotifier(1);
 
   /// The [SnapshotController] from the sheet route stacked on top of this one.
   ///
@@ -713,6 +724,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   void dispose() {
     _backgroundSnapshotController.dispose();
     _poppedNotifier.dispose();
+    recedeFactor.dispose();
     super.dispose();
   }
 }

@@ -41,6 +41,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
     this.blurBehindBarrier = true,
+    this.presentationSizing = PresentationSizing.automatic,
 
     /// The color applied to the route behind the first glass sheet.
     ///
@@ -86,6 +87,22 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   ///
   /// Defaults to true.
   final bool blurBehindBarrier;
+
+  /// How the sheet sizes itself.
+  ///
+  /// [PresentationSizing.automatic] (the default) hugs the content
+  /// vertically, up to the full height a sheet can have; content that takes
+  /// all the height it is given, such as a scroll view or a `Scaffold`, gets a
+  /// full height sheet. [PresentationSizing.page] always takes the full
+  /// height, with shorter content at the top of the sheet.
+  ///
+  /// A glass sheet pushed on top of this one makes it recede (scale back)
+  /// only as far as its own top edge gets close to the top of the screen:
+  /// a short fitted sheet leaves this one in place, a full height one pushes
+  /// it back.
+  ///
+  /// Mirrors SwiftUI's `presentationSizing(_:)`.
+  final PresentationSizing presentationSizing;
 
   final Color _barrierColor;
 
@@ -204,6 +221,9 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
               secondSheet: _isSecondGlassSheet,
               dismissalMode: dismissalMode,
               shape: shape,
+              sizing: presentationSizing,
+              recedeFactor: _nextSheet?.recedeFactor,
+              reportRecedeFactorTo: recedeFactor,
               child: maybeSnapshotChild(child),
             ),
           );
