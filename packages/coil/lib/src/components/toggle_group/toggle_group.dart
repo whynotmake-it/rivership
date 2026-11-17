@@ -183,6 +183,9 @@ class CoilToggleGroup<T> extends StatelessWidget {
                           style: look.textStyle!.copyWith(color: color),
                           maxLines: 1,
                           softWrap: false,
+                          // The group cuts the widest items when they don't
+                          // all fit; their labels end in an ellipsis.
+                          overflow: TextOverflow.ellipsis,
                           child: IconTheme(
                             data: IconThemeData(
                               size: sizes.iconSize,
