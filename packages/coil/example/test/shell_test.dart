@@ -13,10 +13,10 @@ import 'package:coil_example/src/pages/home_page.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/shell/navigation.dart';
+import 'package:coil_example/src/shell/phone_frame.dart';
 import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -91,7 +91,7 @@ void main() {
         viewport: CatalogViewport.mobile,
         textScale: scale,
       );
-      expect(find.byType(DeviceFrame), findsOneWidget);
+      expect(find.byType(PhoneFrame), findsOneWidget);
       expect(find.byType(BentoTile), findsNWidgets(homeTiles.length));
       expect(tester.takeException(), isNull);
     });
@@ -101,20 +101,19 @@ void main() {
     tester,
   ) async {
     final settings = await _pump(tester, size: const Size(1440, 900));
-    expect(find.byType(DeviceFrame), findsNothing);
+    expect(find.byType(PhoneFrame), findsNothing);
     expect(CoilTheme.tierOf(_home(tester)), CoilTier.pointer);
     final agent = tester.state(find.byType(AgentTile));
 
     await tester.tap(find.text('Mobile').first);
     await _settle(tester);
 
-    expect(find.byType(DeviceFrame), findsOneWidget);
+    expect(find.byType(PhoneFrame), findsOneWidget);
     final home = _home(tester);
     expect(CoilTheme.tierOf(home), CoilTier.touch);
     expect(CoilTheme.platformOf(home), TargetPlatform.iOS);
-    final iPhone = Devices.ios.iPhone16Pro;
-    expect(MediaQuery.sizeOf(home), iPhone.screenSize);
-    expect(MediaQuery.paddingOf(home).top, iPhone.safeAreas.top);
+    expect(MediaQuery.sizeOf(home), CatalogDevice.iPhone.screenSize);
+    expect(MediaQuery.paddingOf(home), CatalogDevice.iPhone.safeArea);
     // The pages moved into the frame without losing their state.
     expect(tester.state(find.byType(AgentTile)), same(agent));
     // On a phone the sidebar is the drawer, hidden behind the page.
@@ -129,19 +128,23 @@ void main() {
     expect(CoilTheme.platformOf(_home(tester)), TargetPlatform.android);
     expect(
       MediaQuery.sizeOf(_home(tester)),
-      Devices.android.googlePixel9.screenSize,
+      CatalogDevice.pixel.screenSize,
     );
 
     await tester.tap(find.bySemanticsLabel('Rotate device'));
     await _settle(tester);
     expect(settings.orientation, Orientation.landscape);
     final landscape = MediaQuery.sizeOf(_home(tester));
-    expect(landscape.width, greaterThan(landscape.height));
+    expect(landscape, CatalogDevice.pixel.screenSize.flipped);
+    expect(
+      MediaQuery.paddingOf(_home(tester)),
+      CatalogDevice.pixel.landscapeSafeArea,
+    );
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Desktop').first);
     await _settle(tester);
-    expect(find.byType(DeviceFrame), findsNothing);
+    expect(find.byType(PhoneFrame), findsNothing);
     expect(CoilTheme.tierOf(_home(tester)), CoilTier.pointer);
     expect(CoilTheme.platformOf(_home(tester)), defaultTargetPlatform);
     expect(tester.state(find.byType(AgentTile)), same(agent));
@@ -158,7 +161,7 @@ void main() {
     await tester.tap(find.text('iPad Air').last);
     await _settle(tester);
     expect(settings.device, CatalogDevice.iPad);
-    expect(MediaQuery.sizeOf(_home(tester)), Devices.ios.iPadAir4.screenSize);
+    expect(MediaQuery.sizeOf(_home(tester)), CatalogDevice.iPad.screenSize);
     // A tablet is wide enough for the sidebar beside the page.
     expect(_sidebarItem('Button').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -173,7 +176,7 @@ void main() {
       viewport: CatalogViewport.mobile,
     );
     expect(find.byType(CatalogTopBar), findsNothing);
-    expect(find.byType(DeviceFrame), findsNothing);
+    expect(find.byType(PhoneFrame), findsNothing);
     expect(CoilTheme.tierOf(_home(tester)), CoilTier.touch);
     expect(settings.viewport, CatalogViewport.mobile);
     // Without the top bar, the page header has the settings.

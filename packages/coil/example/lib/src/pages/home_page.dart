@@ -37,25 +37,25 @@ class HomePage extends StatelessWidget {
               removeTop: true,
               child: CoilScrollArea(
                 padding: EdgeInsetsDirectional.fromSTEB(
-                    gutter + padding.left,
-                    0,
-                    gutter + padding.right,
-                    gutter + padding.bottom + 24,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: maxWidth),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const _Hero(),
-                          BentoGrid(tiles: homeTiles),
-                          const SizedBox(height: 48),
-                          const _Index(),
-                        ],
-                      ),
+                  gutter + padding.left,
+                  0,
+                  gutter + padding.right,
+                  gutter + padding.bottom + 24,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: maxWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _Hero(),
+                        BentoGrid(tiles: homeTiles),
+                        const SizedBox(height: 48),
+                        const _Index(),
+                      ],
                     ),
                   ),
+                ),
               ),
             ),
           ),

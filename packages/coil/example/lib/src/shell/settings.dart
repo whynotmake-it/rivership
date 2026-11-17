@@ -1,5 +1,4 @@
 import 'package:coil/coil.dart';
-import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
@@ -33,26 +32,95 @@ enum CatalogViewport {
   final String label;
 }
 
-/// The devices the mobile viewport can frame, from `device_frame` (the
-/// package snaptest frames its screenshots with).
-enum CatalogDevice {
-  iPhone('iPhone 16 Pro'),
-  pixel('Pixel 9'),
-  iPad('iPad Air');
+/// What sits in the top of a device's screen.
+enum CatalogCutout {
+  /// No cutout: the camera is in the bezel.
+  none,
 
-  const CatalogDevice(this.label);
+  /// A pill under the top edge, as on recent iPhones.
+  island,
+
+  /// A round camera hole under the top edge, as on most Android phones.
+  punchHole,
+}
+
+/// The devices the mobile viewport frames. The catalog paints the frames
+/// itself (see `PhoneFrame`); these are the numbers it needs, in logical
+/// pixels, portrait.
+enum CatalogDevice {
+  iPhone(
+    label: 'iPhone 16 Pro',
+    platform: TargetPlatform.iOS,
+    screenSize: Size(402, 874),
+    safeArea: EdgeInsets.only(top: 62, bottom: 34),
+    landscapeSafeArea: EdgeInsets.only(left: 62, right: 62, bottom: 21),
+    screenRadius: 55,
+    bezel: 12,
+    cutout: CatalogCutout.island,
+  ),
+  pixel(
+    label: 'Pixel 9',
+    platform: TargetPlatform.android,
+    screenSize: Size(411, 923),
+    safeArea: EdgeInsets.only(top: 52, bottom: 24),
+    landscapeSafeArea: EdgeInsets.only(left: 52, top: 24, bottom: 24),
+    screenRadius: 44,
+    bezel: 11,
+    cutout: CatalogCutout.punchHole,
+  ),
+  iPad(
+    label: 'iPad Air',
+    platform: TargetPlatform.iOS,
+    screenSize: Size(820, 1180),
+    safeArea: EdgeInsets.only(top: 24, bottom: 20),
+    landscapeSafeArea: EdgeInsets.only(top: 24, bottom: 20),
+    screenRadius: 18,
+    bezel: 20,
+    cutout: CatalogCutout.none,
+  );
+
+  const CatalogDevice({
+    required this.label,
+    required this.platform,
+    required this.screenSize,
+    required this.safeArea,
+    required this.landscapeSafeArea,
+    required this.screenRadius,
+    required this.bezel,
+    required this.cutout,
+  });
 
   final String label;
 
-  /// The device's screen, safe areas, pixel ratio and frame.
-  DeviceInfo get info => switch (this) {
-    iPhone => Devices.ios.iPhone16Pro,
-    pixel => Devices.android.googlePixel9,
-    iPad => Devices.ios.iPadAir4,
-  };
-
   /// The platform whose conventions the framed catalog follows.
-  TargetPlatform get platform => info.identifier.platform;
+  final TargetPlatform platform;
+
+  /// The screen in portrait.
+  final Size screenSize;
+
+  /// The screen's safe areas in portrait and in landscape (the device
+  /// turned a quarter counterclockwise, its top to the left).
+  final EdgeInsets safeArea;
+  final EdgeInsets landscapeSafeArea;
+
+  /// The screen's corner radius.
+  final double screenRadius;
+
+  /// The body's width around the screen.
+  final double bezel;
+
+  final CatalogCutout cutout;
+
+  /// Whether this is a phone, as opposed to a tablet.
+  bool get isPhone => this != iPad;
+
+  /// The screen in [orientation].
+  Size screenSizeIn(Orientation orientation) =>
+      orientation == Orientation.portrait ? screenSize : screenSize.flipped;
+
+  /// The safe areas in [orientation].
+  EdgeInsets safeAreaIn(Orientation orientation) =>
+      orientation == Orientation.portrait ? safeArea : landscapeSafeArea;
 }
 
 /// The text scale: the platform's, or a fixed factor.

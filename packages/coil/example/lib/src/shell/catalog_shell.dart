@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/shell/navigation.dart';
+import 'package:coil_example/src/shell/phone_frame.dart';
 import 'package:coil_example/src/shell/preview_settings.dart';
 import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/icons.dart';
-import 'package:device_frame/device_frame.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -476,14 +476,8 @@ class DeviceStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final info = device.info;
     final text = CoilTheme.textOf(context);
-    final landscape = info.isLandscape(orientation);
-    final frame = landscape ? info.frameSize.flipped : info.frameSize;
-    final screen = info.screenSize;
-    final (w, h) = landscape
-        ? (screen.height, screen.width)
-        : (screen.width, screen.height);
+    final screen = device.screenSizeIn(orientation);
     final platform = switch (device.platform) {
       TargetPlatform.iOS => 'iOS',
       TargetPlatform.android => 'Android',
@@ -495,23 +489,17 @@ class DeviceStage extends StatelessWidget {
         children: [
           Expanded(
             child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: frame.width,
-                  maxHeight: frame.height,
-                ),
-                child: DeviceFrame(
-                  device: info,
-                  orientation: orientation,
-                  screen: DeviceScreen(device: device, child: child),
-                ),
+              child: PhoneFrame(
+                device: device,
+                orientation: orientation,
+                child: DeviceScreen(device: device, child: child),
               ),
             ),
           ),
           const SizedBox(height: 12),
           Text(
             '${device.label} · $platform · touch tier · '
-            '${w.round()} × ${h.round()}',
+            '${screen.width.round()} × ${screen.height.round()}',
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
