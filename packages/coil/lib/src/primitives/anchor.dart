@@ -4,6 +4,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
+import 'package:coil/src/primitives/anchored_overlay_portal.dart';
 import 'package:coil/src/primitives/intents.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/presence.dart';
@@ -241,7 +242,7 @@ class _CoilPopoverState extends State<CoilPopover>
   }
 
   @override
-  Widget build(BuildContext context) => OverlayPortal.overlayChildLayoutBuilder(
+  Widget build(BuildContext context) => AnchoredOverlayPortal(
     controller: _portal,
     overlayChildBuilder: _buildPopover,
     child: widget.takeFocus

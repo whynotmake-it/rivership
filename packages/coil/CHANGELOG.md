@@ -31,6 +31,10 @@ Milestone M0, unreleased.
   last's, following wrapping, text scale and RTL;
   `CoilThinkingStepsStyle.connectorColor`, `connectorWidth` and
   `connectorGap` style it.
+- Fixed: a shown tooltip or open popover on a page another page covers no
+  longer fails Flutter's `size == theater.size` assertion when the window
+  resizes; it shows nothing while covered and is placed for the new size
+  when uncovered.
 - Fixed: `CoilScrollArea(scrollbar: .none)` no longer shows the platform's
   desktop scrollbar; an arrow a nested `CoilRovingFocus` or
   `CoilScrollArea` doesn't use (Down in a horizontal one) reaches the
