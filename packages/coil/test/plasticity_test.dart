@@ -84,6 +84,91 @@ void main() {
       expect(_lit(tester, find.byKey(const Key('field'))), isTrue);
     });
 
+    testWidgets("a surface's own edge doesn't depend on where it opens", (
+      tester,
+    ) async {
+      /// The relief on [surface]'s own fill.
+      CoilRelief? edgeOf(Finder surface) {
+        final box = tester.widget<DecoratedBox>(
+          find
+              .descendant(of: surface, matching: find.byType(DecoratedBox))
+              .first,
+        );
+        final shape = (box.decoration as ShapeDecoration).shape;
+        return shape is CoilReliefBorder ? shape.relief : null;
+      }
+
+      await tester.pumpWidget(
+        CoilTheme(
+          data: CoilThemeData.light.copyWith(plasticity: CoilPlasticity.soft),
+          child: const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
+              children: [
+                CoilSurface(
+                  key: Key('page'),
+                  offset: CoilSurface.popoverOffset,
+                  child: SizedBox(height: 20),
+                ),
+                // Opened from inside a card: an elevated scope.
+                CoilSurface.scope(
+                  offset: 1,
+                  child: CoilSurface(
+                    key: Key('card'),
+                    offset: CoilSurface.popoverOffset,
+                    child: SizedBox(height: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final onPage = edgeOf(find.byKey(const Key('page')));
+      expect(onPage, isNotNull);
+      expect(edgeOf(find.byKey(const Key('card'))), onPage);
+    });
+
+    testWidgets('flattenAbove moves the cutoff; 1 is the page', (
+      tester,
+    ) async {
+      Future<void> pumpAt(int flattenAbove) => tester.pumpWidget(
+        CoilTheme(
+          data: CoilThemeData.light.copyWith(
+            plasticity: CoilPlasticity.subtle.copyWith(
+              flattenAbove: flattenAbove,
+            ),
+          ),
+          child: const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
+              children: [
+                // Level 3: on a popover opened from the page.
+                CoilSurface(
+                  offset: 2,
+                  child: CoilInput(key: Key('three')),
+                ),
+                // Level 4.
+                CoilSurface(
+                  offset: 3,
+                  child: CoilInput(key: Key('four')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await pumpAt(3);
+      expect(_lit(tester, find.byKey(const Key('three'))), isTrue);
+      expect(_lit(tester, find.byKey(const Key('four'))), isFalse);
+
+      expect(CoilPlasticity.subtle.flattenAbove, 1);
+      await pumpAt(1);
+      expect(_lit(tester, find.byKey(const Key('three'))), isFalse);
+      expect(_lit(tester, find.byKey(const Key('four'))), isFalse);
+    });
+
     testWidgets('an unelevated scope lights a subtree again', (tester) async {
       await pump(
         tester,
@@ -108,6 +193,97 @@ void main() {
     expect(
       p.resolve(CoilReliefRole.raised, Brightness.light, enabled: false),
       isNull,
+    );
+  });
+
+  group('CoilRelief.decorate', () {
+    final relief = CoilPlasticity.tactile.resolve(.raised, Brightness.light)!;
+    const plain = ShapeDecoration(
+      color: Color(0xFFFFFFFF),
+      shape: RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+      ),
+    );
+
+    test('is idempotent: a lit shape is lit once', () {
+      final once = CoilRelief.decorate(plain, relief);
+      final twice = CoilRelief.decorate(once, relief);
+      expect(twice.shape, once.shape);
+      final border = twice.shape as CoilReliefBorder;
+      expect(border.shape, plain.shape);
+    });
+
+    test('a second relief replaces the first', () {
+      final other = CoilPlasticity.subtle.resolve(.raised, Brightness.dark)!;
+      final lit = CoilRelief.decorate(
+        CoilRelief.decorate(plain, relief),
+        other,
+      );
+      expect((lit.shape as CoilReliefBorder).relief, other);
+    });
+
+    test('asserts on shapes that are not superellipses', () {
+      expect(
+        () => CoilRelief.decorate(
+          const ShapeDecoration(shape: StadiumBorder()),
+          relief,
+        ),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            contains('RoundedSuperellipseBorder'),
+          ),
+        ),
+      );
+    });
+
+    test('tweens keep their corners and fade the light', () {
+      final lit = CoilRelief.decorate(plain, relief);
+      const wide = RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      );
+      for (final (from, to) in [
+        (plain.shape, lit.shape),
+        (lit.shape, plain.shape),
+        (
+          lit.shape,
+          CoilRelief.decorate(const ShapeDecoration(shape: wide), relief).shape,
+        ),
+      ]) {
+        final mid = ShapeBorder.lerp(from, to, 0.5);
+        expect(mid, isA<CoilReliefBorder>(), reason: '$from -> $to');
+        final shape = (mid! as CoilReliefBorder).shape;
+        // No collapse through a scaled-down shape: the radius stays in
+        // between the ends.
+        final radius = (shape.borderRadius as BorderRadius).topLeft.x;
+        expect(radius, inInclusiveRange(8, 12));
+      }
+      // Half way from unlit, the light is half on.
+      final half =
+          (ShapeBorder.lerp(plain.shape, lit.shape, 0.5)! as CoilReliefBorder)
+              .relief;
+      expect(half.edgeTop.a, closeTo(relief.edgeTop.a / 2, 0.01));
+    });
+  });
+
+  test('flattenAbove: copyWith, lerp, equality; scale keeps it', () {
+    final three = CoilPlasticity.soft.copyWith(flattenAbove: 3);
+    expect(three.flattenAbove, 3);
+    expect(three.scale(0.5).flattenAbove, 3);
+    expect(three, isNot(CoilPlasticity.soft));
+    expect(three, CoilPlasticity.soft.copyWith(flattenAbove: 3));
+    expect(
+      three.hashCode,
+      CoilPlasticity.soft.copyWith(flattenAbove: 3).hashCode,
+    );
+    expect(
+      CoilPlasticity.lerp(CoilPlasticity.soft, three, 0.4).flattenAbove,
+      1,
+    );
+    expect(
+      CoilPlasticity.lerp(CoilPlasticity.soft, three, 0.6).flattenAbove,
+      3,
     );
   });
 }

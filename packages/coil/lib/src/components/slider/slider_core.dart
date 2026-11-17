@@ -147,9 +147,18 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   /// Repaints the track: a thumb or the preview moved.
   late final Listenable _paintMoves = Listenable.merge([..._thumbs, _preview]);
 
-  /// Moves a value bubble: anything its position reads.
-  late final Listenable _bubbleMoves = Listenable.merge([
-    _paintMoves,
+  /// Moves each thumb's value bubble: its thumb, the press and the settle.
+  /// Each bubble listens only to what its position reads, so one thumb's
+  /// tick doesn't rebuild the other's bubble.
+  late final List<Listenable> _thumbBubbleMoves = [
+    for (var i = 0; i < _count; i++)
+      Listenable.merge([_thumbs[i], _pressAt, _settle]),
+  ];
+
+  /// Moves the hover bubble: the pointer, the preview that follows it, the
+  /// press and the settle. Not the thumbs.
+  late final Listenable _hoverBubbleMoves = Listenable.merge([
+    _preview,
     _follow,
     _settle,
     _pressAt,
@@ -856,7 +865,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final scale = _scale;
     final e = v(CoilSliderTrack.emphasis).clamp(0.0, 1.0);
     // Under a plastic theme the knob stands on the track, a well.
-    CoilRelief? relief(CoilReliefRole role) => theme.relief(
+    CoilRelief? relief(CoilReliefRole role) => CoilTheme.reliefOf(
+      context,
       role,
       override: style.plasticity,
       hover: e,
@@ -920,6 +930,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
         if (_tooltip)
           for (var i = 0; i < _count; i++)
             _bubbleAnchor(
+              moves: _thumbBubbleMoves[i],
               fraction: () => onTrack && i == _active && _followsPress
                   ? _pressAt.value
                   : _at(i) + (i == _settled ? _settleBy : 0),
@@ -929,6 +940,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
             )
         else
           _bubbleAnchor(
+            moves: _hoverBubbleMoves,
             fraction: () => onTrack
                 ? _pressAt.value
                 : _fromPress
@@ -1028,15 +1040,17 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     );
   }
 
-  /// A value bubble over a [width]-wide box at [fraction] of the track.
+  /// A value bubble over a [width]-wide box at [fraction] of the track,
+  /// moved when [moves] notifies.
   Widget _bubbleAnchor({
+    required Listenable moves,
     required ValueGetter<double> fraction,
     required SliderReach reach,
     required double width,
     required double value,
   }) => Positioned.fill(
     child: ListenableBuilder(
-      listenable: _bubbleMoves,
+      listenable: moves,
       builder: (context, child) => CustomSingleChildLayout(
         delegate: SliderThumbLayout(
           fraction: fraction().clamp(0.0, 1.0),

@@ -436,6 +436,72 @@ class _CoilSwitchState extends State<CoilSwitch>
   }
 }
 
+/// A switch's reliefs at rest and fully hovered for one plasticity,
+/// brightness and enabled state: what a switch at rest or hovered paints
+/// while its thumb travels and its track tints. Only a hover in between
+/// and a press resolve per frame.
+@immutable
+class _SwitchReliefs {
+  _SwitchReliefs._resolve(
+    CoilPlasticity plasticity,
+    Brightness brightness, {
+    required bool enabled,
+  }) : off = plasticity.resolve(.recessed, brightness, enabled: enabled),
+       offHovered = plasticity.resolve(
+         .recessed,
+         brightness,
+         hover: 1,
+         enabled: enabled,
+       ),
+       on = plasticity.resolve(.filled, brightness, enabled: enabled),
+       onHovered = plasticity.resolve(
+         .filled,
+         brightness,
+         hover: 1,
+         enabled: enabled,
+       ),
+       thumb = plasticity.resolve(.raised, brightness, enabled: enabled),
+       thumbHovered = plasticity.resolve(
+         .raised,
+         brightness,
+         hover: 1,
+         enabled: enabled,
+       );
+
+  /// The reliefs for [plasticity] in [brightness], resolved once.
+  factory _SwitchReliefs.of(
+    CoilPlasticity plasticity,
+    Brightness brightness, {
+    required bool enabled,
+  }) {
+    if (plasticity.isFlat) return _flat;
+    final byState = _cache[plasticity] ??= {};
+    return byState[(brightness, enabled)] ??= _SwitchReliefs._resolve(
+      plasticity,
+      brightness,
+      enabled: enabled,
+    );
+  }
+
+  final CoilRelief? off;
+  final CoilRelief? offHovered;
+  final CoilRelief? on;
+  final CoilRelief? onHovered;
+  final CoilRelief? thumb;
+  final CoilRelief? thumbHovered;
+
+  /// Resolved reliefs, kept with the plasticity they came from.
+  static final _cache = Expando<Map<(Brightness, bool), _SwitchReliefs>>(
+    'CoilSwitch.reliefs',
+  );
+
+  static final _flat = _SwitchReliefs._resolve(
+    CoilPlasticity.flat,
+    Brightness.light,
+    enabled: true,
+  );
+}
+
 /// Paints the track and thumb from the switch's track values.
 class _SwitchTrack extends StatelessWidget {
   const _SwitchTrack({
@@ -463,31 +529,42 @@ class _SwitchTrack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = metrics;
-    final theme = CoilTheme.of(context);
     // Under a plastic theme: the off track is a well, the on track a
     // strong fill, the thumb a raised knob that sinks as it's pressed.
-    final plasticity = style.plasticity;
+    // The reliefs at rest and hovered are resolved once per plasticity,
+    // brightness and state, so a toggle only blends the track's two. A
+    // hover on its way in or out, and a press, resolve per frame.
+    final theme = CoilTheme.of(context);
+    final reliefs = _SwitchReliefs.of(
+      style.plasticity ?? theme.plasticity,
+      theme.brightness,
+      enabled: enabled,
+    );
+    CoilRelief? lit(
+      CoilReliefRole role,
+      CoilRelief? rest,
+      CoilRelief? hovered, {
+      double press = 0,
+    }) => press > 0 || (hover > 0 && hover < 1)
+        ? CoilTheme.reliefOf(
+            context,
+            role,
+            override: style.plasticity,
+            hover: hover,
+            press: press,
+            enabled: enabled,
+          )
+        : (hover >= 1 ? hovered : rest);
     final trackRelief = CoilRelief.lerp(
-      theme.relief(
-        CoilReliefRole.recessed,
-        override: plasticity,
-        hover: hover,
-        enabled: enabled,
-      ),
-      theme.relief(
-        CoilReliefRole.filled,
-        override: plasticity,
-        hover: hover,
-        enabled: enabled,
-      ),
+      lit(CoilReliefRole.recessed, reliefs.off, reliefs.offHovered),
+      lit(CoilReliefRole.filled, reliefs.on, reliefs.onHovered),
       tint,
     );
-    final thumbRelief = theme.relief(
+    final thumbRelief = lit(
       CoilReliefRole.raised,
-      override: plasticity,
-      hover: hover,
+      reliefs.thumb,
+      reliefs.thumbHovered,
       press: squish * 0.5,
-      enabled: enabled,
     );
     final inset = m.thumbInset;
     final travel = m.trackWidth - m.thumbSize - inset * 2;

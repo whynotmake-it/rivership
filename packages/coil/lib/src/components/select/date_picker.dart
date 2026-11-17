@@ -278,8 +278,8 @@ class _DateTimePanel extends StatefulWidget {
 }
 
 class _DateTimePanelState extends State<_DateTimePanel> {
-  /// Windows wider than tall and shorter than this put the time beside
-  /// the calendar.
+  /// On the touch tier, windows wider than tall and shorter than this (a
+  /// phone in landscape) put the time beside the calendar.
   static const sideBySideHeight = 600.0;
 
   late DateTime? _value = widget.initial;
@@ -324,10 +324,14 @@ class _DateTimePanelState extends State<_DateTimePanel> {
         day: false,
       ),
     );
-    // A short, wide window has no room for the columns under the
-    // calendar, and room beside it.
+    // A phone in landscape has no room for the columns under the
+    // calendar, and room beside it. A short desktop window keeps them
+    // under it and scrolls, as a resized window shouldn't reflow the
+    // picker.
     final window = MediaQuery.sizeOf(context);
-    if (window.width > window.height && window.height < sideBySideHeight) {
+    if (CoilTheme.tierOf(context) == CoilTier.touch &&
+        window.width > window.height &&
+        window.height < sideBySideHeight) {
       return Row(
         spacing: gap,
         children: [

@@ -80,9 +80,12 @@ class CoilSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = math.min(levelOf(context) + offset, 8);
-    // What sits on a surface above the page isn't lit (see
-    // CoilPlasticityScope).
-    final content = CoilPlasticityScope(elevated: level > 1, child: child);
+    // What sits on a surface above the plasticity's cutoff (the page, by
+    // default) isn't lit (see CoilPlasticityScope).
+    final content = CoilPlasticityScope(
+      elevated: level > CoilTheme.plasticityOf(context).flattenAbove,
+      child: child,
+    );
     if (!_paints) return _SurfaceLevel(level: level, child: content);
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
@@ -100,7 +103,7 @@ class CoilSurface extends StatelessWidget {
             shadows: colors.shadow(weight),
             shape: RoundedSuperellipseBorder(borderRadius: radius),
           ),
-          theme.relief(CoilReliefRole.floating),
+          CoilTheme.reliefOf(context, CoilReliefRole.floating),
         ),
         // Between the fill and the content, as inset shadows are.
         child: CustomPaint(

@@ -72,12 +72,9 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
     final style = widget.style;
     final sectionGap = style.sectionGap!;
     final sourceGap = style.sourceGap!;
-    // The glyph column is one glyph square, so titles line up whether a
-    // step shows a glyph or the smaller dot, and the connector knows where
-    // the glyph ends. Glyphs grow with text, so the square does too.
-    final glyphExtent = MediaQuery.textScalerOf(
-      context,
-    ).scale(widget.metrics.iconSize);
+    // The content keeps the ambient icon theme; only the glyph takes the
+    // step's.
+    final ambientIcons = IconTheme.of(context);
 
     return CoilCollapsible(
       expanded: true,
@@ -88,105 +85,120 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
       debugLabel: 'CoilThinkingSteps.step',
       child: Padding(
         padding: style.stepPadding!,
-        child: Stack(
-          children: [
-            PositionedDirectional(
-              start: 0,
-              top: 0,
-              bottom: 0,
-              width: glyphExtent,
-              child: _Connector(
-                visible: !widget.last,
-                motion: widget.motions.connector,
-                lineStyle: style.titleStyle!,
-                glyphExtent: glyphExtent,
-                gap: style.connectorGap!,
-                thickness: style.connectorWidth!,
-                color: style.connectorColor!,
-              ),
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: widget.metrics.gap,
-              children: [
-                IconTheme(
-                  data: IconThemeData(
-                    size: widget.metrics.iconSize,
-                    color: style.glyphColor,
-                    applyTextScaling: true,
-                  ),
-                  // As tall as the title's first line, so the glyph centers on
-                  // it.
-                  child: CoilLineBox(
-                    style: style.titleStyle!,
-                    child: SizedBox.square(
-                      dimension: glyphExtent,
-                      child: Center(
-                        child:
-                            step.leading ??
-                            _Dot(
-                              color: style.glyphColor!,
-                              size: style.dotSize!,
-                            ),
-                      ),
+        child: IconTheme(
+          data: IconThemeData(
+            size: widget.metrics.iconSize,
+            color: style.glyphColor,
+            applyTextScaling: true,
+          ),
+          child: Builder(
+            builder: (context) {
+              // The glyph column is one glyph square, so titles line up
+              // whether a step shows a glyph or the smaller dot, and the
+              // connector knows where the glyph ends. Glyphs grow with
+              // text, so the square does too.
+              final glyphExtent = CoilIconSize.of(context);
+              return Stack(
+                children: [
+                  PositionedDirectional(
+                    start: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: glyphExtent,
+                    child: _Connector(
+                      visible: !widget.last,
+                      motion: widget.motions.connector,
+                      lineStyle: style.titleStyle!,
+                      glyphExtent: glyphExtent,
+                      gap: style.connectorGap!,
+                      thickness: style.connectorWidth!,
+                      color: style.connectorColor!,
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Column(
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: widget.metrics.gap,
                     children: [
-                      DefaultTextStyle(
+                      // As tall as the title's first line, so the glyph centers
+                      // on it.
+                      CoilLineBox(
                         style: style.titleStyle!,
-                        child: step.title,
-                      ),
-                      if (step.detail case final detail?)
-                        Padding(
-                          padding: EdgeInsets.only(top: style.detailGap!),
-                          child: DefaultTextStyle(
-                            style: style.detailStyle!,
-                            child: detail,
+                        child: SizedBox.square(
+                          dimension: glyphExtent,
+                          child: Center(
+                            child:
+                                step.leading ??
+                                _Dot(
+                                  color: style.glyphColor!,
+                                  size: style.dotSize!,
+                                ),
                           ),
                         ),
-                      if (step.sources.isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.only(top: sectionGap),
-                          child: Wrap(
-                            spacing: sourceGap,
-                            runSpacing: sourceGap,
+                      ),
+                      Expanded(
+                        child: IconTheme(
+                          data: ambientIcons,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              for (final (i, source) in step.sources.indexed)
-                                _SourceBadge(
-                                  key: ValueKey(i),
-                                  enter: i >= _firstNewSource,
-                                  motion: widget.motions.sourcePop,
-                                  style: style,
-                                  child: source,
+                              DefaultTextStyle(
+                                style: style.titleStyle!,
+                                child: step.title,
+                              ),
+                              if (step.detail case final detail?)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    top: style.detailGap!,
+                                  ),
+                                  child: DefaultTextStyle(
+                                    style: style.detailStyle!,
+                                    child: detail,
+                                  ),
+                                ),
+                              if (step.sources.isNotEmpty)
+                                Padding(
+                                  padding: EdgeInsets.only(top: sectionGap),
+                                  child: Wrap(
+                                    spacing: sourceGap,
+                                    runSpacing: sourceGap,
+                                    children: [
+                                      for (final (i, source)
+                                          in step.sources.indexed)
+                                        _SourceBadge(
+                                          key: ValueKey(i),
+                                          enter: i >= _firstNewSource,
+                                          motion: widget.motions.sourcePop,
+                                          style: style,
+                                          child: source,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              if (step.image case final image?)
+                                Padding(
+                                  padding: EdgeInsets.only(top: sectionGap),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth: style.imageMaxWidth!,
+                                    ),
+                                    child: ClipRSuperellipse(
+                                      borderRadius: BorderRadius.circular(
+                                        style.radius!,
+                                      ),
+                                      child: image,
+                                    ),
+                                  ),
                                 ),
                             ],
                           ),
                         ),
-                      if (step.image case final image?)
-                        Padding(
-                          padding: EdgeInsets.only(top: sectionGap),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: style.imageMaxWidth!,
-                            ),
-                            child: ClipRSuperellipse(
-                              borderRadius: BorderRadius.circular(
-                                style.radius!,
-                              ),
-                              child: image,
-                            ),
-                          ),
-                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

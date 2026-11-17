@@ -413,6 +413,8 @@ void main() {
       double scale = 1,
       TextDirection direction = TextDirection.ltr,
       VoidCallback? onDismissRequested,
+      Widget Function(Widget banner) around = _itself,
+      Widget? titleWidget,
     }) => tester.pumpWidget(
       MediaQuery(
         data: MediaQueryData(textScaler: TextScaler.linear(scale)),
@@ -424,14 +426,16 @@ void main() {
               alignment: Alignment.topLeft,
               child: SizedBox(
                 width: width,
-                child: CoilBanner(
-                  key: const ValueKey('banner'),
-                  icon: const TestIcon(TestGlyph.heart),
-                  title: Text(title),
-                  onDismissRequested: onDismissRequested ?? () {},
-                  actions: [
-                    CoilButton(onPressed: () {}, child: const Text('Retry')),
-                  ],
+                child: around(
+                  CoilBanner(
+                    key: const ValueKey('banner'),
+                    icon: const TestIcon(TestGlyph.heart),
+                    title: titleWidget ?? Text(title),
+                    onDismissRequested: onDismissRequested ?? () {},
+                    actions: [
+                      CoilButton(onPressed: () {}, child: const Text('Retry')),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -483,6 +487,54 @@ void main() {
       await tester.tapAt(Offset(cross.center.dx, cross.top + 2));
       expect(dismissed, 1);
     });
+
+    for (final title in [
+      'Offline',
+      'Your workspace storage is almost full, so new uploads may fail',
+    ]) {
+      testWidgets("answers intrinsic height from its parts' intrinsics: "
+          '${title.length} chars', (tester) async {
+        // A title that answers intrinsics but can't lay out dry, under an
+        // IntrinsicHeight.
+        await pump(
+          tester,
+          title,
+          around: (banner) => IntrinsicHeight(child: banner),
+          titleWidget: _NoDryLayout(width: title.length * 8.0),
+        );
+        expect(tester.takeException(), isNull);
+        final layout = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == 'BannerLayout',
+        );
+        final box = tester.renderObject<RenderBox>(layout);
+        expect(box.getMinIntrinsicHeight(box.size.width), box.size.height);
+        expect(box.getMaxIntrinsicHeight(box.size.width), box.size.height);
+      });
+
+      testWidgets('reports its dry baseline: ${title.length} chars', (
+        tester,
+      ) async {
+        // A baseline-aligned row asks for it in its dry layout.
+        await pump(
+          tester,
+          title,
+          around: (banner) => Row(
+            key: const ValueKey('row'),
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const Text('#'),
+              Expanded(child: banner),
+            ],
+          ),
+        );
+        final row = tester.renderObject<RenderBox>(
+          find.byKey(const ValueKey('row')),
+        );
+        expect(row.getDryLayout(row.constraints), row.size);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     for (final direction in TextDirection.values) {
       testWidgets('never overflows: 240 px, 2x text, an unbroken title, '
@@ -565,4 +617,53 @@ void main() {
     );
     expect(fill(), own);
   });
+}
+
+Widget _itself(Widget banner) => banner;
+
+/// A line [width] wide (wrapping at the constraints, 20 per line) that
+/// answers intrinsic sizes but can't lay out dry.
+class _NoDryLayout extends LeafRenderObjectWidget {
+  const _NoDryLayout({required this.width});
+
+  final double width;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderNoDryLayout(width);
+}
+
+class _RenderNoDryLayout extends RenderBox {
+  _RenderNoDryLayout(this.width);
+
+  final double width;
+
+  double _height(double maxWidth) => 20.0 * (width / maxWidth).ceil();
+
+  @override
+  double computeMinIntrinsicWidth(double height) => 40;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => width;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _height(width);
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _height(width);
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    assert(
+      debugCannotComputeDryLayout(reason: 'a test box'),
+      'no dry layout',
+    );
+    return Size.zero;
+  }
+
+  @override
+  void performLayout() {
+    final w = constraints.constrainWidth(width);
+    size = constraints.constrain(Size(w, _height(w)));
+  }
 }

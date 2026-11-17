@@ -209,6 +209,20 @@ void sizingTests() {
     }
   }
 
+  testWidgets('a short desktop window keeps the time under the calendar', (
+    tester,
+  ) async {
+    _useWindow(tester, const Size(900, 500));
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _TimeDemo()),
+    );
+    await tester.tap(find.byType(CoilDatePicker));
+    await tester.pumpAndSettle();
+    final calendar = tester.getRect(find.byType(CoilCalendar));
+    final time = tester.getRect(find.byType(CoilTimeColumns));
+    expect(time.top, greaterThan(calendar.bottom));
+  });
+
   for (final width in const [320.0, 375.0]) {
     testWidgets('a $width px phone fits date and time at text scale 2', (
       tester,

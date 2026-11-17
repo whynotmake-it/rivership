@@ -207,6 +207,18 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 - **Scrim:** sheets keep the glass sheet's own, black 15 % over a blur of the page, in light and dark. Dialogs and drawers that slide over the page, which don't blur, use the `scrim` color token, black 20 % (light) / 30 % (dark) (`CoilColors.scrim`); the phone drawer revealed from behind dims the page only 7 % / 15 % (`CoilDrawerLook.behindScrimLight` / `behindScrimDark`).
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
 
+### 6.1 Plasticity
+
+How lit controls look, from flat to tactile: `CoilThemeData.plasticity`, a `CoilPlasticity` of intensities (0 none, 1 the reference recipe, opencode's elevation tokens).
+
+- **Ladder:** `flat` (the default: nothing is painted and components keep their decorations untouched) < `subtle` < `soft` < `tactile`. `scale(t)` makes any of them quieter or stronger; a glass material would sit above `tactile`.
+- **Light from above.** Each shape has a role (`CoilReliefRole`): `raised` and `filled` controls (buttons, thumbs, the select trigger, an on switch) catch light on the top edge and cast a shadow below; `recessed`, `field` and `track` wells are shaded at the top and lit at the bottom; `quiet` buttons are lit like `raised`; `floating` containers (cards, popovers, dialogs) get only a quiet edge. Shadows paint outside the shape only, so a see-through fill never shows its own.
+- **Resolved per role and brightness** into a `CoilRelief` (a gradient edge, top and bottom rims, a sheen and the drops) with `CoilTheme.reliefOf(context, role)`, and painted by `CoilRelief.decorate` on a superellipse. One setting reads right on white, black, blue and dark fills.
+- **`subtle` lights what you press:** raised controls at 0.78 and filled at 0.8 of the recipe, half-depth hover and press; wells get a hairline, fields barely any; tracks, quiet buttons and containers stay flat. Per-role restraint is data (`roles`), not new presets.
+- **States:** hover brightens the light, a press flattens it and moves the shade to the top edge (the control sinks in), and a disabled control is flat. `response` sets how far hover and press move it.
+- **Selection indicators are never lit** (the tabs pill, toggle-group segments, merged selection blocks): they mark the current item, they aren't pressed.
+- **Not on raised surfaces.** Controls on a card, popover, menu, dialog or sheet are flat: `CoilSurface` places a `CoilPlasticityScope(elevated: true)` above the plasticity's `flattenAbove` level (1, the page, by default; 3 also lights controls on a card or a popover opened from the page), and `CoilTheme.of` reads a flat plasticity inside it. A component style's `plasticity`, or `CoilPlasticityScope(elevated: false)`, lights them anyway. A surface's own edge reads the theme's plasticity as set, so a popover has the same edge wherever it opens.
+
 ## 7. Motion
 
 ### 7.1 Tokens (`CoilMotion`, springs only)
@@ -482,10 +494,10 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.5 Action bar
 
-The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them out, and every dialog and sheet uses it. Actions are given Cancel first and the primary last.
+The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them out, and every dialog and sheet uses it. Actions are given Cancel first and the primary last. The gap between buttons is the tier's `gap` (8 pointer, 12 touch) unless the caller passes `spacing`; a dialog passes its style's `actionGap` (8).
 
 - **Pointer tier, tablets, wide windows:** a row at the buttons' own width, trailing-aligned, gap 8, Cancel before the primary. Buttons that don't fit wrap onto another trailing row.
-- **Phone** (inside a sheet, or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
+- **Phone** (inside a sheet, a modal shown as one or any `CoilSheetRoute`, such as a popup's sheet; or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
 - **Always a stack on a phone, never a two-up row.** One shape whatever the labels, locale and text size: a row would turn into a stack when a label grows, so the same dialog would look different in German or at large text. Every button is a full-width thumb target, and the primary is always in the same place, whatever the count. The order matches both platforms: iOS puts Cancel last in action sheets and stacked alerts, and Material's stacked dialog buttons put the confirming action on top. A destructive primary goes on top like any primary; its color marks it, not its position.
 - **Labels** stay on one line and end in an ellipsis when they don't fit (§ Button); the stack gives them the most room.
 - **In a sheet** the bar is pinned under the content (§13.3), keeping the dialog's padding on the sides and half the usual 16 gap above it.
@@ -1020,7 +1032,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - weekday row (caption muted, locale first day);
   - a 6 × 7 day grid (body, tabular), **always 6 rows** so the height never jumps.
 - **Cell sizes:** square, the control height (36 / 28 / 44 / 36), grown by as much as the text scale grows the line box (the padding doesn't scale).
-- **Width:** seven cells when it can choose (a popover hugs it); a wider space it's given is filled (a phone sheet), with the cell's fill a square in the middle of each column; a narrower one is shared, the rows shrink to stay square and the numbers scale down rather than wrap.
+- **Width:** seven cells when it can choose (a popover hugs it); a wider space it's given is filled (a phone sheet), with the cell's fill a square in the middle of each column; a narrower one is shared, the rows shrink to stay square (measured inside the focus ring's inset, so the columns and rows match) and the numbers scale down rather than wrap.
 - **Day states:**
   - outside the month: muted 60 %;
   - today: semibold with a 4 `brand` dot;
@@ -1030,14 +1042,14 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - hover (pointer): the gliding highlight; in range picking, the highlight *is* the proposed end.
 - **Months:** pointer and tablets show 2 side by side when they fit; phones show 1.
 - **Motion:** the months are pages: the arrows and PageUp/PageDown slide a full page on `standard`, and a jump of more than one month (Shift+PageUp) is a cut. On touch, **horizontal paging follows the finger and keeps the fling velocity**: a swipe past half a page or a flick turns one page, anything less springs back, all on `standard`. A trackpad's horizontal swipe pages too; a mouse drag doesn't. Highlight `quick`; range band `standard`.
-- **Haptics:** `toggle` when a swipe lands on a new month and as a time column passes a row; `pick` when a day is picked.
+- **Haptics:** `toggle` when a swipe lands on a new month and as a time column passes a row; `pick` when a finger picks a day (not on a click, Enter or Space, as in the select's list).
 - **Keyboard:** arrows move the day; PageUp/PageDown change the month; Shift+PageUp/PageDown change the year; Home and End go to the week's start and end; Enter selects.
 - **Semantics:** grid cells carry full-date labels; previous and next month are semantics actions.
 
 #### DatePicker
 
 - **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
-- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width. Both scroll when the window is too short. In a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it.
+- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
 - **Phone (touch, < 600): a sheet built for the thumb.**
   - Grabber → caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.

@@ -142,6 +142,62 @@ void main() {
     expect(changes, isEmpty);
   });
 
+  testWidgets('a setting row sizes under IntrinsicHeight, in both '
+      'directions', (tester) async {
+    for (final direction in TextDirection.values) {
+      // A new app each time: the route keeps its first page.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(
+        _app(
+          Directionality(
+            textDirection: direction,
+            child: IntrinsicHeight(
+              child: CoilSettingRow(
+                label: const Text('Wi-Fi'),
+                description: const Text('Join known networks'),
+                trailing: CoilSwitch(value: false, onChanged: (_) {}),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final row = tester.getRect(find.byType(CoilSettingRow));
+      final label = tester.getRect(find.text('Wi-Fi'));
+      final toggle = tester.getRect(find.byType(CoilSwitch));
+      // 16 padding above and below the label and its description.
+      final description = tester.getRect(find.text('Join known networks'));
+      expect(row.height, moreOrLessEquals(description.bottom - label.top + 32));
+      expect(toggle.center.dy, moreOrLessEquals(row.center.dy, epsilon: 0.5));
+      if (direction == TextDirection.ltr) {
+        expect(label.left, row.left);
+        expect(toggle.right, row.right);
+      } else {
+        expect(label.right, row.right);
+        expect(toggle.left, row.left);
+      }
+    }
+  });
+
+  testWidgets('a wide control takes at most half the row', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        IntrinsicHeight(
+          child: CoilSettingRow(
+            label: const Text('Theme'),
+            trailing: CoilButton(
+              onPressed: () {},
+              child: const Text('A very long button label that will not fit'),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final row = tester.getRect(find.byType(CoilSettingRow));
+    expect(tester.getSize(find.byType(CoilButton)).width, row.width / 2);
+  });
+
   testWidgets('a row with two switches toggles neither from a gap', (
     tester,
   ) async {

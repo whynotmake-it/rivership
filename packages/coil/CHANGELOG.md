@@ -5,13 +5,50 @@ Milestone M0, unreleased.
 - The unblurred modal scrim is a color token, `CoilColors.scrim` (black
   20 % light, 30 % dark). Breaking: `CoilSheetPanel.barrierColorOf` is
   gone; read `CoilTheme.of(context).colors.scrim`.
+- Controls can be lit. `CoilThemeData.plasticity` takes a
+  `CoilPlasticity`: `.flat` (the default, which paints nothing),
+  `.subtle`, `.soft`, `.tactile` or your own intensities, with `scale(t)`,
+  per-role multipliers in `roles` and the hover and press depth in
+  `response`. It resolves per `CoilReliefRole` and brightness into a
+  `CoilRelief` (gradient edge, rims, sheen, outside-only shadows), looked
+  up with `CoilTheme.reliefOf(context, role)` and painted on a
+  superellipse by `CoilRelief.decorate` (a `CoilReliefBorder`, which tweens
+  with plain superellipses). The button, checkbox, radio, switch, slider,
+  select, input and card styles take a `plasticity` that wins over the
+  theme's. Controls on a surface above the page stay flat: `CoilSurface`
+  places a `CoilPlasticityScope(elevated:)` above
+  `CoilPlasticity.flattenAbove` (1, the page, by default; raise it to
+  light controls on cards or popovers too), and
+  `CoilPlasticityScope(elevated: false)` lights a subtree again.
+  `CoilTheme.plasticityOf` reads the plasticity before that flattening. A
+  surface's own edge reads the theme's plasticity, so a popover looks the
+  same wherever it opens.
+- `CoilCalendar` pages by swipe on touch: the month follows the finger, a
+  swipe past half a page or a fling turns one month and anything less
+  springs back, on `standard`. A trackpad swipe pages too; a mouse drag
+  doesn't. Landing on a new month plays the `toggle` haptic, and only a
+  finger's pick plays `pick` (Enter, Space and clicks pick silently).
+- `CoilThinkingSteps` draws a connector under every step's glyph but the
+  last's, following wrapping, text scale and RTL;
+  `CoilThinkingStepsStyle.connectorColor`, `connectorWidth` and
+  `connectorGap` style it.
+- Fixed: `CoilScrollArea(scrollbar: .none)` no longer shows the platform's
+  desktop scrollbar; an arrow a nested `CoilRovingFocus` or
+  `CoilScrollArea` doesn't use (Down in a horizontal one) reaches the
+  outer one; `CoilBanner` and `CoilSettingRow` work under
+  `IntrinsicHeight`; a narrow calendar's days stay square; a short desktop
+  window keeps the date picker's time under the calendar (only the touch
+  tier puts it beside).
+
 - Dialog and sheet buttons on phones are full width. A new primitive,
   `CoilActionBar`, lays out the buttons that end a dialog or a sheet: a
   trailing row on the pointer tier and in wide windows, and in a sheet or
   on the touch tier under 600 (centered confirmations too) every button at
   the full content width, 44 tall, stacked with the primary on top and
   Cancel at the bottom. `layout: CoilActionBarLayout { row, stack }`
-  overrides the choice. `CoilDialog` uses it, and in a sheet pins it under
+  overrides the choice; `CoilActionBar.layoutOf` picks the stack in any
+  `CoilSheetRoute` too, and `spacing` defaults to the tier's
+  `CoilMetrics.gap`. `CoilDialog` uses it, and in a sheet pins it under
   the body with the new `CoilSheetPanel.footer`, which stays above the
   home indicator and the keyboard and shows a hairline while content
   continues beneath. Fixed: on the touch tier a button given a tight width
@@ -80,9 +117,10 @@ Milestone M0, unreleased.
   in `Shortcuts` and handles them in `Actions`, instead of reading key
   events. Behavior is unchanged.
   - `CoilDismissIntent` is what Escape does in a popover, menu, select
-    list, combobox, tooltip or drawer panel, and `CoilSliderStepIntent` and
-    `CoilSliderLimitIntent` are a slider's arrows, Page keys and
-    Home/End. An app replaces any of them with its own `Actions` entry
+    list, combobox, tooltip or drawer panel, and `CoilSliderStepIntent`
+    (by a `CoilSliderIncrement`: a step or a page) and
+    `CoilSliderLimitIntent` (to a `CoilSliderLimit`: min or max) are a
+    slider's arrows, Page keys and Home/End. An app replaces any of them with its own `Actions` entry
     above the widget.
   - `CoilDefaultAction` is how a coil widget registers its action for
     those: like `Action.overridable`, but a nested popup skips the

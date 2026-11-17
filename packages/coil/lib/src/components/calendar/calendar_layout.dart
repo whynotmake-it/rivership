@@ -102,32 +102,43 @@ class CalendarWheelPhysics extends FixedExtentScrollPhysics {
 }
 
 /// Sizes a calendar's six weeks of [cell]-sized days: as wide as it's
-/// given (seven cells when unbounded) and as tall as six rows of square
-/// cells, at most [cell] each. It answers intrinsic sizes itself, so the
-/// pager inside (a viewport, which can't) fits in a popover that hugs its
-/// content.
+/// given (seven cells and the insets when unbounded) and as tall as six
+/// rows of square cells, at most [cell] each. The cells share the width
+/// inside [inset] on each side (room for the focus ring). It answers
+/// intrinsic sizes itself, so the pager inside (a viewport, which can't)
+/// fits in a popover that hugs its content.
 class CalendarGridBox extends SingleChildRenderObjectWidget {
   /// Sizes [child] as a calendar grid of [cell]-sized days.
-  const CalendarGridBox({required this.cell, super.key, super.child});
+  const CalendarGridBox({
+    required this.cell,
+    super.key,
+    this.inset = 0,
+    super.child,
+  });
 
   /// The natural side of a day.
   final double cell;
 
+  /// The horizontal space on each side that isn't cells.
+  final double inset;
+
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      RenderCalendarGridBox(cell);
+      RenderCalendarGridBox(cell, inset);
 
   @override
   void updateRenderObject(
     BuildContext context,
     RenderCalendarGridBox renderObject,
-  ) => renderObject.cell = cell;
+  ) => renderObject
+    ..cell = cell
+    ..inset = inset;
 }
 
 /// The render object of a [CalendarGridBox].
 class RenderCalendarGridBox extends RenderProxyBox {
-  /// Creates the box for [cell]-sized days.
-  RenderCalendarGridBox(this._cell);
+  /// Creates the box for [cell]-sized days with [inset] on each side.
+  RenderCalendarGridBox(this._cell, this._inset);
 
   /// The natural side of a day.
   double get cell => _cell;
@@ -138,14 +149,27 @@ class RenderCalendarGridBox extends RenderProxyBox {
     markNeedsLayout();
   }
 
-  double _heightFor(double width) =>
-      width.isFinite ? math.min(cell * 6, width * 6 / 7) : cell * 6;
+  /// The horizontal space on each side that isn't cells.
+  double get inset => _inset;
+  double _inset;
+  set inset(double value) {
+    if (value == _inset) return;
+    _inset = value;
+    markNeedsLayout();
+  }
+
+  double get _naturalWidth => cell * 7 + inset * 2;
+
+  /// Six rows of cells as tall as the columns inside the insets are wide.
+  double _heightFor(double width) => width.isFinite
+      ? math.min(cell * 6, math.max(0, width - inset * 2) * 6 / 7)
+      : cell * 6;
 
   @override
-  double computeMinIntrinsicWidth(double height) => cell * 7;
+  double computeMinIntrinsicWidth(double height) => _naturalWidth;
 
   @override
-  double computeMaxIntrinsicWidth(double height) => cell * 7;
+  double computeMaxIntrinsicWidth(double height) => _naturalWidth;
 
   @override
   double computeMinIntrinsicHeight(double width) => _heightFor(width);
@@ -157,7 +181,7 @@ class RenderCalendarGridBox extends RenderProxyBox {
   Size computeDryLayout(BoxConstraints constraints) {
     final width = constraints.hasBoundedWidth
         ? constraints.maxWidth
-        : constraints.constrainWidth(cell * 7);
+        : constraints.constrainWidth(_naturalWidth);
     return constraints.constrain(Size(width, _heightFor(width)));
   }
 

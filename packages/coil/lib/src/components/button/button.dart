@@ -384,7 +384,8 @@ class _CoilButtonState extends State<CoilButton> {
     required double hover,
     required double press,
   }) {
-    final relief = theme.relief(
+    final relief = CoilTheme.reliefOf(
+      context,
       switch (widget.variant) {
         CoilButtonVariant.primary => CoilReliefRole.filled,
         CoilButtonVariant.tertiary ||

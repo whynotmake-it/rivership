@@ -129,6 +129,53 @@ void main() {
     expect(_offsetOf(tester), 0);
   });
 
+  testWidgets('a key a nested area leaves alone scrolls the outer one', (
+    tester,
+  ) async {
+    final outer = ScrollController();
+    final inner = ScrollController();
+    final innerFocus = FocusNode(debugLabel: 'inner');
+    addTearDown(outer.dispose);
+    addTearDown(inner.dispose);
+    addTearDown(innerFocus.dispose);
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea(
+          controller: outer,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 40,
+                child: CoilScrollArea(
+                  controller: inner,
+                  focusNode: innerFocus,
+                  axis: Axis.horizontal,
+                  child: const SizedBox(width: 800, height: 40),
+                ),
+              ),
+              _rows(40),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    innerFocus.requestFocus();
+    await tester.pumpAndSettle();
+
+    // Right is the inner area's.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(inner.offset, greaterThan(0));
+    expect(outer.offset, 0);
+
+    // Down isn't: the outer area scrolls, and focus stays inside.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(outer.offset, greaterThan(0));
+    expect(innerFocus.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('content that fits is not a tab stop', (tester) async {
     await tester.pumpWidget(_app(CoilScrollArea(child: _rows(2))));
     await tester.pump();
@@ -340,6 +387,58 @@ void main() {
     // nested list has the behavior's own.
     expect(find.byType(CoilScrollbar), findsOneWidget);
     expect(find.byWidgetPredicate((w) => w is RawScrollbar), findsNWidgets(2));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets("scrollbar: none draws no bar, not even the behavior's", (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea(
+          scrollbar: CoilScrollbarVisibility.none,
+          child: Column(
+            children: [
+              _rows(12),
+              // A nested scrollable keeps the app's behavior and its bar.
+              SizedBox(
+                height: 60,
+                child: ListView(
+                  key: const ValueKey('nested'),
+                  children: [_rows(4)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(CoilScrollbar), findsNothing);
+    expect(
+      find.byWidgetPredicate((w) => w is RawScrollbar),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('nested')),
+        matching: find.byWidgetPredicate((w) => w is RawScrollbar),
+      ),
+      findsOneWidget,
+    );
+
+    // The same for a list it wraps. (A new app: the route keeps its page.)
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      _app(
+        CoilScrollArea.scrollable(
+          controller: controller,
+          scrollbar: CoilScrollbarVisibility.none,
+          child: ListView(controller: controller, children: [_rows(12)]),
+        ),
+      ),
+    );
+    expect(find.byWidgetPredicate((w) => w is RawScrollbar), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('content that shrinks while scrolled to the end rebuilds the '
