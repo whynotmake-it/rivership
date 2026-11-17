@@ -218,33 +218,55 @@ void main() {
   });
 
   // Round 3: controls on a card or popover are flat (CoilPlasticityScope).
-  group('plasticity refined2', skip: skip, () {
-    testWidgets('board', (tester) async {
-      final (title, p) = _refined['a_refined']!;
-      await shoot(
-        tester,
-        'refined2_board_a_refined',
-        _Pair(title: title, plasticity: p),
-        size: const Size(_boardWidth * 2 + 3 * 24, 900),
-      );
-    });
-    for (final brightness in [Brightness.light, Brightness.dark]) {
-      testWidgets('side by side ${brightness.name}', (tester) async {
+  // Round 4 renders the same boards as refined3_ (stronger pressables,
+  // unlit selection indicators), plus close-ups.
+  for (final round in ['refined2', 'refined3']) {
+    group('plasticity $round', skip: skip, () {
+      testWidgets('board', (tester) async {
+        final (title, p) = _refined['a_refined']!;
         await shoot(
           tester,
-          'refined2_side_by_side_${brightness.name}',
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (title, p) in _refined.values)
-                _Board(title: title, plasticity: p, brightness: brightness),
-            ],
-          ),
-          size: const Size(_boardWidth * 3, 900),
+          '${round}_board_a_refined',
+          _Pair(title: title, plasticity: p),
+          size: const Size(_boardWidth * 2 + 3 * 24, 900),
         );
       });
-    }
-  });
+      for (final brightness in [Brightness.light, Brightness.dark]) {
+        testWidgets('side by side ${brightness.name}', (tester) async {
+          await shoot(
+            tester,
+            '${round}_side_by_side_${brightness.name}',
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final (title, p) in _refined.values)
+                  _Board(title: title, plasticity: p, brightness: brightness),
+              ],
+            ),
+            size: const Size(_boardWidth * 3, 900),
+          );
+        });
+        testWidgets('detail ${brightness.name}', (tester) async {
+          await shoot(
+            tester,
+            '${round}_detail_4x_${brightness.name}',
+            Column(
+              children: [
+                for (final id in ['a_subtle', 'a_refined'])
+                  _Detail(
+                    title: _refined[id]!.$1,
+                    plasticity: _refined[id]!.$2,
+                    brightness: brightness,
+                  ),
+              ],
+            ),
+            size: const Size(620, 2 * 132),
+            dpr: 4,
+          );
+        });
+      }
+    });
+  }
 
   group('plasticity recordings', skip: skip, () {
     for (final id in ['a_subtle', 'c_tactile', 'b_soft', 'a_refined']) {
@@ -272,9 +294,8 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 300));
         final recording = await snap.recordVideo(
-          name: id == 'a_refined'
-              ? 'refined_interaction_a_refined'
-              : 'interaction_$id',
+          // The refined A is the current `subtle`; round 4's file name.
+          name: id == 'a_refined' ? 'refined3_interaction' : 'interaction_$id',
           settings: SnapVideoSettings(
             pathPrefix: _out!,
             timing: VideoTiming.smooth,
