@@ -128,13 +128,23 @@ class CoilDrawer extends StatefulWidget {
     this.cornerRadius,
     this.fallbackCornerRadius,
     this.scale = 1,
+    this.panelScale = 0.95,
+    this.panelOpacity = 0.4,
     this.scrimColor,
     this.shadows,
     this.panelColor,
     this.contentColor,
     this.motion,
     this.exitMotion,
-  }) : assert(scale > 0 && scale <= 1, 'scale shrinks the content, 0 to 1');
+  }) : assert(scale > 0 && scale <= 1, 'scale shrinks the content, 0 to 1'),
+       assert(
+         panelScale > 0 && panelScale <= 1,
+         'panelScale grows the panel in, 0 to 1',
+       ),
+       assert(
+         panelOpacity >= 0 && panelOpacity <= 1,
+         'panelOpacity is an opacity, 0 to 1',
+       );
 
   /// The open panel, or null when [child] covers both.
   final CoilDrawerEdge? open;
@@ -188,6 +198,18 @@ class CoilDrawer extends StatefulWidget {
   /// all. It shrinks toward the open panel's far edge, so the panel stays
   /// fully revealed. Only with [CoilDrawerReveal.behind].
   final double scale;
+
+  /// How big the panel's content starts as the content begins to uncover
+  /// it; it grows to full size with the slide, from the edge the content
+  /// leaves, so it seems to emerge from under it. 1 for no growth. Only
+  /// with [CoilDrawerReveal.behind], and not under reduced motion.
+  final double panelScale;
+
+  /// How opaque the panel's content is as the content begins to uncover
+  /// it; it fades to fully opaque with the slide, so the panel is already
+  /// partly there as the content starts to move. 1 for no fade. Only with
+  /// [CoilDrawerReveal.behind].
+  final double panelOpacity;
 
   /// The scrim over the content once a panel is fully open; it fades in
   /// with the slide. Null is the theme's barrier color for
@@ -783,16 +805,24 @@ class _CoilDrawerState extends State<CoilDrawer>
     final label = edge == CoilDrawerEdge.start
         ? widget.startSemanticLabel
         : widget.endSemanticLabel;
+    // Reduced motion keeps the fade and drops the growth.
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final panelScale = reduced ? 1.0 : widget.panelScale;
     var surface = switch (widget.reveal) {
-      // The panel fades in as the content uncovers it, following the drag.
-      // Its fill stays, so nothing shows through. Semantics follow `open`
-      // below, not the fade.
+      // The panel's content fades and grows in as the content uncovers it,
+      // following the drag, from the edge the content leaves. Its fill
+      // stays, so nothing shows through. Semantics follow `open` below,
+      // not the fade.
       CoilDrawerReveal.behind => ColoredBox(
         color: widget.panelColor ?? theme.colors.background,
         child: Opacity(
-          opacity: shown,
+          opacity: widget.panelOpacity + (1 - widget.panelOpacity) * shown,
           alwaysIncludeSemantics: true,
-          child: panel,
+          child: Transform.scale(
+            scale: panelScale + (1 - panelScale) * shown,
+            alignment: left ? Alignment.centerRight : Alignment.centerLeft,
+            child: panel,
+          ),
         ),
       ),
       CoilDrawerReveal.over => CoilSurface(

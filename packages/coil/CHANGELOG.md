@@ -17,8 +17,10 @@ Milestone M0, unreleased.
   aside to show the sidebar, taking the screen's corner radius while it
   moves and squaring up once it covers the sidebar again; a horizontal
   drag anywhere on the page opens it, and horizontal scrollables hand
-  over at their edge. The sidebar fades in as it is revealed, and the
-  page lifts off it: a light scrim (7 % light, 15 % dark), shadow step 8
+  over at their edge. The sidebar emerges as it is revealed, fading in
+  from 40 % and growing from 0.95 at the page's edge (`drawerPanelOpacity`,
+  `drawerPanelScale`; no growth under reduced motion), and the page lifts
+  off it: a light scrim (7 % light, 15 % dark), shadow step 8
   centered on its side and a hairline in `border`, all following the drag.
   Where the screen's radius is unknown, phones round the page 40 (iOS) /
   24 (Android) by default (`drawerFallbackCornerRadius`). The pointer tier

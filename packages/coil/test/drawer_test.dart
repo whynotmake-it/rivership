@@ -149,6 +149,19 @@ double _panelOpacity(WidgetTester tester) => tester
     )
     .opacity;
 
+/// The start panel's content scale.
+double _panelScale(WidgetTester tester) => tester
+    .widget<Transform>(
+      find
+          .ancestor(
+            of: find.text('Start panel'),
+            matching: find.byType(Transform),
+          )
+          .first,
+    )
+    .transform
+    .entry(0, 0);
+
 /// The decorations around the content, outermost first.
 List<ShapeDecoration> _contentDecorations(WidgetTester tester) => [
   for (final box
@@ -258,7 +271,9 @@ void main() {
       }
       // Half of the 320 panel.
       expect(_contentLeft(tester), 160);
-      expect(_panelOpacity(tester), closeTo(0.5, 0.01));
+      // From 0.4, not 0: halfway is 0.7. It grows from 0.95 the same way.
+      expect(_panelOpacity(tester), closeTo(0.7, 0.01));
+      expect(_panelScale(tester), closeTo(0.975, 0.001));
       // Step 8's blurs, centered so they show at the side.
       final shadow = [
         for (final s in colors.shadow(8))
@@ -282,6 +297,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(_open(tester), CoilDrawerEdge.start);
       expect(_panelOpacity(tester), 1);
+      expect(_panelScale(tester), 1);
       expect(_edge(tester).shadows, shadow);
       expect(_hairline(tester).color, colors.border);
       expect(_scrim(tester).a, closeTo(0.07, 0.001));
@@ -292,6 +308,77 @@ void main() {
       expect(_open(tester), isNull);
       expect(_edge(tester).shadows, isEmpty);
       expect(_hairline(tester), BorderSide.none);
+    });
+
+    testWidgets('the panel grows from the edge the content leaves', (
+      tester,
+    ) async {
+      Future<Alignment> anchorWhileOpening(
+        Widget host,
+        Offset drag,
+        String text,
+      ) async {
+        await tester.pumpWidget(const SizedBox());
+        await _pump(tester, host);
+        final gesture = await tester.startGesture(const Offset(200, 500));
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(drag);
+          await tester.pump();
+        }
+        final transform = tester.widget<Transform>(
+          find
+              .ancestor(of: find.text(text), matching: find.byType(Transform))
+              .first,
+        );
+        await gesture.up();
+        await tester.pumpAndSettle();
+        return transform.alignment! as Alignment;
+      }
+
+      expect(
+        await anchorWhileOpening(
+          const _Host(),
+          const Offset(10, 0),
+          'Start panel',
+        ),
+        Alignment.centerRight,
+        reason: 'a left panel grows from its right edge',
+      );
+      expect(
+        await anchorWhileOpening(
+          const _Host(),
+          const Offset(-10, 0),
+          'End panel',
+        ),
+        Alignment.centerLeft,
+      );
+    });
+
+    testWidgets('reduced motion keeps the fade and drops the growth', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: const _Host(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final gesture = await tester.startGesture(const Offset(100, 500));
+      for (var i = 0; i < 16; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump();
+      }
+      expect(_panelScale(tester), 1);
+      expect(_panelOpacity(tester), lessThan(1));
+      await gesture.up();
+      await tester.pumpAndSettle();
     });
 
     testWidgets('a short fling opens it, and one back closes it', (

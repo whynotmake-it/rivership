@@ -22,6 +22,8 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     this.drawerCornerRadius,
     this.drawerFallbackCornerRadius,
     this.drawerScale,
+    this.drawerPanelScale,
+    this.drawerPanelOpacity,
     this.drawerScrimColor,
     this.drawerShadows,
     this.motions,
@@ -44,6 +46,8 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
         WidgetState.any: c.mutedForeground,
       }),
       drawerScale: 1,
+      drawerPanelScale: 0.95,
+      drawerPanelOpacity: 0.4,
     );
   }
 
@@ -97,6 +101,16 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
   /// stays fully revealed; 0.94 is a subtle depth cue.
   final double? drawerScale;
 
+  /// How big the sidebar starts as the page begins to uncover it (0.95):
+  /// it grows to full size with the slide, from the page's edge. 1 for no
+  /// growth. Only when revealed from behind, and not under reduced motion.
+  final double? drawerPanelScale;
+
+  /// How opaque the sidebar is as the page begins to uncover it (0.4): it
+  /// fades to fully opaque with the slide. 1 for no fade. Only when
+  /// revealed from behind.
+  final double? drawerPanelOpacity;
+
   /// The scrim over the page once the drawer is fully open. Null is the
   /// theme's barrier color when the drawer slides over the page, and a
   /// light dim (black 7 % in light, 15 % in dark) when it is revealed from
@@ -133,6 +147,8 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
           drawerFallbackCornerRadius:
               other.drawerFallbackCornerRadius ?? drawerFallbackCornerRadius,
           drawerScale: other.drawerScale ?? drawerScale,
+          drawerPanelScale: other.drawerPanelScale ?? drawerPanelScale,
+          drawerPanelOpacity: other.drawerPanelOpacity ?? drawerPanelOpacity,
           drawerScrimColor: other.drawerScrimColor ?? drawerScrimColor,
           drawerShadows: other.drawerShadows ?? drawerShadows,
           motions: other.motions == null
@@ -155,6 +171,8 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
     drawerCornerRadius,
     drawerFallbackCornerRadius,
     drawerScale,
+    drawerPanelScale,
+    drawerPanelOpacity,
     drawerScrimColor,
     drawerShadows,
     motions,

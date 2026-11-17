@@ -738,6 +738,8 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       cornerRadius: look.drawerCornerRadius,
       fallbackCornerRadius: look.drawerFallbackCornerRadius,
       scale: look.drawerScale!,
+      panelScale: look.drawerPanelScale!,
+      panelOpacity: look.drawerPanelOpacity!,
       scrimColor: look.drawerScrimColor,
       shadows: look.drawerShadows,
       panelColor: reveal == CoilDrawerReveal.behind ? look.background : null,
