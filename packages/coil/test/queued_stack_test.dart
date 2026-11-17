@@ -512,6 +512,34 @@ void main() {
       );
     });
 
+    testWidgets('collapse goes when one message is left, and the pin with '
+        'it', (tester) async {
+      await _pump(tester, [_a, _b], tier: CoilTier.touch);
+      await tester.tap(find.text(_a.semanticLabel));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Collapse queued messages'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Remove').first);
+      await tester.pumpAndSettle();
+      expect(find.text(_a.semanticLabel), findsNothing);
+      expect(
+        find.bySemanticsLabel('Collapse queued messages'),
+        findsNothing,
+        reason: 'a pile of one has nothing to fold',
+      );
+      expect(find.bySemanticsLabel('1 queued message'), findsOneWidget);
+
+      // Queued again, the pile comes back folded: the pin was cleared.
+      await _pump(tester, [_b, _c], tier: CoilTier.touch);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Collapse queued messages'), findsNothing);
+      expect(
+        _top(tester, _b) - _top(tester, _c),
+        closeTo(12, 0.5),
+        reason: 'folded: the second card peeks',
+      );
+    });
+
     testWidgets('every tap target is at least 44, folded or fanned out', (
       tester,
     ) async {

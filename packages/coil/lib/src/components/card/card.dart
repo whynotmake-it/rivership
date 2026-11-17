@@ -176,7 +176,7 @@ class _CoilCardState extends State<CoilCard> {
     setState(() => _dismissing = true);
     // In a pile, the card fades in place while the pile closes its gap,
     // instead of collapsing its own height.
-    CoilCardStackItemScope.maybeOf(context)?.leave(() {
+    CoilCardStack.maybeLeaveOf(context)?.call(() {
       if (!mounted || _dismissed) return;
       _dismissed = true;
       widget.onDismissed?.call();
@@ -359,7 +359,7 @@ class _CoilCardState extends State<CoilCard> {
       );
       card = CoilCollapsible(
         expanded:
-            !_dismissing || CoilCardStackItemScope.maybeOf(context) != null,
+            !_dismissing || CoilCardStack.maybeLeaveOf(context) != null,
         heightMotion: _motionFor(CoilCardTrack.dismissHeight, motion.standard),
         // The blur-fade below does the fading.
         fade: false,

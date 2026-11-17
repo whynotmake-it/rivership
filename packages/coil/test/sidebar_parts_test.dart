@@ -175,6 +175,79 @@ void main() {
     });
   });
 
+  testWidgets('callout stack: a card without a key is an error', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: const SizedBox(
+          width: 240,
+          child: CoilSidebarCalloutStack(
+            children: [SizedBox(height: 40), SizedBox(height: 40)],
+          ),
+        ),
+      ),
+    );
+    expect(
+      '${tester.takeException()}',
+      contains('needs its own key'),
+    );
+  });
+
+  testWidgets('callout stack: reduced motion makes a custom spring instant', (
+    tester,
+  ) async {
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(600, 800);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(600, 800),
+            disableAnimations: true,
+          ),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 240,
+              child: CoilSidebarCalloutStack(
+                motions: {
+                  CoilSidebarTrack.callouts: const CupertinoMotion(
+                    duration: Duration(seconds: 3),
+                  ),
+                },
+                children: [
+                  for (final title in ['One', 'Two'])
+                    SizedBox(
+                      key: ValueKey(title),
+                      height: 40,
+                      child: Text(title),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final rest = tester.getSize(find.byType(CoilSidebarCalloutStack)).height;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(find.text('One')));
+    await tester.pump();
+    await tester.pump();
+    expect(
+      tester.getSize(find.byType(CoilSidebarCalloutStack)).height,
+      greaterThan(rest + 30),
+      reason: 'fanned out at once, not on the 3 s spring',
+    );
+  });
+
   group('callout stack reaches the cards behind', () {
     late List<String> cards;
     late List<String> pressed;

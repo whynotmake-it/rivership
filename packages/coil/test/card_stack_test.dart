@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
 
 /// Cards of mixed heights, front first.
 const _heights = [60.0, 110.0, 40.0, 80.0];
@@ -428,9 +429,256 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.bySemanticsLabel('card 4'),
-        expand == CoilCardStackExpand.auto ? findsOneWidget : findsNothing,
+        expand == CoilCardStackExpand.never ? findsNothing : findsOneWidget,
       );
     }
     semantics.dispose();
+  });
+  group('constraints', () {
+    /// The first error building [app] reports; the ones after it follow
+    /// from it.
+    Future<String> firstError(WidgetTester tester, Widget app) async {
+      final errors = <FlutterErrorDetails>[];
+      final previous = FlutterError.onError;
+      FlutterError.onError = errors.add;
+      try {
+        await tester.pumpWidget(app);
+      } finally {
+        FlutterError.onError = previous;
+      }
+      expect(errors, isNotEmpty);
+      return errors.first.exceptionAsString();
+    }
+
+    List<CoilCardStackItem> items() => [
+      for (final (i, h) in _heights.indexed)
+        CoilCardStackItem(key: ValueKey(i), child: _card(i, h, taps)),
+    ];
+
+    testWidgets('an unbounded width asks for Expanded', (tester) async {
+      final error = await firstError(
+        tester,
+        _app(Row(children: [CoilCardStack(items: items())])),
+      );
+      expect(error, contains('CoilCardStack was given an unbounded width'));
+      expect(error, contains('Expanded'));
+    });
+
+    testWidgets('with a background, an unbounded height asks for Expanded', (
+      tester,
+    ) async {
+      final error = await firstError(
+        tester,
+        _app(
+          ListView(
+            children: [
+              CoilCardStack(
+                background: const SizedBox.expand(),
+                items: items(),
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(error, contains('with a background was given an unbounded'));
+      expect(error, contains('Expanded'));
+    });
+
+    testWidgets('without a background, a list is fine: as tall as the pile', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(ListView(children: [CoilCardStack(items: items())])),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getSize(find.byType(CoilCardStack)).height,
+        closeTo(_heights[0] + 2 * _peek, 0.01),
+      );
+    });
+
+    testWidgets('the background reads the pile extent; 0 elsewhere', (
+      tester,
+    ) async {
+      final extents = <double>[];
+      await tester.pumpWidget(
+        _app(
+          CoilCardStack(
+            gap: _gap,
+            background: LayoutBuilder(
+              builder: (context, constraints) {
+                extents.add(CoilCardStack.pileExtentOf(constraints));
+                return const SizedBox.expand();
+              },
+            ),
+            items: items(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(extents.last, closeTo(_heights[0] + 2 * _peek + _gap, 0.01));
+      expect(
+        CoilCardStack.pileExtentOf(BoxConstraints.tight(const Size(1, 1))),
+        0,
+      );
+    });
+  });
+
+  group('controller', () {
+    testWidgets('the pin clears, with a notification, when one card is '
+        'left', (tester) async {
+      var notified = 0;
+      controller.addListener(() => notified++);
+      await tester.pumpWidget(
+        _app(_stack(taps: taps, controller: controller)),
+      );
+      await tester.pumpAndSettle();
+      controller.pinned = true;
+      await tester.pumpAndSettle();
+      expect(controller.expanded, isTrue);
+      notified = 0;
+
+      await tester.pumpWidget(
+        _app(
+          _stack(taps: taps, controller: controller, heights: [_heights[0]]),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.pinned, isFalse);
+      expect(controller.expanded, isFalse);
+      expect(notified, greaterThan(0));
+    });
+
+    testWidgets('expand: never clears the pin; always keeps it', (
+      tester,
+    ) async {
+      Widget stack(CoilCardStackExpand expand) => _app(
+        CoilCardStack(
+          controller: controller,
+          expand: expand,
+          items: [
+            for (final (i, h) in _heights.indexed)
+              CoilCardStackItem(key: ValueKey(i), child: _card(i, h, taps)),
+          ],
+        ),
+      );
+      await tester.pumpWidget(stack(CoilCardStackExpand.auto));
+      controller.pinned = true;
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(stack(CoilCardStackExpand.always));
+      await tester.pumpAndSettle();
+      expect(controller.pinned, isTrue);
+      expect(controller.expanded, isTrue);
+
+      await tester.pumpWidget(stack(CoilCardStackExpand.never));
+      await tester.pumpAndSettle();
+      expect(controller.pinned, isFalse);
+      expect(controller.expanded, isFalse);
+    });
+
+    testWidgets('expanded is reported after the frame, with a notification', (
+      tester,
+    ) async {
+      final reports = <bool>[];
+      controller.addListener(() => reports.add(controller.expanded));
+      await tester.pumpWidget(
+        _app(
+          CoilCardStack(
+            controller: controller,
+            expand: CoilCardStackExpand.always,
+            items: [
+              for (final (i, h) in _heights.indexed)
+                CoilCardStackItem(key: ValueKey(i), child: _card(i, h, taps)),
+            ],
+          ),
+        ),
+      );
+      expect(controller.expanded, isTrue);
+      expect(reports, [true]);
+    });
+  });
+
+  testWidgets('reduced motion makes per-track overrides instant', (
+    tester,
+  ) async {
+    const slow = CupertinoMotion(duration: Duration(seconds: 3));
+    Widget stack({required bool expanded}) => MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: CoilCardStack(
+        gap: _gap,
+        expand: expanded
+            ? CoilCardStackExpand.always
+            : CoilCardStackExpand.auto,
+        motions: {CoilCardStackTrack.expand: slow},
+        items: [
+          for (final (i, h) in _heights.take(2).indexed)
+            CoilCardStackItem(key: ValueKey(i), child: _card(i, h, taps)),
+        ],
+      ),
+    );
+    await tester.pumpWidget(_app(stack(expanded: false)));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_app(stack(expanded: true)));
+    await tester.pump();
+    expect(
+      _rect(tester, 0).top - _rect(tester, 1).bottom,
+      closeTo(_gap, 0.01),
+      reason: 'fanned out at once',
+    );
+  });
+
+  testWidgets('peeking cards scale with a plain transform, no filter', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(_stack(taps: taps, controller: controller)),
+    );
+    await tester.pumpAndSettle();
+    final transforms = tester.widgetList<Transform>(
+      find.ancestor(of: _cardFinder(1), matching: find.byType(Transform)),
+    );
+    expect(transforms, isNotEmpty);
+    expect(transforms.map((t) => t.filterQuality), everyElement(isNull));
+  });
+
+  testWidgets('a card reads its pile; outside one there is none', (
+    tester,
+  ) async {
+    bool? expanded;
+    Object? leave;
+    bool? outside;
+    await tester.pumpWidget(
+      _app(
+        Column(
+          children: [
+            Builder(
+              builder: (context) {
+                outside = CoilCardStack.maybeExpandedOf(context);
+                return const SizedBox();
+              },
+            ),
+            CoilCardStack(
+              items: [
+                CoilCardStackItem(
+                  key: const ValueKey(0),
+                  child: Builder(
+                    builder: (context) {
+                      expanded = CoilCardStack.maybeExpandedOf(context);
+                      leave = CoilCardStack.maybeLeaveOf(context);
+                      return const SizedBox(height: 40);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    expect(outside, isNull);
+    expect(expanded, isFalse);
+    expect(leave, isNotNull);
   });
 }
