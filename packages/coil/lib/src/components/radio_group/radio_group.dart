@@ -301,50 +301,75 @@ class _CustomRadioGroupState<T> extends State<_CustomRadioGroup<T>> {
   }
 
   /// Home and End select the first and last radio, as in the rows.
-  /// Flutter's group handles the arrows, Space and Tab.
-  KeyEventResult _onKey(FocusNode _, KeyEvent event) {
-    final key = event.logicalKey;
-    if ((event is! KeyDownEvent && event is! KeyRepeatEvent) ||
-        (key != LogicalKeyboardKey.home && key != LogicalKeyboardKey.end)) {
-      return KeyEventResult.ignored;
-    }
-    final radios = _clients.enabled.toList();
-    if (!radios.any((radio) => radio.focusNode.hasFocus)) {
-      return KeyEventResult.ignored;
-    }
-    final order = ReadingOrderTraversalPolicy.sort(
-      radios.map((radio) => radio.focusNode),
-    ).toList();
-    final target = key == LogicalKeyboardKey.home ? order.first : order.last;
-    _select(
-      radios.firstWhere((radio) => radio.focusNode == target).radioValue as T,
-    );
-    target.requestFocus();
-    return KeyEventResult.handled;
-  }
+  /// Flutter's group handles the arrows, Space and Tab. Off while focus is
+  /// outside the radios, so the keys go on.
+  late final _edge = CallbackAction<_EdgeIntent>(
+    onInvoke: (intent) {
+      final radios = _clients.enabled.toList();
+      final order = ReadingOrderTraversalPolicy.sort(
+        radios.map((radio) => radio.focusNode),
+      ).toList();
+      final target = intent.last ? order.last : order.first;
+      _select(
+        radios.firstWhere((radio) => radio.focusNode == target).radioValue as T,
+      );
+      target.requestFocus();
+      return null;
+    },
+  );
+
+  bool get _radioFocused =>
+      _clients.enabled.any((radio) => radio.focusNode.hasFocus);
 
   @override
-  Widget build(BuildContext context) => Focus(
-    canRequestFocus: false,
-    skipTraversal: true,
+  Widget build(BuildContext context) => Shortcuts(
     includeSemantics: false,
-    onKeyEvent: _onKey,
-    child: Semantics(
-      label: widget.semanticLabel,
-      // Flutter's group adds the radio group role.
-      child: RadioGroup<T>(
-        groupValue: widget.value,
-        onChanged: _select,
-        child: CoilRadioScope(
-          enabled: widget.onChanged != null,
-          clients: _clients,
-          size: widget.size,
-          motion: widget.motion,
-          motions: widget.motions,
-          style: widget.style,
-          child: widget.child,
+    shortcuts: const {
+      SingleActivator(LogicalKeyboardKey.home): _EdgeIntent(last: false),
+      SingleActivator(LogicalKeyboardKey.end): _EdgeIntent(last: true),
+    },
+    child: Actions(
+      actions: {
+        _EdgeIntent: _EnabledWhen<_EdgeIntent>(_edge, () => _radioFocused),
+      },
+      child: Semantics(
+        label: widget.semanticLabel,
+        // Flutter's group adds the radio group role.
+        child: RadioGroup<T>(
+          groupValue: widget.value,
+          onChanged: _select,
+          child: CoilRadioScope(
+            enabled: widget.onChanged != null,
+            clients: _clients,
+            size: widget.size,
+            motion: widget.motion,
+            motions: widget.motions,
+            style: widget.style,
+            child: widget.child,
+          ),
         ),
       ),
     ),
   );
+}
+
+/// Selects the first or the [last] enabled radio.
+class _EdgeIntent extends Intent {
+  const _EdgeIntent({required this.last});
+
+  final bool last;
+}
+
+/// [action], enabled only while [enabled] says so.
+class _EnabledWhen<T extends Intent> extends Action<T> {
+  _EnabledWhen(this.action, this.enabled);
+
+  final Action<T> action;
+  final bool Function() enabled;
+
+  @override
+  bool isEnabled(T intent) => enabled();
+
+  @override
+  Object? invoke(T intent) => action.invoke(intent);
 }

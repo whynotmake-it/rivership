@@ -363,6 +363,15 @@ Coil never draws Cupertino or Material chrome. Platform pieces come in only wher
 
 **No edge-swipe drawers by default.** They fight the iOS back gesture.
 
+### 9.2.1 Keyboard shortcuts
+
+coil's keys are Flutter shortcuts: each widget maps keys to an `Intent` in `Shortcuts` and handles it in `Actions`. There is no raw key handling except typeahead, which needs typed characters, and the input-modality tracker, which only listens.
+
+- **Intents an app may want to change are public and replaceable:** `CoilDismissIntent` (Escape closes the focused popover, menu, select list, combobox list or tooltip) and the slider's `CoilSliderStepIntent` and `CoilSliderLimitIntent`. coil registers its own action for them with `CoilDefaultAction`; an app's enabled `Actions` entry for the intent anywhere above the widget replaces it, nested popups included. A disabled entry leaves coil's.
+- **Everything else is private** (list movement, table keys, keyboard scrolling): an app changes those by ejecting the component.
+- **Flutter's intents only where coil's action is the nearest one** (`ActivateIntent` on a control and in a list, `NextFocusIntent` for Tab out of a menu). coil doesn't reuse `DismissIntent`, `ScrollIntent` or `DirectionalFocusIntent`: text fields, routes and `WidgetsApp` already have actions for those, and an action lookup starts at the focused widget, so theirs would answer for coil's keys or shadow them.
+- **Modifiers follow the platform:** ⌘ on Apple platforms, Ctrl elsewhere. Character shortcuts use `CharacterActivator`, which follows the keyboard layout. App-wide shortcuts, such as ⌘K for the command menu, belong to the app, in `Shortcuts` at its root or `ShortcutRegistry`.
+
 ### 9.3 Every overlay
 
 - Dismiss with Esc, a scrim or outside tap, system back, and drag (sheets).

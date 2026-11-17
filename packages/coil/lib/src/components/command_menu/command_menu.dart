@@ -12,8 +12,41 @@ import 'package:flutter/widgets.dart';
 /// The arrows move through the matching rows and Enter runs one; picking a
 /// row closes the menu, then runs its action. Escape or a tap outside
 /// closes it. It opens near the top of a large window and as a sheet on a
-/// phone. Bind it to a shortcut such as ⌘K with a `CallbackShortcuts` near
-/// the app's root.
+/// phone.
+///
+/// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
+/// the app's own, mapped in `Shortcuts` near the app's root (or registered
+/// with `ShortcutRegistry` from any screen) and handled by `Actions` below
+/// it, so a screen can bind the intent to something else:
+///
+/// ```dart
+/// class OpenCommandMenuIntent extends Intent {
+///   const OpenCommandMenuIntent();
+/// }
+///
+/// final apple = switch (defaultTargetPlatform) {
+///   TargetPlatform.iOS || TargetPlatform.macOS => true,
+///   _ => false,
+/// };
+/// Shortcuts(
+///   shortcuts: {
+///     CharacterActivator('k', meta: apple, control: !apple):
+///         const OpenCommandMenuIntent(),
+///   },
+///   child: Actions(
+///     actions: {
+///       OpenCommandMenuIntent: CallbackAction<OpenCommandMenuIntent>(
+///         onInvoke: (_) =>
+///             showCoilCommandMenu(context: context, entries: entries),
+///       ),
+///     },
+///     child: home,
+///   ),
+/// )
+/// ```
+///
+/// `CharacterActivator` matches the character the key types, so it follows
+/// the keyboard layout.
 ///
 /// ```dart
 /// showCoilCommandMenu(

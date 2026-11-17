@@ -2,6 +2,17 @@
 
 Milestone M0, unreleased.
 
+- Keys are Flutter shortcuts. Every coil widget maps its keys to intents
+  in `Shortcuts` and handles them in `Actions`, instead of reading key
+  events. Behavior is unchanged.
+  - `CoilDismissIntent` is what Escape does in a popover, menu, select
+    list, combobox or tooltip, and `CoilSliderStepIntent` and
+    `CoilSliderLimitIntent` are a slider's arrows, Page keys and
+    Home/End. An app replaces any of them with its own `Actions` entry
+    above the widget.
+  - `CoilDefaultAction` is how a coil widget registers its action for
+    those: like `Action.overridable`, but a nested popup skips the
+    actions of the popups around it.
 - The blur-fade is subtler. `CoilBlurFade` starts at a blur sigma of 1.5
   (`CoilBlurFade.defaultBlur`), down from 4, so popovers, tooltips, reveals
   and swaps soften as they arrive instead of smearing. Button and select

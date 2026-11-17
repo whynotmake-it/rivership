@@ -462,37 +462,41 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         expanded: _controller.isOpen,
         onTap: _enabled ? () => _show(keyboard: false) : null,
         value: value,
-        child: CallbackShortcuts(
-          bindings: {
-            for (final key in [
-              LogicalKeyboardKey.arrowDown,
-              LogicalKeyboardKey.arrowUp,
-            ])
-              SingleActivator(key): () => _show(keyboard: true),
+        child: Shortcuts(
+          shortcuts: const {
+            SingleActivator(LogicalKeyboardKey.arrowDown): _OpenIntent(),
+            SingleActivator(LogicalKeyboardKey.arrowUp): _OpenIntent(),
           },
-          child: CoilInteraction(
-            onPressed: _enabled
-                ? () => _show(
-                    keyboard:
-                        CoilInputModality.instance.value ==
-                        CoilModality.keyboard,
-                  )
-                : null,
-            focusNode: _focusNode,
-            autofocus: widget.autofocus,
-            statesController: _states,
-            excludeFromSemantics: true,
-            builder: (context, states, _) => CoilSelectTrigger(
-              metrics: metrics,
-              style: style,
-              states: {
-                ...states,
-                // The list shows where the pointer is while open.
-                if (_controller.isOpen) WidgetState.selected,
-              },
-              icon: widget.icon,
-              indicator: widget.indicator,
-              label: switched,
+          child: Actions(
+            actions: {
+              _OpenIntent: CallbackAction<_OpenIntent>(
+                onInvoke: (_) => _show(keyboard: true),
+              ),
+            },
+            child: CoilInteraction(
+              onPressed: _enabled
+                  ? () => _show(
+                      keyboard:
+                          CoilInputModality.instance.value ==
+                          CoilModality.keyboard,
+                    )
+                  : null,
+              focusNode: _focusNode,
+              autofocus: widget.autofocus,
+              statesController: _states,
+              excludeFromSemantics: true,
+              builder: (context, states, _) => CoilSelectTrigger(
+                metrics: metrics,
+                style: style,
+                states: {
+                  ...states,
+                  // The list shows where the pointer is while open.
+                  if (_controller.isOpen) WidgetState.selected,
+                },
+                icon: widget.icon,
+                indicator: widget.indicator,
+                label: switched,
+              ),
             ),
           ),
         ),
@@ -514,4 +518,9 @@ class _PickedKey extends LocalKey {
 
   @override
   int get hashCode => Object.hashAll(values);
+}
+
+/// Opens the list from the keyboard, with its first or selected row active.
+class _OpenIntent extends Intent {
+  const _OpenIntent();
 }
