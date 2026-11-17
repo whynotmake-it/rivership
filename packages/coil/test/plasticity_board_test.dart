@@ -217,6 +217,35 @@ void main() {
     }
   });
 
+  // Round 3: controls on a card or popover are flat (CoilPlasticityScope).
+  group('plasticity refined2', skip: skip, () {
+    testWidgets('board', (tester) async {
+      final (title, p) = _refined['a_refined']!;
+      await shoot(
+        tester,
+        'refined2_board_a_refined',
+        _Pair(title: title, plasticity: p),
+        size: const Size(_boardWidth * 2 + 3 * 24, 900),
+      );
+    });
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      testWidgets('side by side ${brightness.name}', (tester) async {
+        await shoot(
+          tester,
+          'refined2_side_by_side_${brightness.name}',
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (title, p) in _refined.values)
+                _Board(title: title, plasticity: p, brightness: brightness),
+            ],
+          ),
+          size: const Size(_boardWidth * 3, 900),
+        );
+      });
+    }
+  });
+
   group('plasticity recordings', skip: skip, () {
     for (final id in ['a_subtle', 'c_tactile', 'b_soft', 'a_refined']) {
       testWidgets('interaction $id', (tester) async {
