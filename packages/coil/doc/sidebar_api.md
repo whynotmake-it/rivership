@@ -131,19 +131,33 @@ current state.
   (`ScrollDragMode.boundaryStart`), so flicking back through a carousel
   never yanks the drawer open. While open, drags on the page or the panel
   close it (`scrollFirst` inside the panel). Every drag follows the finger
-  and releases into the spring with its velocity; a fling (400 px/s)
-  decides by direction, a slow release by position.
+  and releases into the spring with its velocity; a fling (400 px/s,
+  `CoilDrawer.flingVelocity`) decides by direction, a slow release by
+  position. An owner that doesn't apply the change sends it back.
 - **Back swipe.** On iOS and macOS, when the route can be popped, the
   start-side drawer doesn't open by drag: that drag is the route's back
   swipe. It still closes by drag, the end side still opens, and the trigger
   always works. `drawerDrag: .anywhere` overrides this.
-- **Look** lives in `CoilSidebarStyle`: `drawerCornerRadius` (null follows
-  the screen), `drawerFallbackCornerRadius` (square), `drawerScale` (1),
-  `drawerScrimColor` (the 20 % / 30 % barrier at 40 %), `drawerShadows` (step 8). The
-  springs are the `drawer` track.
+- **Look** lives in `CoilSidebarStyle`, whose `fallback` fills it from
+  the theme: `drawerCornerRadius` (null follows the screen through
+  `CoilScreenRadius`), `drawerFallbackCornerRadius` (where the screen
+  can't tell: 40 on iOS, 24 on Android, square on desktop and the web),
+  `drawerShadows` (shadow step 8's blurs, centered on the page so they
+  show along its side, with a `border` hairline) and `drawerScrimColor`
+  (null: black 7 % light / 15 % dark from behind, the theme's `scrim`,
+  20 % / 30 %, over the page). The sidebar's own fill is `background`.
+  All of them fade in with the slide and are gone at rest.
+- **Transition** is `drawerTransition: CoilDrawerTransition` on the
+  scaffold: the page's `scale` once open (1), and the sidebar's
+  `panelOpacity` (0.4) and `panelScale` (0.95) as the page starts to
+  uncover it, both reaching 1 with the slide; reduced motion drops the
+  growth. The slide runs on `standard` / `standardExit`, or the
+  `drawer` track's spring both ways, and reduced motion makes it
+  instant.
 - **Closing and focus.** A press on the page, Escape, system back (a
   `LocalHistoryEntry`, like `Scaffold`), a drag and a pick in a menu close
-  it. Focus moves into the panel and returns on close. The panel is a named
+  it. Focus moves into the panel and returns on close, also after
+  switching sides or when one nested drawer closes another. The panel is a named
   route scope; the page is hidden from screen readers except for its
   dismiss action.
 
