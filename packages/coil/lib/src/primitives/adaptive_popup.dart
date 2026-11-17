@@ -232,14 +232,10 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
   void _pushSheet(_Handle handle) {
     final navigator = Navigator.of(context);
     final route = CoilSheetRoute<CoilPopupCloseReason>(
-      motion: CoilTheme.motionOf(context, override: widget.motion).gentle,
-      barrierColor: CoilSheetPanel.barrierColorOf(context),
+      context: context,
+      motion: widget.motion,
       // The TapRegion closes on tap-up outside, with its reason.
       barrierDismissible: false,
-      capturedThemes: InheritedTheme.capture(
-        from: context,
-        to: navigator.context,
-      ),
       child: Builder(
         builder: (context) => TapRegion(
           onTapUpOutside: (_) => handle.close(.outsideTap),

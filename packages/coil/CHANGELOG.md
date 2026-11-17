@@ -2,6 +2,14 @@
 
 Milestone M0, unreleased.
 
+- Sheets are `stupid_simple_sheet`'s glass sheet. Breaking:
+  `CoilSheetRoute` takes `context:` (and optional `motion:`,
+  `barrierDismissible`, `barrierLabel`, `settings`) instead of `motion`,
+  `barrierColor` and `capturedThemes`, and reads them from the theme.
+  Sheets sit flush with the bottom edge, blur the page, stack on each
+  other, ride on the keyboard and exit on `gentleExit`.
+  `CoilSheetPanel` lost its own surface, margins and max width
+  (`CoilSheetPanel.maxWidth` is now `CoilSheetRoute.maxWidth`).
 - coil bundles no font. Breaking: the default typography is the
   platform's UI font, and apps that want Allo or Inter bundle it
   themselves and pick the tuned preset, `CoilTypography.allo()` or
