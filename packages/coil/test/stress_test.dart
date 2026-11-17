@@ -127,9 +127,6 @@ enum StressHost {
 
 const _trigger = ValueKey('stress-trigger');
 
-const _datePickerColumn =
-    'date_picker.dart:292: the open picker column overflows on the bottom '
-    'on phones, in the sheet';
 const _queuedCardRow =
     'queued_stack_card.dart:261: the card row overflows with long text at '
     'large text scales';
@@ -915,11 +912,6 @@ final stories = <StressStory>[
     ),
     open: true,
     // The date picker belongs to another stream; reported, not fixed here.
-    knownBreakage: const {
-      'iOS 320 2x': _datePickerColumn,
-      'iOS 320 1x RTL': _datePickerColumn,
-      'Android 240 2x RTL dark': _datePickerColumn,
-    },
   ),
   StressStory(
     'queued stack',
