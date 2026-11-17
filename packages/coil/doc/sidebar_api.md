@@ -1,8 +1,9 @@
 # Sidebar API
 
-coil's sidebar covers FF's whole surface: three layouts, either side,
-resizing, peeking, a phone drawer, two levels of rows with actions and
-badges, callouts, and a settings dialog. The shell is composition with
+coil's sidebar covers FF's whole surface: three layouts, either side
+(or both, nested), resizing, peeking, a phone drawer revealed from behind
+the page, two levels of rows with actions and badges, callouts, and a
+settings dialog. The shell is composition with
 `Widget` slots. Menu rows are data entries with widget slots, like
 `CoilMenuEntry`, so one hover fill and one keyboard list span both levels.
 This note maps each FF part and prop to coil.
@@ -82,8 +83,10 @@ The scaffold owns state and layout, like `Scaffold` owns its drawer. FF's
 | `open`, `onOpenChange`, `defaultOpen` | `controller: CoilSidebarController?` | A `ChangeNotifier` with `open`, `width` and `toggle()`. Null: the scaffold owns one, open and 256 wide. |
 | `persist` (cookie) | none built in | The app listens to the controller, saves `open` and `width`, and restores them by creating the controller. Drawers and peeks never change `open`. |
 | `width` | `CoilSidebarController.width` | The rail changes it. |
-| `widthMobile` | none | The drawer is `min(320, 85 %)`, per DESIGN.md. |
+| `widthMobile` | `drawerWidth: double?` | Null is `min(320, 85 %)`, per DESIGN.md. |
 | `mobileBreakpoint` 768 | `drawerBreakpoint: 768` | The scaffold's own width, so it works in a pane. |
+| none | `drawerReveal: CoilDrawerReveal? { behind, over }` | Null: `behind` on the touch tier (the page slides aside), `over` on the pointer tier (a panel over the page, as in a narrow desktop window). |
+| none | `drawerDrag: CoilDrawerDrag? { anywhere, close, none }` | Null: `anywhere` on touch, except a start-side drawer on a route iOS can swipe back (`close` there); `close` on the pointer tier. |
 | `shortcut` | `shortcuts: Set<ShortcutActivator>?` | Null: `[` for a sidebar on the left, `]` on the right, and ⌘B / Ctrl+B. Empty disables them. Never while typing in a field. |
 | focus-scoped key | `autofocus: true` | The scaffold is a focus scope and takes focus when nothing has it, so the key works from launch and keeps working after the sidebar folds. A nested scaffold never takes it, so the outermost one answers, as on the web; with focus inside, the innermost one does. |
 | `peek` | `peek: CoilSidebarPeek { none, hover, click }` | |
@@ -111,17 +114,68 @@ it does after 250 ms. A tooltip or menu over the card doesn't count as
 leaving. The peek card and the column hold the same sidebar (moved with a
 `GlobalKey`), so it keeps its state.
 
-**Drawer** (`CoilDrawer`, a new primitive): an `OverlayPortal` descendant
-of the scaffold, not a route, so it always shows the app's current state.
-It slides on `standard`. The scrim, Escape, system back (through a
-`LocalHistoryEntry`, like `Scaffold`) and a drag close it. The drag follows
-the finger and hands its velocity to the spring; a fling decides by
-direction, a slow release by distance. Focus is trapped inside and restored
-on close. A pick in a menu closes it.
+**Drawer** (`CoilDrawer`, a primitive): below `drawerBreakpoint` the
+sidebar becomes a panel of a `CoilDrawer` around the page. It stays a
+descendant of the scaffold, not a route, so it always shows the app's
+current state.
+
+- **Reveal.** On touch the sidebar lies underneath and the page slides
+  aside to reveal it (`CoilDrawerReveal.behind`). While it is away from the
+  edges the page takes the device's screen corner radius, which
+  `CoilScreenRadius` reads once from `corner_radius_plugin`, and it squares
+  up the moment it covers the sidebar again. On the pointer tier the panel
+  slides in over the page (`over`), as before.
+- **Drag.** On touch a horizontal drag anywhere on the page opens it. The
+  drag is read with `scroll_drag_detector`: a horizontal scrollable in the
+  page scrolls first and hands over only when the drag *starts* at its edge
+  (`ScrollDragMode.boundaryStart`), so flicking back through a carousel
+  never yanks the drawer open. While open, drags on the page or the panel
+  close it (`scrollFirst` inside the panel). Every drag follows the finger
+  and releases into the spring with its velocity; a fling (400 px/s)
+  decides by direction, a slow release by position.
+- **Back swipe.** On iOS and macOS, when the route can be popped, the
+  start-side drawer doesn't open by drag: that drag is the route's back
+  swipe. It still closes by drag, the end side still opens, and the trigger
+  always works. `drawerDrag: .anywhere` overrides this.
+- **Look** lives in `CoilSidebarStyle`: `drawerCornerRadius` (null follows
+  the screen), `drawerFallbackCornerRadius` (square), `drawerScale` (1),
+  `drawerScrimColor` (the barrier at 40 %), `drawerShadows` (step 8). The
+  springs are the `drawer` track.
+- **Closing and focus.** A press on the page, Escape, system back (a
+  `LocalHistoryEntry`, like `Scaffold`), a drag and a pick in a menu close
+  it. Focus moves into the panel and returns on close. The panel is a named
+  route scope; the page is hidden from screen readers except for its
+  dismiss action.
+
+**Both sides.** Nest two scaffolds, a `start` one whose `body` is an `end`
+one. Their drawers find each other: a drag the inner one can't use (toward
+a side it has no panel on) moves the outer one, and opening either closes
+the other, so a phone gets a left and a right sidebar that behave as one
+drawer. `CoilSidebarTrigger(side: .start)` / `(side: .end)` reaches either
+from the page, and `CoilSidebarScaffold.of` keeps returning the nearest.
+
+```dart
+CoilSidebarScaffold(
+  sidebar: navigation,
+  body: CoilSidebarScaffold(
+    side: .end,
+    sidebar: details,
+    body: Column(children: [
+      Row(children: [
+        CoilSidebarTrigger(side: .start, icon: PanelLeftIcon()),
+        const Spacer(),
+        CoilSidebarTrigger(side: .end, icon: PanelRightIcon()),
+      ]),
+      Expanded(child: page),
+    ]),
+  ),
+)
+```
 
 **`CoilSidebarTrigger`:** `icon`, `openLabel` / `closeLabel` widgets (with
-optional semantic strings). A ghost icon button whose tooltip names the
-action and shows the key.
+optional semantic strings), and `side` to drive the nearest scaffold on
+that side. A ghost icon button whose tooltip names the action and shows the
+key; below the breakpoint it reads open while the drawer is.
 
 ## Panel: `SidebarHeader` / `SidebarContent` / `SidebarFooter` → `CoilSidebar`
 
@@ -200,8 +254,6 @@ static scaffold (208 wide) whose menu shows focus as the highlight. Under
 - **Header and footer menu width.** FF sizes those menus to the trigger
   plus 10, so items line up with the rows; `CoilDropdown` has no option
   for that yet.
-- **Edge swipe to open the drawer.** DESIGN.md makes it opt-in on root
-  routes; not built yet.
 
 ## Kept out on purpose
 

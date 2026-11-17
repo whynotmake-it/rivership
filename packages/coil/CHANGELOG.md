@@ -2,6 +2,23 @@
 
 Milestone M0, unreleased.
 
+- The phone sidebar is revealed from behind the page. Below its
+  breakpoint, on the touch tier, `CoilSidebarScaffold`'s page slides
+  aside to show the sidebar, taking the screen's corner radius while it
+  moves and squaring up once it covers the sidebar again; a horizontal
+  drag anywhere on the page opens it, and horizontal scrollables hand
+  over at their edge. The pointer tier keeps the drawer over the page.
+  New: `drawerReveal`, `drawerDrag`, `drawerWidth`, `CoilSidebarStyle`'s
+  `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
+  scaffolds give a phone a sidebar on each side.
+  - Breaking: `CoilDrawer` takes `start` and `end` panels,
+    `open: CoilDrawerEdge?` and `onOpenChanged` (was `drawer`, `edge`,
+    `open: bool`, `onClose`, `semanticLabel`), and `reveal:
+    CoilDrawerReveal { behind, over }`, `drag: CoilDrawerDrag?` and look
+    parameters. It renders in place instead of in an overlay.
+  - `CoilScreenRadius` (primitive) reads the device screen's corner radii
+    once through `corner_radius_plugin`; null on web, desktop and in tests.
+    coil now depends on `corner_radius_plugin` and `scroll_drag_detector`.
 - coil bundles no font. Breaking: the default typography is the
   platform's UI font, and apps that want Allo or Inter bundle it
   themselves and pick the tuned preset, `CoilTypography.allo()` or
