@@ -110,9 +110,13 @@ class SliderPill extends StatelessWidget {
     required this.ring,
     required this.track,
     super.key,
+    this.knobRelief,
   });
 
   final SliderPillPaint painter;
+
+  /// The knob's lighting under a plastic theme.
+  final CoilRelief? knobRelief;
   final CoilSliderStyle style;
   final CoilMetrics metrics;
   final Widget? label;
@@ -139,12 +143,15 @@ class SliderPill extends StatelessWidget {
     );
     final box = style.knobBox!;
     final knob = style.knobSize!;
-    final knobDecoration = ShapeDecoration(
-      color: style.knob,
-      shadows: style.knobShadows,
-      shape: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(knob / 2),
+    final knobDecoration = CoilRelief.decorate(
+      ShapeDecoration(
+        color: style.knob,
+        shadows: style.knobShadows,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(knob / 2),
+        ),
       ),
+      knobRelief,
     );
     final pill = CoilMotionLayer(
       background: [painter],

@@ -755,6 +755,13 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     final rtl = _rtl;
     final scale = _scale;
     final e = v(CoilSliderTrack.emphasis).clamp(0.0, 1.0);
+    // Under a plastic theme the knob stands on the track, a well.
+    CoilRelief? relief(CoilReliefRole role) => theme.relief(
+      role,
+      override: style.plasticity,
+      hover: e,
+      enabled: _enabled,
+    );
     final paint = SliderPaintState(
       reach: reach,
       rtl: rtl,
@@ -848,7 +855,9 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           dotGrowth: style.dotGrowth!,
           dotColor: style.pip!,
           dots: v(CoilSliderTrack.dots).clamp(0.0, 1.0),
+          relief: relief(CoilReliefRole.track),
         ),
+        knobRelief: relief(CoilReliefRole.raised),
         style: style,
         metrics: metrics,
         label: widget.label,
@@ -868,11 +877,14 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
         offset: 2,
         child: _gestures(
           DecoratedBox(
-            decoration: ShapeDecoration(
-              shape: RoundedSuperellipseBorder(
-                borderRadius: radius,
-                side: BorderSide(color: style.border!),
+            decoration: CoilRelief.decorate(
+              ShapeDecoration(
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(color: style.border!),
+                ),
               ),
+              relief(CoilReliefRole.track),
             ),
             child: SliderRow(
               painter: SliderRowPaint(

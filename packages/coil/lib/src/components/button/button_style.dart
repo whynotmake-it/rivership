@@ -23,6 +23,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
     this.iconSize,
     this.minHeight,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults for [variant] from [theme]'s tokens at [metrics].
@@ -86,6 +87,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
       ),
     };
     return CoilButtonStyle(
+      plasticity: theme.plasticity,
       fill: fill,
       foreground: foreground,
       border: variant == CoilButtonVariant.tertiary
@@ -125,10 +127,16 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
   /// [merge] combines the maps key by key.
   final Map<CoilButtonTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilButtonStyle merge(CoilButtonStyle? other) => other == null
       ? this
       : CoilButtonStyle(
+          plasticity: other.plasticity ?? plasticity,
           fill: other.fill ?? fill,
           foreground: other.foreground ?? foreground,
           border: other.border ?? border,
@@ -151,5 +159,6 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
     iconSize,
     minHeight,
     motions,
+    plasticity,
   ];
 }

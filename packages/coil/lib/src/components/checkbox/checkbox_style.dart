@@ -18,6 +18,7 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
     this.size,
     this.radius,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -27,6 +28,7 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
   ) {
     final c = theme.colors;
     return CoilCheckboxStyle(
+      plasticity: theme.plasticity,
       border: WidgetStateProperty<Color?>.fromMap({
         WidgetState.hovered: c.foreground.withValues(alpha: 0.4),
         WidgetState.selected: c.border.withValues(alpha: 0),
@@ -61,10 +63,16 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
   /// these win over the motion tokens. [merge] combines the maps key by key.
   final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilCheckboxStyle merge(CoilCheckboxStyle? other) => other == null
       ? this
       : CoilCheckboxStyle(
+          plasticity: other.plasticity ?? plasticity,
           border: other.border ?? border,
           borderWidth: other.borderWidth ?? borderWidth,
           glyphColor: other.glyphColor ?? glyphColor,
@@ -83,5 +91,6 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
     size,
     radius,
     motions,
+    plasticity,
   ];
 }

@@ -26,6 +26,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     this.multilineRadius,
     this.minHeight,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults from the theme's tokens.
@@ -33,6 +34,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     final c = theme.colors;
     final radii = theme.shape.radii(metrics.tier);
     return CoilInputStyle(
+      plasticity: theme.plasticity,
       fill: WidgetStateProperty<Color?>.fromMap({
         WidgetState.focused: c.hover.withValues(alpha: 0),
         WidgetState.hovered: c.hover,
@@ -97,10 +99,16 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
   /// combines the maps key by key.
   final Map<CoilInputTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilInputStyle merge(CoilInputStyle? other) => other == null
       ? this
       : CoilInputStyle(
+          plasticity: other.plasticity ?? plasticity,
           fill: other.fill ?? fill,
           border: other.border ?? border,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
@@ -129,5 +137,6 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     multilineRadius,
     minHeight,
     motions,
+    plasticity,
   ];
 }

@@ -35,6 +35,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     this.handleWidth,
     this.handleInset,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -42,6 +43,7 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     final c = theme.colors;
     final touch = metrics.tier == CoilTier.touch;
     return CoilSliderStyle(
+      plasticity: theme.plasticity,
       fill: c.active,
       pillFill: theme.brightness == Brightness.dark
           ? c.accent.withValues(alpha: 0.4)
@@ -170,10 +172,16 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// combines the maps key by key.
   final Map<CoilSliderTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilSliderStyle merge(CoilSliderStyle? other) => other == null
       ? this
       : CoilSliderStyle(
+          plasticity: other.plasticity ?? plasticity,
           fill: other.fill ?? fill,
           pillFill: other.pillFill ?? pillFill,
           border: other.border ?? border,
@@ -228,5 +236,6 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
     handleWidth,
     handleInset,
     motions,
+    plasticity,
   ];
 }

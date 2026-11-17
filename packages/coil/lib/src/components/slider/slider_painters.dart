@@ -1,6 +1,7 @@
 // Internal to CoilSlider; not exported.
 // ignore_for_file: public_member_api_docs
 
+import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/slider/slider_scale.dart';
 import 'package:flutter/foundation.dart';
@@ -224,6 +225,7 @@ class SliderPillPaint extends CoilLayerPaint {
     required this.dotGrowth,
     required this.dotColor,
     required this.dots,
+    this.relief,
   }) : super(repaint: moves);
 
   /// The thumbs' current fractions, read while painting.
@@ -245,8 +247,12 @@ class SliderPillPaint extends CoilLayerPaint {
   /// 0 at rest, 1 grown.
   final double dots;
 
+  /// The track's lighting under a plastic theme.
+  final CoilRelief? relief;
+
   @override
   bool shouldRepaint(SliderPillPaint oldItem) =>
+      oldItem.relief != relief ||
       oldItem.state != state ||
       oldItem.fill != fill ||
       oldItem.border != border ||
@@ -331,6 +337,7 @@ class SliderPillPaint extends CoilLayerPaint {
           ..strokeWidth = 1
           ..color = border,
       );
+    relief?.paint(canvas, shape);
   }
 }
 

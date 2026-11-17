@@ -18,6 +18,7 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
     this.textStyle,
     this.radius,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults from [theme]'s tokens at [metrics].
@@ -25,6 +26,7 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
     final c = theme.colors;
     final m = metrics.switchMetrics;
     return CoilSwitchStyle(
+      plasticity: theme.plasticity,
       track: WidgetStateProperty<Color?>.fromMap({
         WidgetState.selected & WidgetState.hovered: CoilColorMix.oklab(
           c.brand,
@@ -67,10 +69,16 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
   /// combines the maps key by key.
   final Map<CoilSwitchTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilSwitchStyle merge(CoilSwitchStyle? other) => other == null
       ? this
       : CoilSwitchStyle(
+          plasticity: other.plasticity ?? plasticity,
           track: other.track ?? track,
           thumb: other.thumb ?? thumb,
           label: other.label ?? label,
@@ -82,5 +90,13 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
         );
 
   @override
-  List<Object?> get props => [track, thumb, label, textStyle, radius, motions];
+  List<Object?> get props => [
+    track,
+    thumb,
+    label,
+    textStyle,
+    radius,
+    motions,
+    plasticity,
+  ];
 }
