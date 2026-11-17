@@ -315,6 +315,145 @@ void main() {
     expect(await iconAfter300ms(), isTrue);
   });
 
+  group('copy feedback', () {
+    final check = find.byWidgetPredicate(
+      (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.check,
+    );
+    final copyGlyph = find.byWidgetPredicate(
+      (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.copy,
+    );
+
+    /// How present the check is in the cross-fade, 0 to 1.
+    double presence(WidgetTester tester) => tester
+        .widget<CoilBlurFade>(
+          find.ancestor(of: check, matching: find.byType(CoilBlurFade)).first,
+        )
+        .presence
+        .value;
+
+    double drawn(WidgetTester tester) =>
+        tester.widget<CoilDrawnGlyph>(check).progress;
+
+    testWidgets('with no icon, the action still shows a copy glyph', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(const CoilInputCopy(value: 'abc')));
+      expect(copyGlyph, findsOneWidget);
+      expect(tester.getSize(copyGlyph).width, greaterThan(0));
+    });
+
+    testWidgets('spam: the check animates in once and each tap restarts the '
+        'timer', (tester) async {
+      var copied = 0;
+      await tester.pumpWidget(
+        _app(CoilInputCopy(value: 'abc', onCopied: () => copied++)),
+      );
+      await tester.tap(find.byType(CoilInputCopy));
+      await tester.pumpAndSettle();
+      expect(check, findsOneWidget);
+      final shown = tester.element(check);
+      expect(drawn(tester), 1);
+
+      // Nine more taps, 150 ms apart: 1.35 s, well past where a single
+      // copy would have started leaving at the end.
+      for (var i = 0; i < 9; i++) {
+        await tester.tap(find.byType(CoilInputCopy));
+        await tester.pump();
+        for (var f = 0; f < 10; f++) {
+          await tester.pump(const Duration(milliseconds: 15));
+          expect(check, findsOneWidget, reason: 'no second check enters');
+          expect(
+            tester.element(check),
+            same(shown),
+            reason: 'the check is never rebuilt from scratch',
+          );
+          expect(drawn(tester), 1, reason: 'the check never redraws');
+          expect(presence(tester), closeTo(1, 0.001));
+          expect(copyGlyph, findsNothing, reason: 'the icon never comes back');
+        }
+      }
+      expect(clipboard, hasLength(10));
+      expect(copied, 10);
+      expect(announcements, ['Copied'], reason: 'announced once, on entry');
+
+      // The 2 s run from the last tap.
+      await tester.pump(
+        CoilInputCopy.resetDelay - const Duration(milliseconds: 160),
+      );
+      expect(copyGlyph, findsNothing);
+      expect(presence(tester), closeTo(1, 0.001));
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.pumpAndSettle();
+      expect(check, findsNothing);
+      expect(copyGlyph, findsOneWidget);
+    });
+
+    testWidgets('a copy while the check leaves turns it around smoothly', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(const CoilInputCopy(value: 'abc')));
+      await tester.tap(find.byType(CoilInputCopy));
+      await tester.pumpAndSettle();
+      final shown = tester.element(check);
+
+      await tester.pump(CoilInputCopy.resetDelay);
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 16));
+      final leaving = presence(tester);
+      expect(leaving, inExclusiveRange(0.05, 0.95), reason: 'mid-exit');
+      expect(copyGlyph, findsOneWidget, reason: 'the icon is entering');
+
+      await tester.tap(find.byType(CoilInputCopy));
+      await tester.pump();
+      var last = presence(tester);
+      expect(last, closeTo(leaving, 0.1), reason: 'no snap');
+      for (var f = 0; f < 30; f++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(tester.element(check), same(shown), reason: 'same check');
+        expect(drawn(tester), 1, reason: 'it stays drawn');
+        final now = presence(tester);
+        // A `quick` spring covers a third of the way in a frame; a restart
+        // would drop to 0 or jump to 1.
+        expect(now, greaterThan(leaving - 0.05), reason: 'no restart');
+        expect(now - last, lessThan(0.4), reason: 'no jump');
+        last = now;
+      }
+      await tester.pumpAndSettle();
+      expect(presence(tester), closeTo(1, 0.001));
+      expect(copyGlyph, findsNothing);
+      await tester.pump(CoilInputCopy.resetDelay);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a controller drives a copy icon anywhere', (tester) async {
+      final controller = CoilCopyController();
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) => CoilButton.icon(
+              semanticLabel: 'Copy',
+              onPressed: () => controller.copy('hello', context: context),
+              icon: CoilCopyGlyph.listening(controller: controller),
+            ),
+          ),
+        ),
+      );
+      expect(copyGlyph, findsOneWidget);
+      await tester.tap(find.byType(CoilButton));
+      await tester.pumpAndSettle();
+      expect(clipboard, ['hello']);
+      expect(announcements, ['Copied']);
+      expect(check, findsOneWidget);
+      expect(controller.value, CoilCopyStatus.copied);
+      await tester.pump(CoilCopyController.defaultResetDelay);
+      await tester.pumpAndSettle();
+      expect(controller.value, CoilCopyStatus.idle);
+      expect(copyGlyph, findsOneWidget);
+    });
+  });
+
   testWidgets('input copy sheet', (tester) async {
     Widget rows(BuildContext context) => const SizedBox(
       width: 300,

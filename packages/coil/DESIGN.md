@@ -228,7 +228,7 @@ Two durations sit next to the springs:
 Named holds that aren't tokens:
 
 - **DatePicker close:** 200 ms after a pick.
-- **InputCopy reset:** 2 s.
+- **Copy result hold (InputCopy, every copy affordance):** 2 s after the last copy.
 - **Tooltip timing:** 200 ms delay, 300 ms group skip-delay.
 
 ### 7.2 Rules
@@ -714,17 +714,18 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### InputCopy
 
-- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. Label it with a Field: a tap on the label copies.
+- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. The action always shows: without an `icon`, coil draws its own copy glyph (two sheets). Label it with a Field: a tap on the label copies.
 - **Sizes:** row = `controlHeight`, padding `controlPaddingX`.
 - **States:**
   - idle;
   - hover (pointer): the value gets a `brand` 20 % mark and the action turns foreground;
-  - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s, then idle.
+  - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s after the last copy, then idle.
+  - Copying again while the result shows animates nothing and only restarts the 2 s. Copying while the result leaves turns it around from where it is (no restart, the check stays drawn). This is `CoilCopyController` plus `CoilCopySwitcher`, the one state machine every copy affordance uses.
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
+- **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`, once per appearance. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
 - **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
-- **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed".
+- **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed" when the result appears (not again for a copy that only extends it).
 - **Keyboard:** Enter or Space copies.
 
 ### 14.3 Menus and overlays
@@ -838,7 +839,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Card (built)
 
-- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕; an optional stretched action (the whole card is a link or button).
+- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕ at the top trailing corner, which the header and an inline card's trailing actions keep clear of (its 44 touch hit box included); an optional stretched action (the whole card is a link or button).
 - **Variants:** `stacked` (media on top, full-bleed 16:9 image) and `inline` (media leading: a 32 tinted tile or an image 160 square).
 - **Padding:** 16 (compact 12). Content and footer 12 below the header.
 - **Groups:** one divided block with hairlines between cards, or `separated` (gap 8).
@@ -910,7 +911,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Variants:**
   - user: a bubble in `accent` mixed 45 % into background (Oklab), container radius, aligned to the end;
   - assistant: no bubble, full width, aligned to the start.
-- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…).
+- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
 - **Semantics:** each message is a container labeled with sender and time.
 
@@ -962,7 +963,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Side:** `start` or `end`, following the text direction. The rail, the drawer, the peek edge and the default key follow it.
 - **Folding:** `offcanvas` slides it off the edge and gives the page its width back; `none` is a static column (no rail, shortcut or drawer), as in the settings dialog. **There is no icon-only rail on purpose:** glyphs alone turn navigation into a quiz, and section labels and actions have nowhere to go. Peek brings the real sidebar back instead.
 - **Header and footer:** stack parts vertically (each on its own row, actions as menu rows) or horizontally (`CoilSidebarBar`: the primary part, then 1–3 icon actions on the 24 rhythm).
-- **Callouts:** a pile of cards, front first. At rest up to 2 peek 12 behind the front, each 5 % smaller. Inline cards fan out into a list under a hovering mouse (or keyboard focus); banners never fan. Dismissing the front promotes the next on `standard`. Touch never fans.
+- **Callouts:** a pile of cards, front first. At rest up to 2 peek 12 behind the front, each 5 % smaller. Inline cards fan out into a list under a hovering mouse or while focus is inside (Tab, or a field being typed in); on touch a tap on the pile fans it out until a tap outside it. Banners never fan. Fanned out, every card takes taps, hovers, text and focus where it shows; folded, only the front card's controls do, and a tap on a peeking card fans the pile out instead of pressing what is under the peek. Tab goes front to back. Dismissing the front promotes the next on `standard`.
 - **States:** rows are muted → foreground when lit; the active row has the `active` fill with semibold (ghost width), its own glide per level; hover glides across all levels; disabled 50 %. A group label raises its contrast on hover and reveals its chevron; a folded group keeps the chevron. On touch the chevron always shows.
 - **Row actions:** menu entries (an action, or a submenu such as the overflow ⋯). Pointer shows them as 24 icon buttons on hover, focus or while their menu is open, and the label claims their width only then; a right-click opens all of them as a context menu. **Touch shows only the last one** (the ⋯, rightmost by convention; a lone action shows as is), 44 hit, and a long-press opens all of them as a context menu with the haptic lift, as DataTable does, so the label keeps its width at large text.
 - **Pointer behavior:**
@@ -1045,7 +1046,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Fanned out:** each card sits a card plus 8 above the one in front.
 - **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
 - **Touch:** a tap fans it out and pins it open. The start gutter becomes a collapse button (chevron down). Actions always show. Drag to reorder.
-- **Keyboard:** each card is a tab stop. Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
+- **Reach:** fanned out, every card takes taps, hovers and focus where it shows. Folded, only the front card's controls do; a tap on a card peeking behind it fans the pile out instead of pressing the action under the peek.
+- **Keyboard:** each card is a tab stop, in queue order (front first). Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
 - **Motion:**
   - fan out and fold on `standard` / `standardExit`;
   - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;

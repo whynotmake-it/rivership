@@ -81,15 +81,20 @@ class CardBody extends StatelessWidget {
   /// The card's metrics.
   final CoilMetrics metrics;
 
-  /// Room at the header's end for the dismiss button.
+  /// Room for the dismiss button: at the header's end, or after an inline
+  /// card's trailing actions.
   final double reserveEnd;
 
   @override
   Widget build(BuildContext context) {
     final pad = style.padding!;
     final gap = style.gap!;
-    final header = _header();
     final actions = _actions();
+    // Inline, the actions sit at the trailing edge, so they (not the
+    // header) make room for the dismiss button; otherwise its hit area
+    // covers them.
+    final inlineActions = variant == CoilCardVariant.inline && actions != null;
+    final header = _header(reserve: !inlineActions);
     final content = this.content == null
         ? null
         : DefaultTextStyle(style: style.contentStyle!, child: this.content!);
@@ -119,7 +124,11 @@ class CardBody extends StatelessWidget {
                         children: [?header, ?content],
                       ),
                     ),
-                    ?actions,
+                    if (actions != null)
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(end: reserveEnd),
+                        child: actions,
+                      ),
                   ],
                 ),
               ),
@@ -167,10 +176,10 @@ class CardBody extends StatelessWidget {
     );
   }
 
-  Widget? _header() {
+  Widget? _header({required bool reserve}) {
     if (title == null && description == null) return null;
     return Padding(
-      padding: EdgeInsetsDirectional.only(end: reserveEnd),
+      padding: EdgeInsetsDirectional.only(end: reserve ? reserveEnd : 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

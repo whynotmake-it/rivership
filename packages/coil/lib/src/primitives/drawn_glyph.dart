@@ -8,6 +8,9 @@ enum CoilGlyph {
   /// A tick: checked, copied.
   check,
 
+  /// Two overlapping sheets: copy.
+  copy,
+
   /// A dash: indeterminate.
   dash,
 
@@ -95,6 +98,20 @@ class _GlyphPainter extends CustomPainter {
         ..moveTo(6, 12)
         ..lineTo(10, 16)
         ..lineTo(18, 8),
+    CoilGlyph.copy =>
+      ui.Path()
+        ..addRSuperellipse(
+          RSuperellipse.fromRectAndRadius(
+            const Rect.fromLTWH(8, 8, 14, 14),
+            const Radius.circular(2),
+          ),
+        )
+        ..moveTo(4, 16)
+        ..arcToPoint(const Offset(2, 14), radius: const Radius.circular(2))
+        ..lineTo(2, 4)
+        ..arcToPoint(const Offset(4, 2), radius: const Radius.circular(2))
+        ..lineTo(14, 2)
+        ..arcToPoint(const Offset(16, 4), radius: const Radius.circular(2)),
     CoilGlyph.dash =>
       ui.Path()
         ..moveTo(7, 12)

@@ -301,6 +301,54 @@ void main() {
     expect(tester.getSize(button), const Size(44, 44));
   });
 
+  for (final tier in CoilTier.values) {
+    testWidgets('${tier.name}: an inline card keeps its actions clear of the '
+        'dismiss button', (tester) async {
+      var opened = 0;
+      var dismissed = 0;
+      await tester.pumpWidget(
+        _app(
+          tier: tier,
+          CoilCard(
+            variant: CoilCardVariant.inline,
+            title: const Text('Pro trial'),
+            icon: const TestIcon(TestGlyph.heart),
+            actions: [
+              CoilButton(onPressed: () => opened++, child: const Text('Open')),
+            ],
+            onDismissed: () => dismissed++,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final open = tester.getRect(
+        find.ancestor(of: find.text('Open'), matching: find.byType(CoilButton)),
+      );
+      final dismiss = tester.getRect(
+        find.ancestor(
+          of: find.bySemanticsLabel('Dismiss'),
+          matching: find.byType(CoilButton),
+        ),
+      );
+      expect(
+        open.right,
+        lessThanOrEqualTo(dismiss.left),
+        reason: "the action's whole box is outside the dismiss hit box",
+      );
+      // Every point of the action presses it.
+      for (final point in [
+        open.centerLeft + const Offset(1, 0),
+        open.center,
+        open.centerRight - const Offset(1, 0),
+      ]) {
+        await tester.tapAt(point);
+        await tester.pumpAndSettle();
+      }
+      expect(opened, 3);
+      expect(dismissed, 0);
+    });
+  }
+
   testWidgets('dismissing plays the exit, then calls onDismissed', (
     tester,
   ) async {
