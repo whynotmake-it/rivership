@@ -51,13 +51,15 @@ Future<T?> showCoilDialog<T>({
 );
 
 /// A dialog panel: a [title], an optional [description], a [child] body and
-/// [actions] trailing at the bottom.
+/// [actions] at the bottom.
 ///
 /// Open it with [showCoilDialog], or in a [CoilModalRoute] or
 /// [CoilModalPage]; the route decides whether it shows centered or as a
 /// phone sheet, and the dialog fits itself to that. Put Cancel before the
-/// primary action in [actions]. Give [onClose] to show a close button in
-/// the corner.
+/// primary action in [actions]. A [CoilActionBar] lays them out: a
+/// trailing row on the pointer tier and in wide windows; on a phone, full
+/// width and stacked with the primary action on top, pinned under the
+/// body in a sheet. Give [onClose] to show a close button in the corner.
 class CoilDialog extends StatelessWidget {
   /// Creates a dialog.
   const CoilDialog({
@@ -110,7 +112,8 @@ class CoilDialog extends StatelessWidget {
     final titleText = Semantics(
       header: true,
       namesRoute: true,
-      child: DefaultTextStyle(style: look.titleStyle!, child: title),
+      // Merged, so a sheet's title keeps the panel's line limit.
+      child: DefaultTextStyle.merge(style: look.titleStyle, child: title),
     );
     final header = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,6 +125,9 @@ class CoilDialog extends StatelessWidget {
       ],
     );
     final hasHeader = !sheet || description != null;
+    final actionBar = actions.isEmpty
+        ? null
+        : CoilActionBar(actions: actions, spacing: look.actionGap!);
     final body = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,28 +135,27 @@ class CoilDialog extends StatelessWidget {
       children: [
         if (hasHeader) header,
         ?child,
-        // A phone sheet stacks the actions full width, primary first.
-        if (actions.isNotEmpty && sheet)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: look.actionGap!,
-            children: actions.reversed.toList(),
-          ),
-        if (actions.isNotEmpty && !sheet)
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: look.actionGap!,
-            runSpacing: look.actionGap!,
-            children: actions,
-          ),
+        // A sheet pins its actions under the body instead.
+        if (!sheet) ?actionBar,
       ],
     );
 
     if (sheet) {
+      final padding = look.padding!;
+      // The body and the pinned actions split the usual gap between them.
+      final gap = look.headerSpacing! / 2;
       return CoilSheetPanel(
         title: titleText,
+        footer: actionBar == null
+            ? null
+            : Padding(
+                padding: EdgeInsets.fromLTRB(padding, gap, padding, 0),
+                child: actionBar,
+              ),
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(look.padding!),
+          padding: actionBar == null
+              ? EdgeInsets.all(padding)
+              : EdgeInsets.fromLTRB(padding, padding, padding, gap),
           child: body,
         ),
       );

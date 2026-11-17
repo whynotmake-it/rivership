@@ -2,6 +2,20 @@
 
 Milestone M0, unreleased.
 
+- Dialog and sheet buttons on phones are full width. A new primitive,
+  `CoilActionBar`, lays out the buttons that end a dialog or a sheet: a
+  trailing row on the pointer tier and in wide windows, and in a sheet or
+  on the touch tier under 600 (centered confirmations too) every button at
+  the full content width, 44 tall, stacked with the primary on top and
+  Cancel at the bottom. `layout: CoilActionBarLayout { row, stack }`
+  overrides the choice. `CoilDialog` uses it, and in a sheet pins it under
+  the body with the new `CoilSheetPanel.footer`, which stays above the
+  home indicator and the keyboard and shows a hairline while content
+  continues beneath. Fixed: on the touch tier a button given a tight width
+  (a stretched column) kept its own width and floated centered, because
+  `CoilInteraction`'s minimum hit target loosened the constraints; the
+  visual now takes the parent's size. A dialog's title in a sheet keeps
+  the sheet title's two-line limit.
 - Sheets are `stupid_simple_sheet`'s glass sheet. Breaking:
   `CoilSheetRoute` takes `context:` (and optional `motion:`,
   `barrierDismissible`, `barrierLabel`, `settings`) instead of `motion`,

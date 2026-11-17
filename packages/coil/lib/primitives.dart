@@ -2,6 +2,7 @@
 /// components. This is the contract ejected components build on.
 library;
 
+export 'src/primitives/action_bar.dart';
 export 'src/primitives/action_list.dart';
 export 'src/primitives/active_item.dart';
 export 'src/primitives/adaptive_popup.dart';
