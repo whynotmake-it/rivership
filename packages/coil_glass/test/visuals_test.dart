@@ -1,4 +1,4 @@
-// Renders the exploration's screenshots and recordings.
+// Renders the exploration's screenshots and frame sequences.
 //
 // Real glass needs Impeller and Flutter GPU in the test engine:
 //
@@ -9,12 +9,14 @@
 @Tags(['visuals'])
 library;
 
-import 'dart:ui' as ui;
-
-import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:coil_glass/coil_glass.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+// The renderer's own tests pin this: flutter_tester renders its seeded
+// backdrop pass wrongly now and then (glass missing for a few frames).
+// ignore_for_file: implementation_imports, invalid_use_of_internal_member
+import 'package:liquid_glass_renderer/src/internal/backdrop_seed.dart';
 import 'package:snaptest/snaptest.dart';
 
 import 'src/scenes.dart';
@@ -33,12 +35,13 @@ final _desktop = DeviceInfo.genericDesktopMonitor(
   windowPosition: const Rect.fromLTWH(0, 0, 1280, 800),
 );
 
-SnaptestSettings _settings({required bool frame}) => SnaptestSettings(
-  blockText: false,
-  renderShadows: true,
-  includeDeviceFrame: frame,
-  pathPrefix: _out,
-);
+SnaptestSettings _settings({required bool frame, String dir = _out}) =>
+    SnaptestSettings(
+      blockText: false,
+      renderShadows: true,
+      includeDeviceFrame: frame,
+      pathPrefix: dir,
+    );
 
 Future<void> _settle(WidgetTester tester) async {
   // Glass resources load asynchronously on first use.
@@ -62,146 +65,114 @@ void main() {
     );
     return;
   }
-  setUpAll(() {
-    // ignore: avoid_print
-    print('real glass: ${ui.ImageFilter.isShaderFilterSupported}');
+  setUp(() {
+    final override = SeededBackdropPassLayer.debugModeOverride;
+    SeededBackdropPassLayer.debugModeOverride = BackdropSeed.none;
+    addTearDown(() => SeededBackdropPassLayer.debugModeOverride = override);
   });
 
   for (final brightness in Brightness.values) {
     final mode = _mode(brightness);
-    for (final variant in Variant.values) {
-      final name = '${variant.index + 1}_${variant.name}';
-
-      testWidgets(
-        '${name}_phone_$mode',
-        variant: TestDevicesVariant({_phone}),
-        (tester) async {
-          await tester.pumpWidget(
-            themed(
-              brightness: brightness,
-              tier: CoilTier.touch,
-              child: PhoneScene(variant, menu: variant == Variant.chrome),
-            ),
-          );
-          await _settle(tester);
-          await snap(
-            name: '${name}_phone_$mode',
-            settings: _settings(frame: true),
-          );
-          if (variant == Variant.controls || variant == Variant.transient) {
-            // Mid-travel: the lens lifts off the platter.
-            await tester.tap(find.text('Map'));
-            await tester.pump();
-            await tester.pump(const Duration(milliseconds: 110));
-            await snap(
-              name: '${name}_phone_${mode}_moving',
-              settings: _settings(frame: true),
+    for (final (device, phone) in [(_phone, true), (_desktop, false)]) {
+      final form = phone ? 'phone' : 'desktop';
+      for (final glass in [true, false]) {
+        final look = glass ? 'glass' : 'coil';
+        testWidgets(
+          '${form}_${look}_$mode',
+          variant: TestDevicesVariant({device}),
+          (tester) async {
+            final menu = CoilPopupController();
+            addTearDown(menu.dispose);
+            await tester.pumpWidget(
+              themed(
+                brightness: brightness,
+                glass: glass,
+                child: AlbumScreen(menu: menu, desktop: !phone),
+              ),
             );
-          }
-        },
-      );
-
-      testWidgets(
-        '${name}_desktop_$mode',
-        variant: TestDevicesVariant({_desktop}),
-        (tester) async {
-          await tester.pumpWidget(
-            themed(
-              brightness: brightness,
-              tier: CoilTier.pointer,
-              child: DesktopScene(variant, menu: variant == Variant.chrome),
-            ),
-          );
-          await _settle(tester);
-          await snap(
-            name: '${name}_desktop_$mode',
-            settings: _settings(frame: false),
-          );
-          if (variant == Variant.controls || variant == Variant.transient) {
-            await tester.tap(find.text('All'));
-            await tester.pump();
-            await tester.pump(const Duration(milliseconds: 110));
+            await _settle(tester);
             await snap(
-              name: '${name}_desktop_${mode}_moving',
-              settings: _settings(frame: false),
+              name: '${form}_${mode}_$look',
+              settings: _settings(frame: phone),
             );
-          }
-        },
-      );
+            await tester.tap(find.byKey(const ValueKey('more')));
+            await _settle(tester);
+            await snap(
+              name: '${form}_${mode}_${look}_menu',
+              settings: _settings(frame: phone),
+            );
+          },
+        );
+      }
     }
 
-    // Fallbacks for the recommended variant.
     for (final glassMode in [CoilGlassMode.frosted, CoilGlassMode.solid]) {
       testWidgets(
-        'fallback_${glassMode.name}_phone_$mode',
+        'fallback_${glassMode.name}_$mode',
         variant: TestDevicesVariant({_phone}),
         (tester) async {
+          final menu = CoilPopupController();
+          addTearDown(menu.dispose);
           await tester.pumpWidget(
             themed(
               brightness: brightness,
-              tier: CoilTier.touch,
               mode: glassMode,
-              child: const PhoneScene(Variant.controls, menu: true),
+              child: AlbumScreen(menu: menu, desktop: false),
             ),
           );
           await _settle(tester);
+          await tester.tap(find.byKey(const ValueKey('more')));
+          await _settle(tester);
           await snap(
-            name: '5_fallback_${glassMode.name}_phone_$mode',
+            name: 'phone_${mode}_fallback_${glassMode.name}_menu',
             settings: _settings(frame: true),
           );
         },
       );
     }
-  }
 
-  // The morph as a frame sequence (encode with ffmpeg): snaptest's video
-  // recorder is too slow with real glass in flutter_tester.
-  for (final brightness in Brightness.values) {
-    final mode = _mode(brightness);
+    // A menu opening from a glass button, as frames (encode with ffmpeg):
+    // snaptest's video recorder is too slow with real glass in
+    // flutter_tester.
     testWidgets(
-      'morph_frames_$mode',
+      'menu_frames_$mode',
       variant: TestDevicesVariant({_phone}),
       (tester) async {
+        final menu = CoilPopupController();
+        addTearDown(menu.dispose);
         await tester.pumpWidget(
           themed(
             brightness: brightness,
-            tier: CoilTier.touch,
-            child: const PhoneScene(Variant.controls),
+            child: AlbumScreen(menu: menu, desktop: false),
           ),
         );
         await _settle(tester);
         var frame = 0;
-        Future<void> capture() => snap(
-          name: 'morph_${mode}_${(frame++).toString().padLeft(3, '0')}',
-          settings: const SnaptestSettings(
-            blockText: false,
-            renderShadows: true,
-            pathPrefix: '$_out/frames',
-          ),
-        );
         Future<void> run(int frames) async {
           for (var i = 0; i < frames; i++) {
             await tester.pump(const Duration(milliseconds: 33));
-            await capture();
+            // Real time for the renderer's asynchronous GPU work, as a
+            // device would have between frames.
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 20)),
+            );
+            await tester.pump();
+            await snap(
+              name: 'menu_${mode}_${(frame++).toString().padLeft(3, '0')}',
+              settings: _settings(frame: false, dir: '$_out/frames'),
+            );
           }
         }
 
         await run(4);
-        for (final label in ['Map', 'For You']) {
-          await tester.tap(find.text(label));
-          await run(18);
-        }
-        // Scrub across the top segmented control and let go.
         final gesture = await tester.startGesture(
-          tester.getCenter(find.text('Years')),
+          tester.getCenter(find.byKey(const ValueKey('more'))),
         );
         await run(4);
-        for (var i = 0; i < 16; i++) {
-          await gesture.moveBy(const Offset(14, 0));
-          await run(1);
-        }
         await gesture.up();
-        await run(20);
+        await run(22);
+        menu.close();
+        await run(14);
       },
     );
   }

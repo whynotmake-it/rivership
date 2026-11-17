@@ -8,23 +8,30 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 /// The corner family of a [CoilGlass].
 enum CoilGlassShape {
-  /// The theme's container radius: panels, menus, sheets, sidebars.
-  container,
+  /// A superellipse with the given radius (the theme's container radius
+  /// when none is given): panels, menus.
+  rounded,
 
-  /// Radius = height / 2: bars, toolbars, segmented controls, composers.
-  pill,
-
-  /// A circle (an oval in a non-square box): icon buttons.
-  circle,
+  /// Radius = height / 2: labelled buttons and bars; a circle when square.
+  capsule,
 }
 
 /// Whether a glass shape answers touch with Apple's squash and stretch.
 enum CoilGlassResponse {
-  /// Stays put. For panels and bars that hold their own controls.
+  /// Stays put. For panels and menus.
   none,
 
-  /// Swells under the finger and stretches while dragged.
+  /// Swells under the finger and stretches while dragged: controls.
   stretch,
+}
+
+/// The glass style in effect at [context]: the theme's, merged with the
+/// nearest [CoilGlassLayer]'s.
+CoilGlassStyle _styleOf(BuildContext context) {
+  final layer = context.dependOnInheritedWidgetOfExactType<_LayerScope>();
+  return CoilGlassStyle.fallback(CoilTheme.of(context))
+      .merge(CoilTheme.styleOf<CoilGlassStyle>(context))
+      .merge(layer?.style);
 }
 
 /// One backdrop pass for the glass below it: the unit glass is grouped and
@@ -32,63 +39,60 @@ enum CoilGlassResponse {
 ///
 /// Every [CoilGlass] inside shares this layer's sample of the content
 /// behind it, its settings (light/dark from the coil theme, the
-/// [CoilGlassStyle]) and its render pass. Put one layer around each
-/// floating group of chrome (the bottom bar and its buttons, a toolbar),
-/// never one per control: each independent layer copies the screen again.
+/// [CoilGlassStyle]) and its render pass. `CoilGlassMaterial` puts one
+/// around each `CoilMaterialGroup` and each popover; use it directly only
+/// for glass you compose yourself.
 ///
-/// Under [CoilGlassMode.solid] the layer is a no-op and its shapes paint
-/// coil's raised surface.
+/// Under [CoilGlassMode.solid] the layer is a no-op.
 class CoilGlassLayer extends StatelessWidget {
   /// Creates a glass layer.
   const CoilGlassLayer({required this.child, super.key, this.style});
 
-  /// The chrome.
+  /// The glass shapes, anywhere below.
   final Widget child;
 
-  /// Overrides the theme's glass style for this layer.
+  /// Overrides the theme's glass style for this layer and its shapes.
   final CoilGlassStyle? style;
 
   @override
   Widget build(BuildContext context) {
     final mode = CoilGlassScope.modeOf(context);
     if (mode == CoilGlassMode.solid) return child;
-    final theme = CoilTheme.of(context);
-    final look = CoilGlassStyle.fallback(
-      theme,
-    ).merge(CoilTheme.styleOf<CoilGlassStyle>(context)).merge(style);
-    return LiquidGlassLayer(
-      settings: look.settingsFor(theme.brightness),
-      defaultAppearance: look.appearanceFor(theme.brightness),
-      fake: mode == CoilGlassMode.frosted,
-      useBackdropGroup: BackdropGroup.of(context) != null,
-      // A layer starts its own grouping: shapes in it don't join a blend
+    final scoped = _LayerScope(
+      style: style,
+      // A layer starts its own grouping: its shapes don't join a blend
       // group of an outer layer.
       child: _Grouped(grouped: false, child: child),
+    );
+    return Builder(
+      builder: (context) {
+        final brightness = CoilTheme.of(context).brightness;
+        final look = CoilGlassStyle.fallback(
+          CoilTheme.of(context),
+        ).merge(CoilTheme.styleOf<CoilGlassStyle>(context)).merge(style);
+        return LiquidGlassLayer(
+          settings: look.settingsFor(brightness),
+          defaultAppearance: look.appearanceFor(brightness),
+          fake: mode == CoilGlassMode.frosted,
+          useBackdropGroup: BackdropGroup.of(context) != null,
+          child: scoped,
+        );
+      },
     );
   }
 }
 
-/// The content that every [CoilGlassLayer] below floats over, captured
-/// once per frame for all of them.
-///
-/// Put it around a screen whose chrome sits in several layers (a toolbar
-/// at the top, a tab bar at the bottom). Without it, each layer copies
-/// the whole screen again. Layers that share the capture see the content,
-/// not each other's glass, which is what separate pieces of chrome want.
-class CoilGlassBackdrop extends StatelessWidget {
-  /// Shares one backdrop capture among the glass layers in [child].
-  const CoilGlassBackdrop({required this.child, super.key});
+class _LayerScope extends InheritedWidget {
+  const _LayerScope({required this.style, required super.child});
 
-  /// The screen: its content and its chrome.
-  final Widget child;
+  final CoilGlassStyle? style;
 
   @override
-  Widget build(BuildContext context) => BackdropGroup(child: child);
+  bool updateShouldNotify(_LayerScope oldWidget) => oldWidget.style != style;
 }
 
 /// Melts the [CoilGlass] shapes inside into one surface where they come
-/// within the style's `blend` distance, like drops of water: a button
-/// next to a bar, queued messages above a composer.
+/// within the style's `blend` distance, like drops of water.
 ///
 /// Must sit inside a [CoilGlassLayer].
 class CoilGlassGroup extends StatelessWidget {
@@ -104,12 +108,12 @@ class CoilGlassGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (CoilGlassScope.modeOf(context) == CoilGlassMode.solid) return child;
-    final look = CoilGlassStyle.fallback(
-      CoilTheme.of(context),
-    ).merge(CoilTheme.styleOf<CoilGlassStyle>(context));
     return _Grouped(
       grouped: true,
-      child: LiquidGlassBlendGroup(blend: blend ?? look.blend!, child: child),
+      child: LiquidGlassBlendGroup(
+        blend: blend ?? _styleOf(context).blend!,
+        child: child,
+      ),
     );
   }
 }
@@ -126,27 +130,24 @@ class _Grouped extends InheritedWidget {
   bool updateShouldNotify(_Grouped oldWidget) => oldWidget.grouped != grouped;
 }
 
-/// A piece of glass chrome: a bar, a panel, a floating button.
+/// One piece of glass: a button's body, a menu's panel.
 ///
 /// Its [child] paints on top of the glass, clipped to it, inside
-/// [CoilOnGlass], so coil components placed on it adapt (lighter selection
-/// platters, no opaque fills of their own).
+/// [CoilOnGlass], so coil components placed on it adapt.
 ///
 /// Inside a [CoilGlassGroup] it blends with its neighbors; otherwise it
 /// joins the nearest [CoilGlassLayer], or makes its own when there is
 /// none. Under [CoilGlassMode.solid] it is a [CoilSurface] at popover
-/// height: coil's raised material, so the hierarchy survives without
-/// transparency.
+/// height.
 class CoilGlass extends StatelessWidget {
   /// Creates a glass shape.
   const CoilGlass({
     required this.child,
     super.key,
-    this.shape = CoilGlassShape.container,
+    this.shape = CoilGlassShape.rounded,
     this.radius,
     this.variant,
     this.response = CoilGlassResponse.none,
-    this.style,
   });
 
   /// The content on the glass.
@@ -155,89 +156,87 @@ class CoilGlass extends StatelessWidget {
   /// The corner family.
   final CoilGlassShape shape;
 
-  /// A corner radius for [CoilGlassShape.container]; the theme's container
-  /// radius when null. Use the parent's radius minus the inset for glass
-  /// nested in glass, so corners stay concentric.
+  /// The radius of a [CoilGlassShape.rounded] shape; the theme's container
+  /// radius when null.
   final double? radius;
 
-  /// Overrides the material of this shape only (e.g. one tinted action).
+  /// Overrides the material of this shape only (the tinted action).
   final CoilGlassVariant? variant;
 
   /// Squash and stretch under the finger.
   final CoilGlassResponse response;
 
-  /// Overrides the theme's glass style for this shape.
-  final CoilGlassStyle? style;
-
-  double _radius(BuildContext context) => switch (shape) {
-    CoilGlassShape.container => radius ?? CoilTheme.radiiOf(context).container,
-    // The renderer and RoundedSuperellipseBorder both clamp to half the
-    // short side, which is a capsule.
-    CoilGlassShape.pill || CoilGlassShape.circle => 1000,
-  };
-
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final look = CoilGlassStyle.fallback(theme)
-        .merge(CoilTheme.styleOf<CoilGlassStyle>(context))
-        .merge(style)
-        .merge(variant == null ? null : CoilGlassStyle(variant: variant));
-    final radius = _radius(context);
+    final look = _styleOf(
+      context,
+    ).merge(variant == null ? null : CoilGlassStyle(variant: variant));
+    final radius = switch (shape) {
+      CoilGlassShape.rounded =>
+        this.radius ?? CoilTheme.radiiOf(context).container,
+      // The renderer and RoundedSuperellipseBorder both clamp to half the
+      // short side, which is a capsule.
+      CoilGlassShape.capsule => 1000.0,
+    };
+    final label = look.variant == CoilGlassVariant.tinted
+        ? CoilColorMix.ensureContrast(
+            const Color(0xFFFFFFFF),
+            look.tint ?? theme.colors.brand,
+            4.5,
+          )
+        : look.label ?? theme.colors.foreground;
     final content = CoilOnGlass(
       variant: look.variant!,
       child: IconTheme.merge(
-        data: IconThemeData(color: _labelColor(look, theme)),
+        data: IconThemeData(color: label),
         child: DefaultTextStyle.merge(
-          style: TextStyle(color: _labelColor(look, theme)),
+          style: TextStyle(color: label),
           child: child,
         ),
       ),
     );
 
     if (CoilGlassScope.modeOf(context) == CoilGlassMode.solid) {
-      final solid = look.variant == CoilGlassVariant.tinted
-          ? look.tint
-          : look.solidFill;
       final border = BorderRadius.circular(radius);
       return CoilSurface(
         offset: CoilSurface.popoverOffset,
         shadowLevel: 3,
-        color: solid,
+        color: look.variant == CoilGlassVariant.tinted
+            ? look.tint
+            : look.solidFill,
         borderRadius: border,
         child: ClipRSuperellipse(borderRadius: border, child: content),
       );
     }
 
-    final liquidShape = shape == CoilGlassShape.circle
-        ? const LiquidOval()
-        : LiquidRoundedSuperellipse(borderRadius: radius);
+    final liquidShape = LiquidRoundedSuperellipse(borderRadius: radius);
     final appearance = look.appearanceFor(theme.brightness);
-    final Widget glass = _Grouped.of(context)
+    Widget glass = _Grouped.of(context)
         ? LiquidGlass.grouped(
             shape: liquidShape,
             shadows: look.shadows!,
             appearance: appearance,
             child: content,
           )
-        : LiquidGlass.auto(
+        : LiquidGlass(
             shape: liquidShape,
-            settings: look.settingsFor(theme.brightness),
             shadows: look.shadows!,
             appearance: appearance,
             child: content,
           );
+    // A shape on its own gets a layer of its own, so it still follows the
+    // mode and shares the screen's backdrop capture.
+    if (context.dependOnInheritedWidgetOfExactType<_LayerScope>() == null) {
+      glass = CoilGlassLayer(child: glass);
+    }
     return switch (response) {
       CoilGlassResponse.none => glass,
-      CoilGlassResponse.stretch => LiquidStretch(child: glass),
+      CoilGlassResponse.stretch => LiquidStretch(
+        interactionScale: 1.04,
+        stretch: 0.3,
+        child: glass,
+      ),
     };
   }
-
-  static Color _labelColor(CoilGlassStyle look, CoilThemeData theme) =>
-      switch (look.variant!) {
-        // Tinted glass carries the brand; its label is the brand's
-        // foreground, like a primary button's.
-        CoilGlassVariant.tinted => const Color(0xFFFFFFFF),
-        _ => look.label ?? theme.colors.foreground,
-      };
 }

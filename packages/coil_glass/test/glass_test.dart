@@ -6,71 +6,151 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 Widget _app(
   Widget child, {
+  bool glass = true,
   CoilGlassMode? mode,
   bool reduceTransparency = false,
   bool highContrast = false,
-  bool disableAnimations = false,
-}) => MediaQuery(
-  data: MediaQueryData(
-    highContrast: highContrast,
-    disableAnimations: disableAnimations,
-  ),
-  child: Directionality(
-    textDirection: TextDirection.ltr,
-    child: CoilTheme(
-      data: CoilThemeData.light,
-      child: CoilGlassScope(
-        mode: mode,
-        reduceTransparency: reduceTransparency,
-        child: Center(child: child),
+}) {
+  final app = Overlay(
+    initialEntries: [OverlayEntry(builder: (_) => Center(child: child))],
+  );
+  return MediaQuery(
+    data: MediaQueryData(
+      size: const Size(800, 600),
+      highContrast: highContrast,
+    ),
+    child: Directionality(
+      textDirection: TextDirection.ltr,
+      child: CoilTheme(
+        data: CoilThemeData.light,
+        child: glass
+            ? CoilGlassScope(
+                mode: mode,
+                reduceTransparency: reduceTransparency,
+                child: app,
+              )
+            : app,
       ),
     ),
-  ),
-);
+  );
+}
 
-const _glass = CoilGlassLayer(
-  child: CoilGlass(child: SizedBox(width: 100, height: 40)),
-);
+Widget _button({CoilButtonVariant variant = CoilButtonVariant.glass}) =>
+    CoilButton(onPressed: () {}, variant: variant, child: const Text('Share'));
 
-const _tabs = [
-  CoilGlassTab(value: 'a', label: Text('A')),
-  CoilGlassTab(value: 'b', label: Text('B')),
-  CoilGlassTab(value: 'c', label: Text('C')),
-];
+final _inButton = find.descendant(
+  of: find.byType(CoilButton),
+  matching: find.byType(LiquidGlass),
+);
 
 void main() {
-  group('CoilGlassScope', () {
-    testWidgets('renders glass by default', (tester) async {
-      await tester.pumpWidget(_app(_glass));
-      expect(find.byType(LiquidGlassLayer), findsOneWidget);
-      expect(find.byType(LiquidGlass), findsOneWidget);
+  group('glass buttons', () {
+    testWidgets('a glass variant renders on liquid glass', (tester) async {
+      await tester.pumpWidget(_app(_button()));
+      expect(_inButton, findsOneWidget);
     });
 
-    testWidgets('Reduce Transparency makes glass a solid coil surface', (
+    testWidgets('the prominent variant is tinted with the brand', (
       tester,
     ) async {
-      await tester.pumpWidget(_app(_glass, reduceTransparency: true));
-      expect(find.byType(LiquidGlassLayer), findsNothing);
-      expect(find.byType(LiquidGlass), findsNothing);
-      // The painted surface, and the level scope its content sits in.
-      expect(find.byType(CoilSurface), findsNWidgets(2));
+      await tester.pumpWidget(
+        _app(_button(variant: CoilButtonVariant.glassProminent)),
+      );
+      final glass = tester.widget<LiquidGlass>(_inButton);
+      expect(
+        glass.appearance,
+        CoilGlassStyle.fallback(CoilThemeData.light)
+            .merge(const CoilGlassStyle(variant: CoilGlassVariant.tinted))
+            .appearanceFor(Brightness.light),
+      );
     });
 
-    testWidgets('high contrast makes glass solid', (tester) async {
-      await tester.pumpWidget(_app(_glass, highContrast: true));
-      expect(find.byType(LiquidGlassLayer), findsNothing);
+    testWidgets('other variants stay coil-flat', (tester) async {
+      await tester.pumpWidget(
+        _app(_button(variant: CoilButtonVariant.secondary)),
+      );
       expect(find.byType(LiquidGlass), findsNothing);
-      // The painted surface, and the level scope its content sits in.
-      expect(find.byType(CoilSurface), findsNWidgets(2));
     });
+
+    testWidgets('a group is one layer with a blend group', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          CoilMaterialGroup(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [_button(), _button()],
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(LiquidGlassLayer), findsOneWidget);
+      expect(find.byType(LiquidGlassBlendGroup), findsOneWidget);
+    });
+  });
+
+  group('fallbacks', () {
+    for (final (name, app) in [
+      ('without the scope', _app(_button(), glass: false)),
+      ('Reduce Transparency', _app(_button(), reduceTransparency: true)),
+      ('high contrast', _app(_button(), highContrast: true)),
+    ]) {
+      testWidgets('$name: coil paints its raised surface', (tester) async {
+        await tester.pumpWidget(app);
+        expect(find.byType(LiquidGlass), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byType(CoilButton),
+            matching: find.byType(CoilSurface),
+          ),
+          findsOneWidget,
+        );
+      });
+    }
 
     testWidgets('frosted renders the fake glass path', (tester) async {
-      await tester.pumpWidget(_app(_glass, mode: CoilGlassMode.frosted));
+      await tester.pumpWidget(_app(_button(), mode: CoilGlassMode.frosted));
       final layer = tester.widget<LiquidGlassLayer>(
         find.byType(LiquidGlassLayer),
       );
       expect(layer.fake, isTrue);
     });
+  });
+
+  testWidgets('a popover is dense glass in a layer of its own', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        CoilMaterialGroup(
+          child: CoilDropdown(
+            presentation: CoilPresentation.popover,
+            entries: [
+              CoilAction(label: const Text('Delete'), onPressed: () {}),
+            ],
+            builder: (context, menu) => CoilButton(
+              onPressed: menu.open,
+              variant: CoilButtonVariant.glass,
+              child: const Text('More'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    final popover = find.ancestor(
+      of: find.text('Delete'),
+      matching: find.byType(LiquidGlassLayer),
+    );
+    // The popover's own layer, inside the trigger cluster's.
+    expect(popover, findsNWidgets(2));
+    final layer = tester.widget<LiquidGlassLayer>(popover.first);
+    expect(
+      layer.settings,
+      CoilGlassStyle.fallback(
+        CoilThemeData.light,
+      ).merge(CoilGlassStyle.dense).settingsFor(Brightness.light),
+    );
   });
 
   group('CoilGlassStyle', () {
@@ -83,27 +163,13 @@ void main() {
       expect(merged.tintAmount, 0.8);
     });
 
-    testWidgets('a theme-level style reaches the layer', (tester) async {
-      await tester.pumpWidget(
-        _app(
-          CoilTheme.override(
-            transform: (t) => t.withComponentStyle(
-              const CoilGlassStyle(variant: CoilGlassVariant.clear),
-            ),
-            child: _glass,
-          ),
-        ),
-      );
-      final layer = tester.widget<LiquidGlassLayer>(
-        find.byType(LiquidGlassLayer),
-      );
+    test('a wash tints regular glass with the solid fill', () {
+      final look = CoilGlassStyle.fallback(
+        CoilThemeData.dark,
+      ).merge(CoilGlassStyle.dense);
       expect(
-        layer.settings,
-        CoilGlassStyle.fallback(
-              CoilThemeData.light,
-            )
-            .merge(const CoilGlassStyle(variant: CoilGlassVariant.clear))
-            .settingsFor(Brightness.light),
+        look.appearanceFor(Brightness.dark).tint,
+        look.solidFill!.withValues(alpha: 0.6),
       );
     });
   });
@@ -114,74 +180,16 @@ void main() {
     late CoilTabsStyle? style;
     await tester.pumpWidget(
       _app(
-        CoilGlassLayer(
-          child: CoilGlass(
-            child: Builder(
-              builder: (context) {
-                style = CoilTheme.styleOf<CoilTabsStyle>(context);
-                return const SizedBox(width: 10, height: 10);
-              },
-            ),
+        CoilGlass(
+          child: Builder(
+            builder: (context) {
+              style = CoilTheme.styleOf<CoilTabsStyle>(context);
+              return const SizedBox(width: 10, height: 10);
+            },
           ),
         ),
       ),
     );
     expect(style?.pill, CoilOnGlass.platterOf(CoilColors.light));
-  });
-
-  group('CoilGlassTabBar', () {
-    Widget bar(
-      String value,
-      ValueChanged<String> onChanged, {
-      bool disableAnimations = false,
-    }) => _app(
-      SizedBox(
-        width: 300,
-        child: CoilGlassLayer(
-          child: CoilGlassTabBar<String>(
-            tabs: _tabs,
-            value: value,
-            onChanged: onChanged,
-          ),
-        ),
-      ),
-      disableAnimations: disableAnimations,
-    );
-
-    testWidgets('a tap reports the tab value', (tester) async {
-      String? changed;
-      await tester.pumpWidget(bar('a', (v) => changed = v));
-      await tester.tap(find.text('C'));
-      expect(changed, 'c');
-    });
-
-    testWidgets('scrubbing lands on the tab under the finger', (tester) async {
-      String? changed;
-      await tester.pumpWidget(bar('a', (v) => changed = v));
-      final start = tester.getCenter(find.text('A'));
-      final end = tester.getCenter(find.text('B'));
-      await tester.dragFrom(start, end - start);
-      await tester.pump();
-      expect(changed, 'b');
-    });
-
-    testWidgets('the lens lifts off while the selection travels', (
-      tester,
-    ) async {
-      await tester.pumpWidget(bar('a', (_) {}));
-      expect(find.byType(LiquidGlassVisibility), findsNothing);
-      await tester.pumpWidget(bar('c', (_) {}));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.byType(LiquidGlassVisibility), findsOneWidget);
-      await tester.pumpAndSettle();
-      expect(find.byType(LiquidGlassVisibility), findsNothing);
-    });
-
-    testWidgets('reduced motion never shows the lens', (tester) async {
-      await tester.pumpWidget(bar('a', (_) {}, disableAnimations: true));
-      await tester.pumpWidget(bar('c', (_) {}, disableAnimations: true));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.byType(LiquidGlassVisibility), findsNothing);
-    });
   });
 }

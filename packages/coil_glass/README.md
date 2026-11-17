@@ -2,62 +2,70 @@
 
 Liquid glass for [coil](../coil), rendered with
 [`liquid_glass_renderer`](https://pub.dev/packages/liquid_glass_renderer).
-Exploration prototype: opt-in, in its own package, and coil's default look
+Exploration prototype: opt-in, in its own package. coil's default look
 doesn't change.
 
-Glass is the far end of coil's material scale (flat → raised → glass). It
-belongs to the **floating control layer**: tab bars, toolbars, sidebars that
-float over content, menus, sheets and one or two floating actions. Content
-(cards, lists, messages, fields in a form) stays coil-flat.
+Glass is the far end of coil's material scale (flat → raised → glass), and
+it is a variant of things coil already has, not new components:
+
+- `CoilButton(variant: .glass)` and `.glassProminent` (the one primary
+  action, tinted with the brand). Capsules; icon buttons are circles.
+- Every popover: `CoilDropdown`, `CoilContextMenu`, `CoilSelect`,
+  `CoilCombobox`, `CoilDatePicker`, in denser glass so rows stay legible.
+
+App code uses coil's components only. One widget turns the glass on:
 
 ```dart
-import 'package:coil_glass/coil_glass.dart';
+CoilTheme(
+  data: theme,
+  child: CoilGlassScope(          // installs CoilGlassMaterial
+    reduceTransparency: platformReduceTransparency,
+    child: app,
+  ),
+)
 
-CoilGlassBackdrop(            // one backdrop capture for the whole screen
-  child: Stack(children: [
-    const Content(),
-    Positioned(
-      left: 16, right: 16, bottom: 16,
-      child: CoilGlassLayer(  // one render pass for this group of chrome
-        child: CoilGlassGroup( // neighbors melt into each other
-          child: Row(children: [
-            Expanded(
-              child: CoilGlassTabBar<Tab>(
-                tabs: [...],
-                value: tab,
-                onChanged: setTab,
-              ),
-            ),
-            const SizedBox(width: 10),
-            CoilGlass(
-              shape: CoilGlassShape.circle,
-              response: CoilGlassResponse.stretch,
-              child: searchButton,
-            ),
-          ]),
-        ),
-      ),
+// Anywhere below: plain coil.
+CoilMaterialGroup(                // one layer; buttons 6 px apart melt
+  child: Row(children: [
+    CoilButton.icon(variant: .glass, onPressed: share, icon: shareIcon,
+      semanticLabel: 'Share'),
+    const SizedBox(width: 6),
+    CoilDropdown(
+      entries: [...],
+      builder: (context, menu) => CoilButton.icon(variant: .glass,
+        onPressed: menu.open, icon: moreIcon, semanticLabel: 'More'),
     ),
   ]),
 )
 ```
 
-| Widget | Job |
+## How it plugs into coil
+
+coil has a small seam in `package:coil/foundation.dart` that imports no
+renderer:
+
+| coil | Job |
 |---|---|
-| `CoilGlassBackdrop` | Shares one capture of the content among every glass layer below (a `BackdropGroup`). |
-| `CoilGlassLayer` | One backdrop pass and one set of optics for a group of chrome. Settings come from the coil theme (light/dark) and `CoilGlassStyle`. |
-| `CoilGlassGroup` | Melts the shapes inside when they come within `blend` px. |
-| `CoilGlass` | One shape: `container` (theme radius), `pill` or `circle`. Its child sits in `CoilOnGlass`. |
-| `CoilOnGlass` | A theme override that adapts unchanged coil components to glass (platters instead of fills). |
-| `CoilGlassTabBar` | Tab bar / segmented control whose selection lifts into a clear glass lens while it travels. |
-| `CoilGlassStyle` | A coil component style: variant (`regular`, `clear`, `tinted`), Apple's tint slider, shadow, blend, solid fill. Set app-wide with `CoilThemeData.withComponentStyle`. |
-| `CoilGlassScope` | `reduceTransparency` (Flutter has no flag for it yet) and a pinned `CoilGlassMode`. |
+| `CoilMaterial` | Builds a surface for a `CoilSurfaceSpec` (role `control` or `popover`, emphasis `regular` or `prominent`, radius), or returns null to keep coil's own. `group()` renders a cluster as one. |
+| `CoilMaterialScope` | Provides the material (an `InheritedTheme`, so popovers and routes keep it). |
+| `CoilMaterialGroup` | Marks surfaces that float together. |
+| `CoilButtonVariant.glass`, `.glassProminent` | Ask the material; without one they are coil's raised surface (brand fill for prominent). |
+| `CoilPopoverSurface` | Asks the material first. |
+
+This package fills it:
+
+| coil_glass | Job |
+|---|---|
+| `CoilGlassScope` | Installs `CoilGlassMaterial`, shares one backdrop capture per frame among all glass below, and carries the mode (Reduce Transparency, pinned mode for previews). |
+| `CoilGlassMaterial` | Control → a glass capsule that swells under the finger (tinted when prominent). Popover → `CoilGlassStyle.dense` glass in a layer of its own. Group → one `CoilGlassLayer` + `CoilGlassGroup`. |
+| `CoilGlassStyle` | A coil component style: variant, Apple's tint slider (`tintAmount`), `wash` (coil's surface color mixed in), `refraction`, shadow, blend distance, solid fill. Set app-wide with `CoilThemeData.withComponentStyle`. |
+| `CoilGlass`, `CoilGlassLayer`, `CoilGlassGroup`, `CoilOnGlass` | Building blocks for glass you compose yourself. |
 
 ## Fallbacks
 
 `CoilGlassMode.glass` → `frosted` (the renderer's `FakeGlass`, picked
-automatically on the web and on Skia) → `solid` (coil's raised `CoilSurface`,
-for Reduce Transparency and high contrast).
+automatically on the web and on Skia) → `solid` (the material declines and
+coil paints its raised surfaces: Reduce Transparency, high contrast).
 
 ## Requirements and status
 
@@ -67,8 +75,8 @@ for Reduce Transparency and high contrast).
 - `liquid_glass_renderer` 1.0.0-dev.2 pins Dart `>=3.13.0 <3.14.0`. The
   workspace's Flutter (3.50, Dart 3.14) can't resolve it, so this package is
   **not a workspace member yet** and resolves on its own. To try it on Dart
-  3.14, put a copy of the renderer with the SDK bound relaxed next to it in a
-  git-ignored `pubspec_overrides.yaml`:
+  3.14, point a git-ignored `pubspec_overrides.yaml` at a copy of the
+  renderer with the SDK bound relaxed:
 
   ```yaml
   dependency_overrides:
@@ -91,7 +99,8 @@ flutter test --enable-impeller --enable-flutter-gpu \
   --dart-define=COIL_GLASS_VISUALS=$PWD/visuals test/visuals_test.dart
 ```
 
-The second renders every variant on a phone and a desktop, light and dark,
-with real glass, plus a frame sequence of the morphing selection in
-`frames/` (encode with `ffmpeg -framerate 30 -i frames/morph_light_%03d.png`;
-snaptest's video recorder is too slow with real glass in flutter_tester).
+The second renders the album screen on a phone and a desktop, light and
+dark, with and without `CoilGlassScope`, menu closed and open, plus the
+fallbacks and a frame sequence of a menu opening in `frames/` (encode with
+`ffmpeg -framerate 30 -i frames/menu_light_%03d.png`; snaptest's video
+recorder is too slow with real glass in flutter_tester).
