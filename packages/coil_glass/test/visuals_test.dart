@@ -154,10 +154,12 @@ void main() {
     }
   }
 
+  // The morph as a frame sequence (encode with ffmpeg): snaptest's video
+  // recorder is too slow with real glass in flutter_tester.
   for (final brightness in Brightness.values) {
     final mode = _mode(brightness);
     testWidgets(
-      'recording_tabs_$mode',
+      'morph_frames_$mode',
       variant: TestDevicesVariant({_phone}),
       (tester) async {
         await tester.pumpWidget(
@@ -168,35 +170,38 @@ void main() {
           ),
         );
         await _settle(tester);
-        final recording = await snap.recordVideo(
-          name: '2_controls_phone_${mode}_morph',
-          settings: const SnapVideoSettings(
-            pathPrefix: _out,
-            frameRate: 30,
+        var frame = 0;
+        Future<void> capture() => snap(
+          name: 'morph_${mode}_${(frame++).toString().padLeft(3, '0')}',
+          settings: const SnaptestSettings(
+            blockText: false,
             renderShadows: true,
-            showPointers: true,
-            finalHold: Duration(milliseconds: 300),
+            pathPrefix: '$_out/frames',
           ),
         );
-        await tester.pump(const Duration(milliseconds: 300));
-        for (final label in ['Map', 'For You']) {
-          await tester.tap(find.text(label));
-          for (var i = 0; i < 36; i++) {
-            await tester.pump(const Duration(milliseconds: 16));
+        Future<void> run(int frames) async {
+          for (var i = 0; i < frames; i++) {
+            await tester.pump(const Duration(milliseconds: 33));
+            await capture();
           }
         }
-        // Scrub across the top segmented control.
-        final segment = find.text('Years');
-        final gesture = await tester.startGesture(tester.getCenter(segment));
-        for (var i = 0; i < 24; i++) {
-          await gesture.moveBy(const Offset(10, 0));
-          await tester.pump(const Duration(milliseconds: 16));
+
+        await run(4);
+        for (final label in ['Map', 'For You']) {
+          await tester.tap(find.text(label));
+          await run(18);
+        }
+        // Scrub across the top segmented control and let go.
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.text('Years')),
+        );
+        await run(4);
+        for (var i = 0; i < 16; i++) {
+          await gesture.moveBy(const Offset(14, 0));
+          await run(1);
         }
         await gesture.up();
-        for (var i = 0; i < 36; i++) {
-          await tester.pump(const Duration(milliseconds: 16));
-        }
-        await recording.stop();
+        await run(20);
       },
     );
   }

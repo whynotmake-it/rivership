@@ -92,4 +92,6 @@ flutter test --enable-impeller --enable-flutter-gpu \
 ```
 
 The second renders every variant on a phone and a desktop, light and dark,
-with real glass, plus recordings of the morphing selection.
+with real glass, plus a frame sequence of the morphing selection in
+`frames/` (encode with `ffmpeg -framerate 30 -i frames/morph_light_%03d.png`;
+snaptest's video recorder is too slow with real glass in flutter_tester).
