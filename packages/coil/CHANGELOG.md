@@ -2,6 +2,10 @@
 
 Milestone M0, unreleased.
 
+- The blur-fade is subtler. `CoilBlurFade` starts at a blur sigma of 1.5
+  (`CoilBlurFade.defaultBlur`), down from 4, so popovers, tooltips, reveals
+  and swaps soften as they arrive instead of smearing. Button and select
+  swaps use half of it.
 - coil scrolls the way the app does. Breaking: `CoilScrollBehavior` is
   removed. `CoilScrollArea` and menus no longer set a `ScrollBehavior`, so
   physics, overscroll and which pointers drag content come from the app's

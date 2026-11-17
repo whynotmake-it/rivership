@@ -17,9 +17,9 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
   | Preset | Step | Motion (in / out) | Look when hidden |
   |---|---|---|---|
-  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
-  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
-  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 4, scale 0.94, 12 px below |
+  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 1.5, scale 0.96 |
+  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 1.5, scale 0.96 |
+  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 1.5, scale 0.94, 12 px below |
 
   `landing` is for the part of a landing page on screen at load.
 - **Steps:** child 1 at once, then one step per child. `CoilRevealSteps.blocks` (a screen's panels) staggers 3 steps and brings the rest in with the 4th; `.items` (a list's rows) staggers 7.

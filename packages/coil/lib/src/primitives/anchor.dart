@@ -311,7 +311,6 @@ class _CoilPopoverState extends State<CoilPopover>
                     // The grow from the anchor's edge is the placement's:
                     // only it knows which side that is.
                     scale: 1,
-                    blur: reduce ? 0 : 4,
                     child: _CoilPopoverGroup(
                       group: this,
                       child: Builder(builder: widget.popover),

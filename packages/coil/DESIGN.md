@@ -235,7 +235,7 @@ Named holds that aren't tokens:
 
 - **The bigger the thing, the softer the spring.** Only `gentle` bounces. No component invents a duration.
 - **Exits are tighter springs, never curves**, so a reversed transition keeps its velocity. Enter always outlasts exit.
-- **Overlays enter with the blur-fade** (`CoilBlurFade`): opacity 0 → 1, blur 4 → 0, scale 0.96 → 1, plus a 4 px slide from the resolved side (popovers, tooltips). Exits run it in reverse on the exit token.
+- **Overlays enter with the blur-fade** (`CoilBlurFade`): opacity 0 → 1, blur 1.5 → 0 (`CoilBlurFade.defaultBlur`, a hint of softness rather than a smear), scale 0.96 → 1, plus a 4 px slide from the resolved side (popovers, tooltips). Exits run it in reverse on the exit token.
 - **Popovers follow the tier.** Pointer popovers open on `quick` and close on `quickExit`, like the original's popups (`spring.fast`). Touch popovers are bigger and open under a finger, so they use `standard` / `standardExit`. The tier comes from `CoilTheme.tierOf`, not the platform.
 - **Scale an image, not the text.** While an overlay scales or slides, its content is drawn at rest size and the result is resampled (a matrix image filter, medium quality). Text drawn under an animated scale is re-rasterized every frame, and Impeller snaps each glyph to the pixel grid on its own, so letters jitter. At rest the content paints directly.
 - **Gestures hand off their velocity:**
@@ -889,7 +889,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **ThinkingSteps:**
   - Anatomy: a collapsible trigger ("Thought for 12s", body semibold when open, chevron) → a list of steps. A step is [icon or a 6 dot] title (body) → detail (caption muted) → sources (small solid badges, gap 6; a private badge until the Badge component lands) → an image (max 200 wide).
   - Width 320, max full.
-  - Motion: collapse on `standard`; each new step grows its height on `gentle` and fades in after 80 ms; source badges scale 0.85 → 1 on `standard` with a 4 → 0 blur.
+  - Motion: collapse on `standard`; each new step grows its height on `gentle` and fades in after 80 ms; source badges scale 0.85 → 1 on `standard` with a 1.5 → 0 blur.
 - **ThinkingIndicator:**
   - Anatomy: [glyph 20 / 18, muted] label (body muted). The width is reserved by the longest word.
   - Motion: the word cycles every 4 s; the incoming word rises 80 % → 0 and fades on `standard`, the outgoing word rises out on `standardExit`. The words are a parameter. Reduced motion: crossfade only, every 4 s.
@@ -921,9 +921,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
   | Preset | Step | Motion (in / out) | Look when hidden |
   |---|---|---|---|
-  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
-  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 4, scale 0.96 |
-  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 4, scale 0.94, 12 px below |
+  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 1.5, scale 0.96 |
+  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 1.5, scale 0.96 |
+  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 1.5, scale 0.94, 12 px below |
 
   `landing` is for the part of a landing page on screen at load.
 - **Steps:** child 1 at once, then one step per child. `CoilRevealSteps.blocks` (a screen's panels) staggers 3 steps and brings the rest in with the 4th; `.items` (a list's rows) staggers 7.

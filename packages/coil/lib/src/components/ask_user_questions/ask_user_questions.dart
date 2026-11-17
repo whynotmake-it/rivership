@@ -725,7 +725,7 @@ class _Presence extends StatelessWidget {
         child: CoilBlurFade(
           presence: presence,
           scale: scale,
-          blur: vertical ? 4 : 0,
+          blur: vertical ? CoilBlurFade.defaultBlur : 0,
           alignment: AlignmentDirectional.centerStart,
           child: child,
         ),
