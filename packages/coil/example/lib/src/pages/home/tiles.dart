@@ -308,7 +308,7 @@ class _AgentTileState extends State<AgentTile> {
         ),
     ];
     return SizedBox(
-      height: touch ? 520 : 460,
+      height: touch ? 480 : 420,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,

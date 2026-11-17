@@ -82,7 +82,7 @@ class _Hero extends StatelessWidget {
         .length;
     final gap = CoilTheme.metricsOf(context).buttonGap;
     return Padding(
-      padding: EdgeInsets.only(top: touch ? 16 : 40, bottom: touch ? 32 : 48),
+      padding: EdgeInsets.only(top: touch ? 16 : 32, bottom: touch ? 32 : 40),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
