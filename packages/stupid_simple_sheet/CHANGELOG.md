@@ -1,3 +1,8 @@
+## Unreleased
+
+ - **FIX**: glass sheets size to content shorter than the screen instead of
+   filling ~95 % of its height.
+
 ## 1.0.0-dev.6
 
  - Update a dependency to the latest release.
