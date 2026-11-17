@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -185,6 +186,9 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     });
     if (touch) {
       _active.clear();
+      // A finger's pick ticks, as a platform picker does (iOS only by
+      // default; see CoilHaptics.platform).
+      unawaited(CoilHaptics.play(context, CoilHapticEvent.pick));
     } else if (_active.index != index) {
       _active.activate(index, via: CoilModality.pointer);
     }

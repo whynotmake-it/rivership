@@ -1,7 +1,10 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'src/select_harness.dart';
 
 /// Plays [event] under a theme with [haptics] and returns the haptic
 /// feedback calls sent to the platform.
@@ -78,5 +81,46 @@ void main() {
       );
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets(
+    'a finger picking a select row plays the pick haptic',
+    (tester) async {
+      final played = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            played.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(tier: CoilTier.touch, home: const SelectDemo()),
+      );
+      await tester.tap(find.text('Banana'));
+      await tester.pumpAndSettle();
+      expect(played, isEmpty);
+      await tester.tap(find.text('Cherry'));
+      await tester.pumpAndSettle();
+      expect(
+        played,
+        defaultTargetPlatform == TargetPlatform.iOS
+            ? ['HapticFeedbackType.selectionClick']
+            : isEmpty,
+      );
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.iOS,
+      TargetPlatform.android,
+    }),
   );
 }
