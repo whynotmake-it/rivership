@@ -11,6 +11,7 @@ export 'src/primitives/choice_item.dart';
 export 'src/primitives/choice_row.dart';
 export 'src/primitives/collapsible.dart';
 export 'src/primitives/context_trigger.dart';
+export 'src/primitives/copy_feedback.dart';
 export 'src/primitives/disclosure_trigger.dart';
 export 'src/primitives/drawer.dart';
 export 'src/primitives/drawn_glyph.dart';

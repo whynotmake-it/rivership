@@ -11,8 +11,27 @@ const chatMessageEntry = CatalogEntry(
   page: ChatMessagePage.new,
 );
 
-class ChatMessagePage extends StatelessWidget {
+class ChatMessagePage extends StatefulWidget {
   const ChatMessagePage({super.key});
+
+  @override
+  State<ChatMessagePage> createState() => _ChatMessagePageState();
+}
+
+class _ChatMessagePageState extends State<ChatMessagePage> {
+  static const _reply =
+      'Three changes: tighter exits, one row height, and sheets for forms '
+      'on phones.';
+
+  /// The Copy action's result, shared with InputCopy's behavior: the icon
+  /// cross-fades to a check once, and copying again only extends it.
+  final _copy = CoilCopyController();
+
+  @override
+  void dispose() {
+    _copy.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => CatalogPage(
@@ -33,14 +52,11 @@ class ChatMessagePage extends StatelessWidget {
                 CoilChatMessageAction(
                   label: const Text('Copy'),
                   semanticLabel: 'Copy',
-                  icon: const CoilDrawnGlyph(CoilGlyph.check),
-                  onPressed: () {},
+                  icon: CoilCopyGlyph.listening(controller: _copy),
+                  onPressed: () => _copy.copy(_reply, context: context),
                 ),
               ],
-              child: const Text(
-                'Three changes: tighter exits, one row height, and sheets '
-                'for forms on phones.',
-              ),
+              child: const Text(_reply),
             ),
           ],
         ),

@@ -17,6 +17,6 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Variants:**
   - user: a bubble in `accent` mixed 45 % into background (Oklab), container radius, aligned to the end;
   - assistant: no bubble, full width, aligned to the start.
-- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…).
+- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
 - **Semantics:** each message is a container labeled with sender and time.

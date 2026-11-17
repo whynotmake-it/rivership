@@ -228,7 +228,7 @@ Two durations sit next to the springs:
 Named holds that aren't tokens:
 
 - **DatePicker close:** 200 ms after a pick.
-- **InputCopy reset:** 2 s.
+- **Copy result hold (InputCopy, every copy affordance):** 2 s after the last copy.
 - **Tooltip timing:** 200 ms delay, 300 ms group skip-delay.
 
 ### 7.2 Rules
@@ -713,17 +713,18 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### InputCopy
 
-- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. Label it with a Field: a tap on the label copies.
+- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. The action always shows: without an `icon`, coil draws its own copy glyph (two sheets). Label it with a Field: a tap on the label copies.
 - **Sizes:** row = `controlHeight`, padding `controlPaddingX`.
 - **States:**
   - idle;
   - hover (pointer): the value gets a `brand` 20 % mark and the action turns foreground;
-  - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s, then idle.
+  - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s after the last copy, then idle.
+  - Copying again while the result shows animates nothing and only restarts the 2 s. Copying while the result leaves turns it around from where it is (no restart, the check stays drawn). This is `CoilCopyController` plus `CoilCopySwitcher`, the one state machine every copy affordance uses.
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
+- **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`, once per appearance. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`.
 - **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
-- **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed".
+- **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed" when the result appears (not again for a copy that only extends it).
 - **Keyboard:** Enter or Space copies.
 
 ### 14.3 Menus and overlays
@@ -908,7 +909,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Variants:**
   - user: a bubble in `accent` mixed 45 % into background (Oklab), container radius, aligned to the end;
   - assistant: no bubble, full width, aligned to the start.
-- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…).
+- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
 - **Semantics:** each message is a container labeled with sender and time.
 

@@ -4,6 +4,18 @@ import 'package:flutter/widgets.dart';
 ///
 /// Each action shows as an icon-only ghost button in the meta row. On
 /// touch, long-pressing the message lists the same actions in a menu.
+///
+/// For Copy, use coil's copy feedback so the icon shows a check after a
+/// copy, as `CoilInputCopy` does:
+///
+/// ```dart
+/// CoilChatMessageAction(
+///   label: const Text('Copy'),
+///   semanticLabel: 'Copy',
+///   icon: CoilCopyGlyph.listening(controller: copy),
+///   onPressed: () => copy.copy(text, context: context),
+/// )
+/// ```
 @immutable
 class CoilChatMessageAction {
   /// Creates an action.
