@@ -1,4 +1,5 @@
 import 'package:coil/src/foundation/motion.dart';
+import 'package:coil/src/foundation/plasticity.dart';
 import 'package:coil/src/primitives/highlight.dart';
 import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:coil/src/primitives/selection_blocks.dart';
@@ -135,6 +136,7 @@ final class CoilSelectionBlocks extends CoilLayerItem {
     required this.motion,
     super.key,
     this.axis = Axis.vertical,
+    this.relief,
   }) : selected = Set.unmodifiable(selected);
 
   /// The selected target indexes.
@@ -152,6 +154,9 @@ final class CoilSelectionBlocks extends CoilLayerItem {
   /// The direction the targets are laid out in.
   final Axis axis;
 
+  /// The blocks' lighting under a plastic theme, or null for none.
+  final CoilRelief? relief;
+
   @override
   bool operator ==(Object other) =>
       other is CoilSelectionBlocks &&
@@ -160,7 +165,8 @@ final class CoilSelectionBlocks extends CoilLayerItem {
       other.color == color &&
       other.radius == radius &&
       other.motion == motion &&
-      other.axis == axis;
+      other.axis == axis &&
+      other.relief == relief;
 
   @override
   int get hashCode => Object.hash(
@@ -170,6 +176,7 @@ final class CoilSelectionBlocks extends CoilLayerItem {
     radius,
     motion,
     axis,
+    relief,
   );
 }
 
@@ -319,6 +326,7 @@ class _Painters {
           radius: item.radius,
           motion: item.motion,
           axis: item.axis,
+          relief: item.relief,
         );
       case CoilLayerPaint():
         (painter as _CustomPainter).update(item);

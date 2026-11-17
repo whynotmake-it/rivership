@@ -305,10 +305,19 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
         builder: (context, borderColor, child) => Container(
           width: boxSize,
           height: boxSize,
-          decoration: ShapeDecoration(
-            shape: RoundedSuperellipseBorder(
-              borderRadius: _radiusOf(context, style),
-              side: BorderSide(color: borderColor, width: style.borderWidth!),
+          decoration: CoilRelief.decorate(
+            ShapeDecoration(
+              shape: RoundedSuperellipseBorder(
+                borderRadius: _radiusOf(context, style),
+                side: BorderSide(color: borderColor, width: style.borderWidth!),
+              ),
+            ),
+            // A well the tick sits in, under a plastic theme.
+            theme.relief(
+              CoilReliefRole.recessed,
+              override: style.plasticity,
+              hover: widget.states.contains(WidgetState.hovered) ? 1 : 0,
+              enabled: !widget.states.contains(WidgetState.disabled),
             ),
           ),
           child: child,

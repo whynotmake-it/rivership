@@ -24,16 +24,20 @@ int cardOffset(CoilColors colors) =>
 /// The fill, shadow and outline of a card whose ambient surface is
 /// [context]'s.
 ShapeDecoration cardSurface(BuildContext context, CoilCardStyle style) {
-  final colors = CoilTheme.of(context).colors;
+  final theme = CoilTheme.of(context);
+  final colors = theme.colors;
   final level = CoilSurface.levelOf(context) + cardOffset(colors);
   final light = colors.brightness == Brightness.light;
-  return ShapeDecoration(
-    color: style.surface ?? colors.surface(level),
-    shadows: style.shadows ?? (light ? colors.shadow(level) : const []),
-    shape: RoundedSuperellipseBorder(
-      borderRadius: BorderRadius.circular(style.radius!),
-      side: style.border!,
+  return CoilRelief.decorate(
+    ShapeDecoration(
+      color: style.surface ?? colors.surface(level),
+      shadows: style.shadows ?? (light ? colors.shadow(level) : const []),
+      shape: RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.circular(style.radius!),
+        side: style.border!,
+      ),
     ),
+    theme.relief(CoilReliefRole.floating, override: style.plasticity),
   );
 }
 

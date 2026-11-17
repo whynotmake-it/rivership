@@ -21,12 +21,14 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
     this.selectedFill,
     this.highlight,
     this.rowLabel,
+    this.plasticity,
   });
 
   /// The defaults from the theme's tokens.
   factory CoilSelectStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     return CoilSelectStyle(
+      plasticity: theme.plasticity,
       triggerFill: WidgetStateProperty<Color?>.fromMap({
         WidgetState.pressed: c.active,
         WidgetState.selected: c.hover.withValues(alpha: 0),
@@ -88,10 +90,16 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
   /// (rows at full emphasis on touch).
   final WidgetStateProperty<Color?>? rowLabel;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilSelectStyle merge(CoilSelectStyle? other) => other == null
       ? this
       : CoilSelectStyle(
+          plasticity: other.plasticity ?? plasticity,
           triggerFill: other.triggerFill ?? triggerFill,
           triggerBorder: other.triggerBorder ?? triggerBorder,
           indicator: other.indicator ?? indicator,
@@ -116,5 +124,6 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
     selectedFill,
     highlight,
     rowLabel,
+    plasticity,
   ];
 }

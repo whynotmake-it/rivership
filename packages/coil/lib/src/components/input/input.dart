@@ -335,11 +335,20 @@ class _CoilInputState extends State<CoilInput> {
           // centered and the field grows with the text scale.
           builder: (context, value, child) => Container(
             constraints: BoxConstraints(minHeight: look.minHeight!),
-            decoration: ShapeDecoration(
-              color: value(CoilInputTrack.fill),
-              shape: RoundedSuperellipseBorder(
-                borderRadius: radius,
-                side: BorderSide(color: value(CoilInputTrack.border)),
+            decoration: CoilRelief.decorate(
+              ShapeDecoration(
+                color: value(CoilInputTrack.fill),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(color: value(CoilInputTrack.border)),
+                ),
+              ),
+              // A field is a well under a plastic theme.
+              theme.relief(
+                CoilReliefRole.recessed,
+                override: look.plasticity,
+                hover: hovered ? 1 : 0,
+                enabled: widget.enabled,
               ),
             ),
             child: child,

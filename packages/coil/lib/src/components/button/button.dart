@@ -32,6 +32,13 @@ final class CoilButtonTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilButton.collapse',
   );
 
+  /// How hovered the button's lighting is, 0 to 1, under a plastic theme
+  /// (`CoilThemeData.plasticity`). Default motion: `fade`.
+  static final light = CoilButtonTrack<double>._(
+    .single,
+    debugLabel: 'CoilButton.light',
+  );
+
   /// The icon weight. Default motion: `fade`.
   static final weight = CoilButtonTrack<double>._(
     .single,
@@ -171,12 +178,14 @@ class _ButtonLook {
     required this.label,
     required this.spread,
     required this.iconWeight,
+    required this.light,
   });
 
   final Color fill;
   final Color label;
   final double spread;
   final double iconWeight;
+  final double light;
 }
 
 class _CoilButtonState extends State<CoilButton> {
@@ -217,6 +226,7 @@ class _CoilButtonState extends State<CoilButton> {
       label: style.foreground!.resolve(states)!,
       spread: pressed ? 0 : 1,
       iconWeight: hovered ? CoilIconWeight.emphasis : CoilIconWeight.rest,
+      light: hovered ? 1 : 0,
     );
   }
 
@@ -261,6 +271,7 @@ class _CoilButtonState extends State<CoilButton> {
                   CoilButtonTrack.label.value(look.label),
                   CoilButtonTrack.collapse.value(look.spread),
                   CoilButtonTrack.weight.value(look.iconWeight),
+                  CoilButtonTrack.light.value(look.light),
                 ],
                 animations: [
                   CoilButtonTrack.fill([
@@ -292,6 +303,16 @@ class _CoilButtonState extends State<CoilButton> {
                       ),
                     ),
                   ]),
+                  CoilButtonTrack.light([
+                    .to(
+                      look.light,
+                      motion: _motionFor(
+                        CoilButtonTrack.light,
+                        _motion.fade,
+                        spatial: false,
+                      ),
+                    ),
+                  ]),
                   CoilButtonTrack.weight([
                     .to(
                       look.iconWeight,
@@ -305,12 +326,22 @@ class _CoilButtonState extends State<CoilButton> {
                 ],
                 builder: (context, value, _) {
                   final labelColor = value(CoilButtonTrack.label);
+                  final spread = value(
+                    CoilButtonTrack.collapse,
+                  ).clamp(0.0, 1.0);
                   return CustomPaint(
                     painter: _ButtonSurfacePainter(
                       fill: value(CoilButtonTrack.fill),
-                      spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
+                      spread: spread,
                       radius: radius,
                       border: style.border!.a == 0 ? null : style.border,
+                      relief: _relief(
+                        theme,
+                        style,
+                        disabled: disabled,
+                        hover: value(CoilButtonTrack.light).clamp(0.0, 1.0),
+                        press: widget.selected ? 1 : 1 - spread,
+                      ),
                     ),
                     child: IconTheme(
                       data: IconThemeData(
@@ -336,6 +367,32 @@ class _CoilButtonState extends State<CoilButton> {
         },
       ),
     );
+  }
+
+  /// The lighting under a plastic theme, or null when flat or disabled.
+  /// The primary button is a strong fill; the rest are raised. A ghost
+  /// button only has a surface while hovered or pressed, so its lighting
+  /// fades in with it.
+  CoilRelief? _relief(
+    CoilThemeData theme,
+    CoilButtonStyle style, {
+    required bool disabled,
+    required double hover,
+    required double press,
+  }) {
+    final relief = theme.relief(
+      widget.variant == CoilButtonVariant.primary
+          ? CoilReliefRole.filled
+          : CoilReliefRole.raised,
+      override: style.plasticity,
+      hover: hover,
+      press: press,
+      enabled: !disabled,
+    );
+    if (relief == null || widget.variant != CoilButtonVariant.ghost) {
+      return relief;
+    }
+    return relief.fade((hover + press).clamp(0.0, 1.0));
   }
 
   /// The swap between idle content and the spinner: the blur-fade on
@@ -453,12 +510,14 @@ class _ButtonSurfacePainter extends CustomPainter {
     required this.spread,
     required this.radius,
     this.border,
+    this.relief,
   });
 
   final Color fill;
   final double spread;
   final double radius;
   final Color? border;
+  final CoilRelief? relief;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -470,11 +529,12 @@ class _ButtonSurfacePainter extends CustomPainter {
         );
 
     final border = this.border;
+    final relief = this.relief;
+    final outer = box(1 - spread, radius + spread);
+    relief?.paintShadows(canvas, outer);
     if (border == null) {
-      canvas.drawRSuperellipse(
-        box(1 - spread, radius + spread),
-        Paint()..color = fill,
-      );
+      canvas.drawRSuperellipse(outer, Paint()..color = fill);
+      relief?.paint(canvas, outer);
       return;
     }
     // Tertiary: the fill only reaches the surface box (1 px in); the ring
@@ -489,6 +549,7 @@ class _ButtonSurfacePainter extends CustomPainter {
           ..addRSuperellipse(box(2 - spread, radius + spread - 1)),
         Paint()..color = border,
       );
+    relief?.paint(canvas, outer);
   }
 
   @override
@@ -496,7 +557,8 @@ class _ButtonSurfacePainter extends CustomPainter {
       old.fill != fill ||
       old.spread != spread ||
       old.radius != radius ||
-      old.border != border;
+      old.border != border ||
+      old.relief != relief;
 }
 
 /// The loading spinner: an arc turning one eased lap per second. It fills

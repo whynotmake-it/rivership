@@ -377,6 +377,7 @@ class _CoilSwitchState extends State<CoilSwitch>
                     squish: _controller.value(_squish).clamp(0, 1),
                     tint: _controller.value(_tint).clamp(0, 1),
                     hover: value(CoilSwitchTrack.hover).clamp(0, 1),
+                    enabled: _enabled,
                   ),
                 ),
               );
@@ -441,6 +442,7 @@ class _SwitchTrack extends StatelessWidget {
     required this.squish,
     required this.tint,
     required this.hover,
+    required this.enabled,
   });
 
   final CoilSwitchMetrics metrics;
@@ -452,10 +454,37 @@ class _SwitchTrack extends StatelessWidget {
   final double squish;
   final double tint;
   final double hover;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final m = metrics;
+    final theme = CoilTheme.of(context);
+    // Under a plastic theme: the off track is a well, the on track a
+    // strong fill, the thumb a raised knob that sinks as it's pressed.
+    final plasticity = style.plasticity;
+    final trackRelief = CoilRelief.lerp(
+      theme.relief(
+        CoilReliefRole.recessed,
+        override: plasticity,
+        hover: hover,
+        enabled: enabled,
+      ),
+      theme.relief(
+        CoilReliefRole.filled,
+        override: plasticity,
+        hover: hover,
+        enabled: enabled,
+      ),
+      tint,
+    );
+    final thumbRelief = theme.relief(
+      CoilReliefRole.raised,
+      override: plasticity,
+      hover: hover,
+      press: squish * 0.5,
+      enabled: enabled,
+    );
     final inset = m.thumbInset;
     final travel = m.trackWidth - m.thumbSize - inset * 2;
     final at = thumb.clamp(0.0, 1.0);
@@ -494,9 +523,13 @@ class _SwitchTrack extends StatelessWidget {
       child: Container(
         width: m.trackWidth,
         height: m.trackHeight,
-        decoration: ShapeDecoration(
-          color: Color.lerp(off, on, tint),
-          shape: RoundedSuperellipseBorder(borderRadius: radius),
+        decoration: CoilRelief.decorate(
+          ShapeDecoration(
+            color: Color.lerp(off, on, tint),
+            shape: RoundedSuperellipseBorder(borderRadius: radius),
+          ),
+          // A track casts no shadow of its own.
+          trackRelief?.copyWith(shadows: const []),
         ),
         child: Stack(
           children: [
@@ -506,24 +539,29 @@ class _SwitchTrack extends StatelessWidget {
               width: width,
               height: height,
               child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: style.thumb,
-                  shadows: const [
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      offset: Offset(0, 1),
-                      blurRadius: 3,
+                decoration: CoilRelief.decorate(
+                  ShapeDecoration(
+                    color: style.thumb,
+                    shadows: const [
+                      BoxShadow(
+                        color: Color(0x1A000000),
+                        offset: Offset(0, 1),
+                        blurRadius: 3,
+                      ),
+                      BoxShadow(
+                        color: Color(0x1A000000),
+                        offset: Offset(0, 1),
+                        blurRadius: 2,
+                        spreadRadius: -1,
+                      ),
+                    ],
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        sharp ? 0 : height / 2,
+                      ),
                     ),
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      offset: Offset(0, 1),
-                      blurRadius: 2,
-                      spreadRadius: -1,
-                    ),
-                  ],
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(sharp ? 0 : height / 2),
                   ),
+                  thumbRelief,
                 ),
               ),
             ),

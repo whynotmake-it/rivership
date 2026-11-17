@@ -21,12 +21,14 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     this.minHeight,
     this.edgeFade,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults from the theme's tokens.
   factory CoilTabsStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     return CoilTabsStyle(
+      plasticity: theme.plasticity,
       pill: c.active,
       hoverPillOpacity: 0.4,
       label: WidgetStateProperty<Color?>.fromMap({
@@ -67,10 +69,16 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// [merge] combines the maps key by key.
   final Map<CoilTabsTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilTabsStyle merge(CoilTabsStyle? other) => other == null
       ? this
       : CoilTabsStyle(
+          plasticity: other.plasticity ?? plasticity,
           pill: other.pill ?? pill,
           hoverPillOpacity: other.hoverPillOpacity ?? hoverPillOpacity,
           label: other.label ?? label,
@@ -93,5 +101,6 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     minHeight,
     edgeFade,
     motions,
+    plasticity,
   ];
 }

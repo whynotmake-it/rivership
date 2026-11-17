@@ -5,6 +5,7 @@ import 'package:coil/src/foundation/focus_ring_theme.dart';
 import 'package:coil/src/foundation/haptics.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
+import 'package:coil/src/foundation/plasticity.dart';
 import 'package:coil/src/foundation/shape.dart';
 import 'package:coil/src/foundation/style.dart';
 import 'package:coil/src/foundation/typography.dart';
@@ -32,6 +33,7 @@ class CoilThemeData with Diagnosticable {
     this.focusRing = const CoilFocusRingTheme(),
     this.haptics,
     this.controlCursor = SystemMouseCursors.basic,
+    this.plasticity = CoilPlasticity.flat,
     this.components = const {},
   });
 
@@ -76,6 +78,31 @@ class CoilThemeData with Diagnosticable {
   /// pointing hand. Links always use the pointing hand, text the I-beam,
   /// and disabled controls the cursor beneath them.
   final MouseCursor controlCursor;
+
+  /// How lit interactive controls and containers look: [CoilPlasticity.flat]
+  /// (the default) paints no lighting; [CoilPlasticity.subtle],
+  /// [CoilPlasticity.soft] and [CoilPlasticity.tactile] add a gradient edge,
+  /// a top highlight, a sheen and a drop shadow that respond to hover and
+  /// press. Components read it through their style's `plasticity`, so one
+  /// component type can differ with [withComponentStyle].
+  final CoilPlasticity plasticity;
+
+  /// The lighting of a [role] shape under [plasticity] (or [override]) in
+  /// this theme's brightness, or null for none. See
+  /// [CoilPlasticity.resolve].
+  CoilRelief? relief(
+    CoilReliefRole role, {
+    CoilPlasticity? override,
+    double hover = 0,
+    double press = 0,
+    bool enabled = true,
+  }) => (override ?? plasticity).resolve(
+    role,
+    brightness,
+    hover: hover,
+    press: press,
+    enabled: enabled,
+  );
 
   /// Per-component-type style overrides, keyed by style type:
   /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
@@ -135,6 +162,7 @@ class CoilThemeData with Diagnosticable {
     CoilFocusRingTheme? focusRing,
     Object? haptics = _keep,
     MouseCursor? controlCursor,
+    CoilPlasticity? plasticity,
     Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
     colors: colors ?? this.colors,
@@ -146,6 +174,7 @@ class CoilThemeData with Diagnosticable {
     focusRing: focusRing ?? this.focusRing,
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     controlCursor: controlCursor ?? this.controlCursor,
+    plasticity: plasticity ?? this.plasticity,
     components: components ?? this.components,
   );
 
@@ -165,6 +194,7 @@ class CoilThemeData with Diagnosticable {
         focusRing: CoilFocusRingTheme.lerp(a.focusRing, b.focusRing, t),
         haptics: t < 0.5 ? a.haptics : b.haptics,
         controlCursor: t < 0.5 ? a.controlCursor : b.controlCursor,
+        plasticity: CoilPlasticity.lerp(a.plasticity, b.plasticity, t),
         components: t < 0.5 ? a.components : b.components,
       );
 
@@ -180,6 +210,7 @@ class CoilThemeData with Diagnosticable {
       other.focusRing == focusRing &&
       other.haptics == haptics &&
       other.controlCursor == controlCursor &&
+      other.plasticity == plasticity &&
       mapEquals(other.components, components);
 
   @override
@@ -193,6 +224,7 @@ class CoilThemeData with Diagnosticable {
     focusRing,
     haptics,
     controlCursor,
+    plasticity,
     Object.hashAllUnordered(
       components.entries.map((e) => Object.hash(e.key, e.value)),
     ),
@@ -212,6 +244,13 @@ class CoilThemeData with Diagnosticable {
           'controlCursor',
           controlCursor,
           defaultValue: SystemMouseCursors.basic,
+        ),
+      )
+      ..add(
+        DiagnosticsProperty(
+          'plasticity',
+          plasticity,
+          defaultValue: CoilPlasticity.flat,
         ),
       );
   }

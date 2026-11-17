@@ -64,11 +64,21 @@ class CoilSelectTrigger extends StatelessWidget {
           motion: pressed || hovered ? motion.fade : motion.fadeExit,
           debugLabel: 'CoilSelect trigger fill',
           builder: (context, fill, child) => DecoratedBox(
-            decoration: ShapeDecoration(
-              color: fill,
-              shape: RoundedSuperellipseBorder(
-                borderRadius: radius,
-                side: BorderSide(color: style.triggerBorder!),
+            decoration: CoilRelief.decorate(
+              ShapeDecoration(
+                color: fill,
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(color: style.triggerBorder!),
+                ),
+              ),
+              // A raised control under a plastic theme, sunk while open.
+              theme.relief(
+                CoilReliefRole.raised,
+                override: style.plasticity,
+                hover: hovered ? 1 : 0,
+                press: pressed ? 1 : (open ? 0.6 : 0),
+                enabled: enabled,
               ),
             ),
             child: child,

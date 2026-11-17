@@ -27,6 +27,7 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     this.dotRatio,
     this.dotScale,
     this.motions,
+    this.plasticity,
   });
 
   /// The defaults from the theme's tokens.
@@ -36,6 +37,7 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
   ) {
     final c = theme.colors;
     return CoilRadioGroupStyle(
+      plasticity: theme.plasticity,
       selection: c.active,
       highlight: c.hover,
       // Touch rows rest at full strength: "the pointer is here" means nothing
@@ -101,10 +103,16 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
   /// tokens. [merge] combines the maps key by key.
   final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
 
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
   @override
   CoilRadioGroupStyle merge(CoilRadioGroupStyle? other) => other == null
       ? this
       : CoilRadioGroupStyle(
+          plasticity: other.plasticity ?? plasticity,
           selection: other.selection ?? selection,
           highlight: other.highlight ?? highlight,
           label: other.label ?? label,
@@ -135,5 +143,6 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
     dotRatio,
     dotScale,
     motions,
+    plasticity,
   ];
 }

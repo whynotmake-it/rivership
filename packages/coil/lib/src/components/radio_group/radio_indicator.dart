@@ -75,10 +75,19 @@ class CoilRadioIndicator extends StatelessWidget {
       ),
       debugLabel: 'CoilRadioIndicator border',
       builder: (context, color, child) => DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(box / 2),
-            side: BorderSide(color: color, width: look.borderWidth!),
+        decoration: CoilRelief.decorate(
+          ShapeDecoration(
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(box / 2),
+              side: BorderSide(color: color, width: look.borderWidth!),
+            ),
+          ),
+          // A well the dot sits in, under a plastic theme.
+          theme.relief(
+            CoilReliefRole.recessed,
+            override: look.plasticity,
+            hover: states.contains(WidgetState.hovered) ? 1 : 0,
+            enabled: !states.contains(WidgetState.disabled),
           ),
         ),
         child: SizedBox.square(dimension: box, child: child),
@@ -97,12 +106,19 @@ class CoilRadioIndicator extends StatelessWidget {
             child: Transform.scale(
               scale: look.dotScale! + (1 - look.dotScale!) * progress,
               child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: look.dot,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(
-                      box * look.dotRatio! / 2,
+                decoration: CoilRelief.decorate(
+                  ShapeDecoration(
+                    color: look.dot,
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        box * look.dotRatio! / 2,
+                      ),
                     ),
+                  ),
+                  theme.relief(
+                    CoilReliefRole.filled,
+                    override: look.plasticity,
+                    enabled: !states.contains(WidgetState.disabled),
                   ),
                 ),
                 child: SizedBox.square(dimension: box * look.dotRatio!),

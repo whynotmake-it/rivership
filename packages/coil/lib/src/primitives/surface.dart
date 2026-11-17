@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/plasticity.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/widgets.dart';
 
@@ -80,7 +81,8 @@ class CoilSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final level = math.min(levelOf(context) + offset, 8);
     if (!_paints) return _SurfaceLevel(level: level, child: child);
-    final colors = CoilTheme.of(context).colors;
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
     final radius =
         borderRadius ??
         BorderRadius.circular(CoilTheme.radiiOf(context).container);
@@ -88,10 +90,14 @@ class CoilSurface extends StatelessWidget {
     return _SurfaceLevel(
       level: level,
       child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: color ?? colors.surface(level),
-          shadows: colors.shadow(weight),
-          shape: RoundedSuperellipseBorder(borderRadius: radius),
+        // Under a plastic theme the surface also gets a lit edge.
+        decoration: CoilRelief.decorate(
+          ShapeDecoration(
+            color: color ?? colors.surface(level),
+            shadows: colors.shadow(weight),
+            shape: RoundedSuperellipseBorder(borderRadius: radius),
+          ),
+          theme.relief(CoilReliefRole.floating),
         ),
         // Between the fill and the content, as inset shadows are.
         child: CustomPaint(
