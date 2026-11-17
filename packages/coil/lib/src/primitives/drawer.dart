@@ -255,6 +255,13 @@ class _CoilDrawerState extends State<CoilDrawer>
   )..addStatusListener(_onStatus);
 
   final _startScope = FocusScopeNode(debugLabel: 'CoilDrawer.start');
+
+  /// Keep the content and the panels (and their state: scroll positions,
+  /// text fields) when [CoilDrawer.reveal] changes the frame around them.
+  final _contentKey = GlobalKey(debugLabel: 'CoilDrawer.content');
+  final _startKey = GlobalKey(debugLabel: 'CoilDrawer.start');
+  final _endKey = GlobalKey(debugLabel: 'CoilDrawer.end');
+
   final _endScope = FocusScopeNode(debugLabel: 'CoilDrawer.end');
 
   /// Where [_position] is heading.
@@ -619,7 +626,12 @@ class _CoilDrawerState extends State<CoilDrawer>
               (_parent!._modeFor(physicalRight: true) != ScrollDragMode.none ||
                   _parent!._modeFor(physicalRight: false) !=
                       ScrollDragMode.none));
-      final content = _CoilDrawerScope(state: this, child: widget.child);
+      // Its own layer, so a slide or a drag moves it without repainting
+      // the page every frame.
+      final content = RepaintBoundary(
+        key: _contentKey,
+        child: _CoilDrawerScope(state: this, child: widget.child),
+      );
       return ScrollDragDetector(
         up: ScrollDragMode.none,
         down: ScrollDragMode.none,
@@ -844,6 +856,11 @@ class _CoilDrawerState extends State<CoilDrawer>
     // Reduced motion keeps the fade and drops the growth.
     final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final panelScale = reduced ? 1.0 : widget.panelScale;
+    // Its own layer, so the fade, growth or slide doesn't repaint it.
+    final layer = RepaintBoundary(
+      key: edge == CoilDrawerEdge.start ? _startKey : _endKey,
+      child: panel,
+    );
     var surface = switch (widget.reveal) {
       // The panel's content fades and grows in as the content uncovers it,
       // following the drag, from the edge the content leaves. Its fill
@@ -857,7 +874,7 @@ class _CoilDrawerState extends State<CoilDrawer>
           child: Transform.scale(
             scale: panelScale + (1 - panelScale) * shown,
             alignment: left ? Alignment.centerRight : Alignment.centerLeft,
-            child: panel,
+            child: layer,
           ),
         ),
       ),
@@ -866,7 +883,7 @@ class _CoilDrawerState extends State<CoilDrawer>
         shadowLevel: 3,
         borderRadius: BorderRadius.zero,
         color: widget.panelColor,
-        child: panel,
+        child: layer,
       ),
     };
     surface = Semantics(
@@ -892,7 +909,8 @@ class _CoilDrawerState extends State<CoilDrawer>
     if (widget.reveal == CoilDrawerReveal.over) {
       surface = FractionalTranslation(
         translation: Offset((1 - shown) * (left ? -1 : 1), 0),
-        child: BlockSemantics(child: surface),
+        // The raised surface and its shadow slide as one layer.
+        child: RepaintBoundary(child: BlockSemantics(child: surface)),
       );
     }
     return Positioned(

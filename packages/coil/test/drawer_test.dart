@@ -852,6 +852,120 @@ void main() {
     });
   });
 
+  group('layers and state', () {
+    testWidgets('a slide repaints neither the content nor the panel', (
+      tester,
+    ) async {
+      final page = _CountingPainter();
+      final side = _CountingPainter();
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              CoilDrawerEdge? open;
+              return CoilDrawer(
+                open: open,
+                onOpenChanged: (value) => setState(() => open = value),
+                start: CustomPaint(painter: side, child: const SizedBox()),
+                child: CustomPaint(
+                  painter: page,
+                  child: const SizedBox.expand(),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final pagePaints = page.paints;
+      final gesture = await tester.startGesture(const Offset(100, 500));
+      await gesture.moveBy(const Offset(10, 0));
+      await tester.pump();
+      await gesture.moveBy(const Offset(10, 0));
+      await tester.pump();
+      final sidePaints = side.paints;
+      expect(sidePaints, greaterThan(0));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump();
+      }
+      expect(page.paints, pagePaints, reason: 'the page moves as a layer');
+      expect(side.paints, sidePaints, reason: 'the panel fades as a layer');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('changing the reveal keeps the content and panel state', (
+      tester,
+    ) async {
+      var reveal = CoilDrawerReveal.behind;
+      CoilDrawerEdge? open;
+      late StateSetter update;
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return CoilDrawer(
+                open: open,
+                reveal: reveal,
+                onOpenChanged: (value) => setState(() => open = value),
+                start: const _Probe(key: ValueKey('panel probe')),
+                child: Column(
+                  children: [
+                    const _Probe(key: ValueKey('page probe')),
+                    Expanded(
+                      child: ListView(
+                        key: const ValueKey('list'),
+                        children: [
+                          for (var i = 0; i < 40; i++)
+                            SizedBox(height: 50, child: Text('Row $i')),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.drag(
+        find.byKey(const ValueKey('list')),
+        const Offset(0, -200),
+      );
+      await tester.pumpAndSettle();
+      final page = tester.state(find.byKey(const ValueKey('page probe')));
+      update(() => open = CoilDrawerEdge.start);
+      await tester.pumpAndSettle();
+      final panel = tester.state(find.byKey(const ValueKey('panel probe')));
+      ScrollPosition position() =>
+          tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      final scrolled = position().pixels;
+      expect(scrolled, greaterThan(0));
+
+      for (final next in [CoilDrawerReveal.over, CoilDrawerReveal.behind]) {
+        update(() => reveal = next);
+        await tester.pumpAndSettle();
+        expect(
+          tester.state(find.byKey(const ValueKey('page probe'))),
+          same(page),
+          reason: '$next',
+        );
+        expect(
+          tester.state(find.byKey(const ValueKey('panel probe'))),
+          same(panel),
+          reason: '$next',
+        );
+        expect(position().pixels, scrolled, reason: '$next');
+      }
+    });
+  });
+
   group('over the content', () {
     testWidgets('the panel slides over a still page', (tester) async {
       await _pump(tester, const _Host(reveal: CoilDrawerReveal.over));
@@ -956,4 +1070,28 @@ class _Disabled<T extends Intent> extends Action<T> {
 
   @override
   Object? invoke(T intent) => null;
+}
+
+/// Counts its paints.
+class _CountingPainter extends CustomPainter {
+  int paints = 0;
+
+  @override
+  void paint(Canvas canvas, Size size) => paints++;
+
+  @override
+  bool shouldRepaint(_CountingPainter oldDelegate) => false;
+}
+
+/// A widget with state, to tell whether a rebuild kept it.
+class _Probe extends StatefulWidget {
+  const _Probe({super.key});
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 10);
 }
