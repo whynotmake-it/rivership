@@ -207,6 +207,18 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 - **Scrim:** sheets keep the glass sheet's own, black 15 % over a blur of the page, in light and dark. Dialogs and drawers that slide over the page, which don't blur, use black 20 % (light) / 30 % (dark) (`CoilSheetPanel.barrierColorOf`); the phone drawer revealed from behind dims the page only 7 % / 15 %.
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
 
+### 6.1 Plasticity
+
+How lit controls look, from flat to tactile: `CoilThemeData.plasticity`, a `CoilPlasticity` of intensities (0 none, 1 the reference recipe, opencode's elevation tokens).
+
+- **Ladder:** `flat` (the default: nothing is painted and components keep their decorations untouched) < `subtle` < `soft` < `tactile`. `scale(t)` makes any of them quieter or stronger; a glass material would sit above `tactile`.
+- **Light from above.** Each shape has a role (`CoilReliefRole`): `raised` and `filled` controls (buttons, thumbs, the select trigger, an on switch) catch light on the top edge and cast a shadow below; `recessed`, `field` and `track` wells are shaded at the top and lit at the bottom; `quiet` buttons are lit like `raised`; `floating` containers (cards, popovers, dialogs) get only a quiet edge. Shadows paint outside the shape only, so a see-through fill never shows its own.
+- **Resolved per role and brightness** into a `CoilRelief` (a gradient edge, top and bottom rims, a sheen and the drops) with `CoilTheme.reliefOf(context, role)`, and painted by `CoilRelief.decorate` on a superellipse. One setting reads right on white, black, blue and dark fills.
+- **`subtle` lights what you press:** raised controls at 0.78 and filled at 0.8 of the recipe, half-depth hover and press; wells get a hairline, fields barely any; tracks, quiet buttons and containers stay flat. Per-role restraint is data (`roles`), not new presets.
+- **States:** hover brightens the light, a press flattens it and moves the shade to the top edge (the control sinks in), and a disabled control is flat. `response` sets how far hover and press move it.
+- **Selection indicators are never lit** (the tabs pill, toggle-group segments, merged selection blocks): they mark the current item, they aren't pressed.
+- **Not on raised surfaces.** Controls on a card, popover, menu, dialog or sheet are flat: `CoilSurface` places a `CoilPlasticityScope(elevated: true)` above the page, and `CoilTheme.of` reads a flat plasticity inside it. A component style's `plasticity`, or `CoilPlasticityScope(elevated: false)`, lights them anyway. A surface's own edge reads the theme's plasticity as set, so a popover has the same edge wherever it opens.
+
 ## 7. Motion
 
 ### 7.1 Tokens (`CoilMotion`, springs only)
