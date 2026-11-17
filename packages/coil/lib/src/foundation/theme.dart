@@ -303,6 +303,10 @@ class CoilTheme extends StatelessWidget {
   /// High-contrast versions, made once per theme data.
   static final _highContrast = Expando<CoilThemeData>('CoilTheme.highContrast');
 
+  /// Versions without plasticity, for elevated surfaces, made once per
+  /// theme data.
+  static final _onSurface = Expando<CoilThemeData>('CoilTheme.onSurface');
+
   /// The theme at [context] before high contrast: the nearest theme's data,
   /// else the default for the platform brightness.
   static CoilThemeData _raw(BuildContext context) {
@@ -315,9 +319,16 @@ class CoilTheme extends StatelessWidget {
   }
 
   /// The theme at [context], resolved for high contrast when the platform
-  /// asks for it (`MediaQuery.highContrastOf`).
+  /// asks for it (`MediaQuery.highContrastOf`). Inside an elevated
+  /// [CoilPlasticityScope] (a card, popover, dialog or sheet), its
+  /// plasticity is [CoilPlasticity.flat]: controls there aren't lit.
   static CoilThemeData of(BuildContext context) {
-    final data = _raw(context);
+    var data = _raw(context);
+    if (!data.plasticity.isFlat && CoilPlasticityScope.elevatedOf(context)) {
+      data = _onSurface[data] ??= data.copyWith(
+        plasticity: CoilPlasticity.flat,
+      );
+    }
     return MediaQuery.maybeHighContrastOf(context) ?? false
         ? _highContrast[data] ??= data.highContrast()
         : data;

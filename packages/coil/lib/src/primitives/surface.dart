@@ -80,7 +80,10 @@ class CoilSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = math.min(levelOf(context) + offset, 8);
-    if (!_paints) return _SurfaceLevel(level: level, child: child);
+    // What sits on a surface above the page isn't lit (see
+    // CoilPlasticityScope).
+    final content = CoilPlasticityScope(elevated: level > 1, child: child);
+    if (!_paints) return _SurfaceLevel(level: level, child: content);
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final radius =
@@ -107,7 +110,7 @@ class CoilSurface extends StatelessWidget {
             highlight: colors.topHighlight(weight),
             textDirection: Directionality.of(context),
           ),
-          child: child,
+          child: content,
         ),
       ),
     );

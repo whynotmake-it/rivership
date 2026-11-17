@@ -1,8 +1,7 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
+import 'package:flutter/widgets.dart';
 
 /// What a lit shape is, which decides where its light falls.
 ///
@@ -765,4 +764,42 @@ class CoilReliefBorder extends OutlinedBorder {
 
   @override
   int get hashCode => Object.hash(relief, shape);
+}
+
+/// Marks a subtree that sits on a surface above the page: a card, a
+/// popover, a menu, a dialog, a sheet. `CoilSurface` places one for its
+/// content, `elevated` when its level is above 1 (the page).
+///
+/// Lighting belongs on controls that sit on the page. On a surface that is
+/// itself raised, lit controls compete with it, so `CoilTheme.of` reads a
+/// [CoilPlasticity.flat] plasticity inside an elevated scope. A
+/// component's style still wins: `CoilButtonStyle(plasticity: …)`, per
+/// instance or through `CoilThemeData.withComponentStyle`, lights it
+/// anyway. Wrap a subtree in `CoilPlasticityScope(elevated: false)` to
+/// light it again.
+class CoilPlasticityScope extends InheritedTheme {
+  /// Marks [child] as [elevated] or not.
+  const CoilPlasticityScope({
+    required this.elevated,
+    required super.child,
+    super.key,
+  });
+
+  /// Whether [child] sits on a surface above the page.
+  final bool elevated;
+
+  /// Whether [context] sits on a surface above the page.
+  static bool elevatedOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<CoilPlasticityScope>()
+          ?.elevated ??
+      false;
+
+  @override
+  Widget wrap(BuildContext context, Widget child) =>
+      CoilPlasticityScope(elevated: elevated, child: child);
+
+  @override
+  bool updateShouldNotify(CoilPlasticityScope oldWidget) =>
+      oldWidget.elevated != elevated;
 }
