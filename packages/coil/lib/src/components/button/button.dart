@@ -305,27 +305,31 @@ class _CoilButtonState extends State<CoilButton> {
                 ],
                 builder: (context, value, _) {
                   final labelColor = value(CoilButtonTrack.label);
-                  return CustomPaint(
-                    painter: _ButtonSurfacePainter(
-                      fill: value(CoilButtonTrack.fill),
-                      spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
-                      radius: radius,
-                      border: style.border!.a == 0 ? null : style.border,
-                    ),
-                    child: IconTheme(
-                      data: IconThemeData(
-                        size: iconSize,
-                        applyTextScaling: true,
-                        color: labelColor,
-                        weight: value(CoilButtonTrack.weight),
+                  return _onMaterial(
+                    context,
+                    radius,
+                    CustomPaint(
+                      painter: _ButtonSurfacePainter(
+                        fill: value(CoilButtonTrack.fill),
+                        spread: value(CoilButtonTrack.collapse).clamp(0.0, 1.0),
+                        radius: radius,
+                        border: style.border!.a == 0 ? null : style.border,
                       ),
-                      child: DefaultTextStyle(
-                        style: style.textStyle!.copyWith(color: labelColor),
-                        maxLines: 1,
-                        softWrap: false,
-                        child: iconOnly
-                            ? _iconContent(sizes, style)
-                            : _labelContent(sizes, style),
+                      child: IconTheme(
+                        data: IconThemeData(
+                          size: iconSize,
+                          applyTextScaling: true,
+                          color: labelColor,
+                          weight: value(CoilButtonTrack.weight),
+                        ),
+                        child: DefaultTextStyle(
+                          style: style.textStyle!.copyWith(color: labelColor),
+                          maxLines: 1,
+                          softWrap: false,
+                          child: iconOnly
+                              ? _iconContent(sizes, style)
+                              : _labelContent(sizes, style),
+                        ),
                       ),
                     ),
                   );
@@ -336,6 +340,37 @@ class _CoilButtonState extends State<CoilButton> {
         },
       ),
     );
+  }
+
+  /// Puts [child] on the ambient [CoilMaterial]'s surface for the
+  /// material variants, or on coil's raised surface without one. Other
+  /// variants paint their own fill.
+  Widget _onMaterial(BuildContext context, double radius, Widget child) {
+    final emphasis = switch (widget.variant) {
+      CoilButtonVariant.glass => CoilSurfaceEmphasis.regular,
+      CoilButtonVariant.glassProminent => CoilSurfaceEmphasis.prominent,
+      _ => null,
+    };
+    if (emphasis == null) return child;
+    final shape = BorderRadius.circular(radius);
+    final clipped = ClipRSuperellipse(borderRadius: shape, child: child);
+    final spec = CoilSurfaceSpec(
+      role: CoilSurfaceRole.control,
+      borderRadius: shape,
+      emphasis: emphasis,
+    );
+    return CoilMaterialScope.maybeOf(
+          context,
+        )?.surface(context, spec, clipped) ??
+        CoilSurface(
+          offset: 1,
+          shadowLevel: 2,
+          borderRadius: shape,
+          color: emphasis == CoilSurfaceEmphasis.prominent
+              ? CoilTheme.of(context).colors.brand
+              : null,
+          child: clipped,
+        );
   }
 
   /// The swap between idle content and the spinner: the blur-fade on

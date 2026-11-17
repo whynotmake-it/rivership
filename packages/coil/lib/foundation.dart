@@ -8,6 +8,7 @@ export 'src/foundation/colors.dart';
 export 'src/foundation/focus_ring_theme.dart';
 export 'src/foundation/haptics.dart';
 export 'src/foundation/input_modality.dart';
+export 'src/foundation/material.dart';
 export 'src/foundation/metrics.dart';
 export 'src/foundation/motion.dart';
 export 'src/foundation/option.dart';

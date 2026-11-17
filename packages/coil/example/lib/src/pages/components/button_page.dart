@@ -163,5 +163,7 @@ class _ButtonPageState extends State<ButtonPage> {
     CoilButtonVariant.tertiary => 'Cancel',
     CoilButtonVariant.ghost => 'Skip',
     CoilButtonVariant.destructive => 'Delete project',
+    CoilButtonVariant.glass => 'Share',
+    CoilButtonVariant.glassProminent => 'New album',
   };
 }

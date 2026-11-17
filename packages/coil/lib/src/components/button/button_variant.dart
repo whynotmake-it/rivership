@@ -14,4 +14,13 @@ enum CoilButtonVariant {
 
   /// A red wash under a red label.
   destructive,
+
+  /// A surface from the ambient `CoilMaterial` (glass, with
+  /// `coil_glass`) for controls that float over content: toolbar buttons,
+  /// floating actions. A capsule. Without a material it is coil's raised
+  /// surface.
+  glass,
+
+  /// [glass] washed with the brand: the one primary floating action.
+  glassProminent,
 }

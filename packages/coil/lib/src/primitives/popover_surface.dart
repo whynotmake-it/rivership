@@ -1,3 +1,4 @@
+import 'package:coil/src/foundation/material.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/widgets.dart';
@@ -5,6 +6,9 @@ import 'package:flutter/widgets.dart';
 /// The raised surface a popover's content sits on: a [CoilSurface] two
 /// levels up with the level-3 shadow. Its corners are concentric with the
 /// rows inside, and it is as wide as its widest row.
+///
+/// Under a [CoilMaterialScope] the material builds the surface instead
+/// (role [CoilSurfaceRole.popover]); [color] then doesn't apply.
 class CoilPopoverSurface extends StatelessWidget {
   /// Creates a popover surface.
   const CoilPopoverSurface({
@@ -34,16 +38,27 @@ class CoilPopoverSurface extends StatelessWidget {
     final radius = BorderRadius.circular(
       this.radius ?? CoilTheme.radiiOf(context).item + metrics.popupInset,
     );
+    final clipped = ClipRSuperellipse(borderRadius: radius, child: child);
+    final material = CoilMaterialScope.maybeOf(context)?.surface(
+      context,
+      CoilSurfaceSpec(role: CoilSurfaceRole.popover, borderRadius: radius),
+      clipped,
+    );
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: minWidth),
       child: IntrinsicWidth(
-        child: CoilSurface(
-          offset: CoilSurface.popoverOffset,
-          shadowLevel: 3,
-          color: color,
-          borderRadius: radius,
-          child: ClipRSuperellipse(borderRadius: radius, child: child),
-        ),
+        child: material != null
+            ? CoilSurface.scope(
+                offset: CoilSurface.popoverOffset,
+                child: material,
+              )
+            : CoilSurface(
+                offset: CoilSurface.popoverOffset,
+                shadowLevel: 3,
+                color: color,
+                borderRadius: radius,
+                child: clipped,
+              ),
       ),
     );
   }

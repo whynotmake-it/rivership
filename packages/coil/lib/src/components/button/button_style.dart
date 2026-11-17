@@ -84,14 +84,40 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
         }),
         WidgetStatePropertyAll<Color?>(c.redLabel),
       ),
+      // The material paints the surface; the fill is only the state wash
+      // on top of it.
+      CoilButtonVariant.glass => (
+        WidgetStateProperty<Color?>.fromMap({
+          held: c.active,
+          WidgetState.hovered: c.hover,
+          WidgetState.any: clear,
+        }),
+        WidgetStatePropertyAll<Color?>(c.foreground),
+      ),
+      CoilButtonVariant.glassProminent => (
+        WidgetStateProperty<Color?>.fromMap({
+          held: const Color(0x29000000),
+          WidgetState.hovered: const Color(0x14FFFFFF),
+          WidgetState.any: const Color(0x00FFFFFF),
+        }),
+        WidgetStatePropertyAll<Color?>(
+          CoilColorMix.ensureContrast(const Color(0xFFFFFFFF), c.brand, 4.5),
+        ),
+      ),
     };
+    final material =
+        variant == CoilButtonVariant.glass ||
+        variant == CoilButtonVariant.glassProminent;
     return CoilButtonStyle(
       fill: fill,
       foreground: foreground,
       border: variant == CoilButtonVariant.tertiary
           ? c.border
           : const Color(0x00000000),
-      radius: theme.shape.radii(metrics.tier).item,
+      // Floating controls are capsules, as Apple's glass buttons are.
+      radius: material
+          ? metrics.controlHeight / 2
+          : theme.shape.radii(metrics.tier).item,
       textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       iconSize: metrics.iconSize,
       minHeight: metrics.controlHeight,
