@@ -15,7 +15,10 @@ Milestone M0, unreleased.
   aside to show the sidebar, taking the screen's corner radius while it
   moves and squaring up once it covers the sidebar again; a horizontal
   drag anywhere on the page opens it, and horizontal scrollables hand
-  over at their edge. The pointer tier keeps the drawer over the page.
+  over at their edge. Nothing tints the page: the sidebar fades in as it
+  is revealed, and the page's edge takes a popover's shadow (step 3) and
+  a hairline in `border`, all following the drag. The pointer tier keeps
+  the drawer over the page.
   New: `drawerReveal`, `drawerDrag`, `drawerWidth`, `CoilSidebarStyle`'s
   `drawer…` look fields and `CoilSidebarTrigger.side`. Two nested
   scaffolds give a phone a sidebar on each side.

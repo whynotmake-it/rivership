@@ -137,6 +137,58 @@ Future<void> _drag(
   await tester.pumpAndSettle();
 }
 
+/// The start panel's opacity.
+double _panelOpacity(WidgetTester tester) => tester
+    .widget<Opacity>(
+      find
+          .ancestor(
+            of: find.text('Start panel'),
+            matching: find.byType(Opacity),
+          )
+          .first,
+    )
+    .opacity;
+
+/// The decorations around the content, outermost first.
+List<ShapeDecoration> _contentDecorations(WidgetTester tester) => [
+  for (final box
+      in tester
+          .widgetList<DecoratedBox>(
+            find.ancestor(
+              of: find.byKey(const ValueKey('content')),
+              matching: find.byType(DecoratedBox),
+            ),
+          )
+          .toList()
+          .reversed)
+    if (box.decoration case final ShapeDecoration decoration) decoration,
+];
+
+/// The content's fill and shadow.
+ShapeDecoration _edge(WidgetTester tester) => _contentDecorations(
+  tester,
+).firstWhere((d) => d.color != null);
+
+/// The content's edge hairline.
+BorderSide _hairline(WidgetTester tester) =>
+    (_contentDecorations(tester).firstWhere((d) => d.color == null).shape
+            as RoundedSuperellipseBorder)
+        .side;
+
+/// The color over the content while a panel shows.
+Color _scrim(WidgetTester tester) => tester
+    .widget<ColoredBox>(
+      find
+          .descendant(
+            of: find.byWidgetPredicate(
+              (w) => w is Semantics && w.properties.onDismiss != null,
+            ),
+            matching: find.byType(ColoredBox),
+          )
+          .first,
+    )
+    .color;
+
 bool _shown(String text) => find.text(text).hitTestable().evaluate().isNotEmpty;
 
 void main() {
@@ -193,6 +245,47 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
       expect(_open(tester), isNull, reason: 'a short, slow drag settles back');
+    });
+
+    testWidgets('no scrim; the panel fades in and the edge lifts with the '
+        'drag', (tester) async {
+      await _pump(tester, const _Host());
+      final colors = CoilTheme.of(tester.element(find.byType(_Host))).colors;
+      final gesture = await tester.startGesture(const Offset(100, 500));
+      for (var i = 0; i < 16; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump();
+      }
+      // Half of the 320 panel.
+      expect(_contentLeft(tester), 160);
+      expect(_panelOpacity(tester), closeTo(0.5, 0.01));
+      final shadow = colors.shadow(3);
+      expect(_edge(tester).shadows, [
+        for (final s in shadow)
+          s.copyWith(color: s.color.withValues(alpha: s.color.a * 0.5)),
+      ]);
+      expect(
+        _hairline(tester).color,
+        colors.border.withValues(alpha: colors.border.a * 0.5),
+      );
+      expect(_scrim(tester).a, 0, reason: 'nothing tints the content');
+
+      await gesture.moveBy(const Offset(200, 0));
+      await tester.pump(const Duration(milliseconds: 300));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(_open(tester), CoilDrawerEdge.start);
+      expect(_panelOpacity(tester), 1);
+      expect(_edge(tester).shadows, shadow);
+      expect(_hairline(tester).color, colors.border);
+      expect(_scrim(tester).a, 0);
+
+      // A press on the content still closes it, and the edge goes away.
+      await tester.tapAt(const Offset(360, 400));
+      await tester.pumpAndSettle();
+      expect(_open(tester), isNull);
+      expect(_edge(tester).shadows, isEmpty);
+      expect(_hairline(tester), BorderSide.none);
     });
 
     testWidgets('a short fling opens it, and one back closes it', (
