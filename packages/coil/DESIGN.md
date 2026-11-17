@@ -351,11 +351,13 @@ The decision uses window width, not the platform: an iPad in a 320-wide split vi
 |---|---|---|---|---|
 | Context menu | long-press 500 ms | long-press 500 ms | right-click, Ctrl-click (macOS), Shift+F10, Menu key | as the input in use; our long-press on touch |
 | Tooltips | hover only (trackpad, Pencil); none for touch | long-press on icon-only buttons | hover / focus | hover / focus |
-| Scroll | bouncing, overlay bars | stretch, overlay bars | clamping, thin coil bar that widens on hover | browser's |
+| Scroll | the app's `ScrollBehavior` (physics, overscroll, drag devices); coil's overlay bar | the app's `ScrollBehavior`; coil's overlay bar | the app's `ScrollBehavior`; thin coil bar that widens on hover | the app's `ScrollBehavior` |
 | Text selection | system edit menu (`SystemContextMenu`), Cupertino handles | Material handles and toolbar | coil-styled right-click menu | browser menu |
 | Back | edge swipe pops routes | system / predictive back dismisses the top overlay | Esc | Esc / browser back |
 | Modifier glyphs | ⌘ ⌥ ⇧ ⌃ | Ctrl Alt Shift | ⌘ on macOS, Ctrl elsewhere | by OS |
 | Hit target | 44 | 44 (no 48 px Android hit box: Flutter has no hit slop, and a larger hit area without a larger layout needs a custom hit-test override) | — | per tier |
+
+coil sets no scroll behavior of its own. Physics, overscroll and which pointers drag content are whatever the app's ambient `ScrollBehavior` says (Flutter's platform defaults unless the app sets one with `ScrollConfiguration`), so a coil list scrolls like every other list in the app. Where coil draws its own scrollbar (`CoilScrollbar`, in a scroll area and a menu), it turns off only the ambient behavior's scrollbar, with `copyWith(scrollbars: false)`.
 
 Coil never draws Cupertino or Material chrome. Platform pieces come in only where they're genuinely native: the edit menu, selection handles and the keyboard. They're used only inside `CoilTextFieldCore`.
 
@@ -933,7 +935,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### ScrollArea (built)
 
-- **Physics:** platform physics (§9.2).
+- **Physics:** the app's ambient `ScrollBehavior` decides physics, overscroll and drag devices (§9.2); the area only replaces its scrollbar with coil's.
 - **Edge fades (`CoilScrollEdgeFade`):** each edge fades in as content scrolls away from it, up to 32, following the scroll direction (RTL, reversed lists). The amount springs on `fade`. The ramp is eased, not linear, so it has no visible start or end. Over a known solid background the fade is painted in that color on top; elsewhere it masks the content, which costs an offscreen layer.
 - **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later. The hide is `RawScrollbar`'s timed fade over the `fade` token's duration, not a spring: `RawScrollbar` owns that animation and exposes no way to drive it.
 - **Touch:** a thin overlay bar in coil's colors (3 wide) that shows only while scrolling and can't be grabbed. Flutter draws no OS scrollbar, so this stands in for it.

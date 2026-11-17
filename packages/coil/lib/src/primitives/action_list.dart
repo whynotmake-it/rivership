@@ -276,6 +276,7 @@ class _CoilActionListState extends State<CoilActionList>
     with TickerProviderStateMixin {
   final _active = CoilActiveItemController();
   final _query = TextEditingController();
+  final _scroll = ScrollController();
   late List<CoilMenuEntry?> _items = _compute();
   late List<GlobalKey> _rowKeys = _keysFor(_items.length);
   Timer? _acknowledge;
@@ -422,6 +423,7 @@ class _CoilActionListState extends State<CoilActionList>
     _acknowledge?.cancel();
     _subTimer?.cancel();
     _query.dispose();
+    _scroll.dispose();
     _active
       ..removeListener(_onActive)
       ..dispose();
@@ -727,12 +729,14 @@ class _CoilActionListState extends State<CoilActionList>
             widget.surface ??
             theme.colors.surface(CoilSurface.levelOf(context)),
         extent: widget.fadeExtent,
-        child: ScrollConfiguration(
-          behavior: CoilScrollBehavior(
-            tier: metrics.tier,
-            look: widget.scrollbar,
-          ),
+        child: CoilScrollbar(
+          controller: _scroll,
+          tier: metrics.tier,
+          look: widget.scrollbar,
+          fadeDuration:
+              motion.fade.duration ?? const Duration(milliseconds: 120),
           child: SingleChildScrollView(
+            controller: _scroll,
             padding: EdgeInsets.all(metrics.popupInset),
             // The region and its layer scroll with the rows, so the
             // highlight and the ring stay on their rows.

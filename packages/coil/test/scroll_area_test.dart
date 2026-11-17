@@ -1,5 +1,4 @@
 import 'package:coil/coil.dart';
-import 'package:coil/src/primitives/scrollbar.dart' show CoilScrollbar;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -26,6 +25,11 @@ Widget _app(Widget child, {CoilTier tier = CoilTier.pointer}) => WidgetsApp(
         Center(child: SizedBox(width: 200, height: 160, child: child)),
   ),
 );
+
+/// [state]'s physics and their parents.
+List<ScrollPhysics> _physicsOf(ScrollableState state) => [
+  for (ScrollPhysics? p = state.position.physics; p != null; p = p.parent) p,
+];
 
 double _offsetOf(WidgetTester tester) =>
     tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
@@ -281,6 +285,62 @@ void main() {
     expect(area.position.pixels, 0);
     expect(text.selection.baseOffset, greaterThan(0));
   });
+
+  testWidgets('scrolls with the ambient behavior and draws only its own bar', (
+    tester,
+  ) async {
+    // An app behavior unlike the platform's: clamping physics on macOS,
+    // and a mouse that drags content.
+    final behavior = const ScrollBehavior().copyWith(
+      physics: const ClampingScrollPhysics(),
+      dragDevices: PointerDeviceKind.values.toSet(),
+    );
+    await tester.pumpWidget(
+      _app(
+        ScrollConfiguration(
+          behavior: behavior,
+          child: CoilScrollArea(
+            child: Column(
+              children: [
+                _rows(12),
+                // A nested scrollable keeps the app's behavior.
+                SizedBox(
+                  height: 60,
+                  child: ListView(
+                    key: const ValueKey('nested'),
+                    children: [_rows(4)],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final outer = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    expect(_physicsOf(outer), contains(isA<ClampingScrollPhysics>()));
+    final nested = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const ValueKey('nested')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(_physicsOf(nested), contains(isA<ClampingScrollPhysics>()));
+
+    // A mouse drag scrolls, as the app's behavior allows.
+    await tester.drag(
+      find.byType(CoilScrollArea),
+      const Offset(0, -40),
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    expect(outer.position.pixels, greaterThan(0));
+
+    // One bar for the area: coil's, not the behavior's desktop bar too. The
+    // nested list has the behavior's own.
+    expect(find.byType(CoilScrollbar), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is RawScrollbar), findsNWidgets(2));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('content that shrinks while scrolled to the end rebuilds the '
       'area after the frame', (tester) async {

@@ -41,8 +41,12 @@ enum CoilEdgeFades {
   none,
 }
 
-/// A scrolling region with coil's scrollbar, edge fades and platform
-/// physics.
+/// A scrolling region with coil's scrollbar and edge fades.
+///
+/// It scrolls the way the app does: physics, overscroll and which pointers
+/// drag the content come from the ambient [ScrollBehavior] (the
+/// platform's, unless the app sets its own with [ScrollConfiguration]).
+/// coil only draws its own scrollbar in place of the behavior's.
 ///
 /// When the content overflows, the viewport becomes a tab stop. While it
 /// has focus, the arrow keys scroll a line, Page Up and Page Down a page,
@@ -69,8 +73,8 @@ class CoilScrollArea extends StatefulWidget {
     this.motions,
   }) : _wrapsScrollable = false;
 
-  /// Gives [child], a scrollable driven by [controller], coil's scroll
-  /// behavior, fades and keyboard scrolling.
+  /// Gives [child], a scrollable driven by [controller], coil's scrollbar,
+  /// fades and keyboard scrolling.
   const CoilScrollArea.scrollable({
     required this.child,
     required ScrollController this.controller,
@@ -216,20 +220,37 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
   @override
   Widget build(BuildContext context) {
     final style = _style(context);
-    final behavior = CoilScrollBehavior(
-      tier: CoilTheme.tierOf(context),
-      scrollbar: widget.scrollbar == CoilScrollbarVisibility.auto,
-      look: style.scrollbarLook,
-    );
+    // The app's scroll behavior, as it is here. The area keeps its physics,
+    // overscroll and drag devices, and only swaps the scrollbar.
+    final ambient = ScrollConfiguration.of(context);
 
-    final scrollable = widget._wrapsScrollable
+    var scrollable = widget._wrapsScrollable
         ? widget.child
         : SingleChildScrollView(
             controller: _controller,
             scrollDirection: widget.axis,
             padding: widget.padding,
-            child: widget.child,
+            // Scrollables in the content keep the app's behavior, scrollbar
+            // included.
+            child: ScrollConfiguration(
+              behavior: ambient,
+              child: widget.child,
+            ),
           );
+    if (widget.scrollbar == CoilScrollbarVisibility.auto) {
+      scrollable = CoilScrollbar(
+        controller: _controller,
+        look: style.scrollbarLook,
+        tier: CoilTheme.tierOf(context),
+        fadeDuration:
+            CoilTheme.motionOf(
+              context,
+              override: widget.motion,
+            ).fade.duration ??
+            const Duration(milliseconds: 120),
+        child: scrollable,
+      );
+    }
 
     Widget fade(Widget child) => switch ((widget.edgeFades, style.fadeColor)) {
       (CoilEdgeFades.none, _) => child,
@@ -246,18 +267,15 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       ),
     };
 
-    Widget area = ScrollConfiguration(
-      behavior: behavior,
-      child: fade(
-        // Whether it scrolls changes only with its extents, which this
-        // reports after the frame. A scroll notification can come during
-        // layout, when the area can't rebuild.
-        NotificationListener<ScrollMetricsNotification>(
-          onNotification: (n) => _onMetrics(n.metrics, n.depth),
-          child: PrimaryScrollController(
-            controller: _controller,
-            child: scrollable,
-          ),
+    var area = fade(
+      // Whether it scrolls changes only with its extents, which this
+      // reports after the frame. A scroll notification can come during
+      // layout, when the area can't rebuild.
+      NotificationListener<ScrollMetricsNotification>(
+        onNotification: (n) => _onMetrics(n.metrics, n.depth),
+        child: PrimaryScrollController(
+          controller: _controller,
+          child: scrollable,
         ),
       ),
     );

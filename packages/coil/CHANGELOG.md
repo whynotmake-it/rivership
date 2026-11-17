@@ -2,6 +2,13 @@
 
 Milestone M0, unreleased.
 
+- coil scrolls the way the app does. Breaking: `CoilScrollBehavior` is
+  removed. `CoilScrollArea` and menus no longer set a `ScrollBehavior`, so
+  physics, overscroll and which pointers drag content come from the app's
+  ambient one (Flutter's platform defaults unless the app sets its own).
+  They still draw coil's scrollbar, `CoilScrollbar`, which is public again
+  and turns off only the ambient behavior's scrollbar for its child.
+
 - coil bundles no font. Breaking: the default typography is the
   platform's UI font, and apps that want Allo or Inter bundle it
   themselves and pick the tuned preset, `CoilTypography.allo()` or
@@ -62,8 +69,6 @@ Milestone M0, unreleased.
   - `CoilSelectionRun` and `CoilSelectionRuns` are hidden; they are how
     `CoilSelectionBlocks` merges runs.
   - `CoilFocusAlwaysVisible` is hidden; `CoilTextFieldCore` applies it.
-  - `CoilScrollbar` is hidden; `CoilScrollBehavior` and `CoilScrollArea`
-    build it.
 
 - Modals are routes too. `CoilModalRoute<T>` is the route every
   `showCoil…` modal pushes, and `CoilModalPage<T>` shows one from
