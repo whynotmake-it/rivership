@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 import 'src/select_harness.dart';
 
@@ -22,6 +21,16 @@ Widget _app({CoilThemeData? theme}) => testApp(
     },
   ),
 );
+
+/// The sheet's surface around [of] (the first sheet's content by default).
+Finder _sheet([Finder? of]) => find
+    .ancestor(
+      of: of ?? find.byKey(_content),
+      matching: find.byWidgetPredicate(
+        (w) => w is CoilSurface && w.offset == CoilSurface.popoverOffset,
+      ),
+    )
+    .first;
 
 Future<CoilSheetRoute<String>> _push(
   WidgetTester tester, {
@@ -46,6 +55,9 @@ Future<CoilSheetRoute<String>> _push(
   return route;
 }
 
+const _tallKey = ValueKey('tall');
+const _tall = SizedBox(key: _tallKey, height: 2000);
+
 void main() {
   testWidgets('a short sheet sits on the bottom edge, clear of the home '
       'indicator, at its content height', (tester) async {
@@ -54,39 +66,94 @@ void main() {
     await _push(tester);
     final content = tester.getRect(find.byKey(_content));
     expect(content.bottom, 844 - 34, reason: 'above the home indicator');
-    final sheet = tester.getRect(find.byType(SheetBackground));
+    final sheet = tester.getRect(_sheet());
     expect(sheet.bottom, 844);
+    expect(sheet.width, 390, reason: 'full width on a phone');
     expect(sheet.top, lessThan(content.top));
     expect(sheet.top, greaterThan(400), reason: 'it hugs its content');
+    // The grabber, the title and the content, nothing more.
+    expect(sheet.height, lessThan(200 + 34 + 80));
   });
 
-  testWidgets("it uses the theme's motion, surface, scrim and shape", (
+  testWidgets('tall content grows it up to the top safe area, and scrolls', (
     tester,
   ) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(_app());
+    await _push(
+      tester,
+      child: CoilSheetPanel(
+        title: const Text('Fruit'),
+        child: ListView(
+          children: [
+            for (var i = 0; i < 60; i++)
+              SizedBox(key: ValueKey(i), height: 44),
+          ],
+        ),
+      ),
+    );
+    final list = find.byType(ListView);
+    final sheet = tester.getRect(_sheet(list));
+    expect(sheet.top, 47, reason: 'the top safe area is larger than 5 %');
+    expect(sheet.bottom, 844);
+    await tester.drag(list, const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_sheet(list)), sheet, reason: 'the list scrolled');
+    expect(find.byKey(const ValueKey(0)), findsNothing);
+  });
+
+  testWidgets('without a top safe area the cap is 5 % of the height', (
+    tester,
+  ) async {
+    tester.view
+      ..devicePixelRatio = 2
+      ..physicalSize = const Size(390, 600) * 2;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_app());
+    await _push(
+      tester,
+      child: CoilSheetPanel(child: ListView(children: const [_tall])),
+    );
+    expect(tester.getRect(_sheet(find.byKey(_tallKey))).top, 600 * 0.05);
+  });
+
+  testWidgets("it uses the theme's motion, surface, scrim and shape, with "
+      'no blur', (tester) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(_app(theme: CoilThemeData.dark));
     final route = await _push(tester);
     final theme = CoilTheme.of(_home);
     final motion = CoilTheme.motionOf(_home);
     expect(route.motion, motion.gentle, reason: 'in and out alike');
-    expect(
-      route.barrierColor,
-      StupidSimpleGlassSheetRoute<void>(child: const SizedBox()).barrierColor,
-      reason: "the glass sheet's own scrim",
-    );
-    expect(route.blurBehindBarrier, isTrue);
+    expect(route.barrierColor, theme.colors.scrim);
+    expect(find.byType(BackdropFilter), findsNothing);
     expect(route.backgroundColor, theme.colors.surface(1 + 2));
+    expect(CoilSheetRoute.glassRadius, 36);
+    const corners = BorderRadius.vertical(top: Radius.circular(36));
+    expect(route.shape.borderRadius, corners);
+    final surface = tester.widget<CoilSurface>(_sheet());
+    expect(surface.borderRadius, corners);
     expect(
-      (route.shape as RoundedSuperellipseBorder).borderRadius,
-      const BorderRadius.vertical(top: Radius.circular(36)),
+      tester
+          .widget<ClipRSuperellipse>(
+            find
+                .ancestor(
+                  of: find.byKey(_content),
+                  matching: find.byType(ClipRSuperellipse),
+                )
+                .last,
+          )
+          .borderRadius,
+      corners,
+      reason: 'the content is clipped to the corners',
     );
     // Content inside sits on the sheet's level.
     expect(CoilSurface.levelOf(tester.element(find.byKey(_content))), 3);
   });
 
   for (final theme in [CoilThemeData.light, CoilThemeData.dark]) {
-    testWidgets('${theme.brightness.name}: dialogs, without the blur, dim a '
-        'little more than sheets', (tester) async {
+    testWidgets('${theme.brightness.name}: sheets and dialogs share the '
+        'scrim', (tester) async {
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(_app(theme: theme));
       final sheet = (await _push(tester)).barrierColor!;
@@ -99,8 +166,7 @@ void main() {
       );
       final scrim = CoilTheme.of(_home).colors.scrim;
       expect(dialog.barrierColor, scrim);
-      expect(sheet.a, closeTo(0.15, 0.001));
-      expect(scrim.a, greaterThan(sheet.a));
+      expect(sheet, scrim);
       expect(scrim.a, theme.brightness == Brightness.dark ? 0.3 : 0.2);
     });
   }
@@ -122,7 +188,7 @@ void main() {
       ),
     );
     final route = await _push(tester);
-    final radius = (route.shape as RoundedSuperellipseBorder).borderRadius;
+    final radius = route.shape.borderRadius;
     expect(
       (radius as BorderRadius).topLeft.x,
       lessThan(4),
@@ -187,11 +253,12 @@ void main() {
     });
   });
 
-  testWidgets('a sheet opened from a sheet stacks on it; only the first '
-      'dims the page', (tester) async {
+  testWidgets('a sheet opened from a sheet slides over it with its own '
+      'scrim', (tester) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(_app());
     final first = await _push(tester);
+    final firstRect = tester.getRect(_sheet());
     final second = await _push(
       tester,
       from: tester.element(find.byKey(_content)),
@@ -199,8 +266,12 @@ void main() {
         child: SizedBox(key: ValueKey('second'), height: 100),
       ),
     );
-    expect(first.barrierColor, isNotNull);
-    expect(second.barrierColor, isNull);
+    expect(first.barrierColor, second.barrierColor);
+    expect(tester.getRect(_sheet()), firstRect, reason: 'no push-back');
+    expect(
+      tester.getRect(_sheet(find.byKey(const ValueKey('second')))).bottom,
+      844,
+    );
     // It sits two levels above the sheet it opened from.
     expect(
       CoilSurface.levelOf(tester.element(find.byKey(const ValueKey('second')))),
@@ -236,7 +307,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_app());
     await _push(tester);
-    final sheet = tester.getRect(find.byType(SheetBackground));
+    final sheet = tester.getRect(_sheet());
     expect(sheet.width, CoilSheetRoute.maxWidth);
     expect(sheet.center.dx, 874 / 2);
     // The content isn't padded for the notch it doesn't reach.

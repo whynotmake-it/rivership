@@ -271,13 +271,10 @@ class CoilColors with Diagnosticable {
   /// `--shadow-color`.
   final Color shadowColor;
 
-  /// The scrim behind coil's unblurred modal surfaces: centered and drawer
+  /// The scrim behind coil's modal surfaces: sheets, centered and drawer
   /// dialogs, and a `CoilDrawer` sliding over the page. Black at 20 % in
-  /// light and 30 % in dark, where black dims less.
-  ///
-  /// Sheets don't use it: they keep the glass sheet's own scrim, black at
-  /// 15 % over a blur, and without the blur a dialog needs a little more to
-  /// stand off the page.
+  /// light and 30 % in dark, where black dims less. Nothing blurs the page
+  /// behind it.
   final Color scrim;
 
   /// Linearly interpolates two color sets, for animated theme changes.

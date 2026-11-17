@@ -68,7 +68,7 @@ Future<T?> showCoilModal<T>({
 /// and the themes the modal inherits. Centered and drawer modals spring in
 /// on the theme's `gentle` token and out on `gentleExit` over
 /// the theme's [CoilColors.scrim]; a sheet is a [CoilSheetRoute], on
-/// `gentle` both ways over the glass sheet's blur and scrim. With
+/// `gentle` both ways over the same scrim. With
 /// `dismissible` false, the scrim, Esc, back and dragging don't close it.
 sealed class CoilModalRoute<T> implements PopupRoute<T> {
   /// Creates the route for [presentation], or for the presentation that
