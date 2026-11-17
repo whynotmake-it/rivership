@@ -472,6 +472,8 @@ class _CoilCalendarState extends State<CoilCalendar> {
           controller: _pages,
           itemCount: _pageCount,
           pageSnapping: false,
+          // Hands drags off to a sheet it sits in.
+          scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
           physics: CalendarPagePhysics(motion: motion.standard),
           // A tap in the focus ring's inset picks the edge day.
           itemBuilder: (context, page) => CalendarInsetHit(

@@ -248,6 +248,10 @@ class _ColumnState extends State<_Column> {
                     child: ListWheelScrollView.useDelegate(
                       controller: _scroll,
                       itemExtent: widget.extent,
+                      // Hands drags off to a sheet it sits in.
+                      scrollBehavior: CoilSheetRoute.scrollBehaviorOf(
+                        context,
+                      ),
                       physics: CalendarWheelPhysics(
                         motion: CoilTheme.motionOf(
                           context,

@@ -81,6 +81,23 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   /// height, when the top safe area is smaller.
   static const topGapFraction = 0.05;
 
+  /// [context]'s scroll behavior without scrollbars, for a scrollable that
+  /// takes its own behavior (a `PageView`, a `ListWheelScrollView`), so
+  /// that inside a sheet it still hands drags off to the sheet.
+  ///
+  /// Those scrollables copy the ambient behavior by default, and while the
+  /// sheet holds a drag that behavior is the sheet's own; a copy of the
+  /// app's behavior after the drag can't be compared with it. Outside a
+  /// sheet this is the plain copy.
+  static ScrollBehavior scrollBehaviorOf(BuildContext context) {
+    final behavior = ScrollConfiguration.of(
+      context,
+    ).copyWith(scrollbars: false);
+    return behavior is ScrollDragBehavior
+        ? behavior
+        : ScrollDragBehavior(parent: behavior);
+  }
+
   /// The sheet's fill: the surface two levels above the opener.
   final Color backgroundColor;
 
