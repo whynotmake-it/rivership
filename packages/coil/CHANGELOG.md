@@ -53,6 +53,12 @@ Milestone M0, unreleased.
   - `CoilScreenRadius` (primitive) reads the device screen's corner radii
     once through `corner_radius_plugin`; null where unknown (web, desktop,
     a failed query, tests) and `BorderRadius.zero` for a square screen.
+    It asks with a negative default radius, so a device the plugin can't
+    place reads as unknown instead of square and the phone fallback
+    applies; radii above 64 or a quarter of the screen's shortest side
+    (Android before 12 reports physical pixels) count as unknown, only
+    Android can answer square, and a query that finds nothing runs once
+    more on the next read.
     coil now depends on `corner_radius_plugin` and `scroll_drag_detector`.
 - Keys are Flutter shortcuts. Every coil widget maps its keys to intents
   in `Shortcuts` and handles them in `Actions`, instead of reading key
