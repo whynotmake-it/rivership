@@ -174,20 +174,47 @@ class RenderBannerLayout extends RenderBox
             : gap + actions.getMaxIntrinsicWidth(double.infinity));
   }
 
+  /// A [ChildLayouter] that answers from a child's intrinsics, for this
+  /// layout's own intrinsic heights: children that can't lay out dry (a
+  /// `LayoutBuilder`) still answer them. A child takes its max intrinsic
+  /// width up to the constraints, as text does, and [heightAt] that width.
+  static ChildLayouter _intrinsic(
+    double Function(RenderBox child, double width) heightAt,
+  ) => (child, constraints) {
+    final width = constraints.hasTightWidth
+        ? constraints.maxWidth
+        : constraints.constrainWidth(
+            child.getMaxIntrinsicWidth(double.infinity),
+          );
+    return constraints.constrain(Size(width, heightAt(child, width)));
+  };
+
   @override
   double computeMinIntrinsicHeight(double width) => _compute(
     BoxConstraints(maxWidth: width),
-    ChildLayoutHelper.dryLayoutChild,
-  ).height;
+    _intrinsic((child, width) => child.getMinIntrinsicHeight(width)),
+  ).size.height;
 
   @override
-  double computeMaxIntrinsicHeight(double width) =>
-      computeMinIntrinsicHeight(width);
+  double computeMaxIntrinsicHeight(double width) => _compute(
+    BoxConstraints(maxWidth: width),
+    _intrinsic((child, width) => child.getMaxIntrinsicHeight(width)),
+  ).size.height;
 
   @override
   @protected
   Size computeDryLayout(covariant BoxConstraints constraints) =>
-      _compute(constraints, ChildLayoutHelper.dryLayoutChild);
+      _compute(constraints, ChildLayoutHelper.dryLayoutChild).size;
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    final layout = _compute(constraints, ChildLayoutHelper.dryLayoutChild);
+    final distance = _text.getDryBaseline(layout.textConstraints, baseline);
+    return distance == null ? null : distance + layout.textTop;
+  }
 
   @override
   double? computeDistanceToActualBaseline(TextBaseline baseline) {
@@ -199,10 +226,17 @@ class RenderBannerLayout extends RenderBox
 
   @override
   void performLayout() {
-    size = _compute(constraints, ChildLayoutHelper.layoutChild, place: true);
+    size = _compute(
+      constraints,
+      ChildLayoutHelper.layoutChild,
+      place: true,
+    ).size;
   }
 
-  Size _compute(
+  /// Lays the banner out with [layoutChild]: its size, and where the text
+  /// goes (its constraints and its top) for the baseline. With [place], it
+  /// also positions the children.
+  ({Size size, BoxConstraints textConstraints, double textTop}) _compute(
     BoxConstraints constraints,
     ChildLayouter layoutChild, {
     bool place = false,
@@ -234,10 +268,12 @@ class RenderBannerLayout extends RenderBox
 
     final double width;
     final double height;
+    final BoxConstraints textConstraints;
     final Size textSize;
     if (inline) {
       final textWidth = bounded ? column - beside : natural.width;
-      textSize = layoutChild(text, BoxConstraints.tightFor(width: textWidth));
+      textConstraints = BoxConstraints.tightFor(width: textWidth);
+      textSize = layoutChild(text, textConstraints);
       width = bounded
           ? constraints.maxWidth
           : lead + textWidth + beside + trail;
@@ -251,7 +287,8 @@ class RenderBannerLayout extends RenderBox
       final textWidth = bounded
           ? column
           : math.max(natural.width, actionsSize.width);
-      textSize = layoutChild(text, BoxConstraints.tightFor(width: textWidth));
+      textConstraints = BoxConstraints.tightFor(width: textWidth);
+      textSize = layoutChild(text, textConstraints);
       width = bounded ? constraints.maxWidth : lead + textWidth + trail;
       // The icon and the dismiss button center on the first line; what
       // reaches below the text still counts.
@@ -263,7 +300,14 @@ class RenderBannerLayout extends RenderBox
       );
     }
     final size = constraints.constrain(Size(width, height));
-    if (!place) return size;
+    double centered(Size child) =>
+        inline ? (size.height - child.height) / 2 : 0;
+    final result = (
+      size: size,
+      textConstraints: textConstraints,
+      textTop: centered(textSize),
+    );
+    if (!place) return result;
 
     final rtl = textDirection == TextDirection.rtl;
     void put(RenderBox? child, Size childSize, double x, double y) {
@@ -274,15 +318,13 @@ class RenderBannerLayout extends RenderBox
       );
     }
 
-    double centered(Size child) =>
-        inline ? (size.height - child.height) / 2 : 0;
     // Stacked, a side part centers on the first line, so one taller than
     // the line (a 44 px dismiss target) starts above the layout's top.
     double onLine(Size child) =>
         inline ? centered(child) : (line - child.height) / 2;
     put(_line, Size(0, line), 0, 0);
     put(icon, iconSize, 0, onLine(iconSize));
-    put(text, textSize, lead, centered(textSize));
+    put(text, textSize, lead, result.textTop);
     put(
       actions,
       actionsSize,
@@ -295,7 +337,7 @@ class RenderBannerLayout extends RenderBox
       size.width - dismissSize.width,
       onLine(dismissSize),
     );
-    return size;
+    return result;
   }
 
   @override
