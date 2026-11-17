@@ -7,15 +7,11 @@ import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/queued_stack/queued_stack.dart';
-import 'package:coil/src/components/queued_stack/queued_stack_layout.dart';
 import 'package:coil/src/components/queued_stack/queued_stack_style.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
-
-/// How much smaller each card behind the front one is in the folded pile.
-const _peekScale = 0.05;
 
 /// Where a queued card starts: 14 px low at 0.96.
 const _enterRise = 14.0;
@@ -36,12 +32,9 @@ class QueuedStackCard extends StatelessWidget {
   /// Creates a card.
   const QueuedStackCard({
     required this.message,
-    required this.slot,
     required this.appear,
     required this.exiting,
     required this.lifted,
-    required this.expand,
-    required this.expanded,
     required this.front,
     required this.showActions,
     required this.semanticLabel,
@@ -51,12 +44,10 @@ class QueuedStackCard extends StatelessWidget {
     required this.focusNode,
     required this.metrics,
     required this.look,
-    required this.slotMotion,
     required this.opacityMotion,
     required this.travelMotion,
     required this.liftMotion,
     required this.onGone,
-    required this.onFocusChange,
     required this.onTap,
     required this.onEdit,
     required this.onRemove,
@@ -68,12 +59,9 @@ class QueuedStackCard extends StatelessWidget {
   });
 
   final CoilQueuedMessage message;
-  final double slot;
   final bool appear;
   final bool exiting;
   final bool lifted;
-  final double expand;
-  final bool expanded;
 
   /// Whether this is the front card, the only one a folded pile lets
   /// pointers reach.
@@ -86,13 +74,13 @@ class QueuedStackCard extends StatelessWidget {
   final FocusNode focusNode;
   final CoilMetrics metrics;
   final CoilQueuedStackStyle look;
-  final Motion slotMotion;
   final Motion opacityMotion;
   final Motion travelMotion;
   final Motion liftMotion;
   final VoidCallback onGone;
-  final ValueChanged<bool> onFocusChange;
-  final VoidCallback? onTap;
+
+  /// Fans a folded pile out.
+  final VoidCallback onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onRemove;
   final ValueChanged<int>? onMove;
@@ -136,31 +124,7 @@ class QueuedStackCard extends StatelessWidget {
       child: _CardBody(card: this),
     );
 
-    return SingleMotionBuilder(
-      value: slot,
-      motion: slotMotion,
-      debugLabel: 'CoilQueuedStack.slot',
-      child: IgnorePointer(ignoring: exiting, child: present),
-      builder: (context, slot, child) {
-        // Folded, cards behind the front one peek out smaller, and those
-        // past the visible peeks fade away. Fanned out, every card is whole.
-        final peek = math.min(math.max(slot, 0), queuedStackMaxPeek.toDouble());
-        final folded = (queuedStackMaxPeek + 1 - slot).clamp(0.0, 1.0);
-        final peekScale = 1 - peek * _peekScale;
-        return QueuedStackSlot(
-          slot: slot,
-          lifted: lifted,
-          reachable: expanded || front,
-          child: Opacity(
-            opacity: folded + (1 - folded) * expand,
-            child: _Scaled(
-              scale: peekScale + (1 - peekScale) * expand,
-              child: child!,
-            ),
-          ),
-        );
-      },
-    );
+    return present;
   }
 }
 
@@ -217,11 +181,16 @@ class _CardBodyState extends State<_CardBody> {
     final edit = card.onEdit;
     final remove = card.onRemove;
     final move = card.onMove;
+    // The pile's state: folded, a tap fans it out; fanned out, a drag
+    // reorders and a double-click edits.
+    final expanded = CoilCardStack.maybeOf(context)?.expanded ?? true;
+    final onTap = expanded ? null : card.onTap;
+    final onDragStart = expanded ? card.onDragStart : null;
 
     // A card peeking out of the folded pile takes no taps (a tap there
     // fans the pile out), and its buttons are drawn smaller than a hit
     // target. Screen readers get its actions on the card instead.
-    final reachable = card.expanded || card.front;
+    final reachable = expanded || card.front;
     Widget actions() => ExcludeSemantics(
       excluding: !reachable,
       // On a card too narrow for both buttons, remove goes under edit.
@@ -282,7 +251,7 @@ class _CardBodyState extends State<_CardBody> {
                     // back waiting for a second tap.
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onDoubleTap: card.expanded ? edit : null,
+                      onDoubleTap: expanded ? edit : null,
                       child: Row(
                         spacing: metrics.gap,
                         children: [
@@ -382,10 +351,7 @@ class _CardBodyState extends State<_CardBody> {
         child: Focus(
           // Fires for the card and for a button inside it.
           focusNode: card.focusNode,
-          onFocusChange: (focused) {
-            setState(() => _focusWithin = focused);
-            card.onFocusChange(focused);
-          },
+          onFocusChange: (focused) => setState(() => _focusWithin = focused),
           child: Semantics(
             container: true,
             label: card.semanticLabel,
@@ -396,25 +362,23 @@ class _CardBodyState extends State<_CardBody> {
                 CustomSemanticsAction(label: card.labels.removeLabel): remove,
             },
             child: GestureDetector(
-              onVerticalDragStart: card.onDragStart == null
+              onVerticalDragStart: onDragStart == null
                   ? null
-                  : (_) => card.onDragStart!(context.size!.height),
-              onVerticalDragUpdate: card.onDragStart == null
+                  : (_) => onDragStart(context.size!.height),
+              onVerticalDragUpdate: onDragStart == null
                   ? null
                   : (details) => card.onDragUpdate(details.delta.dy),
-              onVerticalDragEnd: card.onDragStart == null
+              onVerticalDragEnd: onDragStart == null
                   ? null
                   : (_) => card.onDragEnd(),
-              onVerticalDragCancel: card.onDragStart == null
-                  ? null
-                  : card.onDragEnd,
+              onVerticalDragCancel: onDragStart == null ? null : card.onDragEnd,
               child: CoilInteractionDetector(
                 states: _states,
                 focusNode: card.focusNode,
-                onTap: card.onTap,
-                trackPress: card.onTap != null,
+                onTap: onTap,
+                trackPress: onTap != null,
                 excludeFromSemantics: true,
-                cursor: card.expanded
+                cursor: expanded
                     ? (card.lifted
                           ? SystemMouseCursors.grabbing
                           : SystemMouseCursors.grab)

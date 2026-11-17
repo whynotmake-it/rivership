@@ -120,6 +120,18 @@ double _opacity(WidgetTester tester, String text) {
 double _bottom(WidgetTester tester, String text) =>
     tester.getRect(find.text(text)).bottom;
 
+/// The top edge of a message's card on screen, as painted (scaled).
+double _top(WidgetTester tester, CoilQueuedMessage message) => tester
+    .getRect(
+      find
+          .ancestor(
+            of: find.text(message.semanticLabel),
+            matching: find.byType(CoilSurface),
+          )
+          .first,
+    )
+    .top;
+
 /// The visible order of the cards, top to bottom.
 List<String> _order(WidgetTester tester, List<String> texts) =>
     [...texts]
@@ -407,9 +419,9 @@ void main() {
     testWidgets('hover fans the pile out; leaving folds it', (tester) async {
       await _pump(tester, [_a, _b]);
       await tester.pumpAndSettle();
-      final folded =
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel);
-      expect(folded, closeTo(12, 1), reason: 'the second card peeks 12 px');
+      // Folded, the card behind shows its top edge 12 px above the front's.
+      double peek() => _top(tester, _a) - _top(tester, _b);
+      expect(peek(), closeTo(12, 0.5), reason: 'the second card peeks 12 px');
 
       final mouse = await _hover(tester);
       final fanned =
@@ -418,10 +430,7 @@ void main() {
 
       await mouse.moveTo(const Offset(_width / 2, 2));
       await tester.pumpAndSettle();
-      expect(
-        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
-        closeTo(12, 1),
-      );
+      expect(peek(), closeTo(12, 0.5));
     });
 
     testWidgets('actions show on hover; double-click edits', (tester) async {
@@ -580,6 +589,41 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(_a.semanticLabel), findsNothing);
     });
+  });
+
+  testWidgets('mixed heights: even gaps fanned out, even peeks folded', (
+    tester,
+  ) async {
+    const tall = CoilQueuedMessage(
+      id: 'tall',
+      semanticLabel: 'Tall',
+      child: SizedBox(height: 90, child: Text('Tall')),
+    );
+    await _pump(tester, [_a, tall, _c]);
+    await tester.pumpAndSettle();
+    Rect surface(String text) => tester.getRect(
+      find
+          .ancestor(of: find.text(text), matching: find.byType(CoilSurface))
+          .first,
+    );
+    final texts = [_a.semanticLabel, 'Tall', _c.semanticLabel];
+    // Folded: the top edges step by the same peek.
+    expect(surface(texts[0]).top - surface(texts[1]).top, closeTo(12, 0.01));
+    expect(surface(texts[1]).top - surface(texts[2]).top, closeTo(12, 0.01));
+
+    await _hover(tester);
+    final gap = CoilTheme.metricsOf(
+      tester.element(find.byType(CoilQueuedStack)),
+    ).gap;
+    expect(surface(texts[1]).height, greaterThan(surface(texts[0]).height));
+    expect(
+      surface(texts[0]).top - surface(texts[1]).bottom,
+      closeTo(gap, 0.01),
+    );
+    expect(
+      surface(texts[1]).top - surface(texts[2]).bottom,
+      closeTo(gap, 0.01),
+    );
   });
 
   group('reaches the cards behind', () {
