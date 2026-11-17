@@ -2,6 +2,23 @@
 
 Milestone M0, unreleased.
 
+- Sheets are coil's own. Breaking: `CoilSheetRoute` extends
+  `stupid_simple_sheet`'s plain `StupidSimpleSheetRoute` instead of the
+  glass sheet, so `blurBehindBarrier` and the glass route's other options
+  are gone and `shape` is a `RoundedSuperellipseBorder`. The sheet paints
+  a `CoilSurface` at the popover level (its fill, shadow and dark-mode
+  edge) with the glass sheet's 36 superellipse top corners
+  (`CoilSheetRoute.glassRadius`, scaled by the shape family), clipping its
+  content. It dims the page with `CoilColors.scrim` (20 % light, 30 %
+  dark) and no longer blurs it. It hugs its content: short content makes
+  a short sheet on the bottom edge, and a scroll view grows it up to the
+  top safe area or 5 % of the height. A sheet opened from a sheet slides
+  over it with its own scrim; the one below no longer shrinks back.
+  `CoilSheetRoute.scrollBehaviorOf` gives scrollables that take their own
+  behavior one that still hands drags off to the sheet. Fixed: dragging
+  the date picker's calendar or time columns in a sheet threw
+  "'ScrollDragBehavior' is not a subtype of '_WrappedScrollBehavior'"
+  under an app-wide `copyWith` scroll behavior.
 - Controls can be lit. `CoilThemeData.plasticity` takes a
   `CoilPlasticity(amount:)` from 0 to 1: `.flat` (0, the default, which
   paints nothing), `.subtle` (0.5) and 1 for slightly brighter highlights

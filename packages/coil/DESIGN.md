@@ -192,7 +192,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 - **Tall containers keep the concentric corner.** A composer that grows to ten lines keeps its 22, like Apple's and Fluid Functionalism's: a pill-shaped box stops making sense once it's taller than a row.
 - **A corner control takes the nested radius.** A ghost ✕ 8 in from a 12 card corner hovers at 12 − 8 = 4. Where that's more than a round button has (`pill`), the button moves in until its round end shares the corner's center.
 - **`sharp` nests square.** A family whose containers are no rounder than its items gets its container radius back: a square button in a near-square frame, never a rounded one.
-- Popover = row radius + `popupInset`: 8 + 4 = **12** pointer, 10 + 6 = **16** touch; under `pill` the rows are pills, so 18 + 4 = **22** pointer and 22 + 6 = **28** touch. A sheet's top corners are the glass sheet's 36 (scaled by container / 16 for tighter shapes, so `sharp` is near square).
+- Popover = row radius + `popupInset`: 8 + 4 = **12** pointer, 10 + 6 = **16** touch; under `pill` the rows are pills, so 18 + 4 = **22** pointer and 22 + 6 = **28** touch. A sheet's top corners are a superellipse of the glass sheet's 36 (`CoilSheetRoute.glassRadius`, scaled by container / 16 for tighter shapes, so `sharp` is near square).
 - The focus ring sits 2 px outside, so it's item + 2.
 - A number-stepper button 4 px inside an input has radius item − 4.
 - Every corner gap is even.
@@ -208,8 +208,8 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
   - **Blur:** the recipes use CSS blur. A CSS blur of `B` has sigma `B / 2`, so `shadow()` converts it for Flutter's `BoxShadow` (the 1 px drop becomes a hard edge).
 - **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level. `CoilSurface.scope` sets the level without painting, for a widget that paints its own surface, such as a card.
 - **Every surface takes its level from the one it sits on.** Never hard-code a level: the numbers below are what each surface gets on the page.
-- **Uses:** popover surface 3 / shadow 3; sheet surface 3, no shadow; submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
-- **Scrim:** sheets keep the glass sheet's own, black 15 % over a blur of the page, in light and dark. Dialogs and drawers that slide over the page, which don't blur, use the `scrim` color token, black 20 % (light) / 30 % (dark) (`CoilColors.scrim`); the phone drawer revealed from behind dims the page only 7 % / 15 % (`CoilDrawerLook.behindScrimLight` / `behindScrimDark`).
+- **Uses:** popover surface 3 / shadow 3; sheet surface 3 / shadow 3 (only its ring and, in dark, the inner ring and top highlight show along its top edge); submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
+- **Scrim:** sheets, dialogs and drawers that slide over the page use the `scrim` color token, black 20 % (light) / 30 % (dark) (`CoilColors.scrim`). Nothing blurs the page; the phone drawer revealed from behind dims the page only 7 % / 15 % (`CoilDrawerLook.behindScrimLight` / `behindScrimDark`).
 - **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
 
 ### 6.1 Plasticity
@@ -475,8 +475,9 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.3 Sheet
 
-- `stupid_simple_sheet`'s **glass sheet** (`StupidSimpleGlassSheetRoute`), used as it is: flush with the bottom edge, full width up to 560 (wider windows center it), top capped at the top safe area or 5 % of the height, whichever is larger. The first sheet blurs and dims the page; a sheet opened from it stacks, and the one below shrinks back without a second scrim.
-- Fill: the surface two levels above the opener (3 from the page), no shadow; top corners per §5. Content clears the home indicator and the side insets that reach it.
+- coil's own sheet (`CoilSheetRoute`) on `stupid_simple_sheet`'s plain route (`StupidSimpleSheetRoute`), which brings the drag, the scroll handoff and the keyboard inset: flush with the bottom edge, full width up to 560 (wider windows center it), top capped at the top safe area or 5 % of the height, whichever is larger.
+- It dims the page with the `scrim` token (20 % light, 30 % dark) and doesn't blur it. A sheet opened from a sheet slides over it with its own scrim; the one below stays put.
+- Surface: `CoilSurface` two levels above the opener (3 from the page) with its shadow, in a `RoundedSuperellipseBorder` whose top corners are the glass sheet's 36 (§5), clipping the content. Content clears the home indicator and the side insets that reach it.
 - It rides on the keyboard: a field inside stays above it.
 - Grabber 36×5 (foreground 16 %), 6 above and below.
 - Optional title: 17/22 semibold `foreground`, aligned with the row text, 4 above and 6 below, `Semantics(header)`.
@@ -486,8 +487,9 @@ Every component ships with all of these. They're required to call it done.
 - A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. At the top there is no line.
 - **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
 - **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
-- **Height:** content height up to the cap; long lists scroll inside. Search and command sheets open at the large detent and grow while the keyboard is up.
-- **Motion:** `gentle` both ways, as the glass sheet intends; a dismissing drag hands its fling velocity to it. The scrim fades and the backdrop blurs with the sheet.
+- **Height:** it hugs its content: a short list makes a short sheet on the bottom edge; a scroll view or long content grows it up to the cap and scrolls inside. Search and command sheets open at the large detent and grow while the keyboard is up.
+- **Motion:** `gentle` both ways; a dismissing drag hands its fling velocity to it. The scrim fades with the sheet.
+- **Scrollables that take their own behavior** (a `PageView`, a `ListWheelScrollView`) use `CoilSheetRoute.scrollBehaviorOf(context)`, so a drag still hands off to the sheet.
 - **Dismiss:** drag down, tap the scrim, system back, Esc.
 - **Rows** are always touch rows, whatever the tier.
 
@@ -1186,7 +1188,7 @@ A component is done when:
 
 The user's decisions on the former open questions (2026-11-13):
 
-1. **Touch radii:** item 10, popover 16, focus ring 12; sheets keep the glass sheet's 36 (§5). `CoilShape` resolves per tier; pointer values are unchanged (§5).
+1. **Touch radii:** item 10, popover 16, focus ring 12; sheets take the glass sheet's 36 (§5). `CoilShape` resolves per tier; pointer values are unchanged (§5).
 2. **One row height:** 44 visual everywhere, Android included. There is no 48 px Android hit box: Flutter has no hit slop, and growing the hit area without changing layout would need a custom hit-test override, the kind of workaround coil avoids (§4.2, §9.2, §10).
 3. **The check in sheets and menus** stays the text color (`foreground`) (§13.1).
 4. **Sheet header hairline:** only while content scrolls beneath the header (§13.3).
