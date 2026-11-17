@@ -6,6 +6,7 @@ export 'src/primitives/action_list.dart';
 export 'src/primitives/active_item.dart';
 export 'src/primitives/adaptive_popup.dart';
 export 'src/primitives/anchor.dart';
+export 'src/primitives/card_stack.dart' hide RenderCoilCardStack;
 export 'src/primitives/choice_group.dart';
 export 'src/primitives/choice_item.dart';
 export 'src/primitives/choice_row.dart';
