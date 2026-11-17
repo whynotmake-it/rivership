@@ -166,8 +166,8 @@ void sizingTests() {
     await tester.pumpAndSettle();
     final sheet = tester.getRect(find.byType(CoilSheetPanel));
     final calendar = tester.getRect(find.byType(CoilCalendar));
-    // The sheet's 8 px margin and the content's 12 px padding.
-    expect(calendar.width, sheet.width - 2 * (8 + 12));
+    // The content's 12 px padding; the glass sheet insets the panel itself.
+    expect(calendar.width, sheet.width - 2 * 12);
   });
 
   for (final presentation in CoilPresentation.values) {
