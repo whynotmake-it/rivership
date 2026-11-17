@@ -1043,7 +1043,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Fanned out:** each card sits a card plus 8 above the one in front.
 - **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
 - **Touch:** a tap fans it out and pins it open. The start gutter becomes a collapse button (chevron down). Actions always show. Drag to reorder.
-- **Keyboard:** each card is a tab stop. Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
+- **Reach:** fanned out, every card takes taps, hovers and focus where it shows. Folded, only the front card's controls do; a tap on a card peeking behind it fans the pile out instead of pressing the action under the peek.
+- **Keyboard:** each card is a tab stop, in queue order (front first). Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
 - **Motion:**
   - fan out and fold on `standard` / `standardExit`;
   - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;

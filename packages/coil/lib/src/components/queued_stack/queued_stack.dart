@@ -138,10 +138,13 @@ class CoilQueuedStackLabels {
 /// The front card is the next to send; two more peek out behind it, and
 /// the gutter counts the rest. The pile fans out while a mouse hovers it
 /// or a card has keyboard focus. On touch, tap it to fan it out; it stays
-/// open until the collapse button folds it.
+/// open until the collapse button folds it. Fanned out, every card takes
+/// taps, hovers and focus; folded, only the front card's controls do, and a
+/// tap on a card peeking behind it fans the pile out.
 ///
 /// Fanned out, drag a card to reorder the queue. Each card has remove and
 /// edit buttons: on touch they always show; with a mouse, on hover.
+/// Tab visits the cards in queue order, front first.
 /// Double-clicking a card, or Enter or F2 on a focused card, edits it;
 /// Delete or Backspace removes it; Alt+↑ and Alt+↓ move it.
 ///
@@ -396,6 +399,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
     final count = widget.messages.length;
     final hidden = count - (queuedStackMaxPeek + 1);
     final touch = metrics.tier == CoilTier.touch;
+    void pin() => setState(() => _pinned = true);
 
     final gutter = MotionSwitcher(
       motion: tokens.fade,
@@ -459,6 +463,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       lifted: entry == _dragging,
       expand: expand,
       expanded: expanded,
+      front: entry.slot == 0 && !entry.exiting,
       showActions: touch,
       semanticLabel: widget.labels.messageLabel(
         entry.slot + 1,
@@ -488,7 +493,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       onFocusChange: (focused) => setState(
         () => focused ? _focused.add(entry) : _focused.remove(entry),
       ),
-      onTap: expanded ? null : () => setState(() => _pinned = true),
+      onTap: expanded ? null : pin,
       onEdit: entry.exiting ? null : () => widget.onEdit(entry.message),
       onRemove: entry.exiting ? null : () => _remove(entry),
       onMove: entry.exiting ? null : (by) => _move(entry, entry.slot + by),
@@ -503,38 +508,52 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
     final body = widget.child;
     return MotorInspectionScope(
       group: 'CoilQueuedStack',
-      child: TrackBuilder(
-        restartTrigger: _bumps,
-        animations: [
-          if (_bumps > 0)
-            CoilQueuedStackTrack.bump([.to(0, motion: bumpMotion)], from: -7),
-        ],
-        builder: (context, bump, _) => SingleMotionBuilder(
-          value: expanded ? 1 : 0,
-          motion: motionOf(
-            CoilQueuedStackTrack.expand,
-            expanded ? tokens.standard : tokens.standardExit,
-          ),
-          debugLabel: 'CoilQueuedStack.expand',
-          builder: (context, expand, _) => QueuedStackLayout(
-            expand: expand,
-            // The gutter's glyph and count grow with the text.
-            gutterWidth: MediaQuery.textScalerOf(
-              context,
-            ).scale(look.gutterWidth!),
-            count: count,
-            bump: bump(CoilQueuedStackTrack.bump),
-            hasBody: body != null,
-            children: [
-              if (body == null) const SizedBox.shrink() else _Body(child: body),
-              CoilInteractionDetector(
-                states: _hover,
-                trackPress: false,
-                child: const SizedBox.expand(),
-              ),
-              if (count > 0) gutter else const SizedBox.shrink(),
-              for (final entry in _entries) card(entry, expand),
-            ],
+      // Tab follows the queue, front first, wherever the cards are on their
+      // way between folded and fanned out.
+      child: FocusTraversalGroup(
+        policy: WidgetOrderTraversalPolicy(),
+        child: TrackBuilder(
+          restartTrigger: _bumps,
+          animations: [
+            if (_bumps > 0)
+              CoilQueuedStackTrack.bump([.to(0, motion: bumpMotion)], from: -7),
+          ],
+          builder: (context, bump, _) => SingleMotionBuilder(
+            value: expanded ? 1 : 0,
+            motion: motionOf(
+              CoilQueuedStackTrack.expand,
+              expanded ? tokens.standard : tokens.standardExit,
+            ),
+            debugLabel: 'CoilQueuedStack.expand',
+            builder: (context, expand, _) => QueuedStackLayout(
+              expand: expand,
+              // The gutter's glyph and count grow with the text.
+              gutterWidth: MediaQuery.textScalerOf(
+                context,
+              ).scale(look.gutterWidth!),
+              count: count,
+              bump: bump(CoilQueuedStackTrack.bump),
+              hasBody: body != null,
+              children: [
+                if (body == null)
+                  const SizedBox.shrink()
+                else
+                  // The transcript keeps its own (reading) order.
+                  FocusTraversalGroup(child: _Body(child: body)),
+                // Folded, a tap on a card peeking behind the front one lands
+                // here and fans the pile out, like a tap on the front card.
+                CoilInteractionDetector(
+                  states: _hover,
+                  trackPress: !expanded,
+                  onTap: expanded ? null : pin,
+                  excludeFromSemantics: true,
+                  cursor: MouseCursor.defer,
+                  child: const SizedBox.expand(),
+                ),
+                if (count > 0) gutter else const SizedBox.shrink(),
+                for (final entry in _entries) card(entry, expand),
+              ],
+            ),
           ),
         ),
       ),

@@ -42,6 +42,7 @@ class QueuedStackCard extends StatelessWidget {
     required this.lifted,
     required this.expand,
     required this.expanded,
+    required this.front,
     required this.showActions,
     required this.semanticLabel,
     required this.labels,
@@ -73,6 +74,10 @@ class QueuedStackCard extends StatelessWidget {
   final bool lifted;
   final double expand;
   final bool expanded;
+
+  /// Whether this is the front card, the only one a folded pile lets
+  /// pointers reach.
+  final bool front;
   final bool showActions;
   final String semanticLabel;
   final CoilQueuedStackLabels labels;
@@ -145,6 +150,7 @@ class QueuedStackCard extends StatelessWidget {
         return QueuedStackSlot(
           slot: slot,
           lifted: lifted,
+          reachable: expanded || front,
           child: Opacity(
             opacity: folded + (1 - folded) * expand,
             child: _Scaled(

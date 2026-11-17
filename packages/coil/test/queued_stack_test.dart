@@ -545,6 +545,124 @@ void main() {
     });
   });
 
+  group('reaches the cards behind', () {
+    Finder cardOf(CoilQueuedMessage m) => find
+        .ancestor(
+          of: find.text(m.semanticLabel),
+          matching: find.byType(CoilSurface),
+        )
+        .first;
+
+    /// A card's buttons: edit, then remove.
+    Finder buttonsOf(CoilQueuedMessage m) =>
+        find.descendant(of: cardOf(m), matching: find.byType(CoilButton));
+
+    List<Object> left(WidgetTester tester) => [
+      for (final m in [_a, _b, _c])
+        if (find.text(m.semanticLabel).evaluate().isNotEmpty) m.id,
+    ];
+
+    testWidgets('fanned out under a mouse, every card hovers and presses', (
+      tester,
+    ) async {
+      final edited = <Object>[];
+      await _pump(tester, [_a, _b, _c], edited: edited);
+      final mouse = await _hover(tester);
+      for (final m in [_c, _b, _a]) {
+        await mouse.moveTo(tester.getCenter(find.text(m.semanticLabel)));
+        await tester.pumpAndSettle();
+        expect(
+          buttonsOf(m),
+          findsNWidgets(2),
+          reason: '${m.id} shows its actions on hover',
+        );
+        await mouse.moveTo(tester.getCenter(buttonsOf(m).first));
+        await tester.tapAt(
+          tester.getCenter(buttonsOf(m).first),
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(edited, ['c', 'b', 'a']);
+
+      await mouse.moveTo(tester.getCenter(find.text(_b.semanticLabel)));
+      await tester.pumpAndSettle();
+      await mouse.moveTo(tester.getCenter(buttonsOf(_b).last));
+      await tester.tapAt(
+        tester.getCenter(buttonsOf(_b).last),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(left(tester), ['a', 'c']);
+    });
+
+    testWidgets('touch: a tap on a peeking card fans the pile out without '
+        'pressing what is under the peek; then every card presses', (
+      tester,
+    ) async {
+      final edited = <Object>[];
+      await _pump(tester, [_a, _b, _c], tier: CoilTier.touch, edited: edited);
+      await tester.pumpAndSettle();
+      final front = tester.getRect(cardOf(_a));
+      final removeB = tester.getCenter(buttonsOf(_b).last);
+      await tester.tapAt(Offset(removeB.dx, front.top - 4));
+      await tester.pumpAndSettle();
+      expect(left(tester), ['a', 'b', 'c'], reason: 'nothing removed');
+      expect(
+        find.bySemanticsLabel('Collapse queued messages'),
+        findsOneWidget,
+        reason: 'pinned open',
+      );
+
+      for (final m in [_c, _b, _a]) {
+        await tester.tap(buttonsOf(m).first);
+        await tester.pumpAndSettle();
+      }
+      expect(edited, ['c', 'b', 'a']);
+      await tester.tap(buttonsOf(_c).last);
+      await tester.pumpAndSettle();
+      expect(left(tester), ['a', 'b']);
+    });
+
+    testWidgets('touch: the folded front card keeps its own controls', (
+      tester,
+    ) async {
+      final edited = <Object>[];
+      await _pump(tester, [_a, _b], tier: CoilTier.touch, edited: edited);
+      await tester.pumpAndSettle();
+      await tester.tap(buttonsOf(_a).first);
+      await tester.pumpAndSettle();
+      expect(edited, ['a']);
+    });
+
+    testWidgets('Tab reaches the card at the back and keeps it fanned out', (
+      tester,
+    ) async {
+      await _pump(tester, [_a, _b, _c]);
+      await tester.pumpAndSettle();
+      final folded =
+          _bottom(tester, _a.semanticLabel) - _bottom(tester, _c.semanticLabel);
+      // Each card, then its edit and remove buttons, which show while
+      // focus is inside it.
+      final reached = <Object>{};
+      for (var i = 0; i < 9; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+        for (final m in [_a, _b, _c]) {
+          final focus = tester.widget<Focus>(
+            find.ancestor(of: cardOf(m), matching: find.byType(Focus)).first,
+          );
+          if (focus.focusNode?.hasFocus ?? false) reached.add(m.id);
+        }
+        expect(
+          _bottom(tester, _a.semanticLabel) - _bottom(tester, _c.semanticLabel),
+          greaterThan(folded + 40),
+        );
+      }
+      expect(reached.toList(), ['a', 'b', 'c']);
+    });
+  });
+
   group('over a transcript', () {
     Widget transcript({double scale = 1, int count = 3}) => MediaQuery(
       data: MediaQueryData(textScaler: TextScaler.linear(scale)),

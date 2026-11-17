@@ -16,7 +16,8 @@ const queuedStackGap = 8.0;
 /// Lays out a queued-message pile, bottom-anchored, over an optional body.
 ///
 /// The children are, in order: the body (the content the pile floats over,
-/// or an empty box), the pile's region (it takes the pile's hover), the
+/// or an empty box), the pile's region (it takes the pile's hover, and the
+/// taps that fan a folded pile out), the
 /// gutter, then every card. A card sits where its [QueuedStackSlot] says:
 /// collapsed, a card `slot` places from the front peeks [queuedStackPeek]
 /// higher, up to [queuedStackMaxPeek]; expanded, each sits a card plus
@@ -108,6 +109,7 @@ class QueuedStackSlot extends ParentDataWidget<QueuedStackParentData> {
   const QueuedStackSlot({
     required this.slot,
     required this.lifted,
+    required this.reachable,
     required super.child,
     super.key,
   });
@@ -119,9 +121,16 @@ class QueuedStackSlot extends ParentDataWidget<QueuedStackParentData> {
   /// Whether the card paints above the others (it's being dragged).
   final bool lifted;
 
+  /// Whether the card takes pointers. Every card of a fanned-out pile does;
+  /// of a folded pile, only the front one, so a tap on a card peeking behind
+  /// it reaches the pile instead of a button under the peek.
+  final bool reachable;
+
   @override
   void applyParentData(RenderObject renderObject) {
-    final data = renderObject.parentData! as QueuedStackParentData;
+    // Only hit testing reads `reachable`.
+    final data = renderObject.parentData! as QueuedStackParentData
+      ..reachable = reachable;
     if (data.slot != slot || data.lifted != lifted) {
       data
         ..slot = slot
@@ -141,6 +150,9 @@ class QueuedStackParentData extends ContainerBoxParentData<RenderBox> {
 
   /// Whether the card paints above the others.
   bool lifted = false;
+
+  /// Whether the card takes pointers.
+  bool reachable = true;
 }
 
 /// The render object of [QueuedStackLayout].
@@ -341,6 +353,8 @@ class RenderQueuedStack extends RenderBox
     final gutter = childAfter(region)!;
     var pile = false;
     for (final child in [..._paintOrder.reversed, gutter]) {
+      final data = child.parentData!;
+      if (data is QueuedStackParentData && !data.reachable) continue;
       if (_hit(result, child, position)) {
         pile = true;
         break;
