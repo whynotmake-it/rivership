@@ -150,7 +150,11 @@ class CoilCardStackConstraints extends BoxConstraints {
 /// [background] fills the stack under the pile and gets
 /// [CoilCardStackConstraints]; [leading] and [trailing] sit beside the
 /// front card, [sideWidth] wide, and the cards take the width between.
-/// Without a background the stack is as tall as the pile.
+///
+/// The stack needs a bounded width (in a `Row`, wrap it in `Expanded`).
+/// Without a background it is as tall as the pile; with one it fills the
+/// space it's given, so that height must be bounded too (in a `Column` or
+/// a list, wrap it in `Expanded` or a `SizedBox`).
 ///
 /// Cards read the pile's state with [CoilCardStack.maybeOf].
 class CoilCardStack extends StatefulWidget {
@@ -960,7 +964,11 @@ class RenderCoilCardStack extends RenderBox
       size = constraints.smallest;
       return;
     }
-    final width = constraints.maxWidth;
+    assert(
+      _debugCheckConstraints(constraints),
+      'CoilCardStack needs bounded constraints',
+    );
+    final width = _widthFor(constraints);
     final cardWidth = math.max(0, width - 2 * _sideWidth).toDouble();
     final cards = _cards;
     final heights = <double>[];
@@ -976,7 +984,7 @@ class RenderCoilCardStack extends RenderBox
     final live = cards.where((c) => _data(c).presence > 0).isNotEmpty;
 
     if (_hasBackground) {
-      size = constraints.biggest;
+      size = _backgroundSize(constraints, width, extent.now);
       background.layout(
         CoilCardStackConstraints.tight(
           size,
@@ -1142,13 +1150,84 @@ class RenderCoilCardStack extends RenderBox
 
   @override
   Size computeDryLayout(BoxConstraints constraints) {
-    if (_hasBackground) return constraints.biggest;
-    final width = constraints.maxWidth;
+    final width = _widthFor(constraints);
+    if (_hasBackground && constraints.hasBoundedHeight) {
+      return constraints.constrain(Size(width, constraints.maxHeight));
+    }
     final cardWidth = math.max(0, width - 2 * _sideWidth).toDouble();
     final cards = _cards;
     final heights = _heightsBy(
       (c) => c.getDryLayout(BoxConstraints.tightFor(width: cardWidth)).height,
     );
     return constraints.constrain(Size(width, _extent(cards, heights).now));
+  }
+
+  /// The stack's width: the width it's given. Unbounded (an error in
+  /// debug), the widest card's plus the sides.
+  double _widthFor(BoxConstraints constraints) => constraints.hasBoundedWidth
+      ? constraints.maxWidth
+      : constraints.constrainWidth(
+          computeMaxIntrinsicWidth(double.infinity),
+        );
+
+  /// The size with a background: all the space it's given. Unbounded
+  /// height (an error in debug) falls back to the pile's [extent].
+  Size _backgroundSize(
+    BoxConstraints constraints,
+    double width,
+    double extent,
+  ) => constraints.constrain(
+    Size(
+      width,
+      constraints.hasBoundedHeight ? constraints.maxHeight : extent,
+    ),
+  );
+
+  bool _debugCheckConstraints(BoxConstraints constraints) {
+    if (!constraints.hasBoundedWidth) {
+      throw FlutterError.fromParts([
+        ErrorSummary('CoilCardStack was given an unbounded width.'),
+        ErrorDescription(
+          'The cards take the width the stack is given, so it needs a '
+          'bounded one. This happens when it is placed directly in a Row, '
+          'a horizontal list or another parent that lets its child pick '
+          'any width.',
+        ),
+        ErrorHint(
+          'Wrap the stack (or the component that builds it) in Expanded or '
+          'Flexible inside a Row, or give it a width with a SizedBox.',
+        ),
+        DiagnosticsProperty<BoxConstraints>(
+          'The constraints were',
+          constraints,
+          style: DiagnosticsTreeStyle.errorProperty,
+        ),
+      ]);
+    }
+    if (_hasBackground && !constraints.hasBoundedHeight) {
+      throw FlutterError.fromParts([
+        ErrorSummary(
+          'CoilCardStack with a background was given an unbounded height.',
+        ),
+        ErrorDescription(
+          'With a background (such as a CoilQueuedStack with a child) the '
+          'stack fills the space it is given, so it needs a bounded '
+          'height. This happens when it is placed directly in a Column, a '
+          'ListView or another parent that lets its child pick any height.',
+        ),
+        ErrorHint(
+          'Wrap the stack (or the component that builds it) in Expanded '
+          'inside a Column, or give it a height with a SizedBox. Without a '
+          'background it is as tall as its pile and needs no bounded '
+          'height.',
+        ),
+        DiagnosticsProperty<BoxConstraints>(
+          'The constraints were',
+          constraints,
+          style: DiagnosticsTreeStyle.errorProperty,
+        ),
+      ]);
+    }
+    return true;
   }
 }
