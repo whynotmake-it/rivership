@@ -2092,44 +2092,6 @@ void main() {
       );
     }
 
-    for (final dismissalMode in DismissalMode.values) {
-      testWidgets(
-          '${dismissalMode.name} sizes to content shorter than the '
-          'screen', (tester) async {
-        late BuildContext home;
-        await tester.pumpWidget(
-          CupertinoApp(
-            home: Builder(
-              builder: (context) {
-                home = context;
-                return const SizedBox.expand();
-              },
-            ),
-          ),
-        );
-        Navigator.of(home)
-            .push(
-              StupidSimpleGlassSheetRoute<void>(
-                motion: motion,
-                dismissalMode: dismissalMode,
-                child: const SizedBox(key: ValueKey('content'), height: 200),
-              ),
-            )
-            .ignore();
-        await tester.pumpAndSettle();
-
-        final screen = tester.getSize(find.byType(CupertinoApp));
-        final content = tester.getRect(find.byKey(const ValueKey('content')));
-        expect(content.bottom, screen.height);
-        expect(content.height, 200);
-        expect(
-          tester.getSize(find.byType(SheetBackground)).height,
-          200,
-          reason: 'the sheet hugs its content',
-        );
-      });
-    }
-
     group('originateAboveBottomViewInset', () {
       for (final dismissalMode in DismissalMode.values) {
         for (final originateAboveBottomViewInset in [false, true]) {

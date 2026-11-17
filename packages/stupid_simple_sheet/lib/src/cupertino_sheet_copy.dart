@@ -56,9 +56,8 @@ Widget getOverlayedChild(
   BuildContext context,
   Widget? child,
   Animation<double> animation,
-  bool secondLayer, {
-  bool sizeToChild = false,
-}) {
+  bool secondLayer,
+) {
   final bool isDarkMode =
       CupertinoTheme.brightnessOf(context) == Brightness.dark;
   final overlayColor = isDarkMode && !secondLayer
@@ -68,22 +67,19 @@ Widget getOverlayedChild(
     begin: 0.0,
     end: secondLayer && isDarkMode ? 0.15 : 0.1,
   ));
-  final overlay = IgnorePointer(
-    child: FadeTransition(
-      opacity: opacity,
-      child: DecoratedBox(
-        decoration: BoxDecoration(color: overlayColor),
-        child: const SizedBox.expand(),
-      ),
-    ),
-  );
   return Stack(
     clipBehavior: Clip.none,
     children: <Widget>[
       if (child != null) child,
-      // Positioned, the overlay leaves the stack the child's size, so a
-      // sheet shorter than the screen keeps its own height.
-      if (sizeToChild) Positioned.fill(child: overlay) else overlay,
+      IgnorePointer(
+        child: FadeTransition(
+          opacity: opacity,
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: overlayColor),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
     ],
   );
 }
