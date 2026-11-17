@@ -106,4 +106,221 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('November 2026'), findsOneWidget);
   });
+
+  pagingTests();
+  sizingTests();
+}
+
+/// The calendar's days, laid out in the grid.
+Finder _days() => find.descendant(
+  of: find.byType(PageView),
+  matching: find.byType(CoilHoverItem),
+);
+
+void pagingTests() {
+  testWidgets('a swipe on touch turns the month, and back', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
+    final grid = find.byType(PageView);
+    await tester.fling(grid, const Offset(-200, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+    await tester.fling(grid, const Offset(200, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('November 2026'), findsOneWidget);
+    // A day on the page the swipe landed on picks.
+    await tester.tap(find.text('20'));
+    await tester.pumpAndSettle();
+    expect(_picked(tester), DateTime(2026, 11, 20));
+  });
+
+  testWidgets('the page follows the finger and a short drag springs back', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
+    final grid = find.byType(PageView);
+    final before = tester.getTopLeft(find.text('14').first);
+    final gesture = await tester.startGesture(tester.getCenter(grid));
+    await gesture.moveBy(const Offset(-20, 0));
+    await gesture.moveBy(const Offset(-40, 0));
+    await tester.pump();
+    expect(
+      tester.getTopLeft(find.text('14').first).dx,
+      lessThan(before.dx - 30),
+    );
+    // Slowly back a little, then let go: not past half a page, no fling.
+    await tester.pump(const Duration(seconds: 1));
+    await gesture.moveBy(const Offset(10, 0));
+    await tester.pump(const Duration(seconds: 1));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text('November 2026'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('14').first), before);
+  });
+
+  testWidgets('a mouse drag on the pointer tier does not page', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _Demo()),
+    );
+    await tester.fling(
+      find.byType(PageView),
+      const Offset(-200, 0),
+      1000,
+      deviceKind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('November 2026'), findsOneWidget);
+  });
+
+  testWidgets('a trackpad swipe pages', (tester) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _Demo()),
+    );
+    final gesture = await tester.createGesture(
+      kind: PointerDeviceKind.trackpad,
+    );
+    await gesture.panZoomStart(tester.getCenter(find.byType(PageView)));
+    for (var i = 0; i < 10; i++) {
+      await gesture.panZoomUpdate(
+        tester.getCenter(find.byType(PageView)),
+        pan: Offset(-20.0 * (i + 1), 0),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.panZoomEnd();
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+  });
+
+  testWidgets('the buttons and keys turn the page after a swipe', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
+    await tester.fling(find.byType(PageView), const Offset(-200, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Next month'));
+    await tester.pumpAndSettle();
+    expect(find.text('January 2027'), findsOneWidget);
+    // One page in the tree once it settles.
+    expect(_days(), findsNWidgets(42));
+    for (var i = 0; i < 3; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+    // Down from the 1st of December's focus start, then pick.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(_picked(tester), DateTime(2026, 12, 8));
+  });
+
+  testWidgets('a swipe stops at firstDate', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        home: _Demo(firstDate: DateTime(2026, 11, 10)),
+      ),
+    );
+    await tester.fling(find.byType(PageView), const Offset(250, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('November 2026'), findsOneWidget);
+  });
+
+  testWidgets(
+    'paging plays a selection click on iOS',
+    (tester) async {
+      final played = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            played.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(tier: CoilTier.touch, home: const _Demo()),
+      );
+      await tester.fling(find.byType(PageView), const Offset(-200, 0), 1000);
+      await tester.pumpAndSettle();
+      expect(played, ['HapticFeedbackType.selectionClick']);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+}
+
+void sizingTests() {
+  for (final (width, scale) in const [
+    (220.0, 1.0),
+    (260.0, 2.0),
+    (320.0, 2.0),
+    (380.0, 1.0),
+  ]) {
+    testWidgets('fits $width px at text scale $scale', (tester) async {
+      useScreen(tester, TestScreen.phone);
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Center(
+            child: SizedBox(
+              width: width,
+              child: CoilCalendar(
+                selected: DateTime(2026, 9, 23),
+                onSelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      final calendar = tester.getRect(find.byType(CoilCalendar));
+      expect(calendar.width, width);
+      // Square days, no taller than the cell's extent at this scale.
+      final day = tester.getSize(_days().first);
+      expect(day.width, moreOrLessEquals(day.height, epsilon: 1));
+      expect(day.height, lessThanOrEqualTo(44 - 22 + 22 * scale + 0.01));
+      // The six weeks fit inside the calendar.
+      expect(
+        tester.getRect(_days().last).bottom,
+        lessThanOrEqualTo(calendar.bottom + 0.01),
+      );
+    });
+  }
+
+  testWidgets('cells grow with the text scale on the pointer tier', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _Demo()),
+    );
+    final day = tester.getSize(_days().first);
+    // 36 at 1×; the 20 px line box doubles.
+    expect(day.height, greaterThan(50));
+    expect(
+      tester.getSize(find.byType(CoilCalendar)).width,
+      greaterThanOrEqualTo(day.width * 7),
+    );
+  });
 }
