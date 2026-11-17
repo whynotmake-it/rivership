@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/ask_user_questions/ask_user_questions_style.dart';
@@ -259,7 +261,11 @@ class _Body<T> extends StatelessWidget {
             spacing: 4,
             children: [
               ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                // Leaves the gap before the description, which may get
+                // no room at all.
+                constraints: BoxConstraints(
+                  maxWidth: math.max(0, constraints.maxWidth - 4),
+                ),
                 child: label,
               ),
               Expanded(

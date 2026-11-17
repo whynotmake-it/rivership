@@ -247,11 +247,15 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           spacing: metrics.gap,
           children: [
             ?widget.attachments,
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: metrics.controlPaddingX - metrics.gap,
+            // On a short screen the field gives up lines before the
+            // composer overflows; it scrolls its text instead.
+            Flexible(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: metrics.controlPaddingX - metrics.gap,
+                ),
+                child: field,
               ),
-              child: field,
             ),
             Row(
               spacing: metrics.gap,
