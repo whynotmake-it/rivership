@@ -62,6 +62,11 @@ enum CoilReliefRole {
 /// )
 /// ```
 ///
+/// Controls on a raised surface (a card, popover, dialog) stay flat, so
+/// they don't compete with it: [flattenAbove] sets the highest surface
+/// level that is still lit (1, the page, by default), and
+/// `CoilPlasticityScope(elevated: false)` lights one subtree anyway.
+///
 /// The ladder runs [flat] < [subtle] < [soft] < [tactile]. A future
 /// glass material is meant to sit above [tactile]: it would be a preset
 /// that also refracts what lies beneath, which painting alone can't do.
@@ -79,7 +84,9 @@ class CoilPlasticity with Diagnosticable {
     this.containers = 0,
     this.response = 1,
     this.roles = const {},
-  }) : assert(edgeWidth > 0, 'edgeWidth must be positive');
+    this.flattenAbove = 1,
+  }) : assert(edgeWidth > 0, 'edgeWidth must be positive'),
+       assert(flattenAbove >= 1, 'flattenAbove must be 1 (the page) or more');
 
   /// No lighting: coil's flat look. The default.
   static const flat = CoilPlasticity();
@@ -171,6 +178,16 @@ class CoilPlasticity with Diagnosticable {
   /// missing role is 1; 0 turns that role off.
   final Map<CoilReliefRole, double> roles;
 
+  /// The highest surface level whose controls are still lit. Controls on a
+  /// `CoilSurface` above it read a flat plasticity (see
+  /// [CoilPlasticityScope]).
+  ///
+  /// 1, the default, lights only what sits on the page: anything on a card,
+  /// popover, menu, dialog or sheet is flat. 3 also lights controls on a
+  /// card or a popover opened from the page (level 3), and keeps a dialog's
+  /// (level 5) flat. Surface levels are `CoilSurface.levelOf`.
+  final int flattenAbove;
+
   /// Whether this paints nothing, so components keep their flat look
   /// untouched.
   bool get isFlat =>
@@ -195,6 +212,7 @@ class CoilPlasticity with Diagnosticable {
     containers: containers * t,
     response: response,
     roles: roles,
+    flattenAbove: flattenAbove,
   );
 
   /// Returns a copy with the given intensities replaced.
@@ -209,6 +227,7 @@ class CoilPlasticity with Diagnosticable {
     double? containers,
     double? response,
     Map<CoilReliefRole, double>? roles,
+    int? flattenAbove,
   }) => CoilPlasticity(
     edge: edge ?? this.edge,
     edgeWidth: edgeWidth ?? this.edgeWidth,
@@ -220,6 +239,7 @@ class CoilPlasticity with Diagnosticable {
     containers: containers ?? this.containers,
     response: response ?? this.response,
     roles: roles ?? this.roles,
+    flattenAbove: flattenAbove ?? this.flattenAbove,
   );
 
   /// Interpolates two plasticities, for animated theme changes.
@@ -241,6 +261,8 @@ class CoilPlasticity with Diagnosticable {
         for (final role in {...a.roles.keys, ...b.roles.keys})
           role: l(a.roles[role] ?? 1, b.roles[role] ?? 1),
       },
+      // A level can't be between two; it switches half way.
+      flattenAbove: t < 0.5 ? a.flattenAbove : b.flattenAbove,
     );
   }
 
@@ -395,7 +417,8 @@ class CoilPlasticity with Diagnosticable {
       other.recess == recess &&
       other.containers == containers &&
       other.response == response &&
-      mapEquals(other.roles, roles);
+      mapEquals(other.roles, roles) &&
+      other.flattenAbove == flattenAbove;
 
   @override
   int get hashCode => Object.hash(
@@ -411,6 +434,7 @@ class CoilPlasticity with Diagnosticable {
     Object.hashAllUnordered(
       roles.entries.map((e) => Object.hash(e.key, e.value)),
     ),
+    flattenAbove,
   );
 
   @override
@@ -426,7 +450,8 @@ class CoilPlasticity with Diagnosticable {
       ..add(DoubleProperty('recess', recess, defaultValue: 0))
       ..add(DoubleProperty('containers', containers, defaultValue: 0))
       ..add(DoubleProperty('response', response, defaultValue: 1))
-      ..add(DiagnosticsProperty('roles', roles, defaultValue: const {}));
+      ..add(DiagnosticsProperty('roles', roles, defaultValue: const {}))
+      ..add(IntProperty('flattenAbove', flattenAbove, defaultValue: 1));
   }
 }
 
@@ -831,7 +856,8 @@ class CoilReliefBorder extends OutlinedBorder {
 
 /// Marks a subtree that sits on a surface above the page: a card, a
 /// popover, a menu, a dialog, a sheet. `CoilSurface` places one for its
-/// content, `elevated` when its level is above 1 (the page).
+/// content, `elevated` when its level is above the theme plasticity's
+/// [CoilPlasticity.flattenAbove] (1, the page, by default).
 ///
 /// Lighting belongs on controls that sit on the page. On a surface that is
 /// itself raised, lit controls compete with it, so `CoilTheme.of` reads a

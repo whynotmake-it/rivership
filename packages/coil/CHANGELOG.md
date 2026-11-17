@@ -13,8 +13,11 @@ Milestone M0, unreleased.
   with plain superellipses). The button, checkbox, radio, switch, slider,
   select, input and card styles take a `plasticity` that wins over the
   theme's. Controls on a surface above the page stay flat: `CoilSurface`
-  places a `CoilPlasticityScope(elevated:)`, and
-  `CoilPlasticityScope(elevated: false)` lights a subtree again. A
+  places a `CoilPlasticityScope(elevated:)` above
+  `CoilPlasticity.flattenAbove` (1, the page, by default; raise it to
+  light controls on cards or popovers too), and
+  `CoilPlasticityScope(elevated: false)` lights a subtree again.
+  `CoilTheme.plasticityOf` reads the plasticity before that flattening. A
   surface's own edge reads the theme's plasticity, so a popover looks the
   same wherever it opens.
 - `CoilCalendar` pages by swipe on touch: the month follows the finger, a

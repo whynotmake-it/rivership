@@ -129,6 +129,46 @@ void main() {
       expect(edgeOf(find.byKey(const Key('card'))), onPage);
     });
 
+    testWidgets('flattenAbove moves the cutoff; 1 is the page', (
+      tester,
+    ) async {
+      Future<void> pumpAt(int flattenAbove) => tester.pumpWidget(
+        CoilTheme(
+          data: CoilThemeData.light.copyWith(
+            plasticity: CoilPlasticity.subtle.copyWith(
+              flattenAbove: flattenAbove,
+            ),
+          ),
+          child: const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
+              children: [
+                // Level 3: on a popover opened from the page.
+                CoilSurface(
+                  offset: 2,
+                  child: CoilInput(key: Key('three')),
+                ),
+                // Level 4.
+                CoilSurface(
+                  offset: 3,
+                  child: CoilInput(key: Key('four')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await pumpAt(3);
+      expect(_lit(tester, find.byKey(const Key('three'))), isTrue);
+      expect(_lit(tester, find.byKey(const Key('four'))), isFalse);
+
+      expect(CoilPlasticity.subtle.flattenAbove, 1);
+      await pumpAt(1);
+      expect(_lit(tester, find.byKey(const Key('three'))), isFalse);
+      expect(_lit(tester, find.byKey(const Key('four'))), isFalse);
+    });
+
     testWidgets('an unelevated scope lights a subtree again', (tester) async {
       await pump(
         tester,
@@ -225,5 +265,25 @@ void main() {
               .relief;
       expect(half.edgeTop.a, closeTo(relief.edgeTop.a / 2, 0.01));
     });
+  });
+
+  test('flattenAbove: copyWith, lerp, equality; scale keeps it', () {
+    final three = CoilPlasticity.soft.copyWith(flattenAbove: 3);
+    expect(three.flattenAbove, 3);
+    expect(three.scale(0.5).flattenAbove, 3);
+    expect(three, isNot(CoilPlasticity.soft));
+    expect(three, CoilPlasticity.soft.copyWith(flattenAbove: 3));
+    expect(
+      three.hashCode,
+      CoilPlasticity.soft.copyWith(flattenAbove: 3).hashCode,
+    );
+    expect(
+      CoilPlasticity.lerp(CoilPlasticity.soft, three, 0.4).flattenAbove,
+      1,
+    );
+    expect(
+      CoilPlasticity.lerp(CoilPlasticity.soft, three, 0.6).flattenAbove,
+      3,
+    );
   });
 }

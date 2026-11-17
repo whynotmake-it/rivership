@@ -217,7 +217,7 @@ How lit controls look, from flat to tactile: `CoilThemeData.plasticity`, a `Coil
 - **`subtle` lights what you press:** raised controls at 0.78 and filled at 0.8 of the recipe, half-depth hover and press; wells get a hairline, fields barely any; tracks, quiet buttons and containers stay flat. Per-role restraint is data (`roles`), not new presets.
 - **States:** hover brightens the light, a press flattens it and moves the shade to the top edge (the control sinks in), and a disabled control is flat. `response` sets how far hover and press move it.
 - **Selection indicators are never lit** (the tabs pill, toggle-group segments, merged selection blocks): they mark the current item, they aren't pressed.
-- **Not on raised surfaces.** Controls on a card, popover, menu, dialog or sheet are flat: `CoilSurface` places a `CoilPlasticityScope(elevated: true)` above the page, and `CoilTheme.of` reads a flat plasticity inside it. A component style's `plasticity`, or `CoilPlasticityScope(elevated: false)`, lights them anyway. A surface's own edge reads the theme's plasticity as set, so a popover has the same edge wherever it opens.
+- **Not on raised surfaces.** Controls on a card, popover, menu, dialog or sheet are flat: `CoilSurface` places a `CoilPlasticityScope(elevated: true)` above the plasticity's `flattenAbove` level (1, the page, by default; 3 also lights controls on a card or a popover opened from the page), and `CoilTheme.of` reads a flat plasticity inside it. A component style's `plasticity`, or `CoilPlasticityScope(elevated: false)`, lights them anyway. A surface's own edge reads the theme's plasticity as set, so a popover has the same edge wherever it opens.
 
 ## 7. Motion
 

@@ -339,7 +339,7 @@ class CoilTheme extends StatelessWidget {
     final plasticity =
         override ??
         (role == CoilReliefRole.floating
-            ? _raw(context).plasticity
+            ? plasticityOf(context)
             : theme.plasticity);
     return plasticity.resolve(
       role,
@@ -349,6 +349,13 @@ class CoilTheme extends StatelessWidget {
       enabled: enabled,
     );
   }
+
+  /// The theme's plasticity at [context] as set, before an elevated
+  /// [CoilPlasticityScope] flattens it. Controls read [of]'s instead; a
+  /// surface reads this one for its own edge and for
+  /// [CoilPlasticity.flattenAbove].
+  static CoilPlasticity plasticityOf(BuildContext context) =>
+      _raw(context).plasticity;
 
   /// The motion tokens at [context]: [override] (a component's `motion:`)
   /// or the theme's, made [CoilMotion.reduced] when the platform asks for
