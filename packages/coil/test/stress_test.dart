@@ -127,10 +127,6 @@ enum StressHost {
 
 const _trigger = ValueKey('stress-trigger');
 
-const _queuedCardRow =
-    'queued_stack_card.dart:261: the card row overflows with long text at '
-    'large text scales';
-
 /// Marks the widget [StressStory.open] taps.
 Widget trigger(Widget child) => KeyedSubtree(key: _trigger, child: child);
 
@@ -927,11 +923,6 @@ final stories = <StressStory>[
         child: const SizedBox.expand(),
       ),
     ),
-    // The queued stack belongs to another stream; reported, not fixed here.
-    knownBreakage: const {
-      'Android 240 2x RTL dark': _queuedCardRow,
-      'Android 360 3x short': _queuedCardRow,
-    },
   ),
   StressStory(
     'sidebar',

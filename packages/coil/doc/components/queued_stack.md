@@ -14,18 +14,18 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 - **What it is:** messages sent while a reply streams, waiting in a pile above the composer. The front card is sent next.
 - **Anatomy:** a start gutter (an optional glyph, plus the queued count once cards hide behind the pile) → cards → an end gutter of the same width. Gutters are 40 / 32 / 48 and grow with the text.
-- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its `semanticLabel`. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×).
+- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its `semanticLabel`. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×), padded to the 44 hit target on touch. When the message would get less width than the actions beside it (a narrow screen at a large text scale), the actions move to their own line under the message, at the end, and wrap if they still don't fit; the message keeps the card's width and ellipsizes.
 - **Folded:** 2 cards peek out behind the front one, each 12 px higher and 5 % smaller; deeper cards fade out.
 - **Fanned out:** each card sits a card plus 8 above the one in front.
 - **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
 - **Touch:** a tap fans it out and pins it open. The start gutter becomes a collapse button (chevron down). Actions always show. Drag to reorder.
-- **Reach:** fanned out, every card takes taps, hovers and focus where it shows. Folded, only the front card's controls do; a tap on a card peeking behind it fans the pile out instead of pressing the action under the peek.
+- **Reach:** fanned out, every card takes taps, hovers and focus where it shows. Folded, only the front card's controls do; a tap on a card peeking behind it fans the pile out instead of pressing the action under the peek. A peeking card's buttons (drawn at 95 % and 90 %, under the hit target) are left out of semantics too; screen readers get Edit and Remove as actions on the card.
 - **Keyboard:** each card is a tab stop, in queue order (front first). Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
 - **Motion:**
   - fan out and fold on `standard` / `standardExit`;
   - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
   - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
   - a message queued behind the folded pile makes it recoil 7 px on `gentle`. The original uses a one-off spring here (0.42 s, bounce 0.5) that isn't one of its tiers, so coil keeps its own bounciest token.
-- **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action. The gutter reads "3 queued messages".
+- **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action (and Remove while it peeks behind the folded pile). The gutter reads "3 queued messages".
 - **Layout:** pass the transcript as `child`. The stack fills its space, lays the transcript out under the pile, and adds the folded pile's height (from the cards' real layout, plus the 8 gap) to the transcript's bottom `MediaQuery` padding, so a `ListView` keeps its last message clear. Only the pile's own area fans it out on hover.
 - **Not ported:** the queued card morphing into the sent bubble. Flutter has no shared-element transition inside one route.

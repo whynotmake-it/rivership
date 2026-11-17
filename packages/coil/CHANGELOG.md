@@ -38,6 +38,12 @@ Milestone M0, unreleased.
   - `CoilDefaultAction` is how a coil widget registers its action for
     those: like `Action.overridable`, but a nested popup skips the
     actions of the popups around it.
+- A queued stack card fits a narrow screen at a large text scale: when
+  the message would get less room than the edit and remove buttons, they
+  move to a line under it (and wrap if needed) instead of overflowing.
+  Cards peeking behind the folded pile leave their buttons, drawn under
+  the 44 hit target, out of semantics and offer Edit and Remove as
+  actions on the card.
 - The blur-fade is subtler. `CoilBlurFade` starts at a blur sigma of 1.5
   (`CoilBlurFade.defaultBlur`), down from 4, so popovers, tooltips, reveals
   and swaps soften as they arrive instead of smearing. Button and select
