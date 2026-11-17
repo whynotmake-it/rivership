@@ -648,7 +648,11 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
         final style = _style(context, metrics);
         return CoilPopoverSurface(
           color: style.surface,
-          radius: style.radius! + metrics.popupInset,
+          radius: CoilTheme.radiiOf(context).concentric(
+            style.radius!,
+            metrics.popupInset,
+            innerExtent: metrics.controlHeight,
+          ),
           child: content,
         );
       },

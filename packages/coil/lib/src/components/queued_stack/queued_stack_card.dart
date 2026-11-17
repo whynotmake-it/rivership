@@ -169,6 +169,39 @@ class _CardBodyState extends State<_CardBody> {
     super.dispose();
   }
 
+  /// The actions' end padding and look: the remove button sits as far
+  /// in from the trailing edge as from the top and bottom of a card of
+  /// the minimum height, at the radius nested in the card's corner, so the
+  /// two are concentric. A family that nests square (`sharp`) keeps the
+  /// buttons' own radius.
+  ({double end, CoilButtonStyle? style}) _actionCorner(BuildContext context) {
+    final look = widget.card.look;
+    final tier = widget.card.metrics.tier;
+    final theme = CoilTheme.of(context);
+    final button = CoilTheme.metricsOf(
+      context,
+      tier: tier,
+      size: CoilSize.compact,
+    );
+    final extent = CoilButtonStyle.fallback(
+      theme,
+      button,
+      CoilButtonVariant.ghost,
+    ).merge(CoilTheme.styleOf<CoilButtonStyle>(context)).minHeight!;
+    final height = look.cardMinHeight!;
+    // On touch the 44 hit box pads the visual button.
+    final hitBox = math.max(extent, button.minHitTarget);
+    final end = math.max<double>(0, (height - hitBox) / 2);
+    final radii = theme.shape.radii(tier);
+    if (radii.container <= radii.item) return (end: end, style: null);
+    final corner = math.min(look.radius!, height / 2);
+    final nested = CoilShape.nested(corner, end + (hitBox - extent) / 2);
+    return (
+      end: end,
+      style: CoilButtonStyle(radius: math.min(nested, extent / 2)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final card = widget.card;
@@ -178,6 +211,11 @@ class _CardBodyState extends State<_CardBody> {
     final message = card.message;
     final files = message.attachments;
     final thumb = look.cardMinHeight! - 2 * _thumbInset;
+    final thumbRadius = CoilShape.nested(
+      math.min(radius, look.cardMinHeight! / 2),
+      _thumbInset,
+    );
+    final actionCorner = _actionCorner(context);
     final edit = card.onEdit;
     final remove = card.onRemove;
     final move = card.onMove;
@@ -204,6 +242,7 @@ class _CardBodyState extends State<_CardBody> {
             CoilButton.icon(
               variant: CoilButtonVariant.ghost,
               size: CoilSize.compact,
+              style: actionCorner.style,
               semanticLabel: card.labels.editLabel,
               onPressed: edit,
               icon: icon,
@@ -211,6 +250,7 @@ class _CardBodyState extends State<_CardBody> {
           CoilButton.icon(
             variant: CoilButtonVariant.ghost,
             size: CoilSize.compact,
+            style: actionCorner.style,
             semanticLabel: card.labels.removeLabel,
             onPressed: remove,
             icon: card.removeIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
@@ -241,7 +281,7 @@ class _CardBodyState extends State<_CardBody> {
               child: Padding(
                 padding: EdgeInsetsDirectional.only(
                   start: files.isEmpty ? metrics.controlPaddingX : _thumbInset,
-                  end: 6,
+                  end: actionCorner.end,
                 ),
                 child: _CardRow(
                   gap: metrics.gap,
@@ -271,7 +311,7 @@ class _CardBodyState extends State<_CardBody> {
                                     for (final file in files.take(3))
                                       ClipRSuperellipse(
                                         borderRadius: BorderRadius.circular(
-                                          math.max(0, radius - _thumbInset),
+                                          thumbRadius,
                                         ),
                                         child: SizedBox.square(
                                           dimension: thumb,
@@ -282,10 +322,7 @@ class _CardBodyState extends State<_CardBody> {
                                       _More(
                                         count: files.length - 3,
                                         size: thumb,
-                                        radius: math.max(
-                                          0,
-                                          radius - _thumbInset,
-                                        ),
+                                        radius: thumbRadius,
                                         style: look.countStyle!,
                                       ),
                                   ],

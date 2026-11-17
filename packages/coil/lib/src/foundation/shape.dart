@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:flutter/foundation.dart';
 
@@ -20,6 +22,34 @@ class CoilRadii {
 
   /// A focus ring drawn 2 px outside an item.
   final double focusRing;
+
+  /// The radius of a container whose edge runs [inset] outside a shape of
+  /// [inner] radius, so the two corners share a center: inner + inset.
+  ///
+  /// A superellipse draws a radius past half its shorter side as half of
+  /// it (a pill), so pass that side as [innerExtent] whenever [inner] can
+  /// be a pill's: a 28 px button at the `pill` item radius 20 has 14 px
+  /// corners, and a container 8 px out from it needs 22, not 28.
+  ///
+  /// A family whose containers are no rounder than its items (`sharp`)
+  /// nests square: it gets [container] back, so a near-square button
+  /// never sits in a rounded frame.
+  ///
+  /// ```dart
+  /// // A composer around its send button, `gap` in from the corner.
+  /// final radius = CoilTheme.radiiOf(context).concentric(
+  ///   buttonRadius,
+  ///   metrics.gap,
+  ///   innerExtent: buttonHeight,
+  /// );
+  /// ```
+  double concentric(
+    double inner,
+    double inset, {
+    double innerExtent = double.infinity,
+  }) => container <= item
+      ? container
+      : math.max(0, math.min(inner, innerExtent / 2)) + inset;
 
   @override
   bool operator ==(Object other) =>
@@ -75,6 +105,7 @@ class CoilShape {
   };
 
   /// The radius of a surface inset by [inset] inside one of [outer] radius.
+  /// The inverse of [CoilRadii.concentric].
   static double nested(double outer, double inset, [double borderWidth = 0]) =>
       (outer - inset - borderWidth).clamp(0, double.infinity);
 

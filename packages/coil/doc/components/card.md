@@ -12,7 +12,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 ## Card
 
-- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕ at the top trailing corner, which the header and an inline card's trailing actions keep clear of (its 44 touch hit box included); an optional stretched action (the whole card is a link or button).
+- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕ at the top trailing corner (8 in, its hover fill at the nested radius, 12 − 8 = 4; where that's more than the round button has, as under `pill` on the pointer tier, the button moves in until its round end shares the corner's center), which the header and an inline card's trailing actions keep clear of (its 44 touch hit box included); an optional stretched action (the whole card is a link or button).
 - **Variants:** `stacked` (media on top, full-bleed 16:9 image) and `inline` (media leading: a 32 tinted tile or an image 160 square).
 - **Padding:** 16 (compact 12). Content and footer 12 below the header.
 - **Groups:** one divided block with hairlines between cards, or `separated` (gap 8).

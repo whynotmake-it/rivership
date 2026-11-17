@@ -21,8 +21,8 @@ class CoilPopoverSurface extends StatelessWidget {
   /// The fill; the surface level's color when null.
   final Color? color;
 
-  /// The corner radius; the theme's item radius plus the popup inset when
-  /// null, so it stays concentric with the rows.
+  /// The corner radius; when null, concentric with rows at the theme's
+  /// item radius `popupInset` in (`CoilRadii.concentric`).
   final double? radius;
 
   /// The narrowest the surface gets.
@@ -31,8 +31,14 @@ class CoilPopoverSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = CoilTheme.metricsOf(context);
+    final radii = CoilTheme.radiiOf(context);
     final radius = BorderRadius.circular(
-      this.radius ?? CoilTheme.radiiOf(context).item + metrics.popupInset,
+      this.radius ??
+          radii.concentric(
+            radii.item,
+            metrics.popupInset,
+            innerExtent: metrics.controlHeight,
+          ),
     );
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: minWidth),

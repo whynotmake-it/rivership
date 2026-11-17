@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/ask_user_questions/ask_user_questions.dart'
     show CoilAskUserQuestionsTrack;
@@ -48,10 +50,21 @@ class CoilAskUserQuestionsStyle
     final radii = theme.shape.radii(metrics.tier);
     final light = c.brightness == Brightness.light;
     final compact = metrics.size == CoilSize.compact;
+    // The footer's compact buttons sit `popupInset` in from the bottom
+    // corners (plus their hit box's padding on touch); the card's corners
+    // are concentric with theirs.
+    final button = theme.metrics.resolve(metrics.tier, CoilSize.compact);
+    final footerInset =
+        metrics.popupInset +
+        math.max(0, button.minHitTarget - button.controlHeight) / 2;
     return CoilAskUserQuestionsStyle(
       surface: c.surface(light ? 3 : 2),
       border: BorderSide(color: c.border),
-      radius: radii.container,
+      radius: radii.concentric(
+        radii.item,
+        footerInset,
+        innerExtent: button.controlHeight,
+      ),
       maxWidth: 520,
       stepStyle: t.caption.copyWith(color: c.mutedForeground),
       titleStyle: t.title.copyWith(color: c.foreground),

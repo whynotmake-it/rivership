@@ -1,5 +1,7 @@
 // MotorInspectionScope is @experimental; the motor example uses it too.
 // ignore_for_file: experimental_member_use
+import 'dart:math' as math;
+
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -205,6 +207,39 @@ class _CoilCardState extends State<CoilCard> {
     spatial: spatial,
   );
 
+  /// Where the dismiss button sits and its corner radius, so its hover
+  /// fill is concentric with the card's corner: the radius nested
+  /// [CoilCardStyle.dismissInset] in, or under `pill`, where that's more
+  /// than a round button has, the button moved in until its round end
+  /// shares the corner's center. A family that nests square (`sharp`)
+  /// keeps the button's own radius.
+  ({double inset, double? radius}) _dismissCorner(
+    CoilThemeData theme,
+    CoilMetrics metrics,
+    CoilCardStyle style,
+  ) {
+    final inset = style.dismissInset!;
+    final radii = theme.shape.radii(metrics.tier);
+    if (widget.onDismissed == null || radii.container <= radii.item) {
+      return (inset: inset, radius: null);
+    }
+    final button = CoilTheme.metricsOf(
+      context,
+      tier: metrics.tier,
+      size: CoilSize.compact,
+    );
+    final extent = CoilButtonStyle.fallback(
+      theme,
+      button,
+      CoilButtonVariant.ghost,
+    ).merge(CoilTheme.styleOf<CoilButtonStyle>(context)).minHeight!;
+    // On touch the 44 hit box pads the visual button.
+    final hitPad = math.max(0, button.minHitTarget - extent) / 2;
+    final nested = CoilShape.nested(style.radius!, inset + hitPad);
+    if (nested <= extent / 2) return (inset: inset, radius: nested);
+    return (inset: style.radius! - extent / 2 - hitPad, radius: extent / 2);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -217,6 +252,7 @@ class _CoilCardState extends State<CoilCard> {
     final slot = CardSlot.maybeOf(context);
     final radius = BorderRadius.circular(style.radius!);
     final actionable = widget.onPressed != null && !_dismissing;
+    final dismiss = _dismissCorner(theme, metrics, style);
 
     final body = Stack(
       children: [
@@ -240,8 +276,8 @@ class _CoilCardState extends State<CoilCard> {
         ),
         if (widget.onDismissed != null)
           PositionedDirectional(
-            top: style.dismissInset,
-            end: style.dismissInset,
+            top: dismiss.inset,
+            end: dismiss.inset,
             child: ListenableBuilder(
               listenable: _states,
               builder: (context, _) => CardDismissButton(
@@ -251,6 +287,7 @@ class _CoilCardState extends State<CoilCard> {
                     _focusWithin ||
                     _states.value.contains(WidgetState.hovered),
                 icon: widget.dismissIcon,
+                radius: dismiss.radius,
                 semanticLabel: widget.dismissLabel,
                 showMotion: _motionFor(
                   CoilCardTrack.dismissReveal,

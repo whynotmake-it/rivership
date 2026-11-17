@@ -60,7 +60,11 @@ class CoilMenuPopup extends StatelessWidget {
     final look = _style(context, metrics);
     return CoilPopoverSurface(
       color: look.surface,
-      radius: look.radius! + metrics.popupInset,
+      radius: CoilTheme.radiiOf(context).concentric(
+        look.radius!,
+        metrics.popupInset,
+        innerExtent: metrics.controlHeight,
+      ),
       minWidth: look.width!,
       child: SizedBox(
         width: metrics.tier == CoilTier.pointer ? look.width : null,

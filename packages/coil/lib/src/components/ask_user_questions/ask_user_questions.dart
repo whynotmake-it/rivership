@@ -1,6 +1,7 @@
 // MotorInspectionScope is @experimental; the motor example uses it too.
 // ignore_for_file: experimental_member_use
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
@@ -468,6 +469,9 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context, size: widget.size);
     final tokens = CoilTheme.motionOf(context, override: widget.motion);
+    final footerButton = theme.metrics.resolve(metrics.tier, CoilSize.compact);
+    final footerHitPad =
+        math.max(0, footerButton.minHitTarget - footerButton.controlHeight) / 2;
     final look = CoilAskUserQuestionsStyle.fallback(theme, metrics)
         .merge(CoilTheme.styleOf<CoilAskUserQuestionsStyle>(context))
         .merge(widget.style);
@@ -678,7 +682,13 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
                       child: step,
                     ),
                     const SizedBox(height: 4),
-                    footer,
+                    // A touch button's 44 hit box pads it above and below;
+                    // the same at the sides keeps its corners as far from
+                    // the card's sides as from its bottom, so concentric.
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: footerHitPad),
+                      child: footer,
+                    ),
                   ],
                 ),
               ),

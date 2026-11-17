@@ -12,7 +12,8 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 ## InputMessage (chat composer)
 
-- **Anatomy:** a container (hairline, container radius, padding 8) → attachment tray (FileThumbnail 80 tiles, each with a 20 × badge with a 32 / 44 hit) → queue rows (32 / 28 / 44, muted, reorderable) → textarea (subtitle role, 1–10 lines) → toolbar (attach, model, trailing **send button**).
+- **Anatomy:** a container (hairline, padding 8) → attachment tray (FileThumbnail 80 tiles, each with a 20 × badge with a 32 / 44 hit) → queue rows (32 / 28 / 44, muted, reorderable) → textarea (subtitle role, 1–10 lines) → toolbar (attach, model, trailing **send button**).
+- **Corners:** concentric with the send button in the bottom trailing corner (§5): its drawn radius + its visual inset. Pointer 8 + 8 = **16**, touch 10 + 16 = **26** (`rounded`); pointer 14 + 8 = **22**, touch 18 + 16 = **34** (`pill`); `sharp` stays 1. The corner holds however tall the draft grows, and the attach button in the other bottom corner shares it. The attachment tray's tiles take the nested radius (corner − 8), so the top corners match too.
 - **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**. Send and queue share the arrow, so only the swap to and from stop animates, with the blur-fade on `quick`.
 - **Queue:** while a reply streams, a draft queues instead of sending. Enter or the queue button hands the trimmed text to `onQueue` and clears the field. With an empty field the button is stop. Without `onQueue`, nothing sends until the reply ends. The app owns the queue: it shows it in a QueuedStack and sends the front message when the reply ends.
 - **Behavior:**

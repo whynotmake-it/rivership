@@ -267,6 +267,7 @@ class CardDismissButton extends StatelessWidget {
     required this.hideMotion,
     required this.onPressed,
     super.key,
+    this.radius,
   });
 
   /// Whether it shows.
@@ -287,6 +288,10 @@ class CardDismissButton extends StatelessWidget {
   /// Dismisses the card.
   final VoidCallback? onPressed;
 
+  /// The button's corner radius, nested in the card's corner; the
+  /// button's own when null.
+  final double? radius;
+
   @override
   Widget build(BuildContext context) {
     return MotionOpacity(
@@ -303,6 +308,7 @@ class CardDismissButton extends StatelessWidget {
           onPressed: onPressed,
           variant: CoilButtonVariant.ghost,
           size: CoilSize.compact,
+          style: radius == null ? null : CoilButtonStyle(radius: radius),
           semanticLabel: semanticLabel,
           icon: icon ?? const CoilDrawnGlyph(CoilGlyph.cross),
         ),

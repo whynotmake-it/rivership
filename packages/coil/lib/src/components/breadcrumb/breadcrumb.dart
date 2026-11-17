@@ -257,7 +257,11 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
           final style = _style(context, metrics);
           return CoilPopoverSurface(
             color: style.surface,
-            radius: style.radius! + metrics.popupInset,
+            radius: CoilTheme.radiiOf(context).concentric(
+              style.radius!,
+              metrics.popupInset,
+              innerExtent: metrics.controlHeight,
+            ),
             minWidth: metrics.triggerMinWidth,
             child: content,
           );

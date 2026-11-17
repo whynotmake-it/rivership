@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/input.dart';
@@ -176,7 +178,26 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
       metrics,
     ).merge(CoilTheme.styleOf<CoilInputStyle>(context));
     final pointer = metrics.tier == CoilTier.pointer;
-    final radius = BorderRadius.circular(look.multilineRadius!);
+    // The send button sits `gap` in from the bottom trailing corner (plus
+    // its hit box's padding on touch), so the composer's corners are
+    // concentric with the button's: under `pill` a round button in a 22 px
+    // corner, however tall the draft grows.
+    final buttonMetrics = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final buttonStyle = CoilButtonStyle.fallback(
+      theme,
+      buttonMetrics,
+      CoilButtonVariant.primary,
+    ).merge(CoilTheme.styleOf<CoilButtonStyle>(context));
+    final buttonExtent = buttonStyle.minHeight!;
+    final buttonInset =
+        metrics.gap +
+        math.max(0, buttonMetrics.minHitTarget - buttonExtent) / 2;
+    final corner = CoilTheme.radiiOf(context).concentric(
+      buttonStyle.radius!,
+      buttonInset,
+      innerExtent: buttonExtent,
+    );
+    final radius = BorderRadius.circular(corner);
     final textStyle = look.textStyle!;
 
     // Send, queue or stop. Send and queue share the arrow; only the swap
@@ -246,7 +267,11 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: metrics.gap,
           children: [
-            ?widget.attachments,
+            if (widget.attachments case final attachments?)
+              _NestedShape(
+                radius: CoilShape.nested(corner, metrics.gap),
+                child: attachments,
+              ),
             // On a short screen the field gives up lines before the
             // composer overflows; it scrolls its text instead.
             Flexible(
@@ -309,6 +334,42 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           decorationBuilder: decorate,
         ),
       ),
+    );
+  }
+}
+
+/// Sets the item radius of [child]'s controls to [radius], the corner
+/// that's concentric with the composer's: thumbnails in the attachment
+/// tray sit `gap` in from its top corners.
+class _NestedShape extends StatelessWidget {
+  const _NestedShape({required this.radius, required this.child});
+
+  final double radius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tier = CoilTheme.tierOf(context);
+    return CoilTheme.override(
+      transform: (theme) {
+        final radii = theme.shape.radii(tier);
+        // A family that nests square (`sharp`) keeps its items.
+        if (radii.item == radius || radii.container <= radii.item) {
+          return theme;
+        }
+        final capped = CoilRadii(
+          item: radius,
+          container: radii.container,
+          focusRing: radii.focusRing - radii.item + radius,
+        );
+        return theme.copyWith(
+          shape: CoilShape(
+            pointer: tier == CoilTier.pointer ? capped : theme.shape.pointer,
+            touch: tier == CoilTier.touch ? capped : theme.shape.touch,
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

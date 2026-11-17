@@ -401,8 +401,12 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
         final style = _resolveStyle(context, metrics);
         return CoilPopoverSurface(
           color: style.surface,
-          // Concentric with the rows: item radius + the popup's inset.
-          radius: style.radius! + metrics.popupInset,
+          // Concentric with the rows: their radius + the popup's inset.
+          radius: CoilTheme.radiiOf(context).concentric(
+            style.radius!,
+            metrics.popupInset,
+            innerExtent: metrics.controlHeight,
+          ),
           child: content,
         );
       },

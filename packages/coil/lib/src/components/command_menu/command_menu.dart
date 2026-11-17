@@ -157,8 +157,14 @@ class CoilCommandMenu extends StatelessWidget {
     }
 
     final window = MediaQuery.sizeOf(context);
+    // Concentric with the rows, `popupInset` in.
+    final radii = theme.shape.radii(metrics.tier);
     final radius = BorderRadius.circular(
-      theme.shape.radii(metrics.tier).container,
+      radii.concentric(
+        radii.item,
+        metrics.popupInset,
+        innerExtent: metrics.controlHeight,
+      ),
     );
     return SafeArea(
       child: Align(
