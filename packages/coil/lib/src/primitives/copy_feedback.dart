@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:coil/src/foundation/haptics.dart';
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
 import 'package:coil/src/primitives/presence.dart';
@@ -104,8 +105,27 @@ class CoilCopyController extends ValueNotifier<CoilCopyStatus> {
   }
 }
 
+/// The animated parts of a copy affordance. Use them as keys of
+/// [CoilCopySwitcher.motions] and [CoilCopyGlyph.motions].
+final class CoilCopyTrack<T extends Object> extends Track<T> {
+  CoilCopyTrack._(super.converter, {required String super.debugLabel});
+
+  /// The swap between the copy icon and the result. Default motion:
+  /// `quick` in, `quickExit` out; an override applies to both.
+  static final swap = CoilCopyTrack<double>._(
+    .single,
+    debugLabel: 'CoilCopy.swap',
+  );
+
+  /// The check or × drawing itself in. Default motion: `fade`.
+  static final draw = CoilCopyTrack<double>._(
+    .single,
+    debugLabel: 'CoilCopy.draw',
+  );
+}
+
 /// Cross-fades a copy affordance's content as its [status] changes: a
-/// blur-fade at scale 0.8, in on `quick` and out on `quickExit`.
+/// blur-fade at scale 0.8 on [CoilCopyTrack.swap].
 ///
 /// Each status is one child, keyed by the status alone, so a repeated
 /// copy (same status) never replays the swap, and a result that comes back
@@ -118,7 +138,7 @@ class CoilCopySwitcher extends StatelessWidget {
     required this.builder,
     super.key,
     this.motion,
-    this.exitMotion,
+    this.motions,
   });
 
   /// The status to show.
@@ -127,18 +147,27 @@ class CoilCopySwitcher extends StatelessWidget {
   /// Builds the content for one status.
   final Widget Function(BuildContext context, CoilCopyStatus status) builder;
 
-  /// The entering content's spring. Defaults to the theme's `quick`.
-  final Motion? motion;
+  /// Overrides the theme's motion tokens.
+  final CoilMotion? motion;
 
-  /// The leaving content's spring. Defaults to the theme's `quickExit`.
-  final Motion? exitMotion;
+  /// Per-track motions, keyed by [CoilCopyTrack]s; this widget reads
+  /// [CoilCopyTrack.swap]. They win over the tokens; reduced motion still
+  /// makes them instant.
+  final Map<CoilCopyTrack<Object>, Motion>? motions;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = CoilTheme.motionOf(context);
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    Motion swap(Motion token) => CoilTheme.trackMotionOf(
+      context,
+      CoilCopyTrack.swap,
+      instance: motions,
+      styled: null,
+      token: token,
+    );
     return MotionSwitcher(
-      motion: motion ?? tokens.quick,
-      exitMotion: exitMotion ?? tokens.quickExit,
+      motion: swap(tokens.quick),
+      exitMotion: swap(tokens.quickExit),
       transitionBuilder: CoilBlurFade.transition(scale: 0.8),
       debugLabel: 'CoilCopySwitcher',
       child: KeyedSubtree(
@@ -157,53 +186,76 @@ class CoilCopySwitcher extends StatelessWidget {
 class CoilCopyGlyph extends StatelessWidget {
   /// Creates the glyph for [status].
   const CoilCopyGlyph({
-    required this.status,
+    required CoilCopyStatus this.status,
     super.key,
     this.icon,
-    this.drawMotion,
-  });
-
-  /// The status to show.
-  final CoilCopyStatus status;
-
-  /// The copy icon at rest. Null draws [CoilGlyph.copy].
-  final Widget? icon;
-
-  /// How the check or × draws in. Defaults to the theme's `fade`.
-  final Motion? drawMotion;
+    this.motion,
+    this.motions,
+  }) : controller = null;
 
   /// A copy icon that follows [controller], cross-fading between its
   /// statuses with a [CoilCopySwitcher]: for an icon button that copies,
   /// such as a chat message's Copy action.
-  static Widget listening({
-    required CoilCopyController controller,
-    Key? key,
-    Widget? icon,
-    Motion? motion,
-    Motion? exitMotion,
-    Motion? drawMotion,
-  }) => ValueListenableBuilder<CoilCopyStatus>(
-    key: key,
-    valueListenable: controller,
-    builder: (context, status, _) => CoilCopySwitcher(
-      status: status,
-      motion: motion,
-      exitMotion: exitMotion,
-      builder: (context, status) =>
-          CoilCopyGlyph(status: status, icon: icon, drawMotion: drawMotion),
-    ),
-  );
+  const CoilCopyGlyph.listening({
+    required CoilCopyController this.controller,
+    super.key,
+    this.icon,
+    this.motion,
+    this.motions,
+  }) : status = null;
+
+  /// The status to show; null when it follows [controller].
+  final CoilCopyStatus? status;
+
+  /// The controller whose status it follows, for
+  /// [CoilCopyGlyph.listening].
+  final CoilCopyController? controller;
+
+  /// The copy icon at rest. Null draws [CoilGlyph.copy].
+  final Widget? icon;
+
+  /// Overrides the theme's motion tokens.
+  final CoilMotion? motion;
+
+  /// Per-track motions, keyed by [CoilCopyTrack]s: [CoilCopyTrack.draw]
+  /// for the check or ×, and [CoilCopyTrack.swap] for
+  /// [CoilCopyGlyph.listening]'s cross-fade.
+  final Map<CoilCopyTrack<Object>, Motion>? motions;
 
   @override
   Widget build(BuildContext context) {
+    if (controller case final controller?) {
+      return ValueListenableBuilder<CoilCopyStatus>(
+        valueListenable: controller,
+        builder: (context, status, _) => CoilCopySwitcher(
+          status: status,
+          motion: motion,
+          motions: motions,
+          builder: (context, status) => CoilCopyGlyph(
+            status: status,
+            icon: icon,
+            motion: motion,
+            motions: motions,
+          ),
+        ),
+      );
+    }
     Widget drawn(CoilGlyph glyph) => SingleMotionBuilder(
       value: 1,
       from: 0,
-      motion: drawMotion ?? CoilTheme.motionOf(context).fade,
+      motion: CoilTheme.trackMotionOf(
+        context,
+        CoilCopyTrack.draw,
+        instance: motions,
+        styled: null,
+        token: CoilTheme.motionOf(context, override: motion).fade,
+        // The check draws in on `fade`, which survives reduced motion.
+        spatial: false,
+      ),
       builder: (context, progress, _) =>
           CoilDrawnGlyph(glyph, progress: progress),
     );
-    return switch (status) {
+    return switch (status!) {
       CoilCopyStatus.idle => icon ?? const CoilDrawnGlyph(CoilGlyph.copy),
       CoilCopyStatus.copied => drawn(CoilGlyph.check),
       CoilCopyStatus.failed => drawn(CoilGlyph.cross),

@@ -1,7 +1,6 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
-
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/input_copy/input_copy_style.dart';
@@ -277,6 +276,10 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
       token: token,
       spatial: spatial,
     );
+    // The swap and draw run in the shared copy widgets, which resolve
+    // reduced motion and the tokens; they get only what was set here.
+    Motion? customOf(CoilInputCopyTrack<Object> track) =>
+        widget.motions?[track] ?? style.motions?[track];
     final radius = BorderRadius.circular(style.radius!);
     final inField = CoilFieldScope.maybeOf(context) != null;
     final onCopy = widget.enabled ? _onCopy : null;
@@ -358,15 +361,15 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
                         style: style,
                         color: value(CoilInputCopyTrack.action),
                         weight: value(CoilInputCopyTrack.weight),
-                        swapIn: motionFor(
-                          CoilInputCopyTrack.swap,
-                          motion.quick,
-                        ),
-                        swapOut: motionFor(
-                          CoilInputCopyTrack.swap,
-                          motion.quickExit,
-                        ),
-                        draw: fade(CoilInputCopyTrack.draw),
+                        motion: widget.motion,
+                        motions: {
+                          CoilCopyTrack.swap: ?customOf(
+                            CoilInputCopyTrack.swap,
+                          ),
+                          CoilCopyTrack.draw: ?customOf(
+                            CoilInputCopyTrack.draw,
+                          ),
+                        },
                       ),
                     ),
                   ),
@@ -471,9 +474,8 @@ class _Action extends StatelessWidget {
     required this.style,
     required this.color,
     required this.weight,
-    required this.swapIn,
-    required this.swapOut,
-    required this.draw,
+    required this.motion,
+    required this.motions,
   });
 
   final CoilCopyStatus status;
@@ -483,9 +485,8 @@ class _Action extends StatelessWidget {
   final CoilInputCopyStyle style;
   final Color color;
   final double weight;
-  final Motion swapIn;
-  final Motion swapOut;
-  final Motion draw;
+  final CoilMotion? motion;
+  final Map<CoilCopyTrack<Object>, Motion> motions;
 
   Widget _text(CoilCopyStatus status) => switch (status) {
     CoilCopyStatus.idle => labels.copy,
@@ -496,7 +497,12 @@ class _Action extends StatelessWidget {
   Widget _content(CoilCopyStatus status, {bool ghost = false}) {
     final glyph = ghost
         ? SizedBox.square(dimension: style.iconSize)
-        : CoilCopyGlyph(status: status, icon: icon, drawMotion: draw);
+        : CoilCopyGlyph(
+            status: status,
+            icon: icon,
+            motion: motion,
+            motions: motions,
+          );
     if (variant == CoilInputCopyVariant.icon) return glyph;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -518,8 +524,8 @@ class _Action extends StatelessWidget {
     // and one while it leaves turns it around.
     final swap = CoilCopySwitcher(
       status: status,
-      motion: swapIn,
-      exitMotion: swapOut,
+      motion: motion,
+      motions: motions,
       builder: (context, status) => _content(status),
     );
     return ExcludeSemantics(

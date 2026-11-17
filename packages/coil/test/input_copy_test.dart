@@ -454,6 +454,44 @@ void main() {
     });
   });
 
+  testWidgets('reduced motion makes copy swap overrides instant', (
+    tester,
+  ) async {
+    final controller = CoilCopyController();
+    addTearDown(controller.dispose);
+    const slow = CupertinoMotion(duration: Duration(seconds: 3));
+    await tester.pumpWidget(
+      _app(
+        CoilCopyGlyph.listening(
+          controller: controller,
+          motions: {CoilCopyTrack.swap: slow, CoilCopyTrack.draw: slow},
+        ),
+        reduceMotion: true,
+      ),
+    );
+    controller.show(CoilCopyStatus.copied);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 16));
+    final copy = find.byWidgetPredicate(
+      (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.copy,
+    );
+    expect(copy, findsNothing, reason: 'swapped at once');
+    // Drawing the check is a fade, which reduced motion keeps.
+    expect(
+      tester
+          .widget<CoilDrawnGlyph>(
+            find.byWidgetPredicate(
+              (w) => w is CoilDrawnGlyph && w.glyph == CoilGlyph.check,
+            ),
+          )
+          .progress,
+      lessThan(0.9),
+    );
+    await tester.pump(CoilCopyController.defaultResetDelay);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('input copy sheet', (tester) async {
     Widget rows(BuildContext context) => const SizedBox(
       width: 300,
