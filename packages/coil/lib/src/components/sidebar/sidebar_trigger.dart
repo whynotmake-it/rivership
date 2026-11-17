@@ -7,7 +7,9 @@ import 'package:coil/tooltip.dart';
 import 'package:flutter/widgets.dart';
 
 /// The ghost icon button that opens and closes the nearest
-/// `CoilSidebarScaffold`'s sidebar, or its drawer on a phone.
+/// `CoilSidebarScaffold`'s sidebar, or its drawer on a phone. With [side],
+/// the nearest scaffold whose sidebar sits on that side, so a page between
+/// two nested scaffolds can have a trigger for each.
 ///
 /// Its tooltip names what a press does and the key that does the same.
 /// When the scaffold peeks on hover, resting the pointer on a folded
@@ -22,6 +24,7 @@ class CoilSidebarTrigger extends StatefulWidget {
     this.openSemanticLabel,
     this.closeSemanticLabel,
     this.size,
+    this.side,
   });
 
   /// The icon, such as a panel glyph facing the sidebar's side.
@@ -41,6 +44,10 @@ class CoilSidebarTrigger extends StatefulWidget {
 
   /// Pins the button to one size step.
   final CoilSize? size;
+
+  /// The side of the scaffold this trigger drives. Null drives the
+  /// nearest scaffold.
+  final CoilSidebarSide? side;
 
   @override
   State<CoilSidebarTrigger> createState() => _CoilSidebarTriggerState();
@@ -74,9 +81,9 @@ class _CoilSidebarTriggerState extends State<CoilSidebarTrigger> {
 
   @override
   Widget build(BuildContext context) {
-    final scope = _scope = CoilSidebarScope.maybeOf(context);
+    final scope = _scope = CoilSidebarScope.maybeOf(context, side: widget.side);
     assert(scope != null, 'CoilSidebarTrigger needs a CoilSidebarScaffold.');
-    final open = scope!.drawer || scope.controller.open;
+    final open = scope!.drawer || scope.shown;
     final label = open ? widget.closeLabel : widget.openLabel;
     final semanticLabel =
         (open ? widget.closeSemanticLabel : widget.openSemanticLabel) ??
