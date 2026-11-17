@@ -79,13 +79,12 @@ class CoilThemeData with Diagnosticable {
   /// and disabled controls the cursor beneath them.
   final MouseCursor controlCursor;
 
-  /// How lit interactive controls and containers look: [CoilPlasticity.flat]
-  /// (the default) paints no lighting; [CoilPlasticity.subtle],
-  /// [CoilPlasticity.soft] and [CoilPlasticity.tactile] add a gradient edge,
-  /// a top highlight, a sheen and a drop shadow that respond to hover and
-  /// press. Components read it through their style's `plasticity`, so one
-  /// component type can differ with [withComponentStyle], and resolve it
-  /// with [CoilTheme.reliefOf].
+  /// How lit interactive controls look: [CoilPlasticity.flat] (the default)
+  /// paints no lighting; a higher `amount` ([CoilPlasticity.subtle] is 0.5,
+  /// 1 the most) adds a gradient edge, a top highlight, a sheen and a drop
+  /// shadow that respond to hover and press. Components read it through
+  /// their style's `plasticity`, so one component type can differ with
+  /// [withComponentStyle], and resolve it with [CoilTheme.reliefOf].
   final CoilPlasticity plasticity;
 
   /// Per-component-type style overrides, keyed by style type:
@@ -324,9 +323,7 @@ class CoilTheme extends StatelessWidget {
   /// [hover], [press] and [enabled].
   ///
   /// Controls read the plasticity [of] returns, which is flat on an
-  /// elevated surface. A [CoilReliefRole.floating] shape is that surface:
-  /// it reads the theme's plasticity as set, so a popover or dialog has the
-  /// same edge wherever it was opened.
+  /// elevated surface.
   static CoilRelief? reliefOf(
     BuildContext context,
     CoilReliefRole role, {
@@ -336,12 +333,7 @@ class CoilTheme extends StatelessWidget {
     bool enabled = true,
   }) {
     final theme = of(context);
-    final plasticity =
-        override ??
-        (role == CoilReliefRole.floating
-            ? plasticityOf(context)
-            : theme.plasticity);
-    return plasticity.resolve(
+    return (override ?? theme.plasticity).resolve(
       role,
       theme.brightness,
       hover: hover,
@@ -352,8 +344,7 @@ class CoilTheme extends StatelessWidget {
 
   /// The theme's plasticity at [context] as set, before an elevated
   /// [CoilPlasticityScope] flattens it. Controls read [of]'s instead; a
-  /// surface reads this one for its own edge and for
-  /// [CoilPlasticity.flattenAbove].
+  /// surface reads this one for [CoilPlasticity.flattenAbove].
   static CoilPlasticity plasticityOf(BuildContext context) =>
       _raw(context).plasticity;
 

@@ -3,23 +3,25 @@
 Milestone M0, unreleased.
 
 - Controls can be lit. `CoilThemeData.plasticity` takes a
-  `CoilPlasticity`: `.flat` (the default, which paints nothing),
-  `.subtle`, `.soft`, `.tactile` or your own intensities, with `scale(t)`,
-  per-role multipliers in `roles` and the hover and press depth in
-  `response`. It resolves per `CoilReliefRole` and brightness into a
-  `CoilRelief` (gradient edge, rims, sheen, outside-only shadows), looked
-  up with `CoilTheme.reliefOf(context, role)` and painted on a
-  superellipse by `CoilRelief.decorate` (a `CoilReliefBorder`, which tweens
-  with plain superellipses). The button, checkbox, radio, switch, slider,
-  select, input and card styles take a `plasticity` that wins over the
-  theme's. Controls on a surface above the page stay flat: `CoilSurface`
-  places a `CoilPlasticityScope(elevated:)` above
-  `CoilPlasticity.flattenAbove` (1, the page, by default; raise it to
-  light controls on cards or popovers too), and
-  `CoilPlasticityScope(elevated: false)` lights a subtree again.
-  `CoilTheme.plasticityOf` reads the plasticity before that flattening. A
-  surface's own edge reads the theme's plasticity, so a popover looks the
-  same wherever it opens.
+  `CoilPlasticity(amount:)` from 0 to 1: `.flat` (0, the default, which
+  paints nothing), `.subtle` (0.5) and 1 for slightly brighter highlights
+  and sheen, interpolated in between. It resolves per `CoilReliefRole` and
+  brightness into a `CoilRelief` (gradient edge, rims, sheen, outside-only
+  shadows), looked up with `CoilTheme.reliefOf(context, role)` and painted
+  on a superellipse by `CoilRelief.decorate` (a `CoilReliefBorder`, which
+  tweens with plain superellipses). Primary, secondary and destructive
+  buttons are lit evenly. The button, checkbox, radio, switch, slider,
+  select and input styles take a `plasticity` that wins over the theme's.
+  Controls on a surface above the page stay flat: `CoilSurface` places a
+  `CoilPlasticityScope(elevated:)` above `CoilPlasticity.flattenAbove` (1,
+  the page, by default; raise it to light controls on cards or popovers
+  too), and `CoilPlasticityScope(elevated: false)` lights a subtree again.
+  `CoilTheme.plasticityOf` reads the plasticity before that flattening.
+  Cards, popovers and dialogs are never lit. Breaking for earlier dev
+  builds: `CoilPlasticity.soft`, `.tactile`, `scale`, the per-ingredient
+  intensities (`edge`, `highlight`, `sheen`, ...), `roles`, `response`,
+  `CoilReliefRole.floating` and `CoilCardStyle.plasticity` are gone; use
+  `CoilPlasticity(amount:)`.
 - `CoilCalendar` pages by swipe on touch: the month follows the finger, a
   swipe past half a page or a fling turns one month and anything less
   springs back, on `standard`. A trackpad swipe pages too; a mouse drag

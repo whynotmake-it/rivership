@@ -34,7 +34,6 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     this.descriptionStyle,
     this.contentStyle,
     this.motions,
-    this.plasticity,
   });
 
   /// The defaults from the theme's tokens. The fill and shadow are left
@@ -44,7 +43,6 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     final light = c.brightness == Brightness.light;
     final text = theme.typography.resolve(metrics.tier, metrics.size);
     return CoilCardStyle(
-      plasticity: theme.plasticity,
       border: light ? BorderSide.none : BorderSide(color: c.border),
       radius: theme.shape.radii(metrics.tier).container,
       padding: metrics.size == CoilSize.compact ? 12 : 16,
@@ -140,16 +138,10 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
   /// motion tokens. [merge] combines the maps key by key.
   final Map<CoilCardTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
-  final CoilPlasticity? plasticity;
-
   @override
   CoilCardStyle merge(CoilCardStyle? other) => other == null
       ? this
       : CoilCardStyle(
-          plasticity: other.plasticity ?? plasticity,
           surface: other.surface ?? surface,
           border: other.border ?? border,
           shadows: other.shadows ?? shadows,
@@ -201,6 +193,5 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     descriptionStyle,
     contentStyle,
     motions,
-    plasticity,
   ];
 }

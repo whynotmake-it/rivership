@@ -66,19 +66,6 @@ enum CatalogBrand {
   final Color color;
 }
 
-/// How lit raised and recessed controls look: coil's plasticity presets.
-enum CatalogPlasticity {
-  flat('Flat', CoilPlasticity.flat),
-  subtle('Subtle', CoilPlasticity.subtle),
-  soft('Soft', CoilPlasticity.soft),
-  tactile('Tactile', CoilPlasticity.tactile);
-
-  const CatalogPlasticity(this.label, this.plasticity);
-
-  final String label;
-  final CoilPlasticity plasticity;
-}
-
 /// The corner shape family: one of coil's three, or a custom item radius.
 enum CatalogShape {
   rounded('Rounded'),
@@ -290,10 +277,11 @@ class CatalogSettings extends ChangeNotifier {
   CatalogShape _shape = CatalogShape.rounded;
   set shape(CatalogShape value) => _set(() => _shape = value);
 
-  /// The lighting on raised and recessed controls.
-  CatalogPlasticity get plasticity => _plasticity;
-  CatalogPlasticity _plasticity = CatalogPlasticity.flat;
-  set plasticity(CatalogPlasticity value) => _set(() => _plasticity = value);
+  /// How lit the controls you press are: `CoilPlasticity.amount`, 0 (off)
+  /// to 1.
+  double get plasticity => _plasticity;
+  double _plasticity = 0;
+  set plasticity(double value) => _set(() => _plasticity = value);
 
   /// The pointer-tier item radius while [shape] is [CatalogShape.custom].
   double get customRadius => _customRadius;
@@ -339,7 +327,7 @@ class CatalogSettings extends ChangeNotifier {
       ),
       typography: typography(platform ?? defaultTargetPlatform),
       shape: _coilShape,
-      plasticity: plasticity.plasticity,
+      plasticity: CoilPlasticity(amount: plasticity),
       metrics: spacing.metrics,
       motion: motion.motion,
       focusRing: CoilFocusRingTheme(width: boldFocusRing ? 2 : 1),

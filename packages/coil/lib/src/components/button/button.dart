@@ -373,10 +373,8 @@ class _CoilButtonState extends State<CoilButton> {
   }
 
   /// The lighting under a plastic theme, or null when flat or disabled.
-  /// The primary button is a strong fill; tertiary and ghost are quiet;
-  /// the rest are raised. A ghost
-  /// button only has a surface while hovered or pressed, so its lighting
-  /// fades in with it.
+  /// The primary button is a strong fill; tertiary and ghost are quiet
+  /// (never lit); the rest are raised.
   CoilRelief? _relief(
     CoilThemeData theme,
     CoilButtonStyle style, {
@@ -384,7 +382,7 @@ class _CoilButtonState extends State<CoilButton> {
     required double hover,
     required double press,
   }) {
-    final relief = CoilTheme.reliefOf(
+    return CoilTheme.reliefOf(
       context,
       switch (widget.variant) {
         CoilButtonVariant.primary => CoilReliefRole.filled,
@@ -397,10 +395,6 @@ class _CoilButtonState extends State<CoilButton> {
       press: press,
       enabled: !disabled,
     );
-    if (relief == null || widget.variant != CoilButtonVariant.ghost) {
-      return relief;
-    }
-    return relief.fade((hover + press).clamp(0.0, 1.0));
   }
 
   /// The swap between idle content and the spinner: the blur-fade on

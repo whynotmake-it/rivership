@@ -28,19 +28,12 @@ ShapeDecoration cardSurface(BuildContext context, CoilCardStyle style) {
   final colors = theme.colors;
   final level = CoilSurface.levelOf(context) + cardOffset(colors);
   final light = colors.brightness == Brightness.light;
-  return CoilRelief.decorate(
-    ShapeDecoration(
-      color: style.surface ?? colors.surface(level),
-      shadows: style.shadows ?? (light ? colors.shadow(level) : const []),
-      shape: RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular(style.radius!),
-        side: style.border!,
-      ),
-    ),
-    CoilTheme.reliefOf(
-      context,
-      CoilReliefRole.floating,
-      override: style.plasticity,
+  return ShapeDecoration(
+    color: style.surface ?? colors.surface(level),
+    shadows: style.shadows ?? (light ? colors.shadow(level) : const []),
+    shape: RoundedSuperellipseBorder(
+      borderRadius: BorderRadius.circular(style.radius!),
+      side: style.border!,
     ),
   );
 }
