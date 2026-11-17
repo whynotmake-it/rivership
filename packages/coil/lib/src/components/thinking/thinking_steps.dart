@@ -96,6 +96,13 @@ final class CoilThinkingStepsTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilThinkingSteps.stepOpacity',
   );
 
+  /// A step's connector showing or hiding as the step stops or starts
+  /// being the last one, 0 to 1. Default motion: `fade`.
+  static final connector = CoilThinkingStepsTrack<double>._(
+    .single,
+    debugLabel: 'CoilThinkingSteps.connector',
+  );
+
   /// A new source badge popping in, 0 to 1. Default motion: `standard`,
   /// or `fade` under reduced motion.
   static final sourcePop = CoilThinkingStepsTrack<double>._(
@@ -214,6 +221,11 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
         reduced ? motion.fade : motion.standard,
         spatial: false,
       ),
+      connector: motionFor(
+        CoilThinkingStepsTrack.connector,
+        motion.fade,
+        spatial: false,
+      ),
     );
 
     return MotorInspectionScope(
@@ -295,6 +307,7 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
                         key: ValueKey(i),
                         step: step,
                         enter: i >= _firstNew,
+                        last: i == widget.steps.length - 1,
                         metrics: metrics,
                         motions: stepMotions,
                         style: style,

@@ -23,6 +23,9 @@ class CoilThinkingStepsStyle
     this.titleStyle,
     this.detailStyle,
     this.glyphColor,
+    this.connectorColor,
+    this.connectorWidth,
+    this.connectorGap,
     this.sourceFill,
     this.sourceBorder,
     this.sourceTextStyle,
@@ -70,9 +73,17 @@ class CoilThinkingStepsStyle
       }),
       expandedLabel: WidgetStatePropertyAll(c.foreground),
       textStyle: text.body,
-      titleStyle: text.body.copyWith(color: c.foreground),
-      detailStyle: text.caption.copyWith(color: c.mutedForeground),
+      titleStyle: text.body.copyWith(
+        color: c.foreground,
+        fontWeight: text.emphasis,
+      ),
+      detailStyle: text.body.copyWith(color: c.mutedForeground),
       glyphColor: c.mutedForeground,
+      // A hairline at 60 % of `border`, so the rail reads as structure,
+      // not as a rule between steps.
+      connectorColor: c.border.withValues(alpha: c.border.a * 0.6),
+      connectorWidth: 1,
+      connectorGap: 4,
       // High contrast pushes `accent` toward the text color, so badges
       // switch to a quiet fill with a visible outline there.
       sourceFill: highContrast ? c.muted : c.accent,
@@ -80,10 +91,10 @@ class CoilThinkingStepsStyle
       sourceTextStyle: badge.caption.copyWith(color: c.foreground),
       radius: theme.shape.radii(metrics.tier).item,
       maxWidth: 320,
-      panelPadding: EdgeInsetsDirectional.fromSTEB(padX, 0, padX, 12),
-      stepPadding: const EdgeInsets.symmetric(vertical: 6),
-      detailGap: 2,
-      sectionGap: 6,
+      panelPadding: EdgeInsetsDirectional.fromSTEB(padX, 4, padX, 12),
+      stepPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      detailGap: 4,
+      sectionGap: 8,
       sourceGap: 6,
       sourceMinHeight: 24,
       sourcePadding: const EdgeInsets.symmetric(horizontal: 10),
@@ -108,11 +119,23 @@ class CoilThinkingStepsStyle
   /// A step's title.
   final TextStyle? titleStyle;
 
-  /// A step's detail line.
+  /// A step's detail text.
   final TextStyle? detailStyle;
 
   /// A step's leading glyph or dot.
   final Color? glyphColor;
+
+  /// The connector: the line that runs down from a step's glyph beside
+  /// the rest of the step (its detail, sources and image), joining it to
+  /// the next step. The last step has none, and a one-line step's
+  /// connector is too short to show.
+  final Color? connectorColor;
+
+  /// How thick the connector is.
+  final double? connectorWidth;
+
+  /// The space between a step's glyph and the top of its connector.
+  final double? connectorGap;
 
   /// The fill of a source badge.
   final Color? sourceFill;
@@ -178,6 +201,9 @@ class CoilThinkingStepsStyle
           detailStyle:
               detailStyle?.merge(other.detailStyle) ?? other.detailStyle,
           glyphColor: other.glyphColor ?? glyphColor,
+          connectorColor: other.connectorColor ?? connectorColor,
+          connectorWidth: other.connectorWidth ?? connectorWidth,
+          connectorGap: other.connectorGap ?? connectorGap,
           sourceFill: other.sourceFill ?? sourceFill,
           sourceBorder: other.sourceBorder ?? sourceBorder,
           sourceTextStyle:
@@ -209,6 +235,9 @@ class CoilThinkingStepsStyle
     titleStyle,
     detailStyle,
     glyphColor,
+    connectorColor,
+    connectorWidth,
+    connectorGap,
     sourceFill,
     sourceBorder,
     sourceTextStyle,

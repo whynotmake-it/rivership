@@ -144,7 +144,7 @@ void main() {
     matrixGoldenTest(
       'thinking_steps',
       _stepsStory,
-      surface: const Size(2600, 3000),
+      surface: const Size(2600, 3400),
     );
 
     testWidgets('thinking_steps_states sheet', (tester) async {
@@ -298,6 +298,176 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
       expect(_states(tester), isEmpty);
+    });
+
+    group('connector', () {
+      const ink = Color(0xFFFF00FF);
+      const style = CoilThinkingStepsStyle(connectorColor: ink);
+
+      Finder connectors() => find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == ink,
+      );
+
+      /// The connectors that show, top to bottom.
+      List<Rect> shown(WidgetTester tester) =>
+          [
+              for (final e in connectors().evaluate())
+                tester.getRect(find.byWidget(e.widget)),
+            ].where((r) => r.height > 0).toList()
+            ..sort((a, b) => a.top.compareTo(b.top));
+
+      CoilThinkingStep step(int i, {Widget? detail, String title = 'Step'}) =>
+          CoilThinkingStep(
+            title: Text('$title $i'),
+            leading: SizedBox.square(key: ValueKey('glyph$i'), dimension: 8),
+            detail: detail,
+          );
+
+      Widget steps(
+        List<CoilThinkingStep> steps, {
+        double width = 320,
+        CoilThinkingStepsStyle? style = style,
+      }) => SizedBox(
+        width: width,
+        child: CoilThinkingSteps(
+          label: const Text('Thought for 12s'),
+          steps: steps,
+          expanded: true,
+          onChanged: _ignore,
+          style: style,
+        ),
+      );
+
+      final withDetail = [
+        for (var i = 0; i < 3; i++) step(i, detail: Text('Detail $i')),
+      ];
+
+      testWidgets('runs beside every step but the last', (tester) async {
+        await tester.pumpWidget(_app(steps(withDetail)));
+        final lines = shown(tester);
+        expect(lines, hasLength(2));
+        for (final (i, line) in lines.indexed) {
+          final glyph = tester.getRect(find.byKey(ValueKey('glyph$i')));
+          final detail = tester.getRect(find.text('Detail $i'));
+          final next = tester.getRect(find.byKey(ValueKey('glyph${i + 1}')));
+          expect(line.width, 1);
+          expect(line.center.dx, closeTo(glyph.center.dx, 0.01));
+          // Starts just under the glyph, ends with the step's content,
+          // short of the next glyph.
+          expect(line.top, greaterThan(glyph.bottom));
+          expect(line.bottom, closeTo(detail.bottom, 0.01));
+          expect(line.bottom, lessThan(next.top));
+        }
+      });
+
+      testWidgets('a one-line step has none', (tester) async {
+        await tester.pumpWidget(
+          _app(steps([for (var i = 0; i < 3; i++) step(i)])),
+        );
+        expect(shown(tester), isEmpty);
+      });
+
+      testWidgets('follows long titles, narrow widths and text scale 2', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(800, 3000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final long = [
+          for (var i = 0; i < 2; i++)
+            step(
+              i,
+              title: 'A long step title that wraps onto several lines',
+              detail: const Text('And a detail that wraps as well'),
+            ),
+        ];
+        await tester.pumpWidget(
+          _app(
+            MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+              child: steps(long, width: 160),
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        final [line] = shown(tester);
+        final glyph = tester.getRect(find.byKey(const ValueKey('glyph0')));
+        final title = tester.getRect(find.textContaining('A long step').first);
+        expect(line.center.dx, closeTo(glyph.center.dx, 0.01));
+        expect(line.top, greaterThan(glyph.bottom));
+        expect(line.top, lessThan(title.top + title.height / 4));
+        expect(
+          line.bottom,
+          closeTo(
+            tester
+                .getRect(find.text('And a detail that wraps as well').first)
+                .bottom,
+            0.01,
+          ),
+        );
+      });
+
+      testWidgets('rtl: sits under the glyph on the right', (tester) async {
+        await tester.pumpWidget(
+          _app(steps(withDetail), direction: TextDirection.rtl),
+        );
+        final lines = shown(tester);
+        expect(lines, hasLength(2));
+        final glyph = tester.getRect(find.byKey(const ValueKey('glyph0')));
+        final title = tester.getRect(find.text('Step 0'));
+        expect(glyph.left, greaterThan(title.right));
+        expect(lines.first.center.dx, closeTo(glyph.center.dx, 0.01));
+      });
+
+      testWidgets('the step that stops being last fades its connector in', (
+        tester,
+      ) async {
+        final content = await _pumpLive(
+          tester,
+          steps(withDetail.take(1).toList()),
+        );
+        await tester.pumpAndSettle();
+        expect(shown(tester), isEmpty);
+
+        content.value = steps(withDetail.take(2).toList());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 40));
+        Opacity fading() => tester.widget<Opacity>(
+          find
+              .ancestor(of: connectors().first, matching: find.byType(Opacity))
+              .first,
+        );
+        expect(fading().opacity, inExclusiveRange(0, 1));
+        await tester.pumpAndSettle();
+        expect(shown(tester), hasLength(1));
+      });
+
+      testWidgets('style: width and gap', (tester) async {
+        await tester.pumpWidget(
+          _app(
+            steps(
+              withDetail,
+              style: style.merge(
+                const CoilThinkingStepsStyle(
+                  connectorWidth: 2,
+                  connectorGap: 6,
+                ),
+              ),
+            ),
+          ),
+        );
+        final line = shown(tester).first;
+        final glyphBox = tester.getRect(
+          find
+              .ancestor(
+                of: find.byKey(const ValueKey('glyph0')),
+                matching: find.byType(SizedBox),
+              )
+              .first,
+        );
+        expect(line.width, 2);
+        expect(line.top - glyphBox.bottom, closeTo(6, 0.01));
+      });
     });
 
     inkCenteringTests({
