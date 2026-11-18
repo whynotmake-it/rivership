@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show WidgetState, WidgetStateProperty;
 
 /// The base of every component's style class (`CoilButtonStyle`, …).
 ///
@@ -22,7 +23,29 @@ abstract class CoilComponentStyle<S extends CoilComponentStyle<S>>
   const CoilComponentStyle();
 
   /// This style with [other]'s non-null fields on top.
+  ///
+  /// State-dependent fields merge per state with [mergeStates], so an
+  /// override that only names some states keeps the lower layer's colors
+  /// for the rest.
   S merge(S? other);
+
+  /// [override] on top of [base], state by state: for a set of states,
+  /// [override]'s value when it resolves to non-null, else [base]'s.
+  ///
+  /// `merge` uses it for every [WidgetStateProperty] field, so a partial
+  /// override such as
+  /// `WidgetStateProperty.fromMap({WidgetState.hovered: red})`, which
+  /// resolves to null at rest, keeps the fallback's rest color instead of
+  /// leaving the component without one. The result compares by value, so a
+  /// style rebuilt with equal layers stays equal.
+  static WidgetStateProperty<T?>? mergeStates<T>(
+    WidgetStateProperty<T?>? base,
+    WidgetStateProperty<T?>? override,
+  ) {
+    if (override == null) return base;
+    if (base == null) return override;
+    return _MergedStateProperty<T>(base, override);
+  }
 
   /// The fields, for value equality.
   @protected
@@ -54,4 +77,29 @@ abstract class CoilComponentStyle<S extends CoilComponentStyle<S>>
       else
         prop,
   ]);
+}
+
+/// [over] resolved first, [base] where [over] gives null.
+@immutable
+class _MergedStateProperty<T> implements WidgetStateProperty<T?> {
+  const _MergedStateProperty(this.base, this.over);
+
+  final WidgetStateProperty<T?> base;
+  final WidgetStateProperty<T?> over;
+
+  @override
+  T? resolve(Set<WidgetState> states) =>
+      over.resolve(states) ?? base.resolve(states);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _MergedStateProperty<T> &&
+      other.base == base &&
+      other.over == over;
+
+  @override
+  int get hashCode => Object.hash(base, over);
+
+  @override
+  String toString() => 'CoilComponentStyle.mergeStates($base, $over)';
 }

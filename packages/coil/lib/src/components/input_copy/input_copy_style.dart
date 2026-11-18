@@ -123,12 +123,15 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
           valueStyle: valueStyle?.merge(other.valueStyle) ?? other.valueStyle,
           actionStyle:
               actionStyle?.merge(other.actionStyle) ?? other.actionStyle,
-          actionColor: other.actionColor ?? actionColor,
+          actionColor: CoilComponentStyle.mergeStates(
+            actionColor,
+            other.actionColor,
+          ),
           copiedColor: other.copiedColor ?? copiedColor,
           failedColor: other.failedColor ?? failedColor,
-          mark: other.mark ?? mark,
+          mark: CoilComponentStyle.mergeStates(mark, other.mark),
           markRadius: other.markRadius ?? markRadius,
-          fill: other.fill ?? fill,
+          fill: CoilComponentStyle.mergeStates(fill, other.fill),
           radius: other.radius ?? radius,
           minHeight: other.minHeight ?? minHeight,
           iconSize: other.iconSize ?? iconSize,

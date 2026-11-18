@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- Fix: a style's state colors merge per state
+  (`CoilComponentStyle.mergeStates`). A partial override such as
+  `CoilButtonStyle(fill: WidgetStateProperty.fromMap({WidgetState.hovered: red}))`
+  used to replace the whole fallback and crash at rest; it now keeps the
+  lower layer's color for every state it doesn't name.
 - Sheets have a header and a close button. `CoilSheetPanel` lays out its
   title and a new `CoilSheetCloseButton` on one 44 line whose middle runs
   through the top corner's center (36 down), with the round 36 button on

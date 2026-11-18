@@ -78,7 +78,7 @@ class CoilCheckboxGroupStyle
       : CoilCheckboxGroupStyle(
           selection: other.selection ?? selection,
           highlight: other.highlight ?? highlight,
-          label: other.label ?? label,
+          label: CoilComponentStyle.mergeStates(label, other.label),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
           checkbox: checkbox?.merge(other.checkbox) ?? other.checkbox,

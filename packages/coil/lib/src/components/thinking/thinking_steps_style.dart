@@ -193,9 +193,15 @@ class CoilThinkingStepsStyle
   CoilThinkingStepsStyle merge(CoilThinkingStepsStyle? other) => other == null
       ? this
       : CoilThinkingStepsStyle(
-          triggerFill: other.triggerFill ?? triggerFill,
-          label: other.label ?? label,
-          expandedLabel: other.expandedLabel ?? expandedLabel,
+          triggerFill: CoilComponentStyle.mergeStates(
+            triggerFill,
+            other.triggerFill,
+          ),
+          label: CoilComponentStyle.mergeStates(label, other.label),
+          expandedLabel: CoilComponentStyle.mergeStates(
+            expandedLabel,
+            other.expandedLabel,
+          ),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           titleStyle: titleStyle?.merge(other.titleStyle) ?? other.titleStyle,
           detailStyle:

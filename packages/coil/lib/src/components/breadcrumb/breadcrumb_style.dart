@@ -111,7 +111,7 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   CoilBreadcrumbStyle merge(CoilBreadcrumbStyle? other) => other == null
       ? this
       : CoilBreadcrumbStyle(
-          label: other.label ?? label,
+          label: CoilComponentStyle.mergeStates(label, other.label),
           separatorColor: other.separatorColor ?? separatorColor,
           separatorSize: other.separatorSize ?? separatorSize,
           highlight: other.highlight ?? highlight,

@@ -73,7 +73,7 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
       ? this
       : CoilCheckboxStyle(
           plasticity: other.plasticity ?? plasticity,
-          border: other.border ?? border,
+          border: CoilComponentStyle.mergeStates(border, other.border),
           borderWidth: other.borderWidth ?? borderWidth,
           glyphColor: other.glyphColor ?? glyphColor,
           size: other.size ?? size,

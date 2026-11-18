@@ -109,8 +109,8 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
       ? this
       : CoilInputStyle(
           plasticity: other.plasticity ?? plasticity,
-          fill: other.fill ?? fill,
-          border: other.border ?? border,
+          fill: CoilComponentStyle.mergeStates(fill, other.fill),
+          border: CoilComponentStyle.mergeStates(border, other.border),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           placeholder: other.placeholder ?? placeholder,
           cursorColor: other.cursorColor ?? cursorColor,

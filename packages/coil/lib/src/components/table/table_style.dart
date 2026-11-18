@@ -129,10 +129,16 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
       : CoilTableStyle(
           headerStyle:
               headerStyle?.merge(other.headerStyle) ?? other.headerStyle,
-          headerLabel: other.headerLabel ?? headerLabel,
-          headerFill: other.headerFill ?? headerFill,
+          headerLabel: CoilComponentStyle.mergeStates(
+            headerLabel,
+            other.headerLabel,
+          ),
+          headerFill: CoilComponentStyle.mergeStates(
+            headerFill,
+            other.headerFill,
+          ),
           cellStyle: cellStyle?.merge(other.cellStyle) ?? other.cellStyle,
-          cellLabel: other.cellLabel ?? cellLabel,
+          cellLabel: CoilComponentStyle.mergeStates(cellLabel, other.cellLabel),
           rule: other.rule ?? rule,
           highlight: other.highlight ?? highlight,
           selection: other.selection ?? selection,

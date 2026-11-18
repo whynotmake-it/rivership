@@ -183,7 +183,10 @@ Every component has a `Coil<Name>Style extends CoilComponentStyle<…>` in
 - `factory Coil<Name>Style.fallback(CoilThemeData theme, CoilMetrics
   metrics, …)` computes every field from tokens, so a token change flows
   into any field the app didn't set;
-- `merge(other)`: `other`'s non-null fields win (text styles merge);
+- `merge(other)`: `other`'s non-null fields win (text styles merge;
+  `WidgetStateProperty` fields merge per state with
+  `CoilComponentStyle.mergeStates`, so an override naming only `hovered`
+  keeps the lower layer's rest color);
 - value equality through `props`;
 - state-dependent colors are `WidgetStateProperty<Color?>`, resolved with
   the states the style's doc lists (`hovered`, `pressed`, `selected`,

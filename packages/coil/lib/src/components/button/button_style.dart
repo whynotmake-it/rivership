@@ -137,8 +137,11 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
       ? this
       : CoilButtonStyle(
           plasticity: other.plasticity ?? plasticity,
-          fill: other.fill ?? fill,
-          foreground: other.foreground ?? foreground,
+          fill: CoilComponentStyle.mergeStates(fill, other.fill),
+          foreground: CoilComponentStyle.mergeStates(
+            foreground,
+            other.foreground,
+          ),
           border: other.border ?? border,
           radius: other.radius ?? radius,
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,

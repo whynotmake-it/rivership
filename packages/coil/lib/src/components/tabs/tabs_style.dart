@@ -73,7 +73,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
       : CoilTabsStyle(
           pill: other.pill ?? pill,
           hoverPillOpacity: other.hoverPillOpacity ?? hoverPillOpacity,
-          label: other.label ?? label,
+          label: CoilComponentStyle.mergeStates(label, other.label),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
           minHeight: other.minHeight ?? minHeight,

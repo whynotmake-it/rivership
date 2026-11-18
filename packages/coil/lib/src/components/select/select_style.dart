@@ -100,16 +100,19 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
       ? this
       : CoilSelectStyle(
           plasticity: other.plasticity ?? plasticity,
-          triggerFill: other.triggerFill ?? triggerFill,
+          triggerFill: CoilComponentStyle.mergeStates(
+            triggerFill,
+            other.triggerFill,
+          ),
           triggerBorder: other.triggerBorder ?? triggerBorder,
-          indicator: other.indicator ?? indicator,
+          indicator: CoilComponentStyle.mergeStates(indicator, other.indicator),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           placeholder: other.placeholder ?? placeholder,
           radius: other.radius ?? radius,
           surface: other.surface ?? surface,
           selectedFill: other.selectedFill ?? selectedFill,
           highlight: other.highlight ?? highlight,
-          rowLabel: other.rowLabel ?? rowLabel,
+          rowLabel: CoilComponentStyle.mergeStates(rowLabel, other.rowLabel),
         );
 
   @override

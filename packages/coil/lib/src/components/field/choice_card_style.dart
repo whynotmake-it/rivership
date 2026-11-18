@@ -86,8 +86,8 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
   CoilChoiceCardStyle merge(CoilChoiceCardStyle? other) => other == null
       ? this
       : CoilChoiceCardStyle(
-          fill: other.fill ?? fill,
-          border: other.border ?? border,
+          fill: CoilComponentStyle.mergeStates(fill, other.fill),
+          border: CoilComponentStyle.mergeStates(border, other.border),
           radius: other.radius ?? radius,
           padding: other.padding ?? padding,
           gap: other.gap ?? gap,

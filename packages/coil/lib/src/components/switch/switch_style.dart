@@ -79,9 +79,9 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
       ? this
       : CoilSwitchStyle(
           plasticity: other.plasticity ?? plasticity,
-          track: other.track ?? track,
+          track: CoilComponentStyle.mergeStates(track, other.track),
           thumb: other.thumb ?? thumb,
-          label: other.label ?? label,
+          label: CoilComponentStyle.mergeStates(label, other.label),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
           motions: other.motions == null

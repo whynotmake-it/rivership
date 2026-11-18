@@ -73,7 +73,7 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
       : CoilToggleGroupStyle(
           selection: other.selection ?? selection,
           highlight: other.highlight ?? highlight,
-          label: other.label ?? label,
+          label: CoilComponentStyle.mergeStates(label, other.label),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
           motions: other.motions == null

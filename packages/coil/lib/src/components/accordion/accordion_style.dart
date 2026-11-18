@@ -115,11 +115,17 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
   CoilAccordionStyle merge(CoilAccordionStyle? other) => other == null
       ? this
       : CoilAccordionStyle(
-          triggerFill: other.triggerFill ?? triggerFill,
+          triggerFill: CoilComponentStyle.mergeStates(
+            triggerFill,
+            other.triggerFill,
+          ),
           highlight: other.highlight ?? highlight,
           openTint: other.openTint ?? openTint,
-          label: other.label ?? label,
-          expandedLabel: other.expandedLabel ?? expandedLabel,
+          label: CoilComponentStyle.mergeStates(label, other.label),
+          expandedLabel: CoilComponentStyle.mergeStates(
+            expandedLabel,
+            other.expandedLabel,
+          ),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           panelTextStyle:
               panelTextStyle?.merge(other.panelTextStyle) ??

@@ -130,7 +130,10 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
           actionSize: other.actionSize ?? actionSize,
           actionGap: other.actionGap ?? actionGap,
           labelStyle: labelStyle?.merge(other.labelStyle) ?? other.labelStyle,
-          labelColor: other.labelColor ?? labelColor,
+          labelColor: CoilComponentStyle.mergeStates(
+            labelColor,
+            other.labelColor,
+          ),
           drawerCornerRadius: other.drawerCornerRadius ?? drawerCornerRadius,
           drawerFallbackCornerRadius:
               other.drawerFallbackCornerRadius ?? drawerFallbackCornerRadius,

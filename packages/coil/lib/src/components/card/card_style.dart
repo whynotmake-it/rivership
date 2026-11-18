@@ -147,7 +147,7 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
           shadows: other.shadows ?? shadows,
           radius: other.radius ?? radius,
           padding: other.padding ?? padding,
-          overlay: other.overlay ?? overlay,
+          overlay: CoilComponentStyle.mergeStates(overlay, other.overlay),
           highlight: other.highlight ?? highlight,
           divider: other.divider ?? divider,
           spacing: other.spacing ?? spacing,
