@@ -115,6 +115,16 @@ class BorderRadiusMotionConverter extends MotionConverter<BorderRadius>
 /// The rotation is renormalized when the value is read, so a spring that
 /// overshoots still yields a pure rotation. Like `Matrix4Tween`, perspective
 /// and skew are not preserved.
+///
+/// A rotation is taken as at most half a turn either way, and the animation
+/// takes the path between the two that doesn't pass half a turn: from -100°
+/// to -130° it turns 30°, but from 170° to 190° (which is -170°) it turns
+/// back through 0°. For rotations that keep going, such as a spin past a
+/// half turn, animate the angle itself with `MotionRotation`.
+///
+/// `Matrix4Tween` interpolates the quaternions `Matrix4.decompose` returns,
+/// whose sign flips at about 240°, so it turns the long way from -100° to
+/// -130°.
 class Matrix4MotionConverter extends MotionConverter<Matrix4>
     with _EqualByType<Matrix4> {
   /// Creates a [Matrix4MotionConverter].
@@ -126,6 +136,12 @@ class Matrix4MotionConverter extends MotionConverter<Matrix4>
     final rotation = Quaternion.identity();
     final scale = Vector3.zero();
     value.decompose(translation, rotation, scale);
+    // q and -q are the same rotation. Pick the one with w >= 0, the one at
+    // most half a turn from the identity, so that two rotations interpolate
+    // the short way unless that passes half a turn; decompose's own sign
+    // flips at an arbitrary angle. At exactly half a turn (w == 0) pick a
+    // fixed sign too, so 180° and -180° are the same value.
+    if (_inLowerHemisphere(rotation)) rotation.negate();
     return [
       translation.x,
       translation.y,
@@ -138,6 +154,16 @@ class Matrix4MotionConverter extends MotionConverter<Matrix4>
       scale.y,
       scale.z,
     ];
+  }
+
+  /// Whether -[q] is the canonical one: w < 0, or, at half a turn (w is 0
+  /// up to rounding: `cos(pi / 2)` isn't), the first nonzero of z, y, x < 0.
+  static bool _inLowerHemisphere(Quaternion q) {
+    if (q.w.abs() > 1e-12) return q.w < 0;
+    for (final component in [q.z, q.y, q.x]) {
+      if (component.abs() > 1e-12) return component < 0;
+    }
+    return false;
   }
 
   @override

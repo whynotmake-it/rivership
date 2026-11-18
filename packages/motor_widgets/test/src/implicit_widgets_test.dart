@@ -447,6 +447,42 @@ void main() {
       expect(tester.getTopLeft(find.byWidget(_box)), const Offset(90, 80));
     });
 
+    testWidgets('a rotation turns the short way, even past where '
+        'Matrix4.decompose flips its quaternion', (tester) async {
+      // decompose's quaternion changes sign between -120° and -121°, so
+      // interpolating its components turns the long way, through 0°.
+      double degrees(double angle) => angle * 180 / math.pi;
+      Widget build(double degrees) => _wrap(
+        MotionContainer(
+          transform: Matrix4.rotationZ(degrees * math.pi / 180),
+          motion: spring,
+          child: _box,
+        ),
+      );
+      double angle() {
+        final transform = tester.widget<Transform>(
+          find.descendant(
+            of: find.byType(MotionContainer),
+            matching: find.byType(Transform),
+          ),
+        );
+        final m = transform.transform;
+        return degrees(math.atan2(m.entry(1, 0), m.entry(0, 0)));
+      }
+
+      await tester.pumpWidget(build(-100));
+      await tester.pumpWidget(build(-140));
+      final angles = <double>[];
+      for (var i = 0; i < 60 && tester.hasRunningAnimations; i++) {
+        await tester.pump(frame);
+        angles.add(angle());
+      }
+      for (final a in angles) {
+        expect(a, inInclusiveRange(-142, -99), reason: '$angles');
+      }
+      expect(angles.last, moreOrLessEquals(-140, epsilon: 0.01));
+    });
+
     testWidgets('a property that appears starts at its value', (tester) async {
       await tester.pumpWidget(_wrap(MotionContainer(motion: spring)));
       await tester.pumpWidget(
