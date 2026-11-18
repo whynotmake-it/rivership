@@ -288,6 +288,63 @@ cards, full-bleed layouts, or anything else.
 
 ---
 
+### Merging sheets (nested navigation)
+
+> [Full example](./example/lib/recipes/nested_navigation_recipe.dart)
+
+By default, a sheet pushed from inside another sheet stacks on top of it. With
+nested navigation, it instead **merges** into the existing sheet. The content
+fades out and back in, and the sheet resizes to the new content using the
+pushed sheet's own `motion`. Popping it reverses the transition.
+
+For the Cupertino and glass sheets, which draw their own chrome, opt in on the
+first sheet:
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleGlassSheetRoute(
+    nestedNavigation: true,
+    child: FirstPage(),
+  ),
+);
+
+// Inside FirstPage: this replaces the content of the same sheet
+Navigator.of(context).push(
+  StupidSimpleGlassSheetRoute(child: SecondPage()),
+);
+```
+
+When the chrome is part of your content, as with `StupidSimpleSheetRoute`,
+place a `SheetNavigator` inside the chrome instead, so only what is inside
+the chrome changes:
+
+```dart
+StupidSimpleSheetRoute(
+  child: SheetBackground(
+    child: SheetNavigator(child: FirstPage()),
+  ),
+);
+```
+
+`SheetBackground` draws nothing inside a merged sheet. That means you can
+write every page as a complete sheet (`SheetBackground(child: SecondPage())`),
+and it works whether it merges or ends up stacked.
+
+How it behaves:
+
+- **Opt-in on both sides.** Only sheets with nested navigation accept merges.
+  A pushed sheet can refuse with `mergeable: false` and will stack as usual.
+  Custom routes can override `canMergeInto(host)` for finer control.
+- **Nothing else changes.** Pages, dialogs, named routes and sheets that
+  don't merge are still pushed onto the outer navigator.
+  `Navigator.pop(context)` on the first page still closes the sheet.
+- **Dismissal.** Dragging the sheet closed or tapping the barrier closes the
+  whole sheet. The system back gesture pops the topmost merged sheet first.
+  A `PopScope` in any merged sheet still blocks dismissal.
+- **Merged sheets adopt the host.** They use the host's chrome, position,
+  snapping and drag behavior. `StupidSimpleSheetController` calls from
+  inside a merged sheet control the host.
+
 ### Unstyled sheet (`StupidSimpleSheetRoute`)
 
 `StupidSimpleSheetRoute` is the bare-bones base. It provides no background,

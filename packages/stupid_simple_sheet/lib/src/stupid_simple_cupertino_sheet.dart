@@ -29,6 +29,8 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
+    this.nestedNavigation = false,
+    this.mergeable = true,
   });
 
   /// The default iOS 18 shape for sheet controllers.
@@ -55,6 +57,16 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   /// The widget to display in the sheet.
   final Widget child;
 
+  /// {@macro nestedNavigation}
+  @override
+  final bool nestedNavigation;
+
+  /// {@macro mergeable}
+  ///
+  /// Defaults to true.
+  @override
+  final bool mergeable;
+
   /// The shape of the sheet.
   ///
   /// Defaults to [iOS18Shape].
@@ -73,7 +85,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   bool get maintainState => true;
 
   @override
-  bool get opaque => false;
+  bool get opaque => isMerged;
 
   @override
   final bool callNavigatorUserGestureMethods;
@@ -136,6 +148,14 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    if (isMerged) {
+      return buildMergedTransitions(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      );
+    }
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(

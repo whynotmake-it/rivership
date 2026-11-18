@@ -40,6 +40,8 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
+    this.nestedNavigation = false,
+    this.mergeable = true,
     this.blurBehindBarrier = true,
 
     /// The color applied to the route behind the first glass sheet.
@@ -77,6 +79,16 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   /// The widget to display in the sheet.
   final Widget child;
 
+  /// {@macro nestedNavigation}
+  @override
+  final bool nestedNavigation;
+
+  /// {@macro mergeable}
+  ///
+  /// Defaults to true.
+  @override
+  final bool mergeable;
+
   /// The shape of the sheet.
   ///
   /// Defaults to [glassShape].
@@ -102,7 +114,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   bool get maintainState => true;
 
   @override
-  bool get opaque => false;
+  bool get opaque => isMerged;
 
   @override
   final bool callNavigatorUserGestureMethods;
@@ -144,6 +156,7 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
 
   @override
   Widget buildModalBarrier() {
+    if (isMerged) return super.buildModalBarrier();
     return Stack(
       children: [
         super.buildModalBarrier(),
@@ -182,6 +195,14 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    if (isMerged) {
+      return buildMergedTransitions(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      );
+    }
     return CupertinoUserInterfaceLevel(
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(

@@ -1,9 +1,12 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/dismissal_mode.dart';
 import 'package:stupid_simple_sheet/src/route_snapshot_mode.dart';
+import 'package:stupid_simple_sheet/src/sheet_background.dart';
 import 'package:stupid_simple_sheet/src/sheet_constants.dart';
 import 'package:stupid_simple_sheet/src/sheet_dismissal_transition.dart';
 import 'package:stupid_simple_sheet/src/snapping_point.dart';
@@ -20,6 +23,8 @@ export 'src/shrink_transition.dart';
 export 'src/snapping_point.dart';
 export 'src/stupid_simple_cupertino_sheet.dart';
 export 'src/stupid_simple_glass_sheet.dart';
+
+part 'src/sheet_navigator.dart';
 
 /// Controls whether scrolling content can hand an active gesture to its sheet.
 enum SheetDragHandoff {
@@ -74,6 +79,8 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.originateAboveBottomViewInset = false,
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
+    this.nestedNavigation = false,
+    this.mergeable = true,
   });
 
   @override
@@ -81,6 +88,16 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
+
+  /// {@macro nestedNavigation}
+  @override
+  final bool nestedNavigation;
+
+  /// {@macro mergeable}
+  ///
+  /// Defaults to true.
+  @override
+  final bool mergeable;
 
   @override
   final Color? barrierColor;
@@ -298,6 +315,113 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// example.
   RouteSnapshotMode get backgroundSnapshotMode => RouteSnapshotMode.never;
 
+  /// {@template nestedNavigation}
+  /// Whether sheets pushed from within this sheet can merge into it, instead
+  /// of stacking on top of it.
+  ///
+  /// When true, this sheet hosts its content in a [SheetNavigator], a nested,
+  /// auto-sizing [Navigator]. A sheet that is pushed through
+  /// `Navigator.of(context)` from inside this sheet, and agrees to merge via
+  /// [canMergeInto], is then pushed onto that nested navigator: it replaces
+  /// the content of this sheet
+  /// with a crossfade, while the sheet resizes to fit the new content using
+  /// the pushed sheet's [motion]. Popping it reverses that transition.
+  ///
+  /// Merged sheets reuse this sheet's chrome, position, drag behavior,
+  /// snapping configuration and barrier. Dragging the sheet closed, or
+  /// tapping the barrier, dismisses the whole sheet including all merged
+  /// sheets, while the system back gesture pops the topmost merged sheet
+  /// first.
+  ///
+  /// Everything else keeps working like it does without nested navigation:
+  /// routes that don't merge (pages, dialogs, sheets with [mergeable] set to
+  /// false, named routes) are forwarded to the navigator that hosts this
+  /// sheet, and popping this sheet's own content pops this sheet.
+  ///
+  /// If the chrome of the sheet is part of its content, like with
+  /// [StupidSimpleSheetRoute] and [SheetBackground], leave this false and
+  /// place a [SheetNavigator] inside of the chrome instead. [SheetBackground]
+  /// renders nothing but its child inside of merged sheets, so the same
+  /// content works both as a merged and as a stacked sheet.
+  ///
+  /// Note that inside the content of this sheet, [ModalRoute.of] returns the
+  /// first page of the nested navigator, not this route. Use
+  /// [StupidSimpleSheetController.maybeOf] to get a hold of this sheet.
+  /// Also, overlays such as tooltips that are inserted into the nearest
+  /// [Overlay] are clipped to the bounds of the sheet.
+  ///
+  /// Defaults to false.
+  /// {@endtemplate}
+  bool get nestedNavigation => false;
+
+  /// {@template mergeable}
+  /// Whether this sheet can merge into a sheet with nested navigation (see
+  /// [nestedNavigation] and [SheetNavigator]) that it is pushed from.
+  ///
+  /// If false, this sheet always stacks on top as a separate sheet.
+  ///
+  /// For more fine-grained control, override [canMergeInto].
+  /// {@endtemplate}
+  ///
+  /// Defaults to false for custom routes. The routes that ship with this
+  /// package default to true.
+  bool get mergeable => false;
+
+  /// Decides whether this sheet merges into [host] when it is pushed from
+  /// within a [SheetNavigator] of [host].
+  ///
+  /// Defaults to [mergeable].
+  ///
+  /// Custom routes that return true here must call [buildMergedTransitions]
+  /// from their [buildTransitions] if [isMerged] is true, instead of building
+  /// their own chrome.
+  bool canMergeInto(StupidSimpleSheetTransitionMixin<dynamic> host) =>
+      mergeable;
+
+  /// Whether this sheet was merged into another sheet.
+  ///
+  /// See [nestedNavigation].
+  bool get isMerged => _mergeHost != null;
+
+  /// The sheet this sheet was merged into, if any.
+  ///
+  /// See [nestedNavigation].
+  StupidSimpleSheetTransitionMixin<dynamic>? get mergeHost => _mergeHost;
+
+  StupidSimpleSheetTransitionMixin<dynamic>? _mergeHost;
+
+  /// The nested navigator, if this sheet uses [nestedNavigation].
+  _SheetNavigatorHostState? _sheetNavigator;
+
+  /// Builds the transition of content inside a [SheetNavigator].
+  ///
+  /// The [animation] describes how far the content has transitioned in, and
+  /// the [secondaryAnimation] how far it has been covered by a merged sheet
+  /// above it. The sheet itself resizes along with these animations.
+  ///
+  /// This is used for merged sheets, as well as for the host's own content,
+  /// which is built by the host's implementation.
+  ///
+  /// By default, the content fades through: outgoing content fades out during
+  /// the first part of the transition, and incoming content fades in during
+  /// the second part.
+  Widget buildMergedTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: ReverseAnimation(
+        secondaryAnimation.clamped.remapped(end: 0.6),
+      ),
+      child: FadeTransition(
+        opacity: animation.clamped.remapped(start: 0.4),
+        child: child,
+      ),
+    );
+  }
+
   /// The [SnapshotController] that toggles snapshotting of the background
   /// route.
   ///
@@ -404,7 +528,25 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       super.secondaryAnimation?.clamped;
 
   @override
+  bool get opaque => isMerged || super.opaque;
+
+  @override
+  void install() {
+    super.install();
+    _mergeHost?._sheetNavigator?._controller.register(this, controller!);
+  }
+
+  @override
   Simulation? createSimulation({required bool forward}) {
+    if (isMerged) {
+      // Merged sheets only transition their content, so they always go all
+      // the way in or out.
+      return motion.createSimulation(
+        start: controller?.value ?? 0,
+        end: forward ? 1 : 0,
+      );
+    }
+
     final v = _dragEndVelocity;
     _dragEndVelocity = null;
 
@@ -433,6 +575,11 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
+    if (isMerged) {
+      // The host takes care of gestures, we only need to be measured.
+      return _SheetPageBoundary(route: this, child: buildContent(context));
+    }
+    final content = buildContent(context);
     return AnimatedBuilder(
       animation: animation,
       builder: (context, child) => MediaQuery.removeViewInsets(
@@ -463,7 +610,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           child: child!,
         ),
       ),
-      child: buildContent(context),
+      child: nestedNavigation ? SheetNavigator(child: content) : content,
     );
   }
 
@@ -491,6 +638,14 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    if (isMerged) {
+      return buildMergedTransitions(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -515,15 +670,129 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   @override
   Widget buildModalBarrier() {
+    if (isMerged) {
+      // The host's barrier is already in place. This one only keeps the
+      // content below from being interacted with while transitioning.
+      return const ModalBarrier(dismissible: false);
+    }
     return ValueListenableBuilder(
       valueListenable: _poppedNotifier,
       builder: (context, value, child) {
         return IgnorePointer(
           ignoring: value && clearBarrierImmediately,
-          child: super.buildModalBarrier(),
+          child: _buildBarrier(),
         );
       },
     );
+  }
+
+  /// Same as [ModalRoute.buildModalBarrier], but with nested navigation,
+  /// tapping it dismisses the whole sheet instead of only popping the topmost
+  /// merged sheet.
+  Widget _buildBarrier() {
+    final color = barrierColor;
+    if (color != null && color.a != 0 && !offstage) {
+      return AnimatedModalBarrier(
+        color: animation!.drive(
+          ColorTween(
+            begin: color.withValues(alpha: 0),
+            end: color,
+          ).chain(CurveTween(curve: barrierCurve)),
+        ),
+        dismissible: barrierDismissible,
+        semanticsLabel: barrierLabel,
+        barrierSemanticsDismissible: semanticsDismissible,
+        onDismiss: _handleBarrierDismiss,
+      );
+    }
+    return ModalBarrier(
+      dismissible: barrierDismissible,
+      semanticsLabel: barrierLabel,
+      barrierSemanticsDismissible: semanticsDismissible,
+      onDismiss: _handleBarrierDismiss,
+    );
+  }
+
+  void _handleBarrierDismiss() {
+    if (_sheetNavigator == null) {
+      // What ModalBarrier does by default.
+      navigator?.maybePop().ignore();
+    } else {
+      _dismissSheet();
+    }
+  }
+
+  /// Dismisses this sheet, including all merged sheets, unless something
+  /// blocks it.
+  void _dismissSheet() {
+    switch (_dismissDisposition) {
+      case RoutePopDisposition.pop:
+        navigator?.pop();
+      case RoutePopDisposition.doNotPop:
+        _notifyDismissBlocked();
+      case RoutePopDisposition.bubble:
+        break;
+    }
+  }
+
+  /// Whether the sheet as a whole can be dismissed by the user, e.g. by
+  /// dragging it closed.
+  ///
+  /// Unlike [popDisposition], this ignores merged sheets that could be popped
+  /// first, but respects any [PopScope] inside of them.
+  RoutePopDisposition get _dismissDisposition {
+    for (final route in _sheetNavigator?._routes ?? <ModalRoute<dynamic>>[]) {
+      if (route.popDisposition == RoutePopDisposition.doNotPop) {
+        return RoutePopDisposition.doNotPop;
+      }
+    }
+    return super.popDisposition;
+  }
+
+  /// Notifies whoever blocked a dismissal of this sheet, like
+  /// [NavigatorState.maybePop] would.
+  void _notifyDismissBlocked() {
+    final sheetNavigator = _sheetNavigator;
+    if (sheetNavigator == null) {
+      navigator?.maybePop().ignore();
+      return;
+    }
+    for (final route in sheetNavigator._routes.toList().reversed) {
+      if (route.popDisposition == RoutePopDisposition.doNotPop) {
+        route.onPopInvokedWithResult(false, null);
+        return;
+      }
+    }
+    super.onPopInvokedWithResult(false, null);
+  }
+
+  @override
+  RoutePopDisposition get popDisposition {
+    final sheetNavigator = _sheetNavigator;
+    if (sheetNavigator != null) {
+      // Let the nested navigator handle back navigation first.
+      if (sheetNavigator._canPopNested) return RoutePopDisposition.doNotPop;
+      if (sheetNavigator._rootRoute.popDisposition ==
+          RoutePopDisposition.doNotPop) {
+        return RoutePopDisposition.doNotPop;
+      }
+    }
+    return super.popDisposition;
+  }
+
+  @override
+  void onPopInvokedWithResult(bool didPop, T? result) {
+    final sheetNavigator = _sheetNavigator;
+    if (sheetNavigator != null) {
+      if (!didPop && sheetNavigator._canPopNested) {
+        sheetNavigator._navigator?.maybePop().ignore();
+        return;
+      }
+      // Notify PopScopes in this sheet's content, which are registered with
+      // the first page of the nested navigator.
+      sheetNavigator._rootRoute.onPopInvokedWithResult(didPop, null);
+    }
+    super.onPopInvokedWithResult(didPop, result);
   }
 
   @override
@@ -557,7 +826,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
     final minSnap = effectiveSnappingConfig.minExtent;
-    final cannotPop = popDisposition != RoutePopDisposition.pop;
+    final cannotPop = _dismissDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop =
         cannotPop && currentValue < minSnap && delta > 0;
 
@@ -614,7 +883,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final maxExtent = effectiveSnappingConfig.maxExtent;
 
     final minSnap = effectiveSnappingConfig.minExtent;
-    final routePopDisposition = popDisposition;
+    final routePopDisposition = _dismissDisposition;
     final cannotPop = routePopDisposition != RoutePopDisposition.pop;
     final belowMinAndCannotPop = cannotPop && currentValue < minSnap;
 
@@ -625,7 +894,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
         absoluteVelocity: -velocity * referenceHeight,
       );
       if (attemptedTarget <= sheetPositionTolerance) {
-        navigator?.maybePop().ignore();
+        _notifyDismissBlocked();
       }
     }
 
@@ -698,7 +967,13 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   @mustCallSuper
   void didChangeNext(Route<dynamic>? nextRoute) {
     super.didChangeNext(nextRoute);
-    if (nextRoute is StupidSimpleSheetTransitionMixin) {
+    if (nextRoute is StupidSimpleSheetTransitionMixin && nextRoute.isMerged) {
+      // Merged sheets only replace our content, they never transition us via
+      // delegation or snapshot us.
+      // ignore: invalid_use_of_visible_for_testing_member
+      receivedTransition = null;
+      _coveredBySnapshotController = null;
+    } else if (nextRoute is StupidSimpleSheetTransitionMixin) {
       _coveredBySnapshotController = nextRoute._backgroundSnapshotController;
     } else {
       _coveredBySnapshotController = null;
@@ -715,6 +990,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   @override
   @mustCallSuper
   void dispose() {
+    _mergeHost?._sheetNavigator?._controller.unregister(this);
     _backgroundSnapshotController.dispose();
     _poppedNotifier.dispose();
     super.dispose();
@@ -733,7 +1009,12 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// This will only work if called from a context that is inside the
   /// [StupidSimpleSheetRoute].
   static StupidSimpleSheetController<T>? maybeOf<T>(BuildContext context) {
-    final route = ModalRoute.of(context);
+    final route = switch (ModalRoute.of(context)) {
+      // Inside a sheet with nested navigation, the content is hosted by the
+      // first page of the nested navigator.
+      _SheetNavigatorRootRoute(:final host) => host,
+      final route => route,
+    };
     if (route case final StupidSimpleSheetController<T> route) {
       return route;
     }
@@ -751,7 +1032,12 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// after reaching the target position.
   ///
   /// If you want to close the sheet, use [Navigator.pop] instead.
+  ///
+  /// If this sheet [isMerged], this controls the sheet it was merged into.
   TickerFuture animateToRelative(double relativePosition, {bool snap = false}) {
+    if (_mergeHost case final StupidSimpleSheetController<dynamic> host) {
+      return host.animateToRelative(relativePosition, snap: snap);
+    }
     assert(
       relativePosition > 0.0 && relativePosition <= 1.0,
       'Relative position must be larger than 0.0 and less than or equal to 1.0',
@@ -792,6 +1078,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
 
   /// Updates the snapping configuration to an override for the sheet.
   ///
+  /// If this sheet [isMerged], this updates the sheet it was merged into.
+  ///
   /// Pass `null` to [newConfig] to reset the configuration to the one
   /// originally passed to the route constructor.
   ///
@@ -814,6 +1102,12 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
     SheetSnappingConfig? newConfig, {
     bool animateToComply = false,
   }) {
+    if (_mergeHost case final StupidSimpleSheetController<dynamic> host) {
+      return host.overrideSnappingConfig(
+        newConfig,
+        animateToComply: animateToComply,
+      );
+    }
     assert(
       controller != null,
       'Controller is null. Make sure the route is pushed before calling.',

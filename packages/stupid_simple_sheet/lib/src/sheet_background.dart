@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:motor/motor.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';
+import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 /// A widget that provides a background for a sheet, including shape and color.
 ///
@@ -104,6 +105,12 @@ class SheetBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Merged sheets are shown inside of the chrome of the sheet they merged
+    // into, so they don't need their own.
+    if (ModalRoute.of(context)
+        case StupidSimpleSheetTransitionMixin(isMerged: true)) {
+      return child ?? const SizedBox.shrink();
+    }
     final bottomExtension =
         extensionAtBottom ?? MediaQuery.sizeOf(context).height;
     return SafeArea(

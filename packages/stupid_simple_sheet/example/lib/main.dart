@@ -14,6 +14,7 @@ import 'presets/glass_sheet_preset.dart';
 import 'recipes/basic_sheet.dart';
 import 'recipes/content_sized.dart';
 import 'recipes/content_sized_above_keyboard.dart';
+import 'recipes/nested_navigation_recipe.dart';
 import 'recipes/non_draggable.dart';
 import 'recipes/programmatic_control_recipe.dart';
 import 'recipes/slide_vs_shrink_recipe.dart';
@@ -294,6 +295,18 @@ class _HomePage extends StatelessWidget {
           title: 'Programmatic Control',
           description: 'Drive the sheet position from code.',
           onTap: () => showProgrammaticControlSheet(context),
+        ),
+        ExampleCard(
+          index: 8,
+          pillLabel: 'Nested Navigation',
+          pillIcon: CupertinoIcons.square_stack_3d_up_fill,
+          pillColor: t.accentIndigo,
+          codeHint: 'SheetNavigator(child: ...)',
+          preview: const NestedNavigationPreview(),
+          title: 'Merging Sheets',
+          description:
+              'Pushed sheets replace the content and resize the same sheet.',
+          onTap: () => showNestedNavigationSheet(context),
         ),
       ];
 
