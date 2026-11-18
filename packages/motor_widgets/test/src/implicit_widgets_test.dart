@@ -669,6 +669,50 @@ void main() {
     });
   });
 
+  group('alignment takes an AlignmentGeometry', () {
+    testWidgets('MotionScale scales about the start in RTL', (tester) async {
+      const box = SizedBox(width: 100, height: 50);
+      for (final (direction, expected) in [
+        (TextDirection.ltr, const Rect.fromLTWH(350, 275, 50, 25)),
+        (TextDirection.rtl, const Rect.fromLTWH(400, 275, 50, 25)),
+      ]) {
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: direction,
+            child: const Center(
+              child: MotionScale(
+                scale: 0.5,
+                motion: spring,
+                alignment: AlignmentDirectional.topStart,
+                child: box,
+              ),
+            ),
+          ),
+        );
+        final topLeft = tester.getTopLeft(find.byWidget(box));
+        final bottomRight = tester.getBottomRight(find.byWidget(box));
+        expect(Rect.fromPoints(topLeft, bottomRight), expected);
+      }
+    });
+
+    testWidgets('MotionRotation hands it to Transform', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const MotionRotation(
+            turns: 0.25,
+            motion: spring,
+            alignment: AlignmentDirectional.topStart,
+            child: SizedBox(width: 10, height: 10),
+          ),
+        ),
+      );
+      expect(
+        tester.widget<Transform>(find.byType(Transform)).alignment,
+        AlignmentDirectional.topStart,
+      );
+    });
+  });
+
   group('MotionSize', () {
     testWidgets('clips and aligns the child while smaller than it', (
       tester,
