@@ -18,6 +18,21 @@ Milestone M0, unreleased.
 - `CoilCalendar.onSubmitted`: called after Enter picks a day.
 - `CoilCalendarLabels` adds `monthLabel`, `monthName`, `year`,
   `chooseMonthLabel` and `confirm`.
+- Fix: a drag that opens `CoilDrawer` (the phone sidebar) from a
+  horizontal scrollable's edge no longer janks when it moves back: the
+  drawer keeps the drag in both directions (`ScrollDragMode.dragFirst`)
+  until it is back where the drag found it, then hands the rest of the
+  gesture to the scrollable, like a sheet dragged down and back up. The
+  same holds for a closing drag out of a scrollable in the panel, the end
+  side and right to left.
+- Breaking: the phone drawer revealed from behind (`CoilDrawerReveal.behind`,
+  the sidebar's touch default) now lightens the page in light mode instead
+  of darkening it: a veil of the top surface (white) at 35 %, fading in
+  with the slide, so the page recedes into haze. Dark mode keeps dimming
+  it, black 15 %, since a lighter page there reads as raised. The new
+  `CoilDrawerLook.behindScrim(colors)` picks it and `behindVeilAlpha` sets
+  the light veil; `behindScrimLight` is gone. The over reveal keeps the
+  theme's `scrim`, and `scrimColor` / `drawerScrimColor` still override it.
 - Breaking: `CoilFileThumbnail.size` (the side length, a `double`) is
   `dimension`, so `size` means the `CoilSize?` step everywhere in coil.
 - Bold text: `CoilTheme.of` applies `CoilThemeData.boldText()` when
@@ -184,7 +199,7 @@ Milestone M0, unreleased.
   over at their edge. The sidebar emerges as it is revealed, fading in
   from 40 % and growing from 0.95 at the page's edge (`drawerTransition`;
   no growth under reduced motion), and the page lifts
-  off it: a light scrim (7 % light, 15 % dark), shadow step 8
+  off it: a veil (lightening in light, dimming in dark), shadow step 8
   centered on its side and a hairline in `border`, all following the drag.
   Where the screen's radius is unknown, phones round the page 40 (iOS) /
   24 (Android) by default (`drawerFallbackCornerRadius`). The pointer tier
@@ -205,7 +220,7 @@ Milestone M0, unreleased.
     CoilDrawerTransition` (`scale`, `panelScale`, `panelOpacity`). Its
     numbers are named constants: `CoilDrawer.maxWidth` (320),
     `.widthFraction` (0.85), `.flingVelocity` (400),
-    `CoilDrawerLook.behindScrimLight` / `behindScrimDark`,
+    `CoilDrawerLook.behindVeilAlpha` / `behindScrimDark`,
     `.edgeShadowLevel` and `.phoneCornerRadii`.
   - Breaking: `CoilSidebarStyle.drawerScale`, `drawerPanelScale` and
     `drawerPanelOpacity` moved to `CoilSidebarScaffold.drawerTransition`;

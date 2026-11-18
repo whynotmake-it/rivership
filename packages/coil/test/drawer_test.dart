@@ -270,8 +270,8 @@ void main() {
       expect(_open(tester), isNull, reason: 'a short, slow drag settles back');
     });
 
-    testWidgets('a light scrim, the panel fading in and a lifted edge follow '
-        'the drag', (tester) async {
+    testWidgets('a lightening veil, the panel fading in and a lifted edge '
+        'follow the drag', (tester) async {
       await _pump(tester, const _Host());
       final colors = CoilTheme.of(tester.element(find.byType(_Host))).colors;
       final gesture = await tester.startGesture(const Offset(100, 500));
@@ -299,7 +299,10 @@ void main() {
         _hairline(tester).color,
         colors.border.withValues(alpha: colors.border.a * 0.5),
       );
-      expect(_scrim(tester).a, closeTo(0.035, 0.001), reason: 'half of 7 %');
+      // White, at half of 35 %: the page lightens as it recedes.
+      final veil = colors.surfaces.last;
+      expect(veil, const Color(0xFFFFFFFF));
+      expect(_scrim(tester), veil.withValues(alpha: 0.175));
 
       await gesture.moveBy(const Offset(200, 0));
       await tester.pump(const Duration(milliseconds: 300));
@@ -310,9 +313,9 @@ void main() {
       expect(_panelScale(tester), 1);
       expect(_edge(tester).shadows, shadow);
       expect(_hairline(tester).color, colors.border);
-      expect(_scrim(tester).a, closeTo(0.07, 0.001));
+      expect(_scrim(tester), veil.withValues(alpha: 0.35));
 
-      // A press on the content still closes it, and the edge goes away.
+      // A press on the veiled content still closes it, and the edge goes away.
       await tester.tapAt(const Offset(360, 400));
       await tester.pumpAndSettle();
       expect(_open(tester), isNull);
@@ -320,13 +323,36 @@ void main() {
       expect(_hairline(tester), BorderSide.none);
     });
 
-    testWidgets('the scrim is darker in dark mode', (tester) async {
+    testWidgets('in dark mode the scrim dims instead: black 15 %', (
+      tester,
+    ) async {
       await _pump(
         tester,
         const _Host(initial: CoilDrawerEdge.start),
         colors: CoilColors.dark,
       );
-      expect(_scrim(tester).a, closeTo(0.15, 0.001));
+      expect(
+        _scrim(tester),
+        const Color.from(alpha: 0.15, red: 0, green: 0, blue: 0),
+      );
+
+      // A press on the dimmed content closes it.
+      await tester.tapAt(const Offset(360, 400));
+      await tester.pumpAndSettle();
+      expect(_open(tester), isNull);
+    });
+
+    testWidgets('over the content, the scrim is the theme token', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        const _Host(
+          reveal: CoilDrawerReveal.over,
+          initial: CoilDrawerEdge.start,
+        ),
+      );
+      expect(_scrim(tester), CoilColors.light.scrim);
     });
 
     testWidgets('the panel grows from the edge the content leaves', (
@@ -876,8 +902,15 @@ void main() {
         CoilThemeData.light,
         reveal: CoilDrawerReveal.behind,
       );
-      expect(light.scrimColor, CoilDrawerLook.behindScrimLight);
-      expect(light.scrimColor.a, closeTo(0.07, 0.001));
+      expect(
+        light.scrimColor,
+        CoilDrawerLook.behindScrim(CoilThemeData.light.colors),
+      );
+      expect(
+        light.scrimColor,
+        const Color.from(alpha: 0.35, red: 1, green: 1, blue: 1),
+        reason: 'a lightening veil',
+      );
       expect(light.panelColor, CoilThemeData.light.colors.background);
       expect(light.contentColor, CoilThemeData.light.colors.background);
       expect(light.cornerRadius, isNull);
@@ -889,7 +922,9 @@ void main() {
         CoilThemeData.dark,
         reveal: CoilDrawerReveal.behind,
       );
+      expect(dark.scrimColor, CoilDrawerLook.behindScrimDark);
       expect(dark.scrimColor.a, closeTo(0.15, 0.001));
+      expect(dark.scrimColor.r, 0, reason: 'a dim in dark');
       final over = CoilDrawerLook.fallback(
         CoilThemeData.dark,
         reveal: CoilDrawerReveal.over,

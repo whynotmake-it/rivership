@@ -99,9 +99,10 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
 
   /// The scrim over the page once the drawer is fully open. Null, the
   /// default, is the drawer's for its reveal (`CoilDrawerLook.fallback`):
-  /// the theme's `scrim` when it slides over the page, and a light dim
-  /// (black 7 % in light, 15 % in dark) when it is revealed from behind,
-  /// where the page's edge does most of the separating. The reveal is an
+  /// the theme's `scrim` when it slides over the page, and
+  /// `CoilDrawerLook.behindScrim` when it is revealed from behind: a
+  /// lightening veil in light (white 35 %), a dim in dark (black 15 %),
+  /// so the page recedes while its edge does the separating. The reveal is an
   /// adaptive choice the style can't see, so the default stays null.
   final Color? drawerScrimColor;
 
