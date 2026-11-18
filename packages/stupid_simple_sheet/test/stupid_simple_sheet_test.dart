@@ -2259,6 +2259,8 @@ void main() {
       bool originateAboveBottomViewInset = false,
       DismissalMode dismissalMode = DismissalMode.slide,
       PresentationSizing presentationSizing = PresentationSizing.automatic,
+      RouteSnapshotMode backgroundSnapshotMode = RouteSnapshotMode.never,
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -2277,6 +2279,8 @@ void main() {
                           originateAboveBottomViewInset,
                       dismissalMode: dismissalMode,
                       presentationSizing: presentationSizing,
+                      snappingConfig: snappingConfig,
+                      backgroundSnapshotMode: backgroundSnapshotMode,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -2317,6 +2321,60 @@ void main() {
         expect(size.height, closeTo(650, 0.5));
         expect(center.dx, closeTo(590, 0.5));
         expect(center.dy, closeTo(410, 0.5));
+      },
+    );
+
+    testWidgets(
+      'detents open when background snapshotting is enabled',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+            snappingConfig: const SheetSnappingConfig.detents(
+              [SheetDetent.medium, SheetDetent.large],
+            ),
+            presentationSizing: PresentationSizing.automatic,
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('scaffold')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'a stacked full sheet keeps a valid pushback range',
+      (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final rear = find.byKey(const ValueKey('scaffold'));
+        final rearElement = tester.element(rear);
+        Navigator.of(rearElement)
+            .push(
+              StupidSimpleGlassSheetRoute<void>(
+                child: const Scaffold(key: ValueKey('front-sheet')),
+              ),
+            )
+            .ignore();
+        await tester.pumpAndSettle();
+
+        final rearRoute =
+            ModalRoute.of(rearElement)! as StupidSimpleGlassSheetRoute;
+        final frontRoute = ModalRoute.of(
+          tester.element(find.byKey(const ValueKey('front-sheet'))),
+        )! as StupidSimpleGlassSheetRoute;
+
+        // ignore: invalid_use_of_protected_member
+        final range = rearRoute.slideBackRangeFor(
+          rearElement,
+          frontRoute,
+        );
+        expect(range.$1, lessThan(range.$2));
+        expect(range.$1.isFinite, isTrue);
+        expect(range.$2.isFinite, isTrue);
       },
     );
 

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
@@ -406,7 +408,12 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final rearInFrontCoordinates = frontPresentationExtent <= 0
         ? 0.0
         : rearExtent * rearPresentationExtent / frontPresentationExtent;
-    final start = rearInFrontCoordinates.clamp(0.0, nextMaxExtent);
+    final start = rearInFrontCoordinates
+        .clamp(
+          0.0,
+          math.max(0, nextMaxExtent - sheetPositionTolerance),
+        )
+        .toDouble();
     return (start, nextMaxExtent);
   }
 
@@ -436,7 +443,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
     final value = controller?.value ?? 0.0;
     final isVisible = value > sheetPositionTolerance;
     final isSettled = !isAnimating && !_isUserDragging && isVisible;
-    final maxExtent = effectiveSnappingConfig.maxExtent;
+    final maxExtent = _resolvedSnappingConfig.maxExtent;
     final isFullyOpen = (value - maxExtent).abs() < sheetPositionTolerance;
 
     final isTargetingMax = _animationTargetValue != null &&
