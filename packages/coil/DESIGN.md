@@ -194,7 +194,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 - **`sharp` nests square.** A family whose containers are no rounder than its items gets its container radius back: a square button in a near-square frame, never a rounded one.
 - Popover = row radius + `popupInset`: 8 + 4 = **12** pointer, 10 + 6 = **16** touch; under `pill` the rows are pills, so 18 + 4 = **22** pointer and 22 + 6 = **28** touch. A sheet's top corners are a superellipse of the glass sheet's 36 (`CoilSheetRoute.glassRadius`, scaled by container / 16 for tighter shapes, so `sharp` is near square).
 - The focus ring sits 2 px outside, so it's item + 2.
-- A number-stepper button 4 px inside an input has radius item − 4.
+- A number-stepper button 4 px inside an input has radius item − 4, and so does a button in an input's slot (`CoilInputSlotScope.radiusFor`, which counts the field's corner as drawn: under `pill` a compact button in a 36 field is 18 − 4 = 14, itself a pill).
 - Every corner gap is even.
 
 **Merged selection runs** round only their outer corners, at the item radius.
@@ -615,6 +615,11 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** a hairline field → [leading muted icon] text [trailing slot].
 - **Sizes:** height = `controlHeight`, padding `controlPaddingX`, field text role.
+- **Slots:** placed by measuring them in the same layout pass as the text (`CoilInputSlotPlacement.auto`), so the first frame is right:
+  - a slot that fits a line of text (an icon, a "EUR" unit, a spinner, a kbd) sits **inline**: inside the padding, centered on the text;
+  - a taller slot (a button) sits **inset**: into the padding, centered, and as far from the side as from the top and bottom, so its corners are concentric with the field's. The field keeps its height while the slot and `slotInset` (4; 2 compact) on each side fit: a 28 compact button in a 36 field, a 36 one in a 44 touch field. Only a taller slot grows the field, by just enough (a 36 button makes a pointer field 44);
+  - a `CoilButton` in a slot defaults to compact and to the nested radius (`CoilInputSlotScope`); an explicit `size:` or `style:` wins. On touch it drops its own hit padding and the field gives taps in a 44 box around it to the button;
+  - `leadingPlacement` / `trailingPlacement` override: `inline` keeps today's padding (a button makes the field grow), `inset` tucks even a short slot in.
 - **States:**
   - rest: `border`, transparent; hover (pointer): `hover` fill;
   - focus: border `foreground` @ 40 %, hover fill removed (shown for any focus);
@@ -629,7 +634,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Textarea
 
-- **`CoilInput.multiline`:** the same widget, chrome and style as Input. It grows from 3 lines to 10, then scrolls. Leading and trailing slots sit on the first line.
+- **`CoilInput.multiline`:** the same widget, chrome and style as Input. It grows from 3 lines to 10, then scrolls. Inline slots sit on the first line; an inset slot (a button) sits in the bottom corner, as far in as it would be in a single-line field, like the composer's send button.
 - **Radius:** the item radius, capped at the `rounded` container radius (12 / 16), so a `pill` shape doesn't make a capsule.
 - **Sizes:** min 3 lines and max 10, each plus the vertical pad. The first line aligns with Input text.
 - **Motion:** growth is instant; colors on `fade`.
@@ -754,7 +759,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### InputGroup
 
-- **Anatomy:** a column of labeled Inputs sharing one hover scope. The field nearest the pointer gets the `hover` fill; nothing glides.
+- **Anatomy:** a column of labeled Inputs sharing one hover scope. The field nearest the pointer gets the `hover` fill; nothing glides. Each Input places its slots as Input does, so a button in one doesn't make it taller than its neighbors.
 - **Spacing:** 12 between fields (touch 16). Errors sit under each field.
 - **Keyboard:** Tab between fields. A tap anywhere in a field's box focuses its text.
 - **Touch:** no hover, only focus states.

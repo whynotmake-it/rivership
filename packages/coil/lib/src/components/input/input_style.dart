@@ -25,6 +25,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     this.radius,
     this.multilineRadius,
     this.minHeight,
+    this.slotInset,
     this.motions,
     this.plasticity,
   });
@@ -60,6 +61,8 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
         CoilShape.rounded.radii(metrics.tier).container,
       ),
       minHeight: metrics.controlHeight,
+      // A compact button in a regular field: 28 in 36, 36 in 44.
+      slotInset: metrics.size == CoilSize.compact ? 2 : 4,
     );
   }
 
@@ -93,6 +96,11 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
   /// The minimum height. The field grows with its text.
   final double? minHeight;
 
+  /// The least space between a slot placed into the padding (a button) and
+  /// the field's edge. The field grows when the slot and this inset on each
+  /// side don't fit [minHeight].
+  final double? slotInset;
+
   /// Springs for the field's animated parts, keyed by [CoilInputTrack]s:
   /// `{CoilInputTrack.border: const Motion.smoothSpring()}`. A field's own
   /// `motions:` win over these; these win over the motion tokens. [merge]
@@ -119,6 +127,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
           radius: other.radius ?? radius,
           multilineRadius: other.multilineRadius ?? multilineRadius,
           minHeight: other.minHeight ?? minHeight,
+          slotInset: other.slotInset ?? slotInset,
           motions: other.motions == null
               ? motions
               : {...?motions, ...?other.motions},
@@ -136,6 +145,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
     radius,
     multilineRadius,
     minHeight,
+    slotInset,
     motions,
     plasticity,
   ];

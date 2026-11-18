@@ -417,9 +417,20 @@ final stories = <StressStory>[
           trailing: CoilKbd('⌘K'),
         ),
         CoilInput(placeholder: _t(h.text)),
+        CoilInput(
+          controller: TextEditingController(text: h.text),
+          obscureText: true,
+          trailing: CoilButton(onPressed: () {}, child: _t(h.short)),
+        ),
         CoilInput.multiline(
           controller: TextEditingController(text: h.text * 3),
           placeholder: _t(h.text),
+          leading: _icon(TestGlyph.plus),
+          trailing: CoilButton.icon(
+            onPressed: () {},
+            semanticLabel: 'Send',
+            icon: _icon(TestGlyph.arrowRight),
+          ),
         ),
         CoilInputGroup(
           children: [
