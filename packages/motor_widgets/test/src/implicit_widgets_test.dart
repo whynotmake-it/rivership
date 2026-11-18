@@ -420,6 +420,62 @@ void main() {
       expect(decoration().color, const Color(0xFFFFFFFF));
     });
 
+    testWidgets('springs from color to a BoxDecoration color, as '
+        'AnimatedContainer does', (tester) async {
+      Color painted() {
+        final colored = find.descendant(
+          of: find.byType(MotionContainer),
+          matching: find.byType(ColoredBox),
+        );
+        if (colored.evaluate().isNotEmpty) {
+          return tester.widget<ColoredBox>(colored).color;
+        }
+        final decorated = tester.widget<DecoratedBox>(
+          find.descendant(
+            of: find.byType(MotionContainer),
+            matching: find.byType(DecoratedBox),
+          ),
+        );
+        return (decorated.decoration as BoxDecoration).color!;
+      }
+
+      await tester.pumpWidget(
+        _wrap(
+          MotionContainer(
+            color: const Color(0xFF000000),
+            motion: spring,
+            child: _box,
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        _wrap(
+          MotionContainer(
+            decoration: const BoxDecoration(color: Color(0xFFFFFFFF)),
+            motion: spring,
+            child: _box,
+          ),
+        ),
+      );
+      await tester.pump(frame * 4);
+      expect(painted().r, inExclusiveRange(0, 1));
+
+      await tester.pumpAndSettle();
+      expect(painted(), const Color(0xFFFFFFFF));
+
+      await tester.pumpWidget(
+        _wrap(
+          MotionContainer(
+            color: const Color(0xFF000000),
+            motion: spring,
+            child: _box,
+          ),
+        ),
+      );
+      await tester.pump(frame * 4);
+      expect(painted().r, inExclusiveRange(0, 1));
+    });
+
     testWidgets('animates padding, margin, alignment and transform', (
       tester,
     ) async {
@@ -445,6 +501,42 @@ void main() {
       // Translation 10, margin 10, padding 10, aligned to the bottom right
       // of the 80 px content box.
       expect(tester.getTopLeft(find.byWidget(_box)), const Offset(90, 80));
+    });
+
+    testWidgets('a rotation turns the short way, even past where '
+        'Matrix4.decompose flips its quaternion', (tester) async {
+      // decompose's quaternion changes sign between -120° and -121°, so
+      // interpolating its components turns the long way, through 0°.
+      double degrees(double angle) => angle * 180 / math.pi;
+      Widget build(double degrees) => _wrap(
+        MotionContainer(
+          transform: Matrix4.rotationZ(degrees * math.pi / 180),
+          motion: spring,
+          child: _box,
+        ),
+      );
+      double angle() {
+        final transform = tester.widget<Transform>(
+          find.descendant(
+            of: find.byType(MotionContainer),
+            matching: find.byType(Transform),
+          ),
+        );
+        final m = transform.transform;
+        return degrees(math.atan2(m.entry(1, 0), m.entry(0, 0)));
+      }
+
+      await tester.pumpWidget(build(-100));
+      await tester.pumpWidget(build(-140));
+      final angles = <double>[];
+      for (var i = 0; i < 60 && tester.hasRunningAnimations; i++) {
+        await tester.pump(frame);
+        angles.add(angle());
+      }
+      for (final a in angles) {
+        expect(a, inInclusiveRange(-142, -99), reason: '$angles');
+      }
+      expect(angles.last, moreOrLessEquals(-140, epsilon: 0.01));
     });
 
     testWidgets('a property that appears starts at its value', (tester) async {
@@ -577,6 +669,50 @@ void main() {
     });
   });
 
+  group('alignment takes an AlignmentGeometry', () {
+    testWidgets('MotionScale scales about the start in RTL', (tester) async {
+      const box = SizedBox(width: 100, height: 50);
+      for (final (direction, expected) in [
+        (TextDirection.ltr, const Rect.fromLTWH(350, 275, 50, 25)),
+        (TextDirection.rtl, const Rect.fromLTWH(400, 275, 50, 25)),
+      ]) {
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: direction,
+            child: const Center(
+              child: MotionScale(
+                scale: 0.5,
+                motion: spring,
+                alignment: AlignmentDirectional.topStart,
+                child: box,
+              ),
+            ),
+          ),
+        );
+        final topLeft = tester.getTopLeft(find.byWidget(box));
+        final bottomRight = tester.getBottomRight(find.byWidget(box));
+        expect(Rect.fromPoints(topLeft, bottomRight), expected);
+      }
+    });
+
+    testWidgets('MotionRotation hands it to Transform', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const MotionRotation(
+            turns: 0.25,
+            motion: spring,
+            alignment: AlignmentDirectional.topStart,
+            child: SizedBox(width: 10, height: 10),
+          ),
+        ),
+      );
+      expect(
+        tester.widget<Transform>(find.byType(Transform)).alignment,
+        AlignmentDirectional.topStart,
+      );
+    });
+  });
+
   group('MotionSize', () {
     testWidgets('clips and aligns the child while smaller than it', (
       tester,
@@ -599,6 +735,39 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.getSize(find.byType(MotionSize)), const Size(200, 20));
+    });
+
+    testWidgets('puts the child at its origin under tight constraints, '
+        'even when it was aligned mid-flight before', (tester) async {
+      const key = ValueKey('child');
+      Widget build({required double width, required bool tight}) => _wrap(
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: tight ? 150 : null,
+            height: tight ? 20 : null,
+            child: MotionSize(
+              motion: spring,
+              child: SizedBox(key: key, width: width, height: 20),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(build(width: 100, tight: false));
+      await tester.pumpWidget(build(width: 200, tight: false));
+      await tester.pump(frame * 4);
+      // Mid-flight the child is centered, so it sits left of the box.
+      expect(
+        tester.getTopLeft(find.byKey(key)).dx,
+        lessThan(tester.getTopLeft(find.byType(MotionSize)).dx),
+      );
+
+      await tester.pumpWidget(build(width: 200, tight: true));
+      expect(tester.getSize(find.byType(MotionSize)), const Size(150, 20));
+      expect(
+        tester.getRect(find.byKey(key)),
+        tester.getRect(find.byType(MotionSize)),
+      );
     });
 
     testWidgets('stops when the child goes away mid-flight', (tester) async {

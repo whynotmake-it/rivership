@@ -68,6 +68,10 @@ class MotionSwitcher extends StatefulWidget {
   /// Usually a tighter spring than [motion], so things leave faster than
   /// they arrive. Defaults to [motion]. Replaces
   /// [AnimatedSwitcher.reverseDuration] and [AnimatedSwitcher.switchOutCurve].
+  ///
+  /// A leaving child is removed once this motion has settled, so it has to
+  /// settle: an undamped spring (`CupertinoMotion(bounce: 1)`) keeps the
+  /// child mounted and ticking for good.
   final Motion? exitMotion;
 
   /// Wraps a child in a transition driven by its presence. Defaults to
@@ -148,8 +152,11 @@ class _MotionSwitcherState extends State<MotionSwitcher>
           )
           ..controller.addStatusListener((status) {
             // A leaving child is gone once its presence settles at 0, however
-            // often its motion changed on the way.
-            if (status.isDismissed && entry.leaving) _remove(entry);
+            // often its motion changed on the way. Leaving always heads for
+            // 0, so any settled status means it got there: a child replaced
+            // before its first frame is already at 0 and settles as
+            // completed, at once.
+            if (entry.leaving && !status.isAnimating) _remove(entry);
           });
   }
 
@@ -161,7 +168,8 @@ class _MotionSwitcherState extends State<MotionSwitcher>
     if (widget.motion != oldWidget.motion ||
         widget.exitMotion != oldWidget.exitMotion) {
       _current?.controller.motion = widget.motion;
-      for (final entry in _leaving) {
+      // A copy: a redirected entry may settle and remove itself.
+      for (final entry in _leaving.toList()) {
         entry.controller.motion = _exitMotion;
       }
     }
@@ -217,11 +225,15 @@ class _MotionSwitcherState extends State<MotionSwitcher>
       ..animateTo(0);
   }
 
-  /// Removes [entry] once it has settled at presence 0. The future of an
-  /// entry that came back in the meantime is canceled and never gets here.
+  /// Removes [entry] once it has settled at presence 0. An entry that came
+  /// back in the meantime is no longer leaving and never gets here.
+  ///
+  /// This may run synchronously from [_leave] inside [didUpdateWidget],
+  /// which rebuilds anyway.
   void _remove(_Entry entry) {
-    setState(() => _leaving.remove(entry));
+    if (!_leaving.remove(entry)) return;
     entry.controller.dispose();
+    if (mounted) setState(() {});
   }
 
   @override
