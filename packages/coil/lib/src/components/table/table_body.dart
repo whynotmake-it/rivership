@@ -74,85 +74,75 @@ class TableBody<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        active,
-        focusNode,
-        CoilInputModality.instance,
-      ]),
-      builder: (context, child) {
-        return child!;
-      },
-      child: CoilHoverRegion(
-        activeItem: active,
-        followFocus: false,
-        child: ListenableBuilder(
-          listenable: Listenable.merge([
-            active,
-            focusNode,
-            CoilInputModality.instance,
-          ]),
-          builder: (context, rows) {
-            final ring = CoilHighlight(
-              debugLabel: 'CoilTable.ring',
-              target:
-                  focusNode.hasPrimaryFocus &&
-                      active.keyboardDriven &&
-                      CoilInputModality.instance.value == CoilModality.keyboard
-                  ? active.index
-                  : null,
-              fadeIn: false,
-              motion: ringMotion,
-              exitMotion: motion.fadeExit,
-              exitTravelMotion: ringMotion,
-              fade: motion.fade,
-              inflate: -style.ringInset!,
-              decoration: ShapeDecoration(
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(
-                    style.radius! - style.ringInset!,
-                  ),
-                  side: BorderSide(
-                    color: theme.focusRing.colorOf(theme.colors),
-                    width: theme.focusRing.width,
-                  ),
+    return CoilHoverRegion(
+      activeItem: active,
+      followFocus: false,
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          active,
+          focusNode,
+          CoilInputModality.instance,
+        ]),
+        builder: (context, rows) {
+          final ring = CoilHighlight(
+            debugLabel: 'CoilTable.ring',
+            target:
+                focusNode.hasPrimaryFocus &&
+                    active.keyboardDriven &&
+                    CoilInputModality.instance.value == CoilModality.keyboard
+                ? active.index
+                : null,
+            fadeIn: false,
+            motion: ringMotion,
+            exitMotion: motion.fadeExit,
+            exitTravelMotion: ringMotion,
+            fade: motion.fade,
+            inflate: -style.ringInset!,
+            decoration: ShapeDecoration(
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(
+                  style.radius! - style.ringInset!,
+                ),
+                side: BorderSide(
+                  color: theme.focusRing.colorOf(theme.colors),
+                  width: theme.focusRing.width,
                 ),
               ),
-            );
-            return CoilHoverHighlight(
-              color: style.highlight,
-              radius: style.radius,
-              glideMotion: highlightMotion,
-              background: [selection],
-              foreground: [ring],
-              child: rows!,
-            );
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final (i, row) in rows.indexed)
-                CoilHoverItem(
-                  key: ValueKey<T>(row),
+            ),
+          );
+          return CoilHoverHighlight(
+            color: style.highlight,
+            radius: style.radius,
+            glideMotion: highlightMotion,
+            background: [selection],
+            foreground: [ring],
+            child: rows!,
+          );
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, row) in rows.indexed)
+              CoilHoverItem(
+                key: ValueKey<T>(row),
+                index: i,
+                child: TableBodyRow<T>(
                   index: i,
-                  child: TableBodyRow<T>(
-                    index: i,
-                    row: row,
-                    columns: columns,
-                    widths: widths,
-                    selected: values.contains(row),
-                    nextSelected:
-                        i + 1 < rows.length && values.contains(rows[i + 1]),
-                    last: i == rows.length - 1,
-                    metrics: metrics,
-                    style: style,
-                    motions: rowMotions,
-                    onPressed: onTap == null ? null : () => onTap!(row),
-                  ),
+                  row: row,
+                  columns: columns,
+                  widths: widths,
+                  selected: values.contains(row),
+                  nextSelected:
+                      i + 1 < rows.length && values.contains(rows[i + 1]),
+                  last: i == rows.length - 1,
+                  metrics: metrics,
+                  style: style,
+                  motions: rowMotions,
+                  onPressed: onTap == null ? null : () => onTap!(row),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
