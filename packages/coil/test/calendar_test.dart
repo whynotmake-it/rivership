@@ -627,12 +627,14 @@ void monthViewTests() {
     await tester.tap(title);
     await tester.pumpAndSettle();
     expect(_years(), findsOneWidget);
-    // The shown month's year opens in the middle of the list.
+    // The shown month opens in the middle of the list, fully in view.
     final list = tester.getRect(_years());
-    final heading = tester.getRect(find.text('2026'));
-    expect(heading.top, greaterThan(list.top));
-    expect(heading.top, lessThan(list.center.dy));
-    expect(_visibleYears(tester), contains(2026));
+    final month = tester.getRect(find.bySemanticsLabel('November 2026').last);
+    expect(
+      list.contains(month.topLeft) && list.contains(month.bottomRight),
+      isTrue,
+    );
+    expect((month.center.dy - list.center.dy).abs(), lessThan(month.height));
     // The picked month reads as selected.
     expect(
       tester
@@ -644,14 +646,14 @@ void monthViewTests() {
     // The days take no taps, focus or semantics while hidden.
     expect(find.semantics.byLabel('Saturday, November 14, 2026'), findsNothing);
 
-    await tester.tap(find.bySemanticsLabel('March 2026'));
+    await tester.tap(find.bySemanticsLabel('October 2026'));
     await tester.pumpAndSettle();
     expect(_years(), findsNothing);
-    expect(find.text('March 2026'), findsOneWidget);
+    expect(find.text('October 2026'), findsOneWidget);
     await tester.tap(find.text('31').first);
     expect(
       tester.state<_MonthsDemoState>(find.byType(_MonthsDemo)).picked,
-      DateTime(2026, 3, 31),
+      DateTime(2026, 10, 31),
     );
   });
 
@@ -669,7 +671,7 @@ void monthViewTests() {
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: tester.getCenter(_years()),
-        scrollDelta: Offset(0, -sectionHeight * 4),
+        scrollDelta: Offset(0, -sectionHeight * 5),
       ),
     );
     await tester.pumpAndSettle();
@@ -679,6 +681,8 @@ void monthViewTests() {
     await tester.drag(_years(), Offset(0, -sectionHeight * 8));
     await tester.pumpAndSettle();
     expect(_visibleYears(tester), contains(2030));
+    await tester.ensureVisible(find.bySemanticsLabel('June 2030'));
+    await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('June 2030'));
     await tester.pumpAndSettle();
     expect(find.text('June 2030'), findsOneWidget);
@@ -701,7 +705,11 @@ void monthViewTests() {
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
-    expect(_visibleYears(tester), [2026, 2027]);
+    // Only the bounded years exist: 2026 and 2027.
+    expect(find.text('2025'), findsNothing);
+    expect(find.text('2028'), findsNothing);
+    expect(_visibleYears(tester), isNotEmpty);
+    expect(_visibleYears(tester).every((y) => y == 2026 || y == 2027), isTrue);
     expect(_enabledMonth(tester, 'October 2026'), isFalse);
     expect(_enabledMonth(tester, 'December 2026'), isTrue);
     expect(_enabledMonth(tester, 'February 2027'), isTrue);

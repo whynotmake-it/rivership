@@ -184,13 +184,16 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
         final extent = _sectionExtent;
         final count = _lastYear - _firstYear + 1;
         final viewport = constraints.maxHeight;
-        // The month's year in the middle.
+        // The month's own row in the middle (a year is about as tall as
+        // the view, so centering the year can leave the month off it).
+        final month = _clamp(widget.month);
+        final rowTop =
+            (month.year - _firstYear) * extent +
+            _row * (1 + (month.month - 1) ~/ 3);
         _scroll ??= ScrollController(
-          initialScrollOffset:
-              ((widget.month.year - _firstYear) * extent -
-                      (viewport - extent) / 2)
-                  .clamp(0, math.max(0, count * extent - viewport))
-                  .toDouble(),
+          initialScrollOffset: (rowTop + _row / 2 - viewport / 2)
+              .clamp(0, math.max(0, count * extent - viewport))
+              .toDouble(),
         );
         return Shortcuts(
           shortcuts: {
