@@ -229,7 +229,12 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
       _target = null;
       _following = false;
       size = constraints.smallest;
-      child?.layout(constraints);
+      if (child != null) {
+        child.layout(constraints);
+        // The child fills the size: put it at the origin instead of where it
+        // was aligned mid-flight.
+        (child.parentData! as BoxParentData).offset = Offset.zero;
+      }
       return;
     }
 

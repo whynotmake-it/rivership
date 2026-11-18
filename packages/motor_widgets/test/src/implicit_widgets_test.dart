@@ -637,6 +637,39 @@ void main() {
       expect(tester.getSize(find.byType(MotionSize)), const Size(200, 20));
     });
 
+    testWidgets('puts the child at its origin under tight constraints, '
+        'even when it was aligned mid-flight before', (tester) async {
+      const key = ValueKey('child');
+      Widget build({required double width, required bool tight}) => _wrap(
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: tight ? 150 : null,
+            height: tight ? 20 : null,
+            child: MotionSize(
+              motion: spring,
+              child: SizedBox(key: key, width: width, height: 20),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(build(width: 100, tight: false));
+      await tester.pumpWidget(build(width: 200, tight: false));
+      await tester.pump(frame * 4);
+      // Mid-flight the child is centered, so it sits left of the box.
+      expect(
+        tester.getTopLeft(find.byKey(key)).dx,
+        lessThan(tester.getTopLeft(find.byType(MotionSize)).dx),
+      );
+
+      await tester.pumpWidget(build(width: 200, tight: true));
+      expect(tester.getSize(find.byType(MotionSize)), const Size(150, 20));
+      expect(
+        tester.getRect(find.byKey(key)),
+        tester.getRect(find.byType(MotionSize)),
+      );
+    });
+
     testWidgets('stops when the child goes away mid-flight', (tester) async {
       Widget build({required bool child}) => _wrap(
         MotionSize(
