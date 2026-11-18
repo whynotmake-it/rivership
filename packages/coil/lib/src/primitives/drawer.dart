@@ -85,8 +85,9 @@ class CoilDrawerLook {
   });
 
   /// The look for [reveal] from [theme]'s tokens: the screen's corners
-  /// (phone radii where unknown), the [behindScrimLight] / [behindScrimDark]
-  /// dim from behind and the theme's [CoilColors.scrim] over, shadow step
+  /// (phone radii where unknown), [behindScrim] from behind (a lightening
+  /// veil in light, a dim in dark) and the theme's [CoilColors.scrim]
+  /// over, shadow step
   /// [edgeShadowLevel] on the content's side, and the page background for
   /// the content and, from behind, the panels.
   factory CoilDrawerLook.fallback(
@@ -97,11 +98,7 @@ class CoilDrawerLook {
     final behind = reveal == CoilDrawerReveal.behind;
     return CoilDrawerLook(
       fallbackCornerRadius: fallbackCornerRadiusFor(defaultTargetPlatform),
-      scrimColor: behind
-          ? (colors.brightness == Brightness.dark
-                ? behindScrimDark
-                : behindScrimLight)
-          : colors.scrim,
+      scrimColor: behind ? behindScrim(colors) : colors.scrim,
       shadows: edgeShadows(colors),
       contentColor: colors.background,
       panelColor: behind ? colors.background : null,
@@ -109,16 +106,25 @@ class CoilDrawerLook {
   }
 
   /// The scrim over the content once a panel revealed from behind is fully
-  /// open, in light: black 7 %. A light dim; the content's edge does most
-  /// of the separating.
-  static const behindScrimLight = Color.from(
-    alpha: 0.07,
-    red: 0,
-    green: 0,
-    blue: 0,
-  );
+  /// open, for [colors]' brightness.
+  ///
+  /// In light, a veil of the top of the surface ladder (white in coil's
+  /// palette) at [behindVeilAlpha]: the page lightens as it slides away,
+  /// the way distant things fade into haze, and its shadow and hairline
+  /// keep it apart from the sidebar. In dark, [behindScrimDark]: there a
+  /// lighter page would read as raised toward the viewer, so it dims
+  /// instead.
+  static Color behindScrim(CoilColors colors) =>
+      colors.brightness == Brightness.dark
+      ? behindScrimDark
+      : colors.surfaces.last.withValues(alpha: behindVeilAlpha);
 
-  /// [behindScrimLight] in dark: black 15 %, since black dims less there.
+  /// The opacity of [behindScrim]'s lightening veil in light: 35 %. Enough
+  /// to push the page back; much more and it looks washed out.
+  static const behindVeilAlpha = 0.35;
+
+  /// [behindScrim] in dark: black 15 %. The inverse of the light veil, so
+  /// the dark page recedes into the dark instead of lighting up.
   static const behindScrimDark = Color.from(
     alpha: 0.15,
     red: 0,
@@ -276,8 +282,9 @@ class CoilDrawerTransition {
 /// corner radius while it is away from the edges (from [CoilScreenRadius]
 /// unless [look] pins one) and squaring up again the moment it covers the
 /// panels. As it slides, the panel emerges under it ([transition]), and a
-/// light scrim, a shadow and a hairline on the content's edge follow the
-/// drag.
+/// veil over the content (lightening in light, dimming in dark; see
+/// [CoilDrawerLook.behindScrim]), a shadow and a hairline on its edge
+/// follow the drag.
 /// With [CoilDrawerReveal.over], the panel slides in over [child] under a
 /// scrim.
 ///

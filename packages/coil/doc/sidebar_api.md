@@ -144,8 +144,10 @@ current state.
   can't tell: 40 on iOS, 24 on Android, square on desktop and the web),
   `drawerShadows` (shadow step 8's blurs, centered on the page so they
   show along its side, with a `border` hairline) and `drawerScrimColor`
-  (null: black 7 % light / 15 % dark from behind, the theme's `scrim`,
-  20 % / 30 %, over the page). The sidebar's own fill is `background`.
+  (null: from behind, `CoilDrawerLook.behindScrim`, a veil that
+  lightens the page in light, white 35 %, and dims it in dark, black
+  15 %, so it recedes either way; over the page, the theme's `scrim`,
+  20 % / 30 %). The sidebar's own fill is `background`.
   All of them fade in with the slide and are gone at rest.
 - **Transition** is `drawerTransition: CoilDrawerTransition` on the
   scaffold: the page's `scale` once open (1), and the sidebar's
