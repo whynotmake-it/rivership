@@ -2,6 +2,10 @@
 
 Milestone M0, unreleased.
 
+- Fix: a closing `CoilPopover` hands focus back only to an opener still
+  in the tree (a removed one used to take focus while detached and keep
+  it when it came back), and Tab can't move into a popover while it
+  springs out.
 - Fix: merged selection blocks in a right-to-left row (`CoilToggleGroup`)
   glide apart and together on their own side, rounding the outer corners
   and squaring the seam. `CoilLayerGeometry` has a `textDirection`

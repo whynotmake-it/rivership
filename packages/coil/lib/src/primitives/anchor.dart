@@ -225,7 +225,15 @@ class _CoilPopoverState extends State<CoilPopover>
               CoilTier.touch => motion.standardExit,
             }
       ..animateTo(0);
-    if (_scope.hasFocus) _returnFocus?.requestFocus();
+    // Focus goes back where it came from, unless that node has since left
+    // the tree or can't take focus any more.
+    final back = _returnFocus;
+    if (_scope.hasFocus &&
+        back != null &&
+        (back.context?.mounted ?? false) &&
+        back.canRequestFocus) {
+      back.requestFocus();
+    }
     _returnFocus = null;
   }
 
@@ -297,32 +305,36 @@ class _CoilPopoverState extends State<CoilPopover>
             onTapUpOutside: (event) {
               if (_downOutside.remove(event.pointer)) close(.outsideTap);
             },
-            child: FocusScope(
-              node: _scope,
-              autofocus: widget.takeFocus,
-              child: Shortcuts(
-                shortcuts: const {
-                  SingleActivator(LogicalKeyboardKey.escape):
-                      CoilDismissIntent(),
-                },
-                child: Actions(
-                  actions: {
-                    CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
-                      context: context,
-                      onInvoke: (_) => close(.escape),
-                    ),
+            // Tab can't reach into a popover springing out.
+            child: ExcludeFocus(
+              excluding: !open,
+              child: FocusScope(
+                node: _scope,
+                autofocus: widget.takeFocus,
+                child: Shortcuts(
+                  shortcuts: const {
+                    SingleActivator(LogicalKeyboardKey.escape):
+                        CoilDismissIntent(),
                   },
-                  child: Semantics(
-                    scopesRoute: true,
-                    explicitChildNodes: true,
-                    child: CoilBlurFade(
-                      presence: _presence,
-                      // The grow from the anchor's edge is the placement's:
-                      // only it knows which side that is.
-                      scale: 1,
-                      child: _CoilPopoverGroup(
-                        group: this,
-                        child: Builder(builder: widget.popover),
+                  child: Actions(
+                    actions: {
+                      CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
+                        context: context,
+                        onInvoke: (_) => close(.escape),
+                      ),
+                    },
+                    child: Semantics(
+                      scopesRoute: true,
+                      explicitChildNodes: true,
+                      child: CoilBlurFade(
+                        presence: _presence,
+                        // The grow from the anchor's edge is the placement's:
+                        // only it knows which side that is.
+                        scale: 1,
+                        child: _CoilPopoverGroup(
+                          group: this,
+                          child: Builder(builder: widget.popover),
+                        ),
                       ),
                     ),
                   ),
