@@ -12,7 +12,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 ## FileThumbnail
 
-- **Anatomy:** a square preview (`size` required), radius item (or nested), `muted` background.
+- **Anatomy:** a square preview (`dimension`, 56 by default), radius item (or nested), `muted` background.
 - **States:**
   - pending: spinner 24, muted;
   - image: cover-fit;

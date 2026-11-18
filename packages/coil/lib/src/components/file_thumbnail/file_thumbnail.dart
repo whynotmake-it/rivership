@@ -17,7 +17,7 @@ class CoilFileThumbnail extends StatelessWidget {
     super.key,
     this.image,
     this.placeholder,
-    this.size = 56,
+    this.dimension = 56,
     this.onRemove,
     this.removeLabel = 'Remove',
   });
@@ -31,8 +31,8 @@ class CoilFileThumbnail extends StatelessWidget {
   /// Shown without a preview; the name's extension when null.
   final Widget? placeholder;
 
-  /// The side length.
-  final double size;
+  /// The side length. (`size` is the size step elsewhere in coil.)
+  final double dimension;
 
   /// Shows a remove button that calls this.
   final VoidCallback? onRemove;
@@ -73,7 +73,7 @@ class CoilFileThumbnail extends StatelessWidget {
       image: image != null,
       label: name,
       child: SizedBox.square(
-        dimension: size,
+        dimension: dimension,
         child: DecoratedBox(
           decoration: ShapeDecoration(
             color: colors.muted,

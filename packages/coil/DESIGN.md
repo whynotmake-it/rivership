@@ -1114,7 +1114,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### FileThumbnail
 
-- **Anatomy:** a square preview (`size` required), radius item (or nested), `muted` background.
+- **Anatomy:** a square preview (`dimension`, 56 by default), radius item (or nested), `muted` background.
 - **States:**
   - pending: spinner 24, muted;
   - image: cover-fit;

@@ -858,7 +858,7 @@ final stories = <StressStory>[
       spacing: 8,
       children: [
         CoilFileThumbnail(name: h.text, onRemove: () {}),
-        CoilFileThumbnail(name: '${h.text}.${h.short}', size: 300),
+        CoilFileThumbnail(name: '${h.text}.${h.short}', dimension: 300),
       ],
     ),
   ),

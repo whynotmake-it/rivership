@@ -2,6 +2,8 @@
 
 Milestone M0, unreleased.
 
+- Breaking: `CoilFileThumbnail.size` (the side length, a `double`) is
+  `dimension`, so `size` means the `CoilSize?` step everywhere in coil.
 - Bold text: `CoilTheme.of` applies `CoilThemeData.boldText()` when
   `MediaQuery.boldTextOf` is true, so every role lighter than semibold
   becomes semibold (a variable font's `wght` axis too), as DESIGN.md

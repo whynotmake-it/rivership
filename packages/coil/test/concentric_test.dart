@@ -172,7 +172,10 @@ void main() {
           tier: CoilTier.pointer,
           home: CoilInputMessage(
             onSend: (_) {},
-            attachments: const CoilFileThumbnail(name: 'brief.pdf', size: 48),
+            attachments: const CoilFileThumbnail(
+              name: 'brief.pdf',
+              dimension: 48,
+            ),
           ),
         ),
       );

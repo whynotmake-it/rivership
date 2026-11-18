@@ -26,9 +26,13 @@ class FileThumbnailPage extends StatelessWidget {
         title: 'Sizes',
         child: DemoWrap(
           children: [
-            const CoilFileThumbnail(name: 'report.pdf', size: 40),
+            const CoilFileThumbnail(name: 'report.pdf', dimension: 40),
             const CoilFileThumbnail(name: 'budget.xlsx'),
-            CoilFileThumbnail(name: 'slides.key', size: 72, onRemove: () {}),
+            CoilFileThumbnail(
+              name: 'slides.key',
+              dimension: 72,
+              onRemove: () {},
+            ),
           ],
         ),
       ),
@@ -41,7 +45,7 @@ class FileThumbnailPage extends StatelessWidget {
           children: [
             CoilFileThumbnail(
               name: 'dunes.jpg',
-              size: 72,
+              dimension: 72,
               image: const AssetImage('assets/images/dunes.jpg'),
               onRemove: () {},
             ),
@@ -51,7 +55,7 @@ class FileThumbnailPage extends StatelessWidget {
             ),
             const CoilFileThumbnail(
               name: 'upload.png',
-              size: 72,
+              dimension: 72,
               image: _StillLoading(),
             ),
           ],

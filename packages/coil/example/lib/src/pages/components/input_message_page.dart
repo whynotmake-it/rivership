@@ -50,7 +50,7 @@ class _InputMessagePageState extends State<InputMessagePage> {
                         for (final file in _files)
                           CoilFileThumbnail(
                             name: file,
-                            size: 48,
+                            dimension: 48,
                             onRemove: () => setState(
                               () => _files = [..._files]..remove(file),
                             ),
