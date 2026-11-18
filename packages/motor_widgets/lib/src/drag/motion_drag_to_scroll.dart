@@ -37,7 +37,8 @@ import 'package:motor_widgets/src/painted_position.dart';
 /// this widget, see [outside]. A plain [Draggable] doesn't tell anyone
 /// where it is, so it is only seen while it is over this widget, and only
 /// while no [DragTarget] inside takes it, except a `MotionReorderable`,
-/// which passes it on.
+/// which passes it on. It also needs `data`: a [DragTarget] isn't told
+/// where a [Draggable] without data is.
 class MotionDragToScroll extends StatefulWidget {
   /// Scrolls the scroll view below [child] near its edges.
   const MotionDragToScroll({
