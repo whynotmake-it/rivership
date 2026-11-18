@@ -306,9 +306,19 @@ class MotionDropGap extends StatelessWidget {
 }
 
 class _ReorderableScope extends InheritedWidget {
-  const _ReorderableScope({required this.zone, required super.child});
+  const _ReorderableScope({
+    required this.zone,
+    required this.motion,
+    required this.sliver,
+    required super.child,
+  });
 
   final _MotionReorderableState<Object> zone;
+
+  /// What items read from [zone] while building, so a hover that only
+  /// moves the drop doesn't rebuild items the builder kept.
+  final Motion? motion;
+  final bool sliver;
 
   static _MotionReorderableState<Object> of(BuildContext context) {
     final scope = context
@@ -322,7 +332,10 @@ class _ReorderableScope extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(_ReorderableScope oldWidget) => true;
+  bool updateShouldNotify(_ReorderableScope oldWidget) =>
+      zone != oldWidget.zone ||
+      motion != oldWidget.motion ||
+      sliver != oldWidget.sliver;
 }
 
 /// Tells the reorderable which landing site its gap is.
@@ -470,8 +483,20 @@ class _MotionReorderableState<T extends Object>
     _ => flight?.id ?? data,
   };
 
-  bool _contains(Object id) =>
-      widget.items.any((item) => _idOfItem(item) == id);
+  bool _contains(Object id) => _indexOfId(id) != null;
+
+  /// The index of the item with [id], from a map built once per widget, as
+  /// every slot asks for its own. Items may be a list changed in place, so
+  /// every new widget drops it.
+  int? _indexOfId(Object id) {
+    final indices = _indicesById ??= {
+      for (final (i, item) in widget.items.indexed.toList().reversed)
+        _idOfItem(item): i,
+    };
+    return indices[id];
+  }
+
+  Map<Object, int>? _indicesById;
 
   /// The items without the one dragged with [data].
   List<T> _order(Object? data) {
@@ -486,6 +511,7 @@ class _MotionReorderableState<T extends Object>
   @override
   void didUpdateWidget(MotionReorderable<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _indicesById = null;
     final pending = _pending;
     // The pending item arrived: the feedback lands on it.
     if (pending != null && _contains(pending.id)) pending.flight?.relocate();
@@ -1035,8 +1061,8 @@ class _MotionReorderableState<T extends Object>
     final onMove = widget.onMove;
     final items = widget.items;
     if (!mounted || onMove == null || items.length < 2) return const {};
-    final index = items.indexWhere((other) => _idOfItem(other) == id);
-    if (index < 0) return const {};
+    final index = _indexOfId(id);
+    if (index == null) return const {};
     final item = items[index];
     final strings = _strings;
     void to(int target) {
@@ -1099,6 +1125,8 @@ class _MotionReorderableState<T extends Object>
     final drop = _drop();
     final content = _ReorderableScope(
       zone: this as _MotionReorderableState<Object>,
+      motion: widget.motion,
+      sliver: widget._sliver,
       child: NotificationListener<ScrollNotification>(
         // A scroll under a still pointer moves the items past it.
         onNotification: (_) {
