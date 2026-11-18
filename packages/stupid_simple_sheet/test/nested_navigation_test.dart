@@ -14,8 +14,7 @@ final _sheetTypes = <String,
     mergeable = true,
   }) =>
       StupidSimpleSheetRoute<T>(
-        child: child,
-        nestedNavigation: nestedNavigation,
+        child: nestedNavigation ? SheetNavigator(child: child) : child,
         mergeable: mergeable,
       ),
   'cupertino': <T>({
@@ -24,8 +23,7 @@ final _sheetTypes = <String,
     mergeable = true,
   }) =>
       StupidSimpleCupertinoSheetRoute<T>(
-        child: child,
-        nestedNavigation: nestedNavigation,
+        child: nestedNavigation ? SheetNavigator(child: child) : child,
         mergeable: mergeable,
       ),
   'glass': <T>({
@@ -34,8 +32,7 @@ final _sheetTypes = <String,
     mergeable = true,
   }) =>
       StupidSimpleGlassSheetRoute<T>(
-        child: child,
-        nestedNavigation: nestedNavigation,
+        child: nestedNavigation ? SheetNavigator(child: child) : child,
         mergeable: mergeable,
       ),
 };
@@ -483,21 +480,22 @@ void main() {
     navigatorKey.currentState!
         .push(
           StupidSimpleSheetRoute<void>(
-            nestedNavigation: true,
-            child: _Page(
-              'A',
-              height: 200,
-              onTap: (context) => Navigator.of(context)
-                  .push(
-                    StupidSimpleSheetRoute<void>(
-                      child: ValueListenableBuilder(
-                        valueListenable: height,
-                        builder: (context, value, _) =>
-                            _Page('B', height: value),
+            child: SheetNavigator(
+              child: _Page(
+                'A',
+                height: 200,
+                onTap: (context) => Navigator.of(context)
+                    .push(
+                      StupidSimpleSheetRoute<void>(
+                        child: ValueListenableBuilder(
+                          valueListenable: height,
+                          builder: (context, value, _) =>
+                              _Page('B', height: value),
+                        ),
                       ),
-                    ),
-                  )
-                  .ignore(),
+                    )
+                    .ignore(),
+              ),
             ),
           ),
         )
@@ -571,17 +569,18 @@ void main() {
     navigatorKey.currentState!
         .push(
           StupidSimpleSheetRoute<void>(
-            nestedNavigation: true,
-            child: _Page(
-              'A',
-              height: 200,
-              onTap: (context) => Navigator.of(context)
-                  .push(
-                    StupidSimpleSheetRoute<void>(
-                      child: const _Page('B', height: 300),
-                    ),
-                  )
-                  .ignore(),
+            child: SheetNavigator(
+              child: _Page(
+                'A',
+                height: 200,
+                onTap: (context) => Navigator.of(context)
+                    .push(
+                      StupidSimpleSheetRoute<void>(
+                        child: const _Page('B', height: 300),
+                      ),
+                    )
+                    .ignore(),
+              ),
             ),
           ),
         )

@@ -3,41 +3,57 @@ part of '../stupid_simple_sheet.dart';
 /// Lets sheets that are pushed from within [child] merge into the
 /// surrounding sheet, instead of stacking on top of it.
 ///
-/// This places an auto-sizing, nested [Navigator] around [child], which
-/// becomes its first page. Sheets that are pushed through
-/// `Navigator.of(context)` from within [child] and agree to merge (see
-/// [StupidSimpleSheetTransitionMixin.canMergeInto]) are pushed onto that
-/// navigator. Every other route, as well as popping [child] itself, is
-/// forwarded to the navigator that hosts the sheet, so existing navigation
-/// code keeps working unchanged.
-///
-/// The navigator sizes itself to the height of its pages, and interpolates
-/// between them using each merged sheet's own transition animation. Since that
-/// animation is driven by the merged sheet's
-/// [StupidSimpleSheetTransitionMixin.motion], the sheet resizes with exactly
-/// the same motion it would otherwise use to slide in.
-///
-/// Setting [StupidSimpleSheetTransitionMixin.nestedNavigation] to true wraps
-/// the whole content of a sheet in a [SheetNavigator]. Use this widget
-/// directly when the sheet's chrome is part of its content, like with
-/// [StupidSimpleSheetRoute] and [SheetBackground], so that the chrome stays
-/// in place while only the content inside of it changes:
+/// Wrap the content of a sheet in a [SheetNavigator] to opt in:
 ///
 /// ```dart
+/// // Cupertino and glass sheets draw their own chrome around the child
+/// StupidSimpleGlassSheetRoute(
+///   child: SheetNavigator(child: FirstPage()),
+/// );
+///
+/// // For StupidSimpleSheetRoute, place it inside of your chrome, so that the
+/// // chrome stays in place while only the content inside of it changes
 /// StupidSimpleSheetRoute(
 ///   child: SheetBackground(
-///     child: SheetNavigator(
-///       child: FirstPage(),
-///     ),
+///     child: SheetNavigator(child: FirstPage()),
 ///   ),
 /// );
 /// ```
 ///
-/// Outside of a sheet, or inside of a sheet that was merged into another one,
-/// this widget just returns [child].
+/// This places an auto-sizing, nested [Navigator] around [child], which
+/// becomes its first page. A sheet that is pushed through
+/// `Navigator.of(context)` from within [child], and agrees to merge via
+/// [StupidSimpleSheetTransitionMixin.canMergeInto], is pushed onto that
+/// navigator: it replaces the content with a crossfade, while the sheet
+/// resizes to fit the new content. Popping it reverses that transition.
 ///
-/// See [StupidSimpleSheetTransitionMixin.nestedNavigation] for details on how
-/// merged sheets behave.
+/// The navigator interpolates its height using each merged sheet's own
+/// transition animation. Since that is driven by the merged sheet's
+/// [StupidSimpleSheetTransitionMixin.motion], the sheet resizes with exactly
+/// the same motion it would otherwise use to slide in. Sheets that are always
+/// full height, like the Cupertino and glass sheets, only swap their content.
+///
+/// Merged sheets reuse the host sheet's chrome, position, drag behavior,
+/// snapping configuration and barrier. [SheetBackground] renders nothing but
+/// its child inside of merged sheets, so the same content works both as a
+/// merged and as a stacked sheet. Dragging the sheet closed, or tapping the
+/// barrier, dismisses the whole sheet including all merged sheets, while the
+/// system back gesture pops the topmost merged sheet first.
+///
+/// Everything else keeps working like it does without a [SheetNavigator]:
+/// routes that don't merge (pages, dialogs, sheets with
+/// [StupidSimpleSheetTransitionMixin.mergeable] set to false, named routes)
+/// are forwarded to the navigator that hosts the sheet, and popping [child]
+/// itself pops the sheet.
+///
+/// Note that inside of [child], [ModalRoute.of] returns the first page of the
+/// nested navigator, not the sheet. Use [StupidSimpleSheetController.maybeOf]
+/// to get a hold of the sheet. Also, overlays such as tooltips that are
+/// inserted into the nearest [Overlay] are clipped to the bounds of the sheet.
+///
+/// Outside of a sheet, or inside of a sheet that was merged into another one,
+/// this widget just returns [child]. There can only be one [SheetNavigator]
+/// per sheet.
 class SheetNavigator extends StatelessWidget {
   /// Creates a [SheetNavigator].
   const SheetNavigator({

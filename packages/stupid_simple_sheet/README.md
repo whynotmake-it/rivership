@@ -297,14 +297,12 @@ nested navigation, it instead **merges** into the existing sheet. The content
 fades out and back in, and the sheet resizes to the new content using the
 pushed sheet's own `motion`. Popping it reverses the transition.
 
-For the Cupertino and glass sheets, which draw their own chrome, opt in on the
-first sheet:
+To opt in, wrap the first sheet's content in a `SheetNavigator`:
 
 ```dart
 Navigator.of(context).push(
   StupidSimpleGlassSheetRoute(
-    nestedNavigation: true,
-    child: FirstPage(),
+    child: SheetNavigator(child: FirstPage()),
   ),
 );
 
@@ -314,9 +312,9 @@ Navigator.of(context).push(
 );
 ```
 
-When the chrome is part of your content, as with `StupidSimpleSheetRoute`,
-place a `SheetNavigator` inside the chrome instead, so only what is inside
-the chrome changes:
+With `StupidSimpleSheetRoute`, where the chrome is part of your content,
+place the `SheetNavigator` inside the chrome, so only what is inside the
+chrome changes:
 
 ```dart
 StupidSimpleSheetRoute(
@@ -332,7 +330,7 @@ and it works whether it merges or ends up stacked.
 
 How it behaves:
 
-- **Opt-in on both sides.** Only sheets with nested navigation accept merges.
+- **Opt-in on both sides.** Only sheets with a `SheetNavigator` accept merges.
   A pushed sheet can refuse with `mergeable: false` and will stack as usual.
   Custom routes can override `canMergeInto(host)` for finer control.
 - **Nothing else changes.** Pages, dialogs, named routes and sheets that

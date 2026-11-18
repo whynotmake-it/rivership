@@ -40,7 +40,6 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
-    this.nestedNavigation = false,
     this.mergeable = true,
     this.blurBehindBarrier = true,
 
@@ -78,10 +77,6 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
-
-  /// {@macro nestedNavigation}
-  @override
-  final bool nestedNavigation;
 
   /// {@macro mergeable}
   ///

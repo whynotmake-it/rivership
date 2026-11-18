@@ -29,7 +29,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
-    this.nestedNavigation = false,
     this.mergeable = true,
   });
 
@@ -56,10 +55,6 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
-
-  /// {@macro nestedNavigation}
-  @override
-  final bool nestedNavigation;
 
   /// {@macro mergeable}
   ///

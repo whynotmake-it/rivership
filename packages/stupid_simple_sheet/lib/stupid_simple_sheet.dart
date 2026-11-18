@@ -79,7 +79,6 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
     this.originateAboveBottomViewInset = false,
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
-    this.nestedNavigation = false,
     this.mergeable = true,
   });
 
@@ -88,10 +87,6 @@ class StupidSimpleSheetRoute<T> extends PopupRoute<T>
 
   /// The widget to display in the sheet.
   final Widget child;
-
-  /// {@macro nestedNavigation}
-  @override
-  final bool nestedNavigation;
 
   /// {@macro mergeable}
   ///
@@ -315,48 +310,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   /// example.
   RouteSnapshotMode get backgroundSnapshotMode => RouteSnapshotMode.never;
 
-  /// {@template nestedNavigation}
-  /// Whether sheets pushed from within this sheet can merge into it, instead
-  /// of stacking on top of it.
-  ///
-  /// When true, this sheet hosts its content in a [SheetNavigator], a nested,
-  /// auto-sizing [Navigator]. A sheet that is pushed through
-  /// `Navigator.of(context)` from inside this sheet, and agrees to merge via
-  /// [canMergeInto], is then pushed onto that nested navigator: it replaces
-  /// the content of this sheet
-  /// with a crossfade, while the sheet resizes to fit the new content using
-  /// the pushed sheet's [motion]. Popping it reverses that transition.
-  ///
-  /// Merged sheets reuse this sheet's chrome, position, drag behavior,
-  /// snapping configuration and barrier. Dragging the sheet closed, or
-  /// tapping the barrier, dismisses the whole sheet including all merged
-  /// sheets, while the system back gesture pops the topmost merged sheet
-  /// first.
-  ///
-  /// Everything else keeps working like it does without nested navigation:
-  /// routes that don't merge (pages, dialogs, sheets with [mergeable] set to
-  /// false, named routes) are forwarded to the navigator that hosts this
-  /// sheet, and popping this sheet's own content pops this sheet.
-  ///
-  /// If the chrome of the sheet is part of its content, like with
-  /// [StupidSimpleSheetRoute] and [SheetBackground], leave this false and
-  /// place a [SheetNavigator] inside of the chrome instead. [SheetBackground]
-  /// renders nothing but its child inside of merged sheets, so the same
-  /// content works both as a merged and as a stacked sheet.
-  ///
-  /// Note that inside the content of this sheet, [ModalRoute.of] returns the
-  /// first page of the nested navigator, not this route. Use
-  /// [StupidSimpleSheetController.maybeOf] to get a hold of this sheet.
-  /// Also, overlays such as tooltips that are inserted into the nearest
-  /// [Overlay] are clipped to the bounds of the sheet.
-  ///
-  /// Defaults to false.
-  /// {@endtemplate}
-  bool get nestedNavigation => false;
-
   /// {@template mergeable}
-  /// Whether this sheet can merge into a sheet with nested navigation (see
-  /// [nestedNavigation] and [SheetNavigator]) that it is pushed from.
+  /// Whether this sheet can merge into a sheet it is pushed from, if that
+  /// sheet's content is wrapped in a [SheetNavigator].
   ///
   /// If false, this sheet always stacks on top as a separate sheet.
   ///
@@ -380,17 +336,17 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
 
   /// Whether this sheet was merged into another sheet.
   ///
-  /// See [nestedNavigation].
+  /// See [SheetNavigator].
   bool get isMerged => _mergeHost != null;
 
   /// The sheet this sheet was merged into, if any.
   ///
-  /// See [nestedNavigation].
+  /// See [SheetNavigator].
   StupidSimpleSheetTransitionMixin<dynamic>? get mergeHost => _mergeHost;
 
   StupidSimpleSheetTransitionMixin<dynamic>? _mergeHost;
 
-  /// The nested navigator, if this sheet uses [nestedNavigation].
+  /// The [SheetNavigator] inside this sheet, if any.
   _SheetNavigatorHostState? _sheetNavigator;
 
   /// Builds the transition of content inside a [SheetNavigator].
@@ -579,7 +535,6 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       // The host takes care of gestures, we only need to be measured.
       return _SheetPageBoundary(route: this, child: buildContent(context));
     }
-    final content = buildContent(context);
     return AnimatedBuilder(
       animation: animation,
       builder: (context, child) => MediaQuery.removeViewInsets(
@@ -610,7 +565,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
           child: child!,
         ),
       ),
-      child: nestedNavigation ? SheetNavigator(child: content) : content,
+      child: buildContent(context),
     );
   }
 
