@@ -7,6 +7,11 @@ abstract interface class CoilLayerGeometry {
   /// The rect of target [index] in the layer's coordinates, or null if no
   /// such target is laid out.
   Rect? rectOf(int index);
+
+  /// The ambient reading direction of the layer, for painters whose shapes
+  /// depend on which side is the start (directional radii, a run of items
+  /// laid out right to left).
+  TextDirection get textDirection;
 }
 
 /// Paints a decoration behind or in front of a `CoilMotionLayer`'s child:
@@ -75,6 +80,7 @@ class CoilPainterLayer extends SingleChildRenderObjectWidget {
       RenderCoilMotionLayer(
         background: background,
         foreground: foreground,
+        textDirection: Directionality.maybeOf(context) ?? TextDirection.ltr,
       );
 
   @override
@@ -84,7 +90,8 @@ class CoilPainterLayer extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..background = background
-      ..foreground = foreground;
+      ..foreground = foreground
+      ..textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
   }
 }
 
@@ -95,7 +102,17 @@ class RenderCoilMotionLayer extends RenderProxyBox
   RenderCoilMotionLayer({
     this._background = const [],
     this._foreground = const [],
+    this._textDirection = TextDirection.ltr,
   });
+
+  @override
+  TextDirection get textDirection => _textDirection;
+  TextDirection _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsPaint();
+  }
 
   final _targets = <int, RenderBox>{};
 

@@ -324,7 +324,8 @@ class CoilSelectionPainter extends CoilLayerPainter {
     }
   }
 
-  /// The corners with the inner side (toward the seam) square.
+  /// The corners with the inner side (toward the seam) square, for a row
+  /// read left to right; `paint` mirrors them in a right-to-left row.
   (_Corners, _Corners) _innerSquare(double r) => _axis == Axis.vertical
       ? (_Corners(r, r, 0, 0), _Corners(0, 0, r, r))
       : (_Corners(r, 0, 0, r), _Corners(0, r, r, 0));
@@ -440,7 +441,10 @@ class CoilSelectionPainter extends CoilLayerPainter {
               : Rect.fromLTRB(whole.left, mid, whole.right, whole.bottom);
         }
         final mid = gapRect.center.dx;
-        return first
+        // The first half holds the run's first items: the left in a row
+        // read left to right, the right in one read right to left.
+        final left = first != (items.textDirection == TextDirection.rtl);
+        return left
             ? Rect.fromLTRB(whole.left, whole.top, mid, whole.bottom)
             : Rect.fromLTRB(mid, whole.top, whole.right, whole.bottom);
       case _FrozenGeometry():
@@ -467,19 +471,16 @@ class CoilSelectionPainter extends CoilLayerPainter {
           Paint()..color = Color.fromRGBO(0, 0, 0, opacity),
         );
       }
-      final shifted = rect.shift(offset);
-      ShapeDecoration(
-            color: _color,
-            shape: RoundedSuperellipseBorder(
-              borderRadius: block.corners.borderRadius,
-            ),
-          )
-          .createBoxPainter(_noop)
-          .paint(
-            canvas,
-            shifted.topLeft,
-            ImageConfiguration(size: shifted.size),
-          );
+      // Corners are kept as if the row read left to right; a right-to-left
+      // row mirrors them, so the outer corners round and the seam squares.
+      final rtl = geometry.textDirection == TextDirection.rtl;
+      final corners = _axis == Axis.horizontal && rtl
+          ? block.corners.mirrored
+          : block.corners;
+      canvas.drawRSuperellipse(
+        corners.borderRadius.toRSuperellipse(rect.shift(offset)),
+        Paint()..color = _color,
+      );
       if (opacity < 1) canvas.restore();
     }
     _advanceMerges();
@@ -660,6 +661,9 @@ class _Corners {
     math.max(0, v[3]),
   );
 
+  /// Left and right swapped.
+  _Corners get mirrored => _Corners(tr, tl, bl, br);
+
   BorderRadius get borderRadius => BorderRadius.only(
     topLeft: Radius.circular(tl),
     topRight: Radius.circular(tr),
@@ -678,5 +682,3 @@ class _Corners {
   @override
   int get hashCode => Object.hash(tl, tr, br, bl);
 }
-
-void _noop() {}

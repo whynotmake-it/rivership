@@ -190,7 +190,10 @@ class CoilHighlightPainter extends CoilLayerPainter {
     painter.paint(
       canvas,
       painted.topLeft,
-      ImageConfiguration(size: painted.size, textDirection: TextDirection.ltr),
+      ImageConfiguration(
+        size: painted.size,
+        textDirection: geometry.textDirection,
+      ),
     );
     if (opacity < 1) canvas.restore();
   }

@@ -2,6 +2,15 @@
 
 Milestone M0, unreleased.
 
+- Fix: merged selection blocks in a right-to-left row (`CoilToggleGroup`)
+  glide apart and together on their own side, rounding the outer corners
+  and squaring the seam. `CoilLayerGeometry` has a `textDirection`
+  (breaking for implementers outside coil), which the motion layer takes
+  from `Directionality` and the highlight now paints with. Selection
+  blocks draw their superellipse directly instead of allocating a
+  `BoxPainter` per block per frame.
+- `CoilFocusRing.borderRadius` takes a `BorderRadiusGeometry`, resolved
+  with the ambient direction.
 - Fix: `CoilThinkingIndicator` follows its words by position, so words a
   parent rebuilds (non-const `Text`s) and repeated words keep cycling
   instead of sticking on the first.

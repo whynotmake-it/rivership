@@ -26,8 +26,9 @@ class CoilFocusRing extends StatelessWidget {
   final bool visible;
 
   /// The radius of the [child]'s corners. The ring's radius grows by
-  /// [offset] so it stays concentric.
-  final BorderRadius borderRadius;
+  /// [offset] so it stays concentric. Directional radii resolve with the
+  /// ambient [Directionality].
+  final BorderRadiusGeometry borderRadius;
 
   /// Gap between [child] and the ring. Defaults to the theme's
   /// [CoilFocusRingTheme.offset].
@@ -60,7 +61,9 @@ class CoilFocusRing extends StatelessWidget {
                 color: ring.withValues(
                   alpha: ring.a * opacity.clamp(0.0, 1.0),
                 ),
-                borderRadius: borderRadius,
+                borderRadius: borderRadius.resolve(
+                  Directionality.maybeOf(context),
+                ),
                 offset: offset ?? theme.focusRing.offset,
                 width: width ?? theme.focusRing.width,
               ),
@@ -87,7 +90,6 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final grow = offset + width / 2;
     final outline = borderRadius
-        .resolve(TextDirection.ltr)
         .toRSuperellipse(Offset.zero & size)
         .inflate(grow);
     // The ring follows the control's superellipse at its offset.
