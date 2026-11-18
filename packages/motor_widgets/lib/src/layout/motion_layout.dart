@@ -394,6 +394,11 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
   Object? _registeredId;
   _MotionLayoutGroupState? _group;
 
+  /// The group's rate, as its flights tick at, for the visuals a landing
+  /// hands over.
+  @override
+  TickerRate get tickerRate => _group?.widget.tickerRate ?? super.tickerRate;
+
   /// Continues a handed-off landing's scale, rotation and opacity.
   TrackController? _visuals;
 

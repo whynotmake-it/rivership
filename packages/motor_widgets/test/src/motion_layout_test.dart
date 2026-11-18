@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
+import 'package:motor_widgets/src/layout/motion_layout.dart';
 import 'package:motor_widgets/src/painted_position.dart';
 
 const _tile = Size(100, 40);
@@ -159,6 +160,23 @@ void main() {
         expect(half[i].topLeft, offsetMoreOrLessEquals(expected.topLeft));
         expect(half[i].size, expected.size);
       }
+    });
+
+    testWidgets("items tick at their group's tickerRate", (tester) async {
+      final rate = TickerRate.fps(30);
+      await _pumpHost(
+        tester,
+        (_) => MotionLayoutGroup(
+          tickerRate: rate,
+          child: _item('a'),
+        ),
+      );
+      expect(
+        tester
+            .state<MotionLayoutItemState>(find.byType(MotionLayoutItem))
+            .tickerRate,
+        rate,
+      );
     });
 
     testWidgets('the first build and new items do not fly', (tester) async {
