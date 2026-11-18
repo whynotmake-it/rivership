@@ -89,6 +89,12 @@ abstract interface class LandingScopeBox implements RenderBox {
   /// The registry of the scope.
   LandingRegistry get landingRegistry;
 
+  /// Whether the scope is on screen, so a drop over it can land in it.
+  ///
+  /// A scope in a page covered by an opaque route or in an [Offstage]
+  /// subtree keeps its size from when it was last laid out, but isn't.
+  bool get isShowing;
+
   /// The scope boxes that are attached.
   static final Set<LandingScopeBox> mounted = {};
 }
@@ -311,12 +317,12 @@ class DragFlight {
     _registryNamed = true;
   }
 
-  /// The registry of the innermost landing scope whose box contains
-  /// [position], or null.
+  /// The registry of the innermost landing scope on screen whose box
+  /// contains [position], or null.
   static LandingRegistry? _registryUnder(Offset position) {
     LandingScopeBox? innermost;
     for (final box in LandingScopeBox.mounted) {
-      if (!box.attached || !box.hasSize) continue;
+      if (!box.attached || !box.hasSize || !box.isShowing) continue;
       final rect = layoutGlobalRect(box);
       if (!rect.contains(position)) continue;
       if (innermost == null || box.depth > innermost.depth) innermost = box;

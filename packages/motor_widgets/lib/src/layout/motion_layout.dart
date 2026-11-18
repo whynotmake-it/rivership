@@ -279,6 +279,20 @@ class _RenderGroup extends RenderProxyBox implements LandingScopeBox {
   LandingRegistry get landingRegistry => state._landings;
 
   @override
+  bool get isShowing {
+    if (!state.mounted) return false;
+    // Overlay entries under an opaque one, and Visibility(maintainState:),
+    // turn tickers off below them.
+    if (!TickerMode.getValuesNotifier(state.context).value.enabled) {
+      return false;
+    }
+    for (var node = parent; node != null; node = node.parent) {
+      if (node is RenderOffstage && node.offstage) return false;
+    }
+    return true;
+  }
+
+  @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
     LandingScopeBox.mounted.add(this);

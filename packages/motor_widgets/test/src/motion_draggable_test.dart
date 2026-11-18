@@ -824,6 +824,107 @@ void main() {
     });
   });
 
+  group('MotionDraggable landing scope', () {
+    // A group deep in a page that another page covers, with a site for x
+    // at the bottom left: it must not take the drop on the board on top.
+    Widget covered() => Directionality(
+      textDirection: TextDirection.ltr,
+      child: Padding(
+        padding: EdgeInsets.zero,
+        child: Padding(
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: EdgeInsets.zero,
+              child: Padding(
+                padding: EdgeInsets.zero,
+                child: Padding(
+                  padding: EdgeInsets.zero,
+                  child: Padding(
+                    padding: EdgeInsets.zero,
+                    child: Padding(
+                      padding: EdgeInsets.zero,
+                      child: MotionLayoutGroup(
+                        child: Stack(
+                          children: [
+                            const SizedBox.expand(),
+                            Positioned(
+                              left: 0,
+                              bottom: 0,
+                              child: MotionLayoutItem(
+                                id: 'x',
+                                child: SizedBox.fromSize(size: _itemSize),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    for (final (name, wrap) in <(String, Widget Function(Widget))>[
+      (
+        'a page covered by an opaque one',
+        (board) => board,
+      ),
+      (
+        'an Offstage subtree',
+        (board) => Stack(
+          children: [
+            Offstage(child: covered()),
+            board,
+          ],
+        ),
+      ),
+    ]) {
+      testWidgets('a group in $name does not take the drop', (tester) async {
+        final overlay = GlobalKey<OverlayState>();
+        final page = OverlayEntry(
+          maintainState: true,
+          opaque: true,
+          builder: (_) => covered(),
+        );
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Overlay(key: overlay, initialEntries: [page]),
+          ),
+        );
+        // The covered page has been laid out once: its group has a size.
+        overlay.currentState!.insert(
+          OverlayEntry(
+            opaque: true,
+            builder: (_) => wrap(const _Board(reorderB: true)),
+          ),
+        );
+        await tester.pump();
+
+        final gesture = await _drag(tester, _inB);
+        await gesture.up();
+        // Dropped right on its place in B, it stays there all along.
+        for (var i = 0; i < 10; i++) {
+          await tester.pump(frame * 3);
+          expect(
+            (_paintedRect(tester, 'x').topLeft - _inB).distance,
+            lessThan(1),
+            reason: 'frame $i',
+          );
+        }
+        await tester.pumpAndSettle();
+        expect(_paintedRect(tester, 'x').topLeft, _inB);
+        expect(_isShown(tester, 'x'), isTrue);
+      });
+    }
+  });
+
   group('MotionDraggable hand-off to MotionLayoutItem', () {
     testWidgets('leaves the overlay once the card center is inside the '
         'destination viewport, with continuous velocity', (tester) async {
