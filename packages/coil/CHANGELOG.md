@@ -2,6 +2,22 @@
 
 Milestone M0, unreleased.
 
+- Breaking: `CoilDatePicker` holds what's picked as a draft until it's
+  confirmed, and reports only the confirmed date. A popover picking a date
+  alone confirms on the tap (as before); a popover with time and every
+  sheet confirm with a **Done** button (`CoilCalendarLabels.confirm`),
+  pinned in the sheet's footer. Closing any other way (close button,
+  scrim, drag, back, Escape, a tap outside) cancels. Enter confirms
+  (picking the focused day first on the grid); Space only picks.
+- `CoilCalendar`'s month title follows the pages mid-swipe (it changes as
+  soon as a page is more than half in view) with a blur-fade, and is a
+  button with a chevron that zooms out to a month view: each year's
+  months, 3 × 4, in a list that scrolls through the years, bounded and
+  dimmed by `firstDate`/`lastDate`. Picking a month zooms back into its
+  days; arrows, PageUp/PageDown, Enter and Escape work there too.
+- `CoilCalendar.onSubmitted`: called after Enter picks a day.
+- `CoilCalendarLabels` adds `monthLabel`, `monthName`, `year`,
+  `chooseMonthLabel` and `confirm`.
 - Fix: a drag that opens `CoilDrawer` (the phone sidebar) from a
   horizontal scrollable's edge no longer janks when it moves back: the
   drawer keeps the drag in both directions (`ScrollDragMode.dragFirst`)
