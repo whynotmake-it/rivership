@@ -354,6 +354,36 @@ void main() {
   });
 
   group('MotionSizeSwitcher', () {
+    for (final immediateResize in [false, true]) {
+      testWidgets('computes a dry baseline that matches its baseline '
+          '(immediateResize: $immediateResize)', (tester) async {
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: MotionSizeSwitcher(
+                motion: _spring,
+                immediateResize: immediateResize,
+                child: const Padding(
+                  padding: EdgeInsets.only(top: 7),
+                  child: Text('hello'),
+                ),
+              ),
+            ),
+          ),
+        );
+        const constraints = BoxConstraints(maxWidth: 800, maxHeight: 600);
+        double? dryBaseline(Finder finder) => tester
+            .renderObject<RenderBox>(finder)
+            .getDryBaseline(constraints, TextBaseline.alphabetic);
+        // At rest the child sits at the origin, so the baselines match.
+        final expected = dryBaseline(find.byType(Padding));
+        expect(expected, greaterThan(7));
+        expect(dryBaseline(find.byType(MotionSizeSwitcher)), expected);
+      });
+    }
+
     Widget sizeSwitcher(Widget? child, {bool immediateResize = false}) =>
         Directionality(
           textDirection: TextDirection.ltr,

@@ -276,6 +276,24 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
   }
 
   @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    final child = this.child;
+    if (child == null) return null;
+    final result = child.getDryBaseline(constraints, baseline);
+    if (result == null) return null;
+    if (constraints.isTight) return result;
+    // Offset by the alignment within the current size, as alignChild does.
+    final childSize = child.getDryLayout(constraints);
+    final offset = resolvedAlignment.alongOffset(
+      (getDryLayout(constraints) - childSize) as Offset,
+    );
+    return result + offset.dy;
+  }
+
+  @override
   void paint(PaintingContext context, Offset offset) {
     if (child != null && _hasVisualOverflow && clipBehavior != Clip.none) {
       final rect = Offset.zero & size;
