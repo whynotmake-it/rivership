@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- Fix: `CoilRovingFocus` gives back the Tab stops it took
+  (`skipTraversal`) when it switches to a stop on each item, a node leaves
+  `nodes`, or the group goes away.
 - Fix: a closing `CoilPopover` hands focus back only to an opener still
   in the tree (a removed one used to take focus while detached and keep
   it when it came back), and Tab can't move into a popover while it

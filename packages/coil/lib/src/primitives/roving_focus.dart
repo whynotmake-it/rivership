@@ -64,6 +64,10 @@ class CoilRovingFocus extends StatefulWidget {
 }
 
 class _CoilRovingFocusState extends State<CoilRovingFocus> {
+  /// The nodes this group took out of Tab's reach, to give back when they
+  /// leave the group, the group reaches every item, or it goes away.
+  final _skipped = <FocusNode>{};
+
   @override
   void initState() {
     super.initState();
@@ -76,19 +80,38 @@ class _CoilRovingFocusState extends State<CoilRovingFocus> {
     _syncTraversal();
   }
 
+  @override
+  void dispose() {
+    for (final node in _skipped) {
+      node.skipTraversal = false;
+    }
+    super.dispose();
+  }
+
   void _syncTraversal() {
     final nodes = widget.nodes;
-    if (widget.tabStops == CoilRovingTabStops.each) return;
-    var stop = widget.tabStop;
-    if (stop == null ||
-        stop < 0 ||
-        stop >= nodes.length ||
-        !nodes[stop].canRequestFocus) {
-      stop = nodes.indexWhere((n) => n.canRequestFocus);
+    final skip = <FocusNode>{};
+    if (widget.tabStops == CoilRovingTabStops.one) {
+      var stop = widget.tabStop;
+      if (stop == null ||
+          stop < 0 ||
+          stop >= nodes.length ||
+          !nodes[stop].canRequestFocus) {
+        stop = nodes.indexWhere((n) => n.canRequestFocus);
+      }
+      for (var i = 0; i < nodes.length; i++) {
+        if (i != stop) skip.add(nodes[i]);
+      }
     }
-    for (var i = 0; i < nodes.length; i++) {
-      nodes[i].skipTraversal = i != stop;
+    for (final node in _skipped.difference(skip)) {
+      node.skipTraversal = false;
     }
+    for (final node in nodes) {
+      node.skipTraversal = skip.contains(node);
+    }
+    _skipped
+      ..clear()
+      ..addAll(skip);
   }
 
   /// The next focusable index from [from] in [step] direction, or null.

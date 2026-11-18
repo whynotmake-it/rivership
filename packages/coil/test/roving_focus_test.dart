@@ -115,6 +115,44 @@ void main() {
     }
   });
 
+  testWidgets('gives back the Tab stops it took', (tester) async {
+    Widget group(List<FocusNode> nodes, CoilRovingTabStops tabStops) =>
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: CoilRovingFocus(
+            nodes: nodes,
+            tabStop: 0,
+            tabStops: tabStops,
+            child: Row(
+              children: [
+                for (final node in nodes)
+                  Focus(
+                    focusNode: node,
+                    child: const SizedBox.square(dimension: 10),
+                  ),
+              ],
+            ),
+          ),
+        );
+    List<bool> skipped() => [for (final n in nodes) n.skipTraversal];
+
+    await tester.pumpWidget(group(nodes, CoilRovingTabStops.one));
+    expect(skipped(), [false, true, true]);
+
+    // Switching to a stop on each item reaches every one again.
+    await tester.pumpWidget(group(nodes, CoilRovingTabStops.each));
+    expect(skipped(), [false, false, false]);
+
+    // A node dropped from the group is the caller's again.
+    await tester.pumpWidget(group(nodes, CoilRovingTabStops.one));
+    await tester.pumpWidget(group(nodes.take(2).toList(), .one));
+    expect(skipped(), [false, true, false]);
+
+    // And the group going away gives all of them back.
+    await tester.pumpWidget(const SizedBox());
+    expect(skipped(), [false, false, false]);
+  });
+
   testWidgets('an arrow a nested group leaves alone moves the outer group', (
     tester,
   ) async {
