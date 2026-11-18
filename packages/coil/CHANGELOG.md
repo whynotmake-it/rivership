@@ -2,6 +2,8 @@
 
 Milestone M0, unreleased.
 
+- Fix: `CoilSettingsDialog` no longer asks for a negative height in a
+  window under 64 tall, and asserts it has a section.
 - Fix: `CoilDataTable`'s search field shows a `query` set from code
   (clearing it clears the field).
 - Fix: a popup shown as a sheet (`CoilSelect`, `CoilMultiSelect`,

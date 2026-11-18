@@ -93,7 +93,7 @@ class CoilSettingsDialog<T> extends StatefulWidget {
     this.initialSection,
     this.onClose,
     this.closeLabel = 'Close',
-  });
+  }) : assert(sections.length > 0, 'CoilSettingsDialog needs a section');
 
   /// The dialog's title, above the sections; usually a [Text]. It names
   /// the dialog for screen readers.
@@ -135,6 +135,9 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
 
   void _pick(T value) => setState(() => _section = value);
 
+  /// Up to 640 tall, leaving 32 above and below in a short window.
+  double _height(Size window) => math.max(0, math.min(640, window.height - 64));
+
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
@@ -148,7 +151,7 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
           semanticLabel: widget.closeLabel,
         ),
         child: SizedBox(
-          height: math.min(640, window.height - 64),
+          height: _height(window),
           child: _Panel(section: _current, picker: _picker(), sheet: true),
         ),
       );
@@ -158,7 +161,7 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
       onClose: widget.onClose,
       closeLabel: widget.closeLabel,
       child: SizedBox(
-        height: math.min(640, window.height - 64),
+        height: _height(window),
         child: LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth < CoilSettingsDialog.compactWidth) {
