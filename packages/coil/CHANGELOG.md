@@ -2,6 +2,18 @@
 
 Milestone M0, unreleased.
 
+- `CoilInput` places its slots by measuring them in the same layout pass
+  as the text: a slot that fits a line (an icon, a "EUR" unit) stays
+  inline; a taller one (a button) goes into the field's padding, centered
+  and evenly inset with its corners concentric with the field's, so a
+  trailing button no longer makes the field taller. The field grows only
+  when the slot and `CoilInputStyle.slotInset` (4; 2 compact) on each side
+  don't fit. Multi-line fields put inline slots on the first line and
+  buttons in the bottom corner. `leadingPlacement` / `trailingPlacement`
+  (`CoilInputSlotPlacement.auto`, `inline`, `inset`) override it. A
+  `CoilButton` in a slot defaults to compact and the nested radius
+  through `CoilInputSlotScope` (explicit `size:` and `style:` win), and on
+  touch the field gives the button the taps around it.
 - Breaking: `CoilDatePicker` holds what's picked as a draft until it's
   confirmed, and reports only the confirmed date. A popover picking a date
   alone confirms on the tap (as before); a popover with time and every
