@@ -1,6 +1,8 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
+import 'dart:math' as math;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/thinking/thinking_step_view.dart';
@@ -178,8 +180,16 @@ class CoilThinkingSteps extends StatefulWidget {
 }
 
 class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
-  /// Steps at or past this index arrived after the first build.
-  late final int _firstNew = widget.steps.length;
+  /// Steps at or past this index arrived after the first build. It
+  /// drops when steps are removed, so steps added after a clear (a retry)
+  /// grow in again.
+  late int _firstNew = widget.steps.length;
+
+  @override
+  void didUpdateWidget(CoilThinkingSteps oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _firstNew = math.min(_firstNew, widget.steps.length);
+  }
 
   @override
   Widget build(BuildContext context) {
