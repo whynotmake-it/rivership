@@ -232,6 +232,84 @@ void main() {
     });
   }
 
+  /// The [CoilBlurFade] a page's header sits in, while its route moves.
+  CoilBlurFade pageTransition(WidgetTester tester, String title) =>
+      tester.widget<CoilBlurFade>(
+        find
+            .ancestor(
+              of: find.descendant(
+                of: find.byType(CatalogHeader),
+                matching: find.text(title),
+              ),
+              matching: find.byType(CoilBlurFade),
+            )
+            .first,
+      );
+
+  for (final reduced in [false, true]) {
+    testWidgets('pages blur-fade in place, without sliding'
+        '${reduced ? ', only fading under reduced motion' : ''}', (
+      tester,
+    ) async {
+      final settings = await _pump(tester, size: const Size(1440, 900));
+      settings.reducedMotion = reduced;
+      await tester.pump();
+      final item = _sidebarItem('Slider');
+      await tester.tap(item);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+
+      // Midway: half there, at its final place.
+      final header = find.descendant(
+        of: find.byType(CatalogHeader),
+        matching: find.text('Slider'),
+      );
+      final transition = pageTransition(tester, 'Slider');
+      expect(transition.presence.value, inExclusiveRange(0, 1));
+      final midway = tester.getTopLeft(header);
+      final blur = tester.widget<ImageFiltered>(
+        find
+            .descendant(
+              of: find.byWidget(transition),
+              matching: find.byType(ImageFiltered),
+            )
+            .first,
+      );
+      expect(blur.enabled, !reduced);
+      expect(
+        ModalRoute.of(tester.element(header))!.transitionDuration,
+        const Duration(milliseconds: 180),
+      );
+
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(pageTransition(tester, 'Slider').presence.value, 1);
+      expect(tester.getTopLeft(header), midway);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('in the iPhone frame a drag opens the drawer on any page', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      size: const Size(1440, 900),
+      viewport: CatalogViewport.mobile,
+    );
+    unawaited(openCatalogPage(_router(tester), sliderEntry));
+    await tester.pumpAndSettle();
+    final page = find.byType(CatalogHeader).last;
+    expect(find.text('Slider'), findsWidgets);
+
+    await tester.dragFrom(
+      tester.getCenter(find.byType(PhoneFrame)),
+      const Offset(260, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(_sidebarItem('Button').hitTestable(), findsOneWidget);
+    expect(page, findsOneWidget);
+  });
+
   testWidgets('a narrow window shows the catalog full screen on touch', (
     tester,
   ) async {
