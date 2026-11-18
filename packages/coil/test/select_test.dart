@@ -184,6 +184,44 @@ void main() {
       expect(tester.getSize(_rows.first).height, 44);
     });
 
+    testWidgets('an open sheet follows new options from its owner', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.desktop);
+      final options = ValueNotifier<List<CoilOption<String>>>(fruits);
+      addTearDown(options.dispose);
+      await tester.pumpWidget(
+        _app(
+          home: ValueListenableBuilder(
+            valueListenable: options,
+            builder: (context, options, _) => SelectDemo(
+              presentation: CoilPresentation.sheet,
+              options: options,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(_select, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+      expect(find.text('Kiwi'), findsNothing);
+      options.value = [
+        ...fruits,
+        const CoilOption(
+          value: 'kiwi',
+          label: Text('Kiwi'),
+          searchText: 'Kiwi',
+        ),
+      ];
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(CoilSheetPanel),
+          matching: find.text('Kiwi'),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('the component override wins over the scope', (tester) async {
       useScreen(tester, TestScreen.desktop);
       await tester.pumpWidget(

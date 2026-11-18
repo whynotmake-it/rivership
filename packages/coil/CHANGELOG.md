@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- Fix: a popup shown as a sheet (`CoilSelect`, `CoilMultiSelect`,
+  `CoilCombobox`, menus on a phone) rebuilds its content when the owner
+  rebuilds, so options and values passed while it is open show in it.
 - Fix: a centered or drawer `CoilModalRoute` closed while it springs in
   turns around with its momentum instead of from rest.
 - Fix: `CoilTabs` keeps each tab's focus node, states and hover by its

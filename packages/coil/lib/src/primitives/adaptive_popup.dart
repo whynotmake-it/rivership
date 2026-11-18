@@ -7,6 +7,7 @@ import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/anchor.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/sheet.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 /// What kind of overlay is opening, for [CoilAdaptivePopup.presentationOf].
@@ -175,6 +176,12 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
   /// The last popup shown: an exiting popover still builds with it.
   _Handle? _shown;
 
+  /// Rebuilds an open sheet's content. A popover is a descendant and
+  /// rebuilds with this widget; a sheet is a route of its own, so it is
+  /// told when the owner passes new options or values.
+  final _sheetContent = _Revision();
+  bool _sheetRebuildScheduled = false;
+
   @override
   void initState() {
     super.initState();
@@ -188,11 +195,21 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
       oldWidget.controller.detach();
       _attach();
     }
+    if (_open?._route != null && !_sheetRebuildScheduled) {
+      // The sheet's route isn't below this widget, so it can't be marked
+      // dirty mid-build; it rebuilds right after this frame.
+      _sheetRebuildScheduled = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _sheetRebuildScheduled = false;
+        if (mounted) _sheetContent.bump();
+      });
+    }
   }
 
   @override
   void dispose() {
     widget.controller.detach();
+    _sheetContent.dispose();
     final open = _open;
     _open = null;
     open?._ownerGone();
@@ -236,8 +253,9 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
       motion: widget.motion,
       // The TapRegion closes on tap-up outside, with its reason.
       barrierDismissible: false,
-      child: Builder(
-        builder: (context) => TapRegion(
+      child: ListenableBuilder(
+        listenable: _sheetContent,
+        builder: (context, _) => TapRegion(
           onTapUpOutside: (_) => handle.close(.outsideTap),
           child: widget.sheet(context, widget.content(context, handle)),
         ),
@@ -317,4 +335,9 @@ class _Handle implements CoilPopupHandle {
       navigator.removeRoute(route, reason);
     }
   }
+}
+
+/// Notifies its listeners on [bump].
+class _Revision extends ChangeNotifier {
+  void bump() => notifyListeners();
 }
