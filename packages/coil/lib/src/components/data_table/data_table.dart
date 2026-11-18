@@ -93,7 +93,9 @@ class CoilDataTableLabels {
 /// the pages.
 ///
 /// The controller holds the data and its state; this widget only shows it.
-class CoilDataTable<T> extends StatelessWidget {
+/// The search field follows the controller's `query`, so setting it (or
+/// clearing it) from code shows in the field.
+class CoilDataTable<T> extends StatefulWidget {
   /// Creates a data table.
   const CoilDataTable({
     required this.controller,
@@ -133,7 +135,58 @@ class CoilDataTable<T> extends StatelessWidget {
   final String? semanticLabel;
 
   @override
+  State<CoilDataTable<T>> createState() => _CoilDataTableState<T>();
+}
+
+class _CoilDataTableState<T> extends State<CoilDataTable<T>> {
+  late final _search = TextEditingController(text: widget.controller.query);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_syncSearch);
+  }
+
+  @override
+  void didUpdateWidget(CoilDataTable<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_syncSearch);
+      widget.controller.addListener(_syncSearch);
+      _syncSearch();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_syncSearch);
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// Shows a query set from code in the field. Typing sets the same text,
+  /// so it leaves the field (and its selection) alone.
+  void _syncSearch() {
+    final query = widget.controller.query;
+    if (_search.text == query) return;
+    _search.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final CoilDataTable(
+      :controller,
+      :columns,
+      :searchable,
+      :selectable,
+      :onRowActivated,
+      :empty,
+      :labels,
+      :semanticLabel,
+    ) = widget;
     final metrics = CoilTheme.metricsOf(context);
     final caption = CoilTheme.textOf(context).muted.caption;
     return ListenableBuilder(
@@ -146,6 +199,7 @@ class CoilDataTable<T> extends StatelessWidget {
           children: [
             if (searchable)
               CoilInput(
+                controller: _search,
                 placeholder: labels.search,
                 semanticLabel: labels.searchLabel,
                 autocorrect: false,

@@ -51,6 +51,36 @@ void main() {
     });
   });
 
+  testWidgets('the search field follows a query set from code', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    final controller = _controller();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: CoilDataTable<_Person>(
+          controller: controller,
+          columns: [
+            CoilDataColumn(
+              label: const Text('Name'),
+              cellBuilder: (context, p) => Text(p.name),
+            ),
+          ],
+        ),
+      ),
+    );
+    final field = find.byType(EditableText);
+    await tester.enterText(field, 'Ad');
+    await tester.pump();
+    expect(controller.query, 'Ad');
+
+    controller.query = '';
+    await tester.pump();
+    expect(tester.widget<EditableText>(field).controller.text, '');
+  });
+
   testWidgets('a sortable header sorts, and selecting shows the count', (
     tester,
   ) async {

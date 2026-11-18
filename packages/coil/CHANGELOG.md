@@ -2,6 +2,8 @@
 
 Milestone M0, unreleased.
 
+- Fix: `CoilDataTable`'s search field shows a `query` set from code
+  (clearing it clears the field).
 - Fix: a popup shown as a sheet (`CoilSelect`, `CoilMultiSelect`,
   `CoilCombobox`, menus on a phone) rebuilds its content when the owner
   rebuilds, so options and values passed while it is open show in it.
