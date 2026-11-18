@@ -470,6 +470,9 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
       };
 
   @override
+  Animation<double> createAnimation() => super.createAnimation().clamped;
+
+  @override
   Animation<double>? get animation => super.animation?.clamped;
 
   @override

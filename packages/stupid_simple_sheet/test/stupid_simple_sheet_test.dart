@@ -2344,6 +2344,47 @@ void main() {
     );
 
     testWidgets(
+      'dragging past large in shrink mode stays within animation bounds',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            dismissalMode: DismissalMode.shrink,
+            snappingConfig: const SheetSnappingConfig.detents(
+              [SheetDetent.medium, SheetDetent.large],
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffold))!
+            as StupidSimpleGlassSheetRoute;
+        expect(route.animation!.value, lessThan(1));
+
+        final gesture = await tester.startGesture(tester.getCenter(scaffold));
+        for (var i = 0; i < 30; i++) {
+          await gesture.moveBy(const Offset(0, -20));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+        // ignore: cascade_invocations
+        controller.value = 1.05;
+        await tester.pump();
+
+        final homeRoute = ModalRoute.of(
+          tester.element(find.byKey(const ValueKey('button'))),
+        )!;
+        expect(homeRoute.secondaryAnimation!.value, lessThanOrEqualTo(1));
+        expect(route.animation!.value, lessThanOrEqualTo(1));
+      },
+    );
+
+    testWidgets(
       'a stacked full sheet keeps a valid pushback range',
       (tester) async {
         await tester.pumpWidget(build());

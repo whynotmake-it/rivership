@@ -8,6 +8,7 @@ import 'package:stupid_simple_sheet_example/widgets/sheet_logo.dart';
 import 'advanced/custom_route_example.dart';
 import 'advanced/dynamic_content_example.dart';
 import 'advanced/share_sheet_example.dart';
+import 'parity/sheet_parity_page.dart';
 import 'playground/playground_page.dart';
 import 'presets/cupertino_sheet_preset.dart';
 import 'presets/glass_sheet_preset.dart';
@@ -43,6 +44,12 @@ final stupidSimpleSheetRoutes = [
     path: 'playground',
     type: RouteType.cupertino(),
     builder: (context, data) => const PlaygroundPage(),
+  ),
+  NamedRouteDef(
+    name: 'SwiftUI Parity',
+    path: 'swiftui-parity',
+    type: RouteType.cupertino(),
+    builder: (context, data) => const SheetParityPage(),
   ),
   NamedRouteDef(
     name: 'Cupertino Sheet',
@@ -302,6 +309,17 @@ class _HomePage extends StatelessWidget {
   List<Widget> _playgroundCards(BuildContext context, ExampleTheme t) => [
         ExampleCard(
           index: 0,
+          pillLabel: 'Matrix',
+          pillIcon: CupertinoIcons.square_grid_2x2,
+          pillColor: t.accentPurple,
+          codeHint: 'PresentationSizing + SheetDetent',
+          preview: const GlassSheetPreview(),
+          title: 'SwiftUI Parity',
+          description: 'Exercise every sizing, detent, and stacking state.',
+          onTap: () => context.navigateTo(const NamedRoute('SwiftUI Parity')),
+        ),
+        ExampleCard(
+          index: 1,
           pillLabel: 'Configurator',
           pillIcon: CupertinoIcons.slider_horizontal_below_rectangle,
           pillColor: t.accentOrange,

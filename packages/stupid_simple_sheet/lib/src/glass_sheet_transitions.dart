@@ -92,7 +92,7 @@ abstract class GlassSheetTransitions {
             final attachment = Interval(
               _sheetAttachmentStart,
               1,
-            ).transform(animation.value);
+            ).transform(animation.value.clamp(0.0, 1.0).toDouble());
             final floating = floatingMargins
                 ? 1 - attachment
                 : floatingMaterial
@@ -245,7 +245,7 @@ abstract class GlassSheetTransitions {
               final attachment = Interval(
                 _sheetAttachmentStart,
                 1,
-              ).transform(animation.value);
+              ).transform(animation.value.clamp(0.0, 1.0).toDouble());
               final margin = _floatingSheetMargin * (1 - attachment);
               return Padding(
                 padding: EdgeInsets.all(margin),
