@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 import 'src/golden_sheet.dart';
 import 'src/test_icons.dart';
@@ -211,5 +212,61 @@ void main() {
       );
       handle.dispose();
     });
+
+    for (final withLeading in [false, true]) {
+      testWidgets(
+        'loading blur-fades both ways '
+        '(${withLeading ? 'leading slot' : 'text only'})',
+        (tester) async {
+          Widget build({required bool loading}) => Directionality(
+            textDirection: TextDirection.ltr,
+            child: CoilTheme(
+              data: goldenLight,
+              child: Center(
+                child: CoilButton(
+                  onPressed: () {},
+                  loading: loading,
+                  loadingIndicator: const SizedBox(key: Key('custom-spinner')),
+                  leading: withLeading
+                      ? const TestIcon(TestGlyph.plus, key: Key('icon'))
+                      : null,
+                  child: const Text('Save', key: Key('label')),
+                ),
+              ),
+            ),
+          );
+          final idle = withLeading
+              ? find.byKey(const Key('icon'))
+              : find.byKey(const Key('label'));
+          final spinner = find.byKey(const Key('custom-spinner'));
+
+          await tester.pumpWidget(build(loading: false));
+          final switcher = tester.state(find.byType(MotionSwitcher));
+          await tester.pumpWidget(build(loading: true));
+          // The switcher keeps its state when the hidden label joins the
+          // stack in front of it, so the swap animates instead of snapping.
+          expect(tester.state(find.byType(MotionSwitcher)), same(switcher));
+          await tester.pump(const Duration(milliseconds: 16));
+          // Mid-swap: the idle content is still leaving and the spinner
+          // arriving, both drawn by the switcher, not snapped.
+          expect(spinner, findsOneWidget);
+          expect(
+            find.ancestor(of: idle, matching: find.byType(MotionSwitcher)),
+            findsWidgets,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.ancestor(of: idle, matching: find.byType(MotionSwitcher)),
+            findsNothing,
+          );
+
+          await tester.pumpWidget(build(loading: false));
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(spinner, findsOneWidget, reason: 'the spinner fades out');
+          await tester.pumpAndSettle();
+          expect(spinner, findsNothing);
+        },
+      );
+    }
   });
 }
