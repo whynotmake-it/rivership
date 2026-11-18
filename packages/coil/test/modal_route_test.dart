@@ -216,10 +216,11 @@ void main() {
     testWidgets('closing mid-entry keeps the momentum', (tester) async {
       useScreen(tester, TestScreen.desktop);
       late ModalRoute<String> route;
+      final results = <Object?>[];
       await tester.pumpWidget(
         testApp(
           home: _Pusher(
-            results: [],
+            results: results,
             route: (context) => route = CoilModalRoute<String>(
               context: context,
               presentation: CoilModalPresentation.drawer,
