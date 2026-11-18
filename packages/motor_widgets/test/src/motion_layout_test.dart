@@ -112,6 +112,55 @@ void main() {
       }
     });
 
+    testWidgets('painted rects mid-flight follow an ancestor transform', (
+      tester,
+    ) async {
+      // The same reorder at scale 1 and at scale 0.5 about the origin: at
+      // every frame, the scaled rects are the unscaled ones halved.
+      Future<List<Rect>> run(double scale) async {
+        var ids = ['a', 'b', 'c'];
+        await _pumpHost(
+          tester,
+          (_) => Transform.scale(
+            scale: scale,
+            alignment: Alignment.topLeft,
+            child: _column(ids),
+          ),
+        );
+        _update(() => ids = ['c', 'a', 'b']);
+        final rects = <Rect>[];
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 30));
+          rects.add(
+            paintedGlobalRect(
+              tester.renderObject<RenderBox>(
+                find.descendant(
+                  of: _find('c'),
+                  matching: find.byType(SizedBox),
+                ),
+              ),
+            ),
+          );
+        }
+        await tester.pumpWidget(const SizedBox());
+        return rects;
+      }
+
+      final full = await run(1);
+      final half = await run(0.5);
+      expect(full[1].top, isNot(moreOrLessEquals(full.last.top)));
+      for (var i = 0; i < full.length; i++) {
+        final expected = Rect.fromLTRB(
+          full[i].left / 2,
+          full[i].top / 2,
+          full[i].right / 2,
+          full[i].bottom / 2,
+        );
+        expect(half[i].topLeft, offsetMoreOrLessEquals(expected.topLeft));
+        expect(half[i].size, expected.size);
+      }
+    });
+
     testWidgets('the first build and new items do not fly', (tester) async {
       var ids = ['a', 'b'];
       await _pumpHost(tester, (_) => _column(ids));

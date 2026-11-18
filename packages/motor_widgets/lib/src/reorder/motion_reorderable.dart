@@ -727,7 +727,7 @@ class _MotionReorderableState<T extends Object>
       if (slot.attached && slot.hasSize && !slot.size.isEmpty)
         (
           slot: slot,
-          layout: slot.localToGlobal(Offset.zero) & slot.size,
+          layout: layoutGlobalRect(slot),
           painted: paintedGlobalRect(slot),
         ),
   ];

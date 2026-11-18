@@ -16,12 +16,62 @@ abstract interface class PaintOffset {
 }
 
 /// The rect of [box] in global coordinates as it was last painted: its
-/// layout position plus the [PaintOffset] of every ancestor.
-Rect paintedGlobalRect(RenderBox box) =>
-    (box.localToGlobal(Offset.zero) & box.size).shift(paintOffsetAbove(box));
+/// layout position plus the [PaintOffset] of every ancestor, each in its own
+/// coordinates, so a transform above one, such as a scale, applies to it.
+/// With [includeOwn], also [box]'s own [PaintOffset].
+Rect paintedGlobalRect(RenderBox box, {bool includeOwn = false}) =>
+    MatrixUtils.transformRect(
+      paintedTransformToGlobal(box, includeOwn: includeOwn),
+      Offset.zero & box.size,
+    );
+
+/// Where [box]'s top left was last painted, in global coordinates, with its
+/// size in its own coordinates: the rect a landing flight measures, as the
+/// flight follows the site's leader layer, which applies any transform
+/// above the site to the feedback. With [includeOwn], it includes [box]'s
+/// own [PaintOffset].
+Rect landingRect(RenderBox box, {bool includeOwn = false}) =>
+    MatrixUtils.transformPoint(
+      paintedTransformToGlobal(box, includeOwn: includeOwn),
+      Offset.zero,
+    ) &
+    box.size;
+
+/// The rect of [box] in global coordinates as it is laid out, through any
+/// transform above it, without paint offsets.
+Rect layoutGlobalRect(RenderBox box) =>
+    MatrixUtils.transformRect(box.getTransformTo(null), Offset.zero & box.size);
+
+/// The transform from [box]'s coordinates to global ones as it was last
+/// painted: `getTransformTo(null)` with the [PaintOffset] of every ancestor
+/// applied in that ancestor's coordinates. With [includeOwn], also [box]'s
+/// own.
+Matrix4 paintedTransformToGlobal(RenderObject box, {bool includeOwn = false}) {
+  final path = <RenderObject>[];
+  for (RenderObject? node = box; node != null; node = node.parent) {
+    path.add(node);
+  }
+  final transform = Matrix4.identity();
+  // As getTransformTo(null), leave out the root's transform to physical
+  // pixels.
+  for (var i = path.length - 2; i > 0; i--) {
+    final node = path[i];
+    if (node is PaintOffset) {
+      final offset = (node as PaintOffset).paintOffset;
+      transform.translateByDouble(offset.dx, offset.dy, 0, 1);
+    }
+    node.applyPaintTransform(path[i - 1], transform);
+  }
+  if (includeOwn && box is PaintOffset) {
+    final offset = (box as PaintOffset).paintOffset;
+    transform.translateByDouble(offset.dx, offset.dy, 0, 1);
+  }
+  return transform;
+}
 
 /// The sum of the [PaintOffset]s of [box]'s ancestors: how far from its
-/// layout position it was last painted.
+/// layout position it was last painted, ignoring any transform between
+/// them. See [paintedGlobalRect] for a rect in global coordinates.
 Offset paintOffsetAbove(RenderObject box) {
   var offset = Offset.zero;
   for (var node = box.parent; node != null; node = node.parent) {

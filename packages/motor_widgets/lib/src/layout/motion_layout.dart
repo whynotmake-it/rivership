@@ -441,7 +441,7 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
   Rect? get globalRect {
     final box = _box;
     if (box == null) return null;
-    return paintedGlobalRect(box).shift(box.paintOffset);
+    return landingRect(box, includeOwn: true);
   }
 
   @override
@@ -773,8 +773,7 @@ class _RenderItem extends RenderProxyBox
       enabled && attached && hasSize && group.mounted && layer is _ItemLayer;
 
   @override
-  Rect? get layoutRect =>
-      attached && hasSize ? localToGlobal(Offset.zero) & size : null;
+  Rect? get layoutRect => attached && hasSize ? layoutGlobalRect(this) : null;
 
   @override
   void receiveFlight({required Offset offset, required Offset velocity}) {
