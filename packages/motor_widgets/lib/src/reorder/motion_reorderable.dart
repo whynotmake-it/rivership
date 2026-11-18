@@ -421,7 +421,11 @@ class _MotionReorderableState<T extends Object>
 
   final _slots = <_RenderSlot>{};
   final _gapToken = Object();
-  late final Ticker _ticker = createTicker((_) => _update());
+  /// Created on first use: creating it in [dispose], for a reorderable
+  /// that never needed it, would look up an ancestor of a deactivated
+  /// element.
+  Ticker? _tickerOrNull;
+  Ticker get _ticker => _tickerOrNull ??= createTicker((_) => _update());
 
   /// The probe and painted rects of the last update, to stop the ticker
   /// once nothing moves.
@@ -485,7 +489,7 @@ class _MotionReorderableState<T extends Object>
   @override
   void dispose() {
     _unkeep();
-    _ticker.dispose();
+    _tickerOrNull?.dispose();
     super.dispose();
   }
 
@@ -568,7 +572,7 @@ class _MotionReorderableState<T extends Object>
     final flight = _hover?.flight;
     if (widget.keepsDropOnLeave && flight != null && flight.isDragging) {
       _kept = true;
-      _ticker.stop();
+      _tickerOrNull?.stop();
       _lastFrame = null;
       _keeping.add(this as _MotionReorderableState<Object>);
       DragFlight.addObserver(this);
@@ -628,7 +632,7 @@ class _MotionReorderableState<T extends Object>
     _index = null;
     _lastFrame = null;
     _entered = 0;
-    _ticker.stop();
+    _tickerOrNull?.stop();
     if (mounted) _reportPlain();
   }
 
@@ -673,7 +677,7 @@ class _MotionReorderableState<T extends Object>
     }
     final frame = <Object>[probe, for (final m in measured) m.painted];
     if (_lastFrame case final last? when listEquals(last, frame)) {
-      _ticker.stop();
+      _tickerOrNull?.stop();
     }
     _lastFrame = frame;
   }
