@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:coil/coil.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -86,6 +88,7 @@ void main() {
   timeTests();
   sizingTests();
   sheetGestureTests();
+  confirmTests();
 }
 
 class _TimeDemo extends StatefulWidget {
@@ -126,12 +129,18 @@ void timeTests() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('20').first);
     await tester.pumpAndSettle();
+    // The day is a draft: the popup stays and the field keeps its value.
     expect(find.byType(CoilCalendar), findsOneWidget);
-    expect(find.text('November 20, 2026, 09:30'), findsOneWidget);
+    expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
 
     // A screen reader steps the hour column.
     tester.semantics.increase(find.semantics.byLabel('Hour'));
     await tester.pumpAndSettle();
+    expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilCalendar), findsNothing);
     expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
   });
 }
@@ -220,12 +229,14 @@ void sizingTests() {
           final calendar = tester.getRect(find.byType(CoilCalendar));
           final time = tester.getRect(find.byType(CoilTimeColumns));
           expect(time.left, greaterThan(calendar.right));
-          final scroll = find.descendant(
-            of: find.byType(
-              presentation == .sheet ? CoilSheetPanel : CoilPopoverSurface,
-            ),
-            matching: find.byType(SingleChildScrollView),
-          );
+          final scroll = find
+              .descendant(
+                of: find.byType(
+                  presentation == .sheet ? CoilSheetPanel : CoilPopoverSurface,
+                ),
+                matching: find.byType(SingleChildScrollView),
+              )
+              .first;
           await tester.drag(scroll, const Offset(0, -600));
           await tester.pumpAndSettle();
           final viewport = tester.getRect(scroll);
@@ -293,7 +304,7 @@ void sizingTests() {
     await tester.pumpAndSettle();
     // Still open, and the sheet didn't take the drag.
     expect(find.byType(CoilSheetPanel), findsOneWidget);
-    await tester.tapAt(const Offset(20, 20));
+    await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.text('November 14, 2026, 12:30'), findsOneWidget);
   });
@@ -371,4 +382,261 @@ void sheetGestureTests() {
       }
     }
   }
+}
+
+/// A picker that records every value it's handed.
+class _ConfirmDemo extends StatefulWidget {
+  const _ConfirmDemo({this.withTime = false, this.initial});
+
+  final bool withTime;
+  final DateTime? initial;
+
+  @override
+  State<_ConfirmDemo> createState() => _ConfirmDemoState();
+}
+
+class _ConfirmDemoState extends State<_ConfirmDemo> {
+  late DateTime? value = widget.initial;
+  final changes = <DateTime>[];
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: const Alignment(0, -0.95),
+    child: SizedBox(
+      width: 240,
+      child: CoilDatePicker(
+        value: value,
+        withTime: widget.withTime,
+        sheetTitle: const Text('Due'),
+        onChanged: (v) => setState(() {
+          value = v;
+          changes.add(v);
+        }),
+      ),
+    ),
+  );
+}
+
+List<DateTime> _changes(WidgetTester tester) =>
+    tester.state<_ConfirmDemoState>(find.byType(_ConfirmDemo)).changes;
+
+/// Opens a [_ConfirmDemo] on a phone sheet or a desktop popover.
+Future<void> _openConfirmDemo(
+  WidgetTester tester, {
+  required CoilPresentation presentation,
+  bool withTime = false,
+}) async {
+  final sheet = presentation == CoilPresentation.sheet;
+  if (sheet) {
+    useScreen(tester, TestScreen.phone);
+  } else {
+    useScreen(tester, TestScreen.desktop);
+    tester.view.physicalSize = const Size(1200, 1600);
+  }
+  await tester.pumpWidget(
+    testApp(
+      tier: sheet ? CoilTier.touch : CoilTier.pointer,
+      presentation: presentation,
+      home: _ConfirmDemo(
+        withTime: withTime,
+        initial: DateTime(2026, 11, 14, 9, 30),
+      ),
+    ),
+  );
+  await tester.tap(find.byType(CoilDatePicker));
+  await tester.pumpAndSettle();
+}
+
+/// Whether [day] of the shown month reads as selected to screen readers.
+bool _isSelected(WidgetTester tester, String day) =>
+    tester
+        .getSemantics(
+          find
+              .descendant(
+                of: find.byType(PageView),
+                matching: find.text(day),
+              )
+              .first,
+        )
+        .flagsCollection
+        .isSelected ==
+    Tristate.isTrue;
+
+void confirmTests() {
+  group('sheet', () {
+    testWidgets('a picked day is a draft until Done', (tester) async {
+      await _openConfirmDemo(tester, presentation: .sheet);
+      await tester.tap(find.text('20').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilSheetPanel), findsOneWidget);
+      expect(_isSelected(tester, '20'), isTrue);
+      expect(_changes(tester), isEmpty);
+      // The footer is pinned under the calendar.
+      final done = tester.getRect(find.widgetWithText(CoilButton, 'Done'));
+      final calendar = tester.getRect(find.byType(CoilCalendar));
+      expect(done.top, greaterThan(calendar.bottom));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilSheetPanel), findsNothing);
+      expect(_changes(tester), [DateTime(2026, 11, 20)]);
+    });
+
+    final dismissals = <String, Future<void> Function(WidgetTester)>{
+      'the close button': (tester) =>
+          tester.tap(find.byType(CoilSheetCloseButton)),
+      'the scrim': (tester) => tester.tapAt(const Offset(20, 20)),
+      'a drag down': (tester) => tester.fling(
+        find.text('Due'),
+        const Offset(0, 500),
+        2000,
+      ),
+      'back': (tester) => tester.binding.handlePopRoute(),
+      'Escape': (tester) => tester.sendKeyEvent(LogicalKeyboardKey.escape),
+    };
+    for (final MapEntry(key: name, value: dismiss) in dismissals.entries) {
+      testWidgets('$name cancels the draft', (tester) async {
+        await _openConfirmDemo(tester, presentation: .sheet, withTime: true);
+        await tester.tap(find.text('20').first);
+        await tester.pumpAndSettle();
+        await dismiss(tester);
+        await tester.pumpAndSettle();
+        expect(find.byType(CoilSheetPanel), findsNothing);
+        expect(_changes(tester), isEmpty);
+        expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
+        // Opening again starts from the value, not the old draft.
+        await tester.tap(find.byType(CoilDatePicker));
+        await tester.pumpAndSettle();
+        expect(_isSelected(tester, '14'), isTrue);
+        expect(_isSelected(tester, '20'), isFalse);
+      });
+    }
+
+    testWidgets('Done waits for a pick when there is no value', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(tier: CoilTier.touch, home: const _ConfirmDemo()),
+      );
+      await tester.tap(find.byType(CoilDatePicker));
+      await tester.pumpAndSettle();
+      final done = find.widgetWithText(CoilButton, 'Done');
+      expect(tester.widget<CoilButton>(done).onPressed, isNull);
+      await tester.tap(find.text('20').first);
+      await tester.pump();
+      expect(tester.widget<CoilButton>(done).onPressed, isNotNull);
+    });
+
+    testWidgets('Enter on the grid picks the day and confirms', (
+      tester,
+    ) async {
+      await _openConfirmDemo(tester, presentation: .sheet, withTime: true);
+      // The grid has focus as the sheet opens; the keyboard moves a day.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilSheetPanel), findsNothing);
+      expect(_changes(tester), [DateTime(2026, 11, 15, 9, 30)]);
+    });
+  });
+
+  group('popover', () {
+    testWidgets('a day alone commits on the tap and closes', (tester) async {
+      await _openConfirmDemo(tester, presentation: .popover);
+      expect(find.text('Done'), findsNothing);
+      await tester.tap(find.text('20').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsNothing);
+      expect(_changes(tester), [DateTime(2026, 11, 20)]);
+    });
+
+    testWidgets('Enter on the grid commits once and closes', (tester) async {
+      await _openConfirmDemo(tester, presentation: .popover);
+      // The grid takes focus as the popover opens.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsNothing);
+      expect(_changes(tester), [DateTime(2026, 11, 21)]);
+    });
+
+    testWidgets('with time, Done confirms and a tap outside cancels', (
+      tester,
+    ) async {
+      await _openConfirmDemo(tester, presentation: .popover, withTime: true);
+      await tester.tap(find.text('20').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsOneWidget);
+      expect(_changes(tester), isEmpty);
+      await tester.tapAt(const Offset(1, 790));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsNothing);
+      expect(_changes(tester), isEmpty);
+
+      await tester.tap(find.byType(CoilDatePicker));
+      await tester.pumpAndSettle();
+      expect(_isSelected(tester, '14'), isTrue);
+      await tester.tap(find.text('21').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsNothing);
+      expect(_changes(tester), [DateTime(2026, 11, 21, 9, 30)]);
+    });
+
+    testWidgets('with time, Escape cancels and Enter in a column confirms', (
+      tester,
+    ) async {
+      await _openConfirmDemo(tester, presentation: .popover, withTime: true);
+      await tester.tap(find.text('20').first);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsNothing);
+      expect(_changes(tester), isEmpty);
+
+      await tester.tap(find.byType(CoilDatePicker));
+      await tester.pumpAndSettle();
+      // Tab from the grid to the hour column, step it, and press Enter.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilCalendar), findsNothing);
+      expect(_changes(tester), [DateTime(2026, 11, 14, 10, 30)]);
+    });
+  });
+
+  testWidgets('the month view picks a month in the sheet', (tester) async {
+    await _openConfirmDemo(tester, presentation: .sheet);
+    await tester.tap(find.bySemanticsLabel('November 2026'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mar'), findsWidgets);
+    // Escape goes back to the days, and the sheet stays.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSheetPanel), findsOneWidget);
+    expect(find.text('Mar'), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel('November 2026'));
+    await tester.pumpAndSettle();
+    // The list scrolls on through the years in the sheet, which stays.
+    final years = find.descendant(
+      of: find.byType(CoilCalendar),
+      matching: find.byType(ListView),
+    );
+    await tester.drag(years, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSheetPanel), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('March 2027'));
+    await tester.pumpAndSettle();
+    expect(find.text('March 2027'), findsOneWidget);
+    expect(find.text('Mar'), findsNothing);
+    await tester.tap(find.text('17').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(_changes(tester), [DateTime(2027, 3, 17)]);
+  });
 }
