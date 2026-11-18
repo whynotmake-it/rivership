@@ -279,6 +279,20 @@ class _RenderGroup extends RenderProxyBox implements LandingScopeBox {
   LandingRegistry get landingRegistry => state._landings;
 
   @override
+  bool get isShowing {
+    if (!state.mounted) return false;
+    // Overlay entries under an opaque one, and Visibility(maintainState:),
+    // turn tickers off below them.
+    if (!TickerMode.getValuesNotifier(state.context).value.enabled) {
+      return false;
+    }
+    for (var node = parent; node != null; node = node.parent) {
+      if (node is RenderOffstage && node.offstage) return false;
+    }
+    return true;
+  }
+
+  @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
     LandingScopeBox.mounted.add(this);
@@ -380,6 +394,11 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
   Object? _registeredId;
   _MotionLayoutGroupState? _group;
 
+  /// The group's rate, as its flights tick at, for the visuals a landing
+  /// hands over.
+  @override
+  TickerRate get tickerRate => _group?.widget.tickerRate ?? super.tickerRate;
+
   /// Continues a handed-off landing's scale, rotation and opacity.
   TrackController? _visuals;
 
@@ -441,7 +460,7 @@ class MotionLayoutItemState extends State<MotionLayoutItem>
   Rect? get globalRect {
     final box = _box;
     if (box == null) return null;
-    return paintedGlobalRect(box).shift(box.paintOffset);
+    return landingRect(box, includeOwn: true);
   }
 
   @override
@@ -773,8 +792,7 @@ class _RenderItem extends RenderProxyBox
       enabled && attached && hasSize && group.mounted && layer is _ItemLayer;
 
   @override
-  Rect? get layoutRect =>
-      attached && hasSize ? localToGlobal(Offset.zero) & size : null;
+  Rect? get layoutRect => attached && hasSize ? layoutGlobalRect(this) : null;
 
   @override
   void receiveFlight({required Offset offset, required Offset velocity}) {

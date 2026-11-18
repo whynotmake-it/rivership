@@ -30,7 +30,7 @@ class MotionScale extends StatelessWidget {
   final Motion motion;
 
   /// The alignment of the origin of the scale, relative to the child's size.
-  final Alignment alignment;
+  final AlignmentGeometry alignment;
 
   /// The filter quality with which to apply the transform as a bitmap
   /// operation. See [Transform.filterQuality].

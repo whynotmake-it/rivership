@@ -229,7 +229,12 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
       _target = null;
       _following = false;
       size = constraints.smallest;
-      child?.layout(constraints);
+      if (child != null) {
+        child.layout(constraints);
+        // The child fills the size: put it at the origin instead of where it
+        // was aligned mid-flight.
+        (child.parentData! as BoxParentData).offset = Offset.zero;
+      }
       return;
     }
 
@@ -268,6 +273,24 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
       return constraints.constrain(childSize);
     }
     return constraints.constrain(_controller.value);
+  }
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) {
+    final child = this.child;
+    if (child == null) return null;
+    final result = child.getDryBaseline(constraints, baseline);
+    if (result == null) return null;
+    if (constraints.isTight) return result;
+    // Offset by the alignment within the current size, as alignChild does.
+    final childSize = child.getDryLayout(constraints);
+    final offset = resolvedAlignment.alongOffset(
+      (getDryLayout(constraints) - childSize) as Offset,
+    );
+    return result + offset.dy;
   }
 
   @override

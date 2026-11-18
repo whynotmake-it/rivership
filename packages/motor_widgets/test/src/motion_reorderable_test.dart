@@ -1097,6 +1097,129 @@ void main() {
     }
   });
 
+  testWidgets('under a scale, places the gap by where items are painted', (
+    tester,
+  ) async {
+    int? gap;
+    await tester.pumpWidget(
+      _app(
+        Align(
+          alignment: Alignment.topLeft,
+          child: Transform.scale(
+            scale: 0.5,
+            alignment: Alignment.topLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _reorderable(
+                  items: ['t0', 't1', 't2', 't3', 't4'],
+                  item: _card,
+                  gap: (g) => gap = g,
+                  layout: (children) => Column(children: children),
+                ),
+                const SizedBox(height: 100),
+                _reorderable(
+                  items: ['x'],
+                  item: _card,
+                  layout: (children) => Column(children: children),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    // Painted at half size: t1 spans 20 to 40 on screen, t3 60 to 80.
+    final t1 = tester.getRect(_child('t1'));
+    final t3 = tester.getRect(_child('t3'));
+    expect(t3.height, 20);
+    final x = tester.getCenter(_child('x'));
+    final gesture = await _pickUp(tester, x);
+    // Past t3's center at 70 by more than its band of 5, but short of where
+    // its center would be unscaled, at 80, less that band of 8.
+    final pastT3 = t3.topCenter + const Offset(0, 8);
+    await _moveTo(tester, gesture, x, pastT3);
+    expect(gap, 4);
+    // Past t1's center, by its band, as painted.
+    final pastT1 = t1.topCenter + const Offset(0, 8);
+    await _moveTo(tester, gesture, pastT3, pastT1);
+    expect(gap, 2);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  group('MotionReorderable in column-major layouts', () {
+    // Items fill a column, then the next: t0 t1 t2 down the first column,
+    // t3 t4 down the second.
+    final layouts = <String, Widget Function(List<Widget> children)>{
+      'Wrap(direction: vertical)': (children) => SizedBox(
+        height: 120,
+        width: 300,
+        child: Wrap(direction: Axis.vertical, children: children),
+      ),
+      'GridView(scrollDirection: horizontal)': (children) => SizedBox(
+        height: 120,
+        width: 300,
+        child: GridView.count(
+          scrollDirection: Axis.horizontal,
+          crossAxisCount: 3,
+          childAspectRatio: 40 / 100,
+          children: children,
+        ),
+      ),
+    };
+    for (final MapEntry(key: name, value: layout) in layouts.entries) {
+      for (final direction in TextDirection.values) {
+        testWidgets('$name finds the column, then the place in it '
+            '($direction)', (tester) async {
+          int? gap;
+          await tester.pumpWidget(
+            _app(
+              direction: direction,
+              Align(
+                alignment: AlignmentDirectional.topStart,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _reorderable(
+                      items: ['t0', 't1', 't2', 't3', 't4'],
+                      item: _card,
+                      gap: (g) => gap = g,
+                      layout: layout,
+                    ),
+                    const SizedBox(height: 100),
+                    _reorderable(
+                      items: ['x'],
+                      item: _card,
+                      layout: (children) => Column(children: children),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+          final t0 = tester.getRect(_child('t0'));
+          final t3 = tester.getRect(_child('t3'));
+          final t4 = tester.getRect(_child('t4'));
+          expect(t3.top, t0.top, reason: 't3 starts the second column');
+          expect(t4.top, greaterThan(t3.top));
+          final x = tester.getCenter(_child('x'));
+          final gesture = await _pickUp(tester, x);
+          // Over the top half of t4, in the second column.
+          final leading = t4.topCenter + const Offset(0, 8);
+          await _moveTo(tester, gesture, x, leading);
+          expect(gap, 4);
+          // Over the bottom half of the first column's first tile.
+          final trailing = t0.bottomCenter - const Offset(0, 8);
+          await _moveTo(tester, gesture, leading, trailing);
+          expect(gap, 1);
+          await gesture.up();
+          await tester.pumpAndSettle();
+        });
+      }
+    }
+  });
+
   testWidgets('a plain Draggable opens a gap by its offset', (tester) async {
     int? gap;
     String? inserted;

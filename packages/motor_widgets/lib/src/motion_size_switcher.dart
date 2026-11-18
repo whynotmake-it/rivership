@@ -62,9 +62,13 @@ class MotionSizeSwitcher extends StatelessWidget {
   ///
   /// When false, the leaving children keep their space until they are gone,
   /// so the size only shrinks after they have left. When true, only the new
-  /// child is sized. Leaving children keep the constraints they had and
-  /// sit by [alignment], overflowing the new size and clipped by
-  /// [clipBehavior].
+  /// child is sized. Leaving children are laid out with this widget's own
+  /// incoming constraints, not squeezed into the new size, so they keep
+  /// their layout as long as those don't change. They sit by [alignment],
+  /// overflowing the new size and clipped by [clipBehavior].
+  ///
+  /// Changing this value changes the shape of the tree below, so the current
+  /// child loses its state unless it has a [GlobalKey].
   final bool immediateResize;
 
   /// {@macro motor_widgets.tickerRate}
@@ -247,6 +251,14 @@ class _RenderImmediateResize extends RenderBox
     final distance = sizing.getDistanceToActualBaseline(baseline);
     return distance == null ? null : distance + offset.dy;
   }
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) =>
+      // The sizing child sits at the origin.
+      _sizing.getDryBaseline(constraints, baseline);
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) =>

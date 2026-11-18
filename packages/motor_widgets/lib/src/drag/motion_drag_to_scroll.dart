@@ -37,7 +37,8 @@ import 'package:motor_widgets/src/painted_position.dart';
 /// this widget, see [outside]. A plain [Draggable] doesn't tell anyone
 /// where it is, so it is only seen while it is over this widget, and only
 /// while no [DragTarget] inside takes it, except a `MotionReorderable`,
-/// which passes it on.
+/// which passes it on. It also needs `data`: a [DragTarget] isn't told
+/// where a [Draggable] without data is.
 class MotionDragToScroll extends StatefulWidget {
   /// Scrolls the scroll view below [child] near its edges.
   const MotionDragToScroll({
@@ -142,7 +143,9 @@ class _Scope extends InheritedWidget {
 class _MotionDragToScrollState extends State<MotionDragToScroll>
     with SingleTickerProviderStateMixin
     implements DragFlightObserver {
-  late final Ticker _ticker = createTicker(_tick);
+  /// Created on first use, not in [dispose]; see MotionReorderable.
+  Ticker? _tickerOrNull;
+  Ticker get _ticker => _tickerOrNull ??= createTicker(_tick);
 
   /// The scroll view it scrolls, found from its notifications.
   ScrollableState? _scrollable;
@@ -184,7 +187,7 @@ class _MotionDragToScrollState extends State<MotionDragToScroll>
   void dispose() {
     DragFlight.removeObserver(this);
     _outer?._inner.remove(this);
-    _ticker.dispose();
+    _tickerOrNull?.dispose();
     super.dispose();
   }
 
@@ -270,7 +273,7 @@ class _MotionDragToScrollState extends State<MotionDragToScroll>
     _target = 0;
     _simulation = null;
     _lastTick = null;
-    _ticker.stop();
+    _tickerOrNull?.stop();
   }
 
   /// The speed toward which the scroll view should scroll, in logical

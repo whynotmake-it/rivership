@@ -306,9 +306,19 @@ class MotionDropGap extends StatelessWidget {
 }
 
 class _ReorderableScope extends InheritedWidget {
-  const _ReorderableScope({required this.zone, required super.child});
+  const _ReorderableScope({
+    required this.zone,
+    required this.motion,
+    required this.sliver,
+    required super.child,
+  });
 
   final _MotionReorderableState<Object> zone;
+
+  /// What items read from [zone] while building, so a hover that only
+  /// moves the drop doesn't rebuild items the builder kept.
+  final Motion? motion;
+  final bool sliver;
 
   static _MotionReorderableState<Object> of(BuildContext context) {
     final scope = context
@@ -322,7 +332,10 @@ class _ReorderableScope extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(_ReorderableScope oldWidget) => true;
+  bool updateShouldNotify(_ReorderableScope oldWidget) =>
+      zone != oldWidget.zone ||
+      motion != oldWidget.motion ||
+      sliver != oldWidget.sliver;
 }
 
 /// Tells the reorderable which landing site its gap is.
@@ -359,20 +372,30 @@ class _GapSiteState extends State<_GapSite> {
 /// How the items of a reorderable follow each other on screen.
 @immutable
 class _Flow {
-  const _Flow(this.axis, this.sign);
+  const _Flow(this.axis, this.sign, {this.wraps = false, this.crossSign = 1});
 
   @override
   bool operator ==(Object other) =>
-      other is _Flow && other.axis == axis && other.sign == sign;
+      other is _Flow &&
+      other.axis == axis &&
+      other.sign == sign &&
+      other.wraps == wraps &&
+      other.crossSign == crossSign;
 
   @override
-  int get hashCode => Object.hash(axis, sign);
+  int get hashCode => Object.hash(axis, sign, wraps, crossSign);
 
   /// The axis along which consecutive items follow each other.
   final Axis axis;
 
   /// 1 when later items are further right or down, -1 otherwise.
   final double sign;
+
+  /// Whether the items wrap onto several lines across [axis].
+  final bool wraps;
+
+  /// 1 when later lines are further right or down, -1 otherwise.
+  final double crossSign;
 
   double along(Offset offset) =>
       sign * (axis == Axis.horizontal ? offset.dx : offset.dy);
@@ -421,7 +444,12 @@ class _MotionReorderableState<T extends Object>
 
   final _slots = <_RenderSlot>{};
   final _gapToken = Object();
-  late final Ticker _ticker = createTicker((_) => _update());
+
+  /// Created on first use: creating it in [dispose], for a reorderable
+  /// that never needed it, would look up an ancestor of a deactivated
+  /// element.
+  Ticker? _tickerOrNull;
+  Ticker get _ticker => _tickerOrNull ??= createTicker((_) => _update());
 
   /// The probe and painted rects of the last update, to stop the ticker
   /// once nothing moves.
@@ -455,8 +483,20 @@ class _MotionReorderableState<T extends Object>
     _ => flight?.id ?? data,
   };
 
-  bool _contains(Object id) =>
-      widget.items.any((item) => _idOfItem(item) == id);
+  bool _contains(Object id) => _indexOfId(id) != null;
+
+  /// The index of the item with [id], from a map built once per widget, as
+  /// every slot asks for its own. Items may be a list changed in place, so
+  /// every new widget drops it.
+  int? _indexOfId(Object id) {
+    final indices = _indicesById ??= {
+      for (final (i, item) in widget.items.indexed.toList().reversed)
+        _idOfItem(item): i,
+    };
+    return indices[id];
+  }
+
+  Map<Object, int>? _indicesById;
 
   /// The items without the one dragged with [data].
   List<T> _order(Object? data) {
@@ -471,6 +511,7 @@ class _MotionReorderableState<T extends Object>
   @override
   void didUpdateWidget(MotionReorderable<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _indicesById = null;
     final pending = _pending;
     // The pending item arrived: the feedback lands on it.
     if (pending != null && _contains(pending.id)) pending.flight?.relocate();
@@ -485,7 +526,7 @@ class _MotionReorderableState<T extends Object>
   @override
   void dispose() {
     _unkeep();
-    _ticker.dispose();
+    _tickerOrNull?.dispose();
     super.dispose();
   }
 
@@ -568,7 +609,7 @@ class _MotionReorderableState<T extends Object>
     final flight = _hover?.flight;
     if (widget.keepsDropOnLeave && flight != null && flight.isDragging) {
       _kept = true;
-      _ticker.stop();
+      _tickerOrNull?.stop();
       _lastFrame = null;
       _keeping.add(this as _MotionReorderableState<Object>);
       DragFlight.addObserver(this);
@@ -628,7 +669,7 @@ class _MotionReorderableState<T extends Object>
     _index = null;
     _lastFrame = null;
     _entered = 0;
-    _ticker.stop();
+    _tickerOrNull?.stop();
     if (mounted) _reportPlain();
   }
 
@@ -673,7 +714,7 @@ class _MotionReorderableState<T extends Object>
     }
     final frame = <Object>[probe, for (final m in measured) m.painted];
     if (_lastFrame case final last? when listEquals(last, frame)) {
-      _ticker.stop();
+      _tickerOrNull?.stop();
     }
     _lastFrame = frame;
   }
@@ -686,7 +727,7 @@ class _MotionReorderableState<T extends Object>
       if (slot.attached && slot.hasSize && !slot.size.isEmpty)
         (
           slot: slot,
-          layout: slot.localToGlobal(Offset.zero) & slot.size,
+          layout: layoutGlobalRect(slot),
           painted: paintedGlobalRect(slot),
         ),
   ];
@@ -711,11 +752,18 @@ class _MotionReorderableState<T extends Object>
     final flow = _flowOf(measured);
 
     final lines = <List<_Measured>>[];
-    if (flow.axis == Axis.vertical) {
+    if (flow.axis == Axis.vertical && !flow.wraps) {
       lines.add(measured);
     } else {
       final sorted = [...measured]
-        ..sort((a, b) => a.layout.top.compareTo(b.layout.top));
+        ..sort(
+          (a, b) => flow
+              .crossSpan(a.layout)
+              .$1
+              .compareTo(
+                flow.crossSpan(b.layout).$1,
+              ),
+        );
       (double, double)? span;
       for (final m in sorted) {
         final next = flow.crossSpan(m.layout);
@@ -727,6 +775,8 @@ class _MotionReorderableState<T extends Object>
         }
         lines.last.add(m);
       }
+      // Lines in the order the items fill them.
+      if (flow.crossSign < 0) lines.setAll(0, lines.reversed.toList());
     }
 
     final cross = flow.cross(probe);
@@ -776,8 +826,14 @@ class _MotionReorderableState<T extends Object>
   }
 
   /// How the items follow each other: down a column when they all share
-  /// the first one's columns, along rows when they share its rows or wrap,
-  /// and along the scrollable's axis when there is too little to tell.
+  /// the first one's columns, along a row when they share its rows, and
+  /// along the scrollable's axis when there is too little to tell.
+  ///
+  /// Items on several rows and columns wrap: they go along a row, as in a
+  /// [Wrap] or a vertical grid, or down a column, as in a vertical [Wrap]
+  /// or a horizontal grid, whichever way consecutive items follow each
+  /// other. Without two items to tell, they go across the scrollable's
+  /// axis, else along rows.
   _Flow _flowOf(List<_Measured> measured) {
     final first = measured.first.layout;
     var column = true;
@@ -788,22 +844,61 @@ class _MotionReorderableState<T extends Object>
       row &= _overlaps((first.top, first.bottom), (rect.top, rect.bottom));
     }
     final element = measured.first.slot.element;
+    final wraps = !column && !row;
     final Axis axis;
-    if (column == row) {
-      axis = column ? _scrollAxis(element) : Axis.horizontal;
+    if (column && row) {
+      axis = _scrollAxis(element);
+    } else if (wraps) {
+      axis =
+          _progression(measured) ??
+          switch (_scrollAxisOrNull(element)) {
+            final scroll? => flipAxis(scroll),
+            null => Axis.horizontal,
+          };
     } else {
       axis = column ? Axis.vertical : Axis.horizontal;
     }
-    return _Flow(axis, _sign(element, axis));
+    return _Flow(
+      axis,
+      _sign(element, axis),
+      wraps: wraps,
+      crossSign: wraps ? _sign(element, flipAxis(axis)) : 1,
+    );
   }
 
-  Axis _scrollAxis(BuildContext element) {
-    if (!element.mounted) return Axis.vertical;
-    final scrollable = Scrollable.maybeOf(element);
-    return scrollable == null
-        ? Axis.vertical
-        : axisDirectionToAxis(scrollable.axisDirection);
+  /// The axis along which consecutive items follow each other: horizontal
+  /// when the first pair of consecutive items that share a row or a column
+  /// share a row. Null when no pair does.
+  Axis? _progression(List<_Measured> measured) {
+    final order = {
+      for (final (i, item) in widget.items.indexed) _idOfItem(item): i,
+    };
+    final byOrder = [
+      for (final m in measured)
+        if (!m.slot.isGap && order[m.slot.id] != null) m,
+    ]..sort((a, b) => order[a.slot.id]!.compareTo(order[b.slot.id]!));
+    for (var i = 1; i < byOrder.length; i++) {
+      final a = byOrder[i - 1].layout;
+      final b = byOrder[i].layout;
+      final sameRow = _overlaps((a.top, a.bottom), (b.top, b.bottom));
+      final sameColumn = _overlaps((a.left, a.right), (b.left, b.right));
+      if (sameRow != sameColumn) {
+        return sameRow ? Axis.horizontal : Axis.vertical;
+      }
+    }
+    return null;
   }
+
+  Axis? _scrollAxisOrNull(BuildContext element) {
+    if (!element.mounted) return null;
+    return switch (Scrollable.maybeOf(element)) {
+      final scrollable? => axisDirectionToAxis(scrollable.axisDirection),
+      null => null,
+    };
+  }
+
+  Axis _scrollAxis(BuildContext element) =>
+      _scrollAxisOrNull(element) ?? Axis.vertical;
 
   double _sign(BuildContext element, Axis axis) {
     if (!element.mounted) return 1;
@@ -966,8 +1061,8 @@ class _MotionReorderableState<T extends Object>
     final onMove = widget.onMove;
     final items = widget.items;
     if (!mounted || onMove == null || items.length < 2) return const {};
-    final index = items.indexWhere((other) => _idOfItem(other) == id);
-    if (index < 0) return const {};
+    final index = _indexOfId(id);
+    if (index == null) return const {};
     final item = items[index];
     final strings = _strings;
     void to(int target) {
@@ -1030,6 +1125,8 @@ class _MotionReorderableState<T extends Object>
     final drop = _drop();
     final content = _ReorderableScope(
       zone: this as _MotionReorderableState<Object>,
+      motion: widget.motion,
+      sliver: widget._sliver,
       child: NotificationListener<ScrollNotification>(
         // A scroll under a still pointer moves the items past it.
         onNotification: (_) {

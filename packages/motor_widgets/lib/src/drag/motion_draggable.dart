@@ -616,7 +616,7 @@ class _MotionDraggableState<T extends Object> extends State<MotionDraggable<T>>
     if (!mounted) return null;
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.attached || !box.hasSize) return null;
-    return paintedGlobalRect(box);
+    return landingRect(box);
   }
 
   @override

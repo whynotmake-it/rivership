@@ -36,17 +36,20 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
     debugLabel: 'MotionContainer.padding',
   );
 
-  /// [MotionContainer.color].
+  /// The background color: [MotionContainer.color], or the `color` of a
+  /// [BoxDecoration] in [MotionContainer.decoration].
+  ///
+  /// One track for both, as [AnimatedContainer] treats `color` as a
+  /// shorthand for `BoxDecoration(color: color)`: switching from one to the
+  /// other animates the color.
   static final color = MotionContainerTrack<Color>._(
     MotionConverter.colorRgb,
     debugLabel: 'MotionContainer.color',
   );
 
-  /// The `color` of a [BoxDecoration] in [MotionContainer.decoration].
-  static final decorationColor = MotionContainerTrack<Color>._(
-    MotionConverter.colorRgb,
-    debugLabel: 'MotionContainer.decorationColor',
-  );
+  /// The `color` of a [BoxDecoration] in [MotionContainer.decoration]: the
+  /// same track as [color].
+  static final decorationColor = color;
 
   /// The `borderRadius` of a [BoxDecoration] in [MotionContainer.decoration].
   static final decorationBorderRadius = MotionContainerTrack<BorderRadius>._(
@@ -128,7 +131,9 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
 ///
 /// * [alignment], [padding], [margin] and [transformAlignment]. Directional
 ///   values are resolved against the ambient [Directionality] first.
-/// * [color].
+/// * [color]. As in [AnimatedContainer], it is the same property as the
+///   `color` of a [BoxDecoration], so switching from one to the other
+///   animates.
 /// * The `color` and `borderRadius` of a [BoxDecoration] in [decoration] and
 ///   [foregroundDecoration]. Its other fields (border, shadows, gradient,
 ///   image, shape) and other kinds of [Decoration] change at once.
@@ -283,9 +288,10 @@ class MotionContainer extends StatelessWidget {
         MotionContainerTrack.padding.implicit(
           _paddingIncludingDecoration?.resolve(direction),
         ),
-        MotionContainerTrack.color.implicit(color),
+        MotionContainerTrack.color.implicit(
+          color ?? (decoration is BoxDecoration ? decoration.color : null),
+        ),
         if (decoration is BoxDecoration) ...[
-          MotionContainerTrack.decorationColor.implicit(decoration.color),
           MotionContainerTrack.decorationBorderRadius.implicit(
             decoration.borderRadius?.resolve(direction),
           ),
@@ -347,7 +353,7 @@ class MotionContainer extends StatelessWidget {
         return _ContainerLayout(
           alignment: value(MotionContainerTrack.alignment),
           padding: value(MotionContainerTrack.padding),
-          color: value(MotionContainerTrack.color),
+          color: color == null ? null : value(MotionContainerTrack.color),
           decoration: animatedDecoration(
             decoration,
             MotionContainerTrack.decorationColor,

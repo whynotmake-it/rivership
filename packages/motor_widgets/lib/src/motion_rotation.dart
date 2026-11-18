@@ -34,7 +34,7 @@ class MotionRotation extends StatelessWidget {
 
   /// The alignment of the origin of the rotation, relative to the child's
   /// size.
-  final Alignment alignment;
+  final AlignmentGeometry alignment;
 
   /// The filter quality with which to apply the transform as a bitmap
   /// operation. See [Transform.filterQuality].

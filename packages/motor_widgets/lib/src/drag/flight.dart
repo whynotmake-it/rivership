@@ -20,8 +20,9 @@ abstract interface class LandingSite {
   /// see [LandingHold].
   bool get holdsLanding;
 
-  /// The site's rect in global coordinates where it was last painted, or
-  /// null while it isn't laid out.
+  /// Where the site's top left was last painted in global coordinates, and
+  /// its size in its own coordinates (see `landingRect`), or null while it
+  /// isn't laid out.
   ///
   /// It includes offsets that only move the painting, such as a
   /// `MotionLayoutItem`'s flight, which hit testing and `localToGlobal`
@@ -87,6 +88,12 @@ class LandingHold extends InheritedWidget {
 abstract interface class LandingScopeBox implements RenderBox {
   /// The registry of the scope.
   LandingRegistry get landingRegistry;
+
+  /// Whether the scope is on screen, so a drop over it can land in it.
+  ///
+  /// A scope in a page covered by an opaque route or in an [Offstage]
+  /// subtree keeps its size from when it was last laid out, but isn't.
+  bool get isShowing;
 
   /// The scope boxes that are attached.
   static final Set<LandingScopeBox> mounted = {};
@@ -310,13 +317,13 @@ class DragFlight {
     _registryNamed = true;
   }
 
-  /// The registry of the innermost landing scope whose box contains
-  /// [position], or null.
+  /// The registry of the innermost landing scope on screen whose box
+  /// contains [position], or null.
   static LandingRegistry? _registryUnder(Offset position) {
     LandingScopeBox? innermost;
     for (final box in LandingScopeBox.mounted) {
-      if (!box.attached || !box.hasSize) continue;
-      final rect = box.localToGlobal(Offset.zero) & box.size;
+      if (!box.attached || !box.hasSize || !box.isShowing) continue;
+      final rect = layoutGlobalRect(box);
       if (!rect.contains(position)) continue;
       if (innermost == null || box.depth > innermost.depth) innermost = box;
     }
@@ -908,7 +915,7 @@ class DragFlight {
   Rect? _overlayRect() {
     final box = overlay.context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
+    return layoutGlobalRect(box);
   }
 
   void _loseSite(LandingSite site) {

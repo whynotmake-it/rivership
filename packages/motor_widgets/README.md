@@ -54,6 +54,11 @@ builders, so it shows up by name in `motor_devtools`.
   gradient and image of a `BoxDecoration`, any other kind of `Decoration`,
   and unbounded (infinite) constraints. A `transform` loses perspective and
   skew while it animates, as it does in `AnimatedContainer`.
+- **A `MotionContainer.transform` rotation turns the short way.** Each
+  rotation is taken as at most half a turn either way, so -100° to -140°
+  turns 40°. `AnimatedContainer` turns that one the long way, because the
+  quaternion `Matrix4.decompose` returns flips sign past about 240°. For
+  spins past half a turn, use `MotionRotation`.
 - **Directional values are resolved first.** `MotionAlign`, `MotionContainer`
   and `MotionPadding` resolve `AlignmentDirectional` and
   `EdgeInsetsDirectional` against the ambient `Directionality`, then animate.
