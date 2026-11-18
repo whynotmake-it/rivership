@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- Fix: `CoilTabs` keeps each tab's focus node, states and hover by its
+  value, so inserting, removing or reordering tabs no longer moves focus
+  or hover to another tab. Tab values must be distinct (asserted).
 - Fix: `CoilRovingFocus` gives back the Tab stops it took
   (`skipTraversal`) when it switches to a stop on each item, a node leaves
   `nodes`, or the group goes away.

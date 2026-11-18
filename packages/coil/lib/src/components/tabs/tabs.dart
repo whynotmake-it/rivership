@@ -179,9 +179,24 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
         : (enter: resolved, exit: resolved);
   }
 
-  final _nodes = <FocusNode>[];
-  final _states = <WidgetStatesController>[];
-  int? _focusVisible;
+  /// One focus node and states controller per tab value, so a tab keeps
+  /// its focus and hover when tabs are inserted, removed or reordered.
+  final _nodesByValue = <T, FocusNode>{};
+  final _statesByValue = <T, WidgetStatesController>{};
+
+  /// The tabs' nodes, in order.
+  List<FocusNode> get _nodes => [
+    for (final tab in widget.tabs) _nodesByValue[tab.value]!,
+  ];
+
+  /// The value of the tab showing the keyboard focus ring.
+  T? _focusVisibleValue;
+  int? get _focusVisible {
+    final value = _focusVisibleValue;
+    if (value == null) return null;
+    final index = widget.tabs.indexWhere((tab) => tab.value == value);
+    return index < 0 ? null : index;
+  }
 
   final _scroll = ScrollController(debugLabel: 'CoilTabs');
   final _revealRequest = _RevealRequest();
@@ -222,8 +237,11 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
   /// the least distance. The scroll position follows the `reveal` spring and
   /// stays tappable; a drag takes over at any time.
   void _reveal(int? index, {bool animate = true}) {
-    if (index == null || index >= _nodes.length || !_scroll.hasClients) return;
-    final tab = _nodes[index].context?.findRenderObject();
+    if (index == null || index >= widget.tabs.length || !_scroll.hasClients) {
+      return;
+    }
+    final tab = _nodesByValue[widget.tabs[index].value]?.context
+        ?.findRenderObject();
     if (tab is! RenderBox || !tab.attached || !tab.hasSize) return;
     final viewport = RenderAbstractViewport.maybeOf(tab);
     if (viewport == null) return;
@@ -277,28 +295,46 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
   }
 
   void _sync() {
-    while (_nodes.length < widget.tabs.length) {
-      final i = _nodes.length;
-      _nodes.add(FocusNode(debugLabel: 'CoilTab $i'));
-      final states = WidgetStatesController();
-      states.addListener(() => _onStates(i, states.value));
-      _states.add(states);
+    final values = {for (final tab in widget.tabs) tab.value};
+    assert(
+      values.length == widget.tabs.length,
+      'CoilTabs needs a distinct value per tab',
+    );
+    for (final value in values) {
+      _nodesByValue.putIfAbsent(
+        value,
+        () => FocusNode(debugLabel: 'CoilTab $value'),
+      );
+      _statesByValue.putIfAbsent(value, () {
+        final states = WidgetStatesController();
+        states.addListener(() => _onStates(value, states.value));
+        return states;
+      });
     }
-    while (_nodes.length > widget.tabs.length) {
-      _nodes.removeLast().dispose();
-      _states.removeLast().dispose();
-    }
+    _nodesByValue.removeWhere((value, node) {
+      if (values.contains(value)) return false;
+      node.dispose();
+      return true;
+    });
+    _statesByValue.removeWhere((value, states) {
+      if (values.contains(value)) return false;
+      if (_focusVisibleValue == value) _focusVisibleValue = null;
+      states.dispose();
+      return true;
+    });
   }
 
-  void _onStates(int index, Set<WidgetState> states) {
+  void _onStates(T value, Set<WidgetState> states) {
     final focused = states.contains(WidgetState.focused);
-    if (focused && _focusVisible != index) {
-      setState(() => _focusVisible = index);
+    if (focused && _focusVisibleValue != value) {
+      setState(() => _focusVisibleValue = value);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _reveal(index);
+        if (!mounted) return;
+        final index = widget.tabs.indexWhere((tab) => tab.value == value);
+        if (index >= 0) _reveal(index);
       });
-    } else if (!focused && _focusVisible == index) {
-      setState(() => _focusVisible = null);
+    } else if (!focused && _focusVisibleValue == value) {
+      setState(() => _focusVisibleValue = null);
     }
   }
 
@@ -306,10 +342,10 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
   void dispose() {
     _scroll.dispose();
     _overflow.dispose();
-    for (final node in _nodes) {
+    for (final node in _nodesByValue.values) {
       node.dispose();
     }
-    for (final states in _states) {
+    for (final states in _statesByValue.values) {
       states.dispose();
     }
     super.dispose();
@@ -448,6 +484,7 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                     children: [
                       for (final (i, tab) in widget.tabs.indexed)
                         CoilHoverItem(
+                          key: ValueKey(tab.value),
                           index: i,
                           child: _TabButton(
                             emphasisMotion: emphasisMotion,
@@ -460,8 +497,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                             collapseLabel:
                                 widget.labels == CoilTabLabels.selected &&
                                 tab.icon != null,
-                            focusNode: _nodes[i],
-                            statesController: _states[i],
+                            focusNode: _nodesByValue[tab.value]!,
+                            statesController: _statesByValue[tab.value]!,
                             onPressed: switch (widget.onChanged) {
                               final onChanged? => () => onChanged(tab.value),
                               null => null,
