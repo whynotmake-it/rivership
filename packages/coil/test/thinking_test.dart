@@ -269,6 +269,25 @@ void main() {
       expect(growing, inExclusiveRange(initial, grown));
     });
 
+    testWidgets('steps added after a clear grow in again', (tester) async {
+      final content = await _pumpLive(
+        tester,
+        _Steps(steps: _steps.take(2).toList(), expanded: true),
+      );
+      await tester.pumpAndSettle();
+      content.value = const _Steps(steps: [], expanded: true);
+      await tester.pumpAndSettle();
+      final empty = tester.getSize(_target).height;
+
+      content.value = _Steps(steps: _steps.take(1).toList(), expanded: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final growing = tester.getSize(_target).height;
+      await tester.pumpAndSettle();
+      final grown = tester.getSize(_target).height;
+      expect(growing, inExclusiveRange(empty, grown));
+    });
+
     testWidgets('reduced motion: a new step takes its height at once', (
       tester,
     ) async {
@@ -548,6 +567,43 @@ void main() {
       expect(announced(tester), 'Thinking');
       await tester.pump(const Duration(seconds: 1));
       expect(announced(tester), 'Reading');
+    });
+
+    testWidgets('words rebuilt every second (not const) still cycle', (
+      tester,
+    ) async {
+      // Words built fresh each time, as a parent that rebuilds often does.
+      Widget indicator() => CoilThinkingIndicator(
+        words: [
+          for (final w in ['A', 'B', 'C']) Text(w),
+        ],
+      );
+      final content = await _pumpLive(tester, indicator());
+      final seen = <String>[announced(tester)];
+      for (var second = 1; second <= 12; second++) {
+        content.value = indicator();
+        await tester.pump(const Duration(seconds: 1));
+        if (second % 4 == 0) seen.add(announced(tester));
+      }
+      expect(seen, ['A', 'B', 'C', 'A']);
+    });
+
+    // In release builds the two const `Text('A')`s are one instance, which
+    // a lookup by identity would never move past.
+    testWidgets('a repeated word still moves on', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          const CoilThinkingIndicator(
+            words: [Text('A'), Text('A'), Text('B')],
+          ),
+        ),
+      );
+      final seen = <String>[announced(tester)];
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 4));
+        seen.add(announced(tester));
+      }
+      expect(seen, ['A', 'A', 'B', 'A']);
     });
 
     testWidgets('the longest word reserves the width', (tester) async {

@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- Fix: `CoilThinkingIndicator` follows its words by position, so words a
+  parent rebuilds (non-const `Text`s) and repeated words keep cycling
+  instead of sticking on the first.
+- Fix: `CoilThinkingSteps` grows in steps added after the list was
+  cleared (a retry), not only steps past the first build's count.
 - Fix: a style's state colors merge per state
   (`CoilComponentStyle.mergeStates`). A partial override such as
   `CoilButtonStyle(fill: WidgetStateProperty.fromMap({WidgetState.hovered: red}))`

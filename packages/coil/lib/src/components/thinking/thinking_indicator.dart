@@ -32,6 +32,10 @@ class CoilThinkingIndicator extends StatefulWidget {
 
   /// The words to cycle through, starting with the first, usually [Text]s.
   /// Needs at least one. Screen readers hear the current one.
+  ///
+  /// Words are followed by position, so a parent may rebuild them every
+  /// frame and repeat a word. A list of another length takes over at the
+  /// next change, from its first word.
   final List<Widget> words;
 
   /// An optional glyph before the words, styled by [IconTheme] in the
@@ -58,6 +62,13 @@ class CoilThinkingIndicator extends StatefulWidget {
 
 class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
   Timer? _timer;
+
+  /// The shown word's position in [CoilThinkingIndicator.words], or -1
+  /// when it is no longer in the list (the next change starts over).
+  int _index = 0;
+
+  /// The shown word. It can be a word [CoilThinkingIndicator.words] no
+  /// longer has, until the next change.
   late Widget _word = widget.words.first;
 
   /// Counts word changes, so a word that repeats still rolls.
@@ -83,15 +94,32 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
     }
   }
 
+  @override
+  void didUpdateWidget(CoilThinkingIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    assert(widget.words.isNotEmpty, 'words needs at least one word');
+    final words = widget.words;
+    if (identical(words, oldWidget.words) || _index < 0) return;
+    if (words.length == oldWidget.words.length) {
+      // The same list rebuilt (a parent passing new `Text`s each build):
+      // the word keeps its place and shows the new widget in place.
+      _word = words[_index];
+    } else {
+      // Another list: the shown word stays until the timer, which then
+      // starts from the first word, so announcements keep their pace.
+      _index = -1;
+    }
+  }
+
   // The word only changes on the timer, even when [words] changes, which
   // keeps announcements at most one per interval.
   void _next() {
     final words = widget.words;
-    // A word no longer in [words] continues from the start.
-    final next = words[(words.indexOf(_word) + 1) % words.length];
-    if (identical(next, _word)) return;
+    final index = (_index + 1) % words.length;
+    if (index == _index && identical(words[index], _word)) return;
     setState(() {
-      _word = next;
+      _index = index;
+      _word = words[index];
       _turn++;
     });
   }
