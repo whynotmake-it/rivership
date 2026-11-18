@@ -420,6 +420,62 @@ void main() {
       expect(decoration().color, const Color(0xFFFFFFFF));
     });
 
+    testWidgets('springs from color to a BoxDecoration color, as '
+        'AnimatedContainer does', (tester) async {
+      Color painted() {
+        final colored = find.descendant(
+          of: find.byType(MotionContainer),
+          matching: find.byType(ColoredBox),
+        );
+        if (colored.evaluate().isNotEmpty) {
+          return tester.widget<ColoredBox>(colored).color;
+        }
+        final decorated = tester.widget<DecoratedBox>(
+          find.descendant(
+            of: find.byType(MotionContainer),
+            matching: find.byType(DecoratedBox),
+          ),
+        );
+        return (decorated.decoration as BoxDecoration).color!;
+      }
+
+      await tester.pumpWidget(
+        _wrap(
+          MotionContainer(
+            color: const Color(0xFF000000),
+            motion: spring,
+            child: _box,
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        _wrap(
+          MotionContainer(
+            decoration: const BoxDecoration(color: Color(0xFFFFFFFF)),
+            motion: spring,
+            child: _box,
+          ),
+        ),
+      );
+      await tester.pump(frame * 4);
+      expect(painted().r, inExclusiveRange(0, 1));
+
+      await tester.pumpAndSettle();
+      expect(painted(), const Color(0xFFFFFFFF));
+
+      await tester.pumpWidget(
+        _wrap(
+          MotionContainer(
+            color: const Color(0xFF000000),
+            motion: spring,
+            child: _box,
+          ),
+        ),
+      );
+      await tester.pump(frame * 4);
+      expect(painted().r, inExclusiveRange(0, 1));
+    });
+
     testWidgets('animates padding, margin, alignment and transform', (
       tester,
     ) async {
