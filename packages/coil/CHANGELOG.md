@@ -2,6 +2,13 @@
 
 Milestone M0, unreleased.
 
+- Fix: a drag that opens `CoilDrawer` (the phone sidebar) from a
+  horizontal scrollable's edge no longer janks when it moves back: the
+  drawer keeps the drag in both directions (`ScrollDragMode.dragFirst`)
+  until it is back where the drag found it, then hands the rest of the
+  gesture to the scrollable, like a sheet dragged down and back up. The
+  same holds for a closing drag out of a scrollable in the panel, the end
+  side and right to left.
 - Breaking: the phone drawer revealed from behind (`CoilDrawerReveal.behind`,
   the sidebar's touch default) now lightens the page in light mode instead
   of darkening it: a veil of the top surface (white) at 35 %, fading in

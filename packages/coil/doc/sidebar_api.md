@@ -130,7 +130,11 @@ current state.
   page scrolls first and hands over only when the drag *starts* at its edge
   (`ScrollDragMode.boundaryStart`), so flicking back through a carousel
   never yanks the drawer open. While open, drags on the page or the panel
-  close it (`scrollFirst` inside the panel). Every drag follows the finger
+  close it (`scrollFirst` inside the panel). Once a drag that came out of
+  a scrollable moves the drawer, both directions are `dragFirst` until the
+  drawer is back where the drag found it (closed, or fully open), as a
+  sheet keeps a drag back up until it is at the top; there the scrollable
+  takes over again in the same gesture. Every drag follows the finger
   and releases into the spring with its velocity; a fling (400 px/s,
   `CoilDrawer.flingVelocity`) decides by direction, a slow release by
   position. An owner that doesn't apply the change sends it back.

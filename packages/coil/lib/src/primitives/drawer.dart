@@ -303,8 +303,11 @@ class CoilDrawerTransition {
 /// [drag] decides which drags move it. Drags are read with a
 /// `ScrollDragDetector`, so a horizontal scrollable inside [child] keeps
 /// its drags and hands over to the drawer only when a drag starts at its
-/// edge. Drawers nest: a drag the inner drawer can't use (say, toward a
-/// side it has no panel on) moves the outer one, and opening one closes
+/// edge. Once such a drag moves the drawer, the drawer keeps it both ways
+/// until it is back where the drag found it, so dragging back follows the
+/// finger, and only then does the scrollable scroll again. Drawers nest:
+/// a drag the inner drawer can't use (say, toward a side it has no panel
+/// on) moves the outer one, and opening one closes
 /// the others, so an inner `end` drawer and an outer `start` drawer behave
 /// as one drawer with two sides.
 ///
@@ -403,13 +406,16 @@ class _CoilDrawerState extends State<CoilDrawer>
     with SingleTickerProviderStateMixin {
   /// Where the content is: 0 covers both panels, 1 shows [CoilDrawer.start]
   /// and -1 [CoilDrawer.end], in fractions of the panel width.
-  late final _position = SingleMotionController(
-    motion: const Motion.instant(),
-    vsync: this,
-    initialValue: _targetOf(widget.open),
-    velocityTracking: const VelocityTracking.off(),
-    debugLabel: 'CoilDrawer.position',
-  )..addStatusListener(_onStatus);
+  late final _position =
+      SingleMotionController(
+          motion: const Motion.instant(),
+          vsync: this,
+          initialValue: _targetOf(widget.open),
+          velocityTracking: const VelocityTracking.off(),
+          debugLabel: 'CoilDrawer.position',
+        )
+        ..addStatusListener(_onStatus)
+        ..addListener(_updateHold);
 
   final _startScope = FocusScopeNode(debugLabel: 'CoilDrawer.start');
   final _endScope = FocusScopeNode(debugLabel: 'CoilDrawer.end');
@@ -445,6 +451,22 @@ class _CoilDrawerState extends State<CoilDrawer>
 
   /// The side the current drag started on: 1 start, -1 end, 0 closed.
   double _dragSide = 0;
+
+  /// Where the current drag found the drawer: the position it hands the
+  /// drag back to a scrollable at.
+  double _dragOrigin = 0;
+
+  /// Whether a drag has moved this drawer away from [_dragOrigin]; while it
+  /// has, the drawer keeps the drag in both directions
+  /// ([ScrollDragMode.dragFirst]).
+  bool _holdsDrag = false;
+
+  /// Whether the drag this drawer's detector reads came out of a
+  /// scrollable, and whether the drag moving this drawer did. Only those
+  /// need holding: a drag that started outside any scrollable never hands
+  /// over to one.
+  bool _dragFromScroll = false;
+  bool _holdingScroll = false;
 
   static double _targetOf(CoilDrawerEdge? edge) => switch (edge) {
     CoilDrawerEdge.start => 1.0,
@@ -672,7 +694,21 @@ class _CoilDrawerState extends State<CoilDrawer>
 
   /// How a drag in that physical direction is routed between a scrollable
   /// in the content and this drawer, or the enclosing one.
+  ///
+  /// While a drag holds a drawer away from where it found it, it keeps the
+  /// drag both ways, the way a sheet dragged down keeps a drag back up
+  /// until it is at the top again: a scrollable under the finger takes over
+  /// only once the drawer is back there.
   ScrollDragMode _modeFor({required bool physicalRight}) {
+    for (_CoilDrawerState? drawer = this; drawer != null;) {
+      if (drawer._holdsDrag) return ScrollDragMode.dragFirst;
+      drawer = drawer._parent;
+    }
+    return _restingModeFor(physicalRight: physicalRight);
+  }
+
+  /// [_modeFor] while no drag holds this drawer or an enclosing one.
+  ScrollDragMode _restingModeFor({required bool physicalRight}) {
     if (_uses(physicalRight: physicalRight)) {
       // From rest, only a drag that starts at the scrollable's edge opens
       // the drawer, so flicking back through a carousel never does.
@@ -680,13 +716,40 @@ class _CoilDrawerState extends State<CoilDrawer>
           ? ScrollDragMode.boundaryStart
           : ScrollDragMode.scrollFirst;
     }
-    return _parent?._modeFor(physicalRight: physicalRight) ??
+    return _parent?._restingModeFor(physicalRight: physicalRight) ??
         ScrollDragMode.none;
   }
 
-  void _onDragStart() {
+  /// Updates [_holdsDrag] as the drawer moves, and rebuilds the drag
+  /// detectors that route by it (this one and the nested drawers') when
+  /// it changes.
+  void _updateHold() {
+    final holds = _dragging && _holdingScroll && _position.value != _dragOrigin;
+    if (holds == _holdsDrag) return;
+    _holdsDrag = holds;
+    void rebuild() {
+      void mark(_CoilDrawerState drawer) {
+        if (!drawer.mounted) return;
+        drawer.setState(() {});
+        drawer._children.forEach(mark);
+      }
+
+      mark(this);
+    }
+
+    // Drag updates can arrive from scroll notifications during layout.
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => rebuild());
+    } else {
+      rebuild();
+    }
+  }
+
+  void _onDragStart({required bool fromScroll}) {
     _dragOwner = null;
     _dragDecided = false;
+    _dragFromScroll = fromScroll;
   }
 
   void _onDragUpdate(double dx) {
@@ -699,7 +762,7 @@ class _CoilDrawerState extends State<CoilDrawer>
       while (owner != null && !owner._uses(physicalRight: dx > 0)) {
         owner = owner._parent;
       }
-      _dragOwner = owner?.._begin();
+      _dragOwner = owner?.._begin(fromScroll: _dragFromScroll);
     }
     _dragOwner?._move(dx);
   }
@@ -711,13 +774,16 @@ class _CoilDrawerState extends State<CoilDrawer>
     owner?._end(velocity);
   }
 
-  void _begin() {
+  void _begin({required bool fromScroll}) {
     _dragging = true;
+    _holdingScroll = fromScroll;
     final position = _position.value;
     _dragSide = position.abs() * _panelWidth > _restSlop
         ? position.sign
         : _targetOf(widget.open);
+    _dragOrigin = _targetOf(widget.open);
     _position.value = position;
+    _updateHold();
   }
 
   void _move(double dx) {
@@ -737,6 +803,7 @@ class _CoilDrawerState extends State<CoilDrawer>
   void _end(double velocity) {
     if (!_dragging) return;
     _dragging = false;
+    _updateHold();
     final side = _dragSide;
     _dragSide = 0;
     final position = _position.value;
@@ -799,7 +866,9 @@ class _CoilDrawerState extends State<CoilDrawer>
         down: ScrollDragMode.none,
         left: _modeFor(physicalRight: false),
         right: _modeFor(physicalRight: true),
-        onHorizontalDragStart: anyDrag ? (_, _) => _onDragStart() : null,
+        onHorizontalDragStart: anyDrag
+            ? (_, fromScroll) => _onDragStart(fromScroll: fromScroll)
+            : null,
         onHorizontalDragUpdate: anyDrag
             ? (details, _) => _onDragUpdate(details.primaryDelta ?? 0)
             : null,
