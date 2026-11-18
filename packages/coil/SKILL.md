@@ -29,7 +29,7 @@ Change things here before ejecting. Every layer below wraps a subtree.
 - **Colors:** `CoilColors.fromSeed(brightness:, brand:, neutralHue:, neutralChroma:)`.
 - **Shape:** `shape: CoilShape.rounded`, `.pill` or `.sharp`.
 - **Size tier:** `tier: CoilTier.pointer` or `.touch`. By default it follows the platform.
-- **Motion:** `motion: CoilMotion(...)` for the tokens, `trackMotions: {CoilSwitchTrack.thumb: ...}` for one track. Per instance, use the component's `motion:` and `motions:`.
+- **Motion:** `motion: CoilMotion(...)` on `CoilThemeData` for the tokens. For one track of one component type, set its style's `motions`: `theme.withComponentStyle(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: ...}))`. Per instance, use the component's `motion:` and `motions:`.
 - **One component type:** `theme.withComponentStyle(CoilButtonStyle(...))`. Per instance, use the `style:` parameter.
 - **A subtree:** `CoilTheme.override(transform: (t) => t.copyWith(shape: .pill), child: ...)`.
 

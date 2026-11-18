@@ -104,7 +104,7 @@ copy it.
 |---|---|---|
 | Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography` and `CoilTextTheme`, `CoilFocusRingTheme`, `CoilShape`, `CoilPlasticity` (resolved into `CoilRelief`), `CoilHaptics`, `CoilInputModality`, `CoilAdaptiveScope` |
 | Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlight`, `CoilSelectionBlocks` (merge/split), `CoilLayerPaint`, `CoilHoverHighlight`, `CoilBlurFade`, `CoilPopover`, `CoilSheetRoute`, `CoilActionBar`, `CoilDrawer`, `CoilScreenRadius`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow`, `CoilPopoverSurface`, `CoilActionList`, `CoilCollapsible`, `CoilDisclosureTrigger`, `CoilCardStack`, `CoilCopyController`, `CoilScrollbar`, `CoilScrollEdgeFade`, `CoilScrollSpring`, `CoilDismissIntent`, `CoilDefaultAction` |
-| Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect`, `CoilScrollArea`, `CoilAccordion`, `CoilThinkingSteps`, `CoilThinkingIndicator`, `CoilCard` (with `CoilCardGroup`), `CoilTable`, `CoilBanner`, `CoilBreadcrumb`, `CoilChatMessage`, `CoilCarouselDots` |
+| Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect`, `CoilScrollArea`, `CoilAccordion`, `CoilThinkingSteps`, `CoilThinkingIndicator`, `CoilCard` (with `CoilCardGroup`), `CoilTable`, `CoilBanner`, `CoilBreadcrumb`, `CoilChatMessage`, `CoilCarouselDots`, `CoilKbd`, `CoilTooltip`, `CoilDropdown`, `CoilContextMenu`, `CoilCombobox`, `CoilCalendar`, `CoilDatePicker`, `CoilDialog`, `CoilSettingsDialog`, `CoilCommandMenu`, `CoilDataTable`, `CoilSidebarScaffold` (with `CoilSidebar`), `CoilInputMessage`, `CoilAskUserQuestions`, `CoilQueuedStack`, `CoilFileThumbnail`, `CoilReveal` |
 
 Components reach pointers, overlays, haptics and travelling motion only
 through primitives. `test/architecture/import_rules_test.dart` enforces it,
@@ -180,10 +180,11 @@ The M0 components still run these from the shared
 
 ## Known gaps
 
-- `style:` classes per component type and instance are planned for M1.
 - Without Material or Cupertino localizations in the app, the text
   selection toolbar's labels are English in every locale.
 - Desktop text fields show Flutter's own right-click toolbar, not a
   coil-styled menu; that needs the ContextMenu component.
-- An open sheet is a route: it doesn't rebuild with the widget that
-  opened it. An open popover does.
+- A modal pushed with `CoilModalRoute` is a route: it doesn't rebuild
+  with the widget that pushed it (use `CoilModalPage` in
+  `Navigator.pages` for that). Popups shown as sheets
+  (`CoilAdaptivePopup`) and popovers do.
