@@ -194,6 +194,9 @@ void main() {
 
     await tester.pumpWidget(_switcher(_child('a'), layoutBuilder: layout));
     await tester.pumpWidget(_switcher(_child('b'), layoutBuilder: layout));
+    // A frame, so b has come in a little and leaves rather than vanishing.
+    await tester.pump(frame);
+    calls.clear();
     await tester.pumpWidget(_switcher(_child('c'), layoutBuilder: layout));
 
     // Each child is wrapped in its own keyed subtree; resolve those keys to
@@ -207,10 +210,40 @@ void main() {
         [labels[current], for (final key in previous) labels[key]],
     ];
     expect(named, [
-      [const ValueKey('a')],
-      [const ValueKey('b'), const ValueKey('a')],
       [const ValueKey('c'), const ValueKey('a'), const ValueKey('b')],
     ]);
+  });
+
+  testWidgets('a child replaced before its first frame is removed at once', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_switcher(_child('a')));
+    await tester.pumpWidget(_switcher(_child('b')));
+    // b is still at presence 0: replacing it has nothing to animate.
+    await tester.pumpWidget(_switcher(_child('c')));
+    await tester.pumpWidget(_switcher(_child('d')));
+    expect(_presence(tester, 'b'), isNull);
+    expect(_presence(tester, 'c'), isNull);
+    await tester.pumpAndSettle(frame);
+
+    expect(find.byType(_Child), findsOneWidget);
+    expect(find.byKey(const ValueKey('d')), findsOneWidget);
+  });
+
+  testWidgets('several leaving children survive a change to an instant '
+      'exitMotion', (tester) async {
+    await tester.pumpWidget(_switcher(_child('a')));
+    await tester.pumpWidget(_switcher(_child('b')));
+    await tester.pump(frame);
+    await tester.pumpWidget(_switcher(_child('c')));
+    await tester.pump(frame);
+    await tester.pumpWidget(
+      _switcher(_child('c'), exitMotion: const Motion.instant()),
+    );
+    await tester.pumpAndSettle(frame);
+
+    expect(find.byType(_Child), findsOneWidget);
+    expect(find.byKey(const ValueKey('c')), findsOneWidget);
   });
 
   testWidgets('a leaving child is removed even if exitMotion changes while '
