@@ -362,6 +362,62 @@ void main() {
       );
     });
 
+    test('refresh reads only coil, the copies, their bases and the app '
+        'library, without following links', () async {
+      final extra = [
+        File(p.join(app, 'build', 'stale.dart')),
+        File(p.join(app, 'node_modules', 'pkg', 'pkg.dart')),
+        File(p.join(app, 'ios', 'Pods', 'pod.dart')),
+        File(p.join(app, 'lib', 'main.dart')),
+      ];
+      for (final file in extra) {
+        file
+          ..createSync(recursive: true)
+          ..writeAsStringSync('void main() {}\n');
+      }
+      final links = [
+        // An SDK pinned by fvm, a plugin link and a loop into the app.
+        Link(p.join(app, '.fvm', 'flutter_sdk'))
+          ..createSync(coil, recursive: true),
+        Link(p.join(app, 'ios', '.symlinks', 'plugins', 'coil'))
+          ..createSync(coil, recursive: true),
+        Link(p.join(app, 'lib', 'acme', 'button', 'loop'))..createSync(app),
+      ];
+      addTearDown(() {
+        for (final entity in [...links, ...extra]) {
+          if (entity.existsSync()) entity.deleteSync();
+        }
+        for (final dir in ['build', 'node_modules', 'ios', '.fvm']) {
+          Directory(p.join(app, dir)).deleteSync(recursive: true);
+        }
+      });
+
+      final refreshed = {
+        for (final file in workspace.refreshedFiles())
+          p.relative(file, from: app),
+      };
+
+      expect(
+        refreshed.where((f) => !f.startsWith('..')),
+        unorderedEquals([
+          'lib/acme.dart',
+          for (final file in files('button').values) ...[
+            'lib/acme/button/${file.path}',
+            '.coil/base/button/${file.path}',
+          ],
+        ]),
+      );
+      expect(
+        refreshed.where((f) => f.startsWith('..')),
+        everyElement(
+          startsWith(p.relative(p.join(upstream, 'lib'), from: app)),
+        ),
+      );
+      // Still updates as before.
+      final result = await update(workspace, 'button');
+      expect(result.files.values, everyElement(FileUpdate.unchanged));
+    });
+
     test('renaming is idempotent across updates', () async {
       final copy = read('lib/acme/button/src/acme_button.dart');
       final manifest = read(Manifest.path);

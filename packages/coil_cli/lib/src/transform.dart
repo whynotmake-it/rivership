@@ -8,6 +8,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:coil_cli/src/coil_source.dart';
 import 'package:coil_cli/src/dart_source.dart';
+import 'package:coil_cli/src/manifest.dart';
 import 'package:coil_cli/src/naming.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
@@ -73,21 +74,48 @@ class EjectWorkspace {
 
   final AnalysisContextCollection _collection;
 
-  /// Makes the analyzer re-read coil's and the app's Dart files, which
-  /// may have changed since the last operation.
+  /// The [refreshedFiles] as of the last [refresh].
+  Set<String> _refreshed = {};
+
+  /// Makes the analyzer re-read the [refreshedFiles], which may have
+  /// changed since the last operation, and forget the ones since deleted.
   Future<void> refresh() async {
     coil = CoilSource(coil.root);
     final context = _collection.contextFor(appRoot);
-    for (final dir in [p.join(coil.root, 'lib'), appRoot]) {
-      for (final file in Directory(dir).listSync(recursive: true)) {
-        if (file is File &&
-            file.path.endsWith('.dart') &&
-            !p.split(file.path).contains('.dart_tool')) {
-          context.changeFile(p.normalize(p.absolute(file.path)));
+    final files = refreshedFiles();
+    _refreshed.union(files).forEach(context.changeFile);
+    _refreshed = files;
+    await context.applyPendingFileChanges();
+  }
+
+  /// The Dart files eject and update read and write, as absolute paths:
+  /// coil's `lib/`, the ejected copies, their bases in `.coil/base/` and
+  /// the app library. Nothing else in the app (build output, SDK links,
+  /// platform folders) is listed, and links are never followed.
+  Set<String> refreshedFiles() {
+    final manifest = Manifest.read(appRoot);
+    final files = {
+      if (manifest.library case final library?) p.join(appRoot, library),
+    };
+    for (final dir in {
+      p.join(coil.root, 'lib'),
+      p.join(appRoot, '.coil', 'base'),
+      for (final component in manifest.components.values)
+        p.join(appRoot, component.path),
+    }) {
+      if (!Directory(dir).existsSync()) continue;
+      for (final entity in Directory(
+        dir,
+      ).listSync(recursive: true, followLinks: false)) {
+        if (entity is File && entity.path.endsWith('.dart')) {
+          files.add(entity.path);
         }
       }
     }
-    await context.applyPendingFileChanges();
+    return {
+      for (final file in files)
+        if (File(file).existsSync()) p.normalize(p.absolute(file)),
+    };
   }
 
   Future<ResolvedUnitResult> _resolve(String path) async {

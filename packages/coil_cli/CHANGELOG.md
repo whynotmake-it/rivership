@@ -12,3 +12,6 @@ Unreleased.
   their exports, for tools such as coil's docs generator.
 - `coil_cli:update` gives a name new upstream the app's prefix in every
   ejected component, not only in the one that declares it.
+- Eject and update re-read only coil, the ejected copies, their bases and
+  the app library, and follow no links, instead of every Dart file under
+  the app (`.fvm`, `build/`, `Pods`, plugin symlinks).
