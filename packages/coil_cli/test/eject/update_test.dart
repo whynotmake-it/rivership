@@ -320,6 +320,48 @@ void main() {
       expect(files('button')['src/button.dart']!.version, '1.0.0');
     });
 
+    test('a new upstream name in one component is renamed in another that '
+        'is updated first', () async {
+      await eject(workspace, ['ask_user_questions']);
+      release('1.1.0', 'src/components/button/button.dart', (s) {
+        return '$s\n/// New upstream.\nclass CoilNewSymbol {\n'
+            '  /// New upstream.\n  const CoilNewSymbol();\n}\n';
+      });
+      release(
+        '1.1.0',
+        'src/components/ask_user_questions/ask_user_questions.dart',
+        (s) =>
+            '$s\n/// Uses [CoilNewSymbol].\n'
+            'const coilNewSymbolDefault = CoilNewSymbol();\n',
+      );
+
+      // The order `coil_cli:update` takes them in: the manifest's, sorted.
+      for (final name in Manifest.read(app).components.keys) {
+        final result = await update(workspace, name);
+        expect(result.needsAttention, isEmpty, reason: name);
+      }
+
+      final path = files(
+        'ask_user_questions',
+      )['src/ask_user_questions.dart']!.path;
+      final questions = read('lib/acme/ask_user_questions/$path');
+      expect(
+        questions,
+        allOf(
+          contains('/// Uses [AcmeNewSymbol].'),
+          contains('const coilNewSymbolDefault = AcmeNewSymbol();'),
+        ),
+      );
+      expect(
+        read('lib/acme/button/src/acme_button.dart'),
+        contains('class AcmeNewSymbol {'),
+      );
+      expect(
+        Manifest.read(app).naming.renames['CoilNewSymbol'],
+        'AcmeNewSymbol',
+      );
+    });
+
     test('renaming is idempotent across updates', () async {
       final copy = read('lib/acme/button/src/acme_button.dart');
       final manifest = read(Manifest.path);

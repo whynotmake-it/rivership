@@ -283,8 +283,14 @@ Future<UpdateResult> update(
     );
   }
   final git = _git();
-  // New upstream names get the app's names the same way the old ones did.
-  manifest.naming.addNames(coil.declaredNamesOf(component));
+  // New upstream names get the app's names the same way the old ones did,
+  // in every ejected component: this copy may refer to a name another
+  // component only just added, and is updated before or without it.
+  manifest.naming.addNames({
+    for (final other in manifest.components.keys)
+      if (coil.components[other] case final source?)
+        ...coil.declaredNamesOf(source),
+  });
   final plan = EjectPlan(
     naming: manifest.naming,
     paths: {

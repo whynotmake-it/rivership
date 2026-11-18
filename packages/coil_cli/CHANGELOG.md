@@ -10,3 +10,5 @@ Unreleased.
   moved from `package:coil/testing.dart`.
 - `package:coil_cli/coil_cli.dart` reads a coil package's components and
   their exports, for tools such as coil's docs generator.
+- `coil_cli:update` gives a name new upstream the app's prefix in every
+  ejected component, not only in the one that declares it.
