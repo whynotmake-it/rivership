@@ -251,11 +251,14 @@ class _CoilPanelRoute<T> extends RawDialogRoute<T>
   final Motion enter;
   final Motion exit;
 
+  /// Starts from where the panel is and how fast it moves, so closing it
+  /// mid-entry turns it around with its momentum instead of from rest.
   @override
   Simulation createSimulation({required bool forward}) =>
       (forward ? enter : exit).createSimulation(
         start: animation?.value ?? (forward ? 0 : 1),
         end: forward ? 1 : 0,
+        velocity: controller?.velocity ?? 0,
       );
 }
 

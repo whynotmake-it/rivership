@@ -2,6 +2,8 @@
 
 Milestone M0, unreleased.
 
+- Fix: a centered or drawer `CoilModalRoute` closed while it springs in
+  turns around with its momentum instead of from rest.
 - Fix: `CoilTabs` keeps each tab's focus node, states and hover by its
   value, so inserting, removing or reordering tabs no longer moves focus
   or hover to another tab. Tab values must be distinct (asserted).

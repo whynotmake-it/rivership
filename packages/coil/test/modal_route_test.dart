@@ -213,6 +213,36 @@ void main() {
       });
     }
 
+    testWidgets('closing mid-entry keeps the momentum', (tester) async {
+      useScreen(tester, TestScreen.desktop);
+      late ModalRoute<String> route;
+      await tester.pumpWidget(
+        testApp(
+          home: _Pusher(
+            results: [],
+            route: (context) => route = CoilModalRoute<String>(
+              context: context,
+              presentation: CoilModalPresentation.drawer,
+              builder: (context) => const _Content(),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      final animation = route.animation!;
+      final before = animation.value;
+      expect(before, inExclusiveRange(0, 1));
+      route.navigator!.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 8));
+      // Still moving in: the exit spring starts from the entry's speed.
+      expect(animation.value, greaterThan(before));
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsNothing);
+    });
+
     testWidgets('Escape closes a centered modal', (tester) async {
       useScreen(tester, TestScreen.desktop);
       final results = await open(tester);
