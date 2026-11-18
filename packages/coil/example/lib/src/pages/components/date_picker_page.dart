@@ -27,8 +27,10 @@ class _DatePickerPageState extends State<DatePickerPage> {
     title: 'DatePicker',
     summary:
         'A popover next to the field that hugs the calendar; a sheet on a '
-        'phone, where the calendar fills the width. Swipe the months, and '
-        'flick the time columns.',
+        'phone, where the calendar fills the width. A day alone commits on '
+        'the tap in a popover; with a time, and in a sheet, Done confirms '
+        'and anything else cancels. Swipe the months, tap the month to zoom '
+        'out to the years, and flick the time columns.',
     children: [
       DemoSection(
         title: 'Date',

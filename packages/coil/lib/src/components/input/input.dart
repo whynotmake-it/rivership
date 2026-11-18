@@ -1,6 +1,7 @@
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/input/input_group.dart';
+import 'package:coil/src/components/input/input_slot_layout.dart';
 import 'package:coil/src/components/input/input_style.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -43,6 +44,8 @@ class CoilInput extends StatefulWidget {
     this.placeholder,
     this.leading,
     this.trailing,
+    this.leadingPlacement,
+    this.trailingPlacement,
     this.enabled = true,
     this.readOnly = false,
     this.invalid = false,
@@ -71,8 +74,9 @@ class CoilInput extends StatefulWidget {
   ///
   /// It starts [minLines] tall and grows with its text up to [maxLines], then
   /// scrolls. Growth is instant. Return inserts a newline; a Return that only
-  /// commits an IME composition doesn't. Slots sit on the first line, and the
-  /// first line lines up with a single-line input's text.
+  /// commits an IME composition doesn't. Slots that fit a line sit on the
+  /// first line, and a button sits in the bottom corner; the first line
+  /// lines up with a single-line input's text.
   const CoilInput.multiline({
     super.key,
     this.controller,
@@ -80,6 +84,8 @@ class CoilInput extends StatefulWidget {
     this.placeholder,
     this.leading,
     this.trailing,
+    this.leadingPlacement,
+    this.trailingPlacement,
     int this.minLines = 3,
     this.maxLines = 10,
     this.enabled = true,
@@ -119,10 +125,28 @@ class CoilInput extends StatefulWidget {
   final Widget? placeholder;
 
   /// A widget before the text, usually a muted icon.
+  ///
+  /// See [trailing] for how a slot is placed.
   final Widget? leading;
 
-  /// A widget after the text, usually an icon or a small button.
+  /// A widget after the text: an icon, a unit such as "EUR", or a button.
+  ///
+  /// A slot that fits a line of text sits beside it. A taller one, such as
+  /// a `CoilButton`, goes into the field's padding instead, centered and as
+  /// far from the side as from the top and bottom, so the field keeps its
+  /// height: a compact button sits 4 in from a regular field's edges. The
+  /// field grows only when the slot doesn't fit. A `CoilButton` here is
+  /// compact by default, with its corners concentric with the field's. The
+  /// slot is measured in the same layout pass as the text, so the first
+  /// frame is right. [trailingPlacement] overrides the choice.
   final Widget? trailing;
+
+  /// Where [leading] goes. Null is [CoilInputSlotPlacement.auto].
+  final CoilInputSlotPlacement? leadingPlacement;
+
+  /// Where [trailing] goes. Null is [CoilInputSlotPlacement.auto]:
+  /// beside the text if it fits a line, into the padding if it's taller.
+  final CoilInputSlotPlacement? trailingPlacement;
 
   /// The lines a multi-line input shows when empty. Null for single-line.
   final int? minLines;
@@ -274,9 +298,8 @@ class _CoilInputState extends State<CoilInput> {
     );
     final multiline = widget._multiline;
     final textStyle = look.textStyle!;
-    final radius = BorderRadius.circular(
-      multiline ? look.multilineRadius! : look.radius!,
-    );
+    final corner = multiline ? look.multilineRadius! : look.radius!;
+    final radius = BorderRadius.circular(corner);
     final invalid =
         widget.invalid || (CoilFieldScope.maybeOf(context)?.invalid ?? false);
     final groupSlot = InputGroupSlot.maybeOf(context);
@@ -285,7 +308,7 @@ class _CoilInputState extends State<CoilInput> {
         ? null
         : CoilHoverItem.isActive(context, groupSlot.index);
 
-    Widget slot(Widget child) {
+    Widget slot(Widget child, CoilInputSlotPlacement? placement) {
       final styled = IconTheme(
         data: IconThemeData(
           size: sizes.iconSize,
@@ -298,8 +321,16 @@ class _CoilInputState extends State<CoilInput> {
           child: child,
         ),
       );
-      // On the first line of a multi-line field.
-      return multiline ? CoilLineBox(style: textStyle, child: styled) : styled;
+      // A slot forced inline keeps a control's own size and corners.
+      if (placement == CoilInputSlotPlacement.inline) return styled;
+      return CoilInputSlotScope(
+        size: CoilSize.compact,
+        radii: theme.shape.radii(sizes.tier),
+        fieldRadius: corner,
+        fieldHeight: look.minHeight!,
+        minInset: look.slotInset!,
+        child: styled,
+      );
     }
 
     Widget decorate(BuildContext context, Widget field) => ListenableBuilder(
@@ -357,23 +388,28 @@ class _CoilInputState extends State<CoilInput> {
           child: child,
         );
       },
-      child: Padding(
-        // 1 px of each side is the border.
-        padding: EdgeInsets.symmetric(
-          horizontal: sizes.controlPaddingX - 1,
-          vertical: sizes.controlPaddingY(textStyle) - 1,
-        ),
-        child: Row(
-          spacing: sizes.gap,
-          crossAxisAlignment: multiline
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.center,
-          children: [
-            if (widget.leading case final leading?) slot(leading),
-            Expanded(child: field),
-            if (widget.trailing case final trailing?) slot(trailing),
-          ],
-        ),
+      // Slots are measured and placed with the text in one layout pass.
+      child: InputSlotLayout(
+        // It sits inside the 1 px border, so every edge measure loses 1.
+        paddingX: sizes.controlPaddingX - 1,
+        paddingY: sizes.controlPaddingY(textStyle) - 1,
+        gap: sizes.gap,
+        minHeight: look.minHeight! - 2,
+        minInset: look.slotInset! - 1,
+        minHitTarget: sizes.minHitTarget,
+        lines: multiline ? InputSlotLines.multi : InputSlotLines.single,
+        leadingPlacement: widget.leadingPlacement ?? .auto,
+        trailingPlacement: widget.trailingPlacement ?? .auto,
+        line: CoilLineBox(style: textStyle, child: const SizedBox.shrink()),
+        leading: switch (widget.leading) {
+          final leading? => slot(leading, widget.leadingPlacement),
+          null => null,
+        },
+        field: field,
+        trailing: switch (widget.trailing) {
+          final trailing? => slot(trailing, widget.trailingPlacement),
+          null => null,
+        },
       ),
     );
 

@@ -233,13 +233,20 @@ class _CoilButtonState extends State<CoilButton> {
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final sizes = CoilTheme.metricsOf(context, size: widget.size);
+    // In a text field's slot: compact, concentric with the field's corner,
+    // and the field takes the taps around it. Explicit size and style win.
+    final slot = CoilInputSlotScope.maybeOf(context);
+    final sizes = CoilTheme.metricsOf(context, size: widget.size ?? slot?.size);
     final iconOnly = widget.icon != null;
-    final style = CoilButtonStyle.fallback(
+    var style = CoilButtonStyle.fallback(
       theme,
       sizes,
       widget.variant,
-    ).merge(CoilTheme.styleOf<CoilButtonStyle>(context)).merge(widget.style);
+    ).merge(CoilTheme.styleOf<CoilButtonStyle>(context));
+    if (slot?.radiusFor(style.minHeight!) case final radius?) {
+      style = style.merge(CoilButtonStyle(radius: radius));
+    }
+    style = style.merge(widget.style);
     final iconSize = style.iconSize!;
 
     return Semantics(
@@ -253,7 +260,7 @@ class _CoilButtonState extends State<CoilButton> {
         focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         statesController: widget.statesController,
-        minHitTarget: sizes.minHitTarget,
+        minHitTarget: slot == null ? sizes.minHitTarget : 0,
         builder: (context, states, _) {
           final look = _look(style, states);
           final pressing = states.contains(WidgetState.pressed);

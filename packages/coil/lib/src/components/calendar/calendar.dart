@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/calendar/calendar_layout.dart';
+import 'package:coil/src/components/calendar/calendar_months.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// What a [CoilCalendar] (and a `CoilDatePicker`) shows and announces.
 /// English by default.
@@ -24,11 +28,34 @@ class CoilCalendarLabels {
     this.dayLabel = _dayLabel,
     this.previousMonthLabel = 'Previous month',
     this.nextMonthLabel = 'Next month',
+    this.monthLabel = _monthLabel,
+    this.monthName = _monthName,
+    this.year = _year,
+    this.chooseMonthLabel = 'Choose a month and year',
+    this.confirm = const Text('Done'),
   });
 
-  /// The month title, like "November 2026". It's announced as the month
-  /// changes.
+  /// The month title, like "November 2026". Tapping it zooms out to the
+  /// month view; [monthLabel] announces it.
   final Widget Function(DateTime month) monthTitle;
+
+  /// [monthTitle] and a month in the month view for screen readers, like
+  /// "November 2026". It's announced as the month changes.
+  final String Function(DateTime month) monthLabel;
+
+  /// A month's name in the month view, like "Nov", from 1 to 12.
+  final Widget Function(int month) monthName;
+
+  /// A year's heading in the month view, like "2026".
+  final Widget Function(int year) year;
+
+  /// What the month title does, for screen readers: a hint on the button
+  /// that zooms out to the month view.
+  final String chooseMonthLabel;
+
+  /// A date picker's confirming button, "Done": it sets the picked date
+  /// and closes the sheet, or a popover that picks a time too.
+  final Widget confirm;
 
   /// A weekday's column heading, like "Mo", from [DateTime.weekday].
   final Widget Function(int weekday) weekday;
@@ -59,8 +86,15 @@ class CoilCalendarLabels {
     'Sunday',
   ];
 
-  static Widget _monthTitle(DateTime month) =>
-      Text('${_months[month.month - 1]} ${month.year}');
+  static Widget _monthTitle(DateTime month) => Text(_monthLabel(month));
+
+  static String _monthLabel(DateTime month) =>
+      '${_months[month.month - 1]} ${month.year}';
+
+  static Widget _monthName(int month) =>
+      Text(_months[month - 1].substring(0, 3));
+
+  static Widget _year(int year) => Text('$year');
 
   static Widget _weekday(int weekday) =>
       Text(_weekdays[weekday - 1].substring(0, 2));
@@ -87,12 +121,20 @@ class CoilCalendarLabels {
 /// day's fill glides to the next pick. On touch, the months page
 /// horizontally under the finger and settle on the theme's `standard`
 /// spring with the fling's velocity; a trackpad's horizontal scroll pages
-/// too. The arrow buttons turn the page on any device.
+/// too. The arrow buttons turn the page on any device. The month title
+/// follows the pages as they move: it changes as soon as a page is more
+/// than half in view, mid-swipe, with a blur-fade.
+///
+/// The title is a button: it zooms out to the month view, the twelve
+/// months of each year in a list that scrolls through the years, opening
+/// on the shown month's year. Picking a month zooms back into its days.
 ///
 /// The grid is one focus stop: the arrows move a day or a week, Home and
 /// End go to the week's ends, PageUp and PageDown change the month (with
 /// Shift, the year), and Enter or Space picks. Moving past the month turns
-/// the page.
+/// the page. In the month view the arrows move a month (Up and Down a row),
+/// PageUp and PageDown a year, Enter or Space picks, and Escape goes back
+/// to the days.
 ///
 /// Days are always square: as tall as the tier's control height and grown
 /// with the text scale. The calendar is seven cells wide when it can
@@ -118,6 +160,7 @@ class CoilCalendar extends StatefulWidget {
     this.labels = const CoilCalendarLabels(),
     this.autofocus = false,
     this.motion,
+    this.onSubmitted,
   }) : assert(
          firstDayOfWeek >= DateTime.monday && firstDayOfWeek <= DateTime.sunday,
          'firstDayOfWeek must be DateTime.monday to DateTime.sunday.',
@@ -128,6 +171,10 @@ class CoilCalendar extends StatefulWidget {
 
   /// Called with the day the user picks. Null disables the calendar.
   final ValueChanged<DateTime>? onSelected;
+
+  /// Called after [onSelected] when Enter picks the day, which also
+  /// submits it: a date picker confirms with it. Space only picks.
+  final ValueChanged<DateTime>? onSubmitted;
 
   /// The month shown first; the selected day's month, or today's, if null.
   final DateTime? initialMonth;
@@ -203,9 +250,24 @@ class _CoilCalendarState extends State<CoilCalendar> {
   /// The month on page 0.
   late DateTime _base = _firstMonth;
 
+  /// The month the title shows: the page more than half in view, which
+  /// changes mid-swipe, before [_month] does.
+  late DateTime _title = _month;
+
+  /// Whether the month view is zoomed out to.
+  bool _monthsOpen = false;
+
   late PageController _pages = PageController(initialPage: _pageOf(_month));
   final _active = CoilActiveItemController();
   final _focus = FocusNode(debugLabel: 'CoilCalendar');
+  final _monthsFocus = FocusNode(debugLabel: 'CoilCalendar.months');
+
+  /// Has focus while anything in the calendar does.
+  final _within = FocusNode(
+    debugLabel: 'CoilCalendar.within',
+    canRequestFocus: false,
+    skipTraversal: true,
+  );
 
   DateTime get _firstMonth => switch (widget.firstDate) {
     final first? => _monthOf(first),
@@ -238,6 +300,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
       });
     }
     _month = month;
+    _title = month;
   }
 
   @override
@@ -245,6 +308,8 @@ class _CoilCalendarState extends State<CoilCalendar> {
     _pages.dispose();
     _active.dispose();
     _focus.dispose();
+    _monthsFocus.dispose();
+    _within.dispose();
     super.dispose();
   }
 
@@ -298,7 +363,10 @@ class _CoilCalendarState extends State<CoilCalendar> {
   /// Turns the pager to [month]: on the `standard` spring to a neighbor,
   /// in one step further away.
   void _turnTo(DateTime month) {
-    if (!_pages.hasClients) return;
+    if (!_pages.hasClients) {
+      _title = month;
+      return;
+    }
     final position = _pages.position;
     final extent = position.viewportDimension;
     final target = _pageOf(month) * extent;
@@ -318,21 +386,53 @@ class _CoilCalendarState extends State<CoilCalendar> {
     );
   }
 
-  /// A swipe settled: the page it landed on is the month.
-  bool _onScrollEnd(ScrollEndNotification notification) {
+  /// The pager moved: the title follows the page more than half in view,
+  /// and once a swipe settles, the page it landed on is the month.
+  bool _onScroll(ScrollNotification notification) {
     final metrics = notification.metrics;
     if (notification.depth != 0 || metrics.axis != Axis.horizontal) {
       return false;
     }
     final extent = metrics.viewportDimension;
     if (extent <= 0) return false;
-    final month = _monthAt((metrics.pixels / extent).round());
-    if (month != _month) {
-      setState(() => _month = month);
-      _active.clear();
-      unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+    final month = _clamp(_monthAt((metrics.pixels / extent).round()));
+    if (notification is ScrollUpdateNotification && month != _title) {
+      setState(() => _title = month);
+    }
+    if (notification is ScrollEndNotification) {
+      if (month != _month) {
+        setState(() => _month = _title = month);
+        _active.clear();
+        unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+      } else if (month != _title) {
+        setState(() => _title = month);
+      }
     }
     return false;
+  }
+
+  /// Zooms out to the month view, or back into the days.
+  void _toggleMonths() => _showMonths(open: !_monthsOpen);
+
+  void _showMonths({required bool open}) {
+    if (open == _monthsOpen) return;
+    // Focus moves with the view when it was in the calendar.
+    final hadFocus = _within.hasFocus;
+    setState(() => _monthsOpen = open);
+    if (!hadFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      (open ? _monthsFocus : _focus).requestFocus();
+    });
+  }
+
+  /// A month picked in the month view: zoom back into its days.
+  void _pickMonth(DateTime month) {
+    final target = _clamp(month);
+    setState(() => _month = _title = target);
+    _active.clear();
+    if (_pages.hasClients) _pages.jumpToPage(_pageOf(target));
+    _showMonths(open: false);
   }
 
   void _showMonth(int step) {
@@ -382,7 +482,12 @@ class _CoilCalendarState extends State<CoilCalendar> {
     _moveTo(DateTime(month.year, month.month, day.day.clamp(1, last)));
   }
 
-  void _pickCurrent() => _pick(_current, touch: false);
+  void _pickCurrent({bool submit = false}) {
+    final day = _current;
+    if (!_enabled(day)) return;
+    _pick(day, touch: false);
+    if (submit) widget.onSubmitted?.call(day);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -397,39 +502,62 @@ class _CoilCalendarState extends State<CoilCalendar> {
     final cell = widths.cell;
     final inset = widths.inset;
 
+    final arrows = [
+      CoilButton.icon(
+        variant: CoilButtonVariant.ghost,
+        size: CoilSize.compact,
+        onPressed: _canShow(DateTime(_month.year, _month.month - 1))
+            ? () => _showMonth(-1)
+            : null,
+        semanticLabel: labels.previousMonthLabel,
+        icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
+      ),
+      CoilButton.icon(
+        variant: CoilButtonVariant.ghost,
+        size: CoilSize.compact,
+        onPressed: _canShow(DateTime(_month.year, _month.month + 1))
+            ? () => _showMonth(1)
+            : null,
+        semanticLabel: labels.nextMonthLabel,
+        icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+      ),
+    ];
     final header = Padding(
       padding: EdgeInsets.symmetric(horizontal: inset),
       child: Row(
         children: [
-          Expanded(
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(start: metrics.itemPaddingX),
-              child: Semantics(
-                liveRegion: true,
-                child: DefaultTextStyle(
-                  style: text.body.copyWith(fontWeight: text.emphasis),
-                  child: labels.monthTitle(_month),
-                ),
+          Flexible(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _MonthTitle(
+                title: _title,
+                labels: labels,
+                open: _monthsOpen,
+                motion: widget.motion,
+                onPressed: widget.onSelected == null ? null : _toggleMonths,
               ),
             ),
           ),
-          CoilButton.icon(
-            variant: CoilButtonVariant.ghost,
-            size: CoilSize.compact,
-            onPressed: _canShow(DateTime(_month.year, _month.month - 1))
-                ? () => _showMonth(-1)
-                : null,
-            semanticLabel: labels.previousMonthLabel,
-            icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
-          ),
-          CoilButton.icon(
-            variant: CoilButtonVariant.ghost,
-            size: CoilSize.compact,
-            onPressed: _canShow(DateTime(_month.year, _month.month + 1))
-                ? () => _showMonth(1)
-                : null,
-            semanticLabel: labels.nextMonthLabel,
-            icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+          // The arrows turn pages, which the month view doesn't have: they
+          // fade out while it shows.
+          SingleMotionBuilder(
+            value: _monthsOpen ? 0 : 1,
+            motion: _monthsOpen ? motion.fadeExit : motion.fade,
+            debugLabel: 'CoilCalendar.arrows',
+            child: Row(mainAxisSize: MainAxisSize.min, children: arrows),
+            builder: (context, shown, child) => IgnorePointer(
+              ignoring: _monthsOpen,
+              child: ExcludeFocus(
+                excluding: _monthsOpen,
+                child: ExcludeSemantics(
+                  excluding: _monthsOpen,
+                  child: Opacity(
+                    opacity: shown.clamp(0.0, 1.0),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -462,8 +590,8 @@ class _CoilCalendarState extends State<CoilCalendar> {
       ),
     );
 
-    final pager = NotificationListener<ScrollEndNotification>(
-      onNotification: _onScrollEnd,
+    final pager = NotificationListener<ScrollNotification>(
+      onNotification: _onScroll,
       // Rows as tall as the columns are wide: every day is square.
       child: CalendarGridBox(
         cell: cell,
@@ -487,94 +615,136 @@ class _CoilCalendarState extends State<CoilCalendar> {
       ),
     );
 
+    final days = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: metrics.gap,
+      children: [
+        weekdays,
+        Shortcuts(
+          shortcuts: {
+            SingleActivator(
+              rtl
+                  ? LogicalKeyboardKey.arrowRight
+                  : LogicalKeyboardKey.arrowLeft,
+            ): const _DaysIntent(
+              -1,
+            ),
+            SingleActivator(
+              rtl
+                  ? LogicalKeyboardKey.arrowLeft
+                  : LogicalKeyboardKey.arrowRight,
+            ): const _DaysIntent(
+              1,
+            ),
+            const SingleActivator(LogicalKeyboardKey.arrowUp):
+                const _DaysIntent(-7),
+            const SingleActivator(LogicalKeyboardKey.arrowDown):
+                const _DaysIntent(7),
+            const SingleActivator(LogicalKeyboardKey.home):
+                const _WeekEdgeIntent(last: false),
+            const SingleActivator(LogicalKeyboardKey.end):
+                const _WeekEdgeIntent(last: true),
+            const SingleActivator(LogicalKeyboardKey.pageUp):
+                const _MonthsIntent(-1),
+            const SingleActivator(LogicalKeyboardKey.pageDown):
+                const _MonthsIntent(1),
+            const SingleActivator(LogicalKeyboardKey.pageUp, shift: true):
+                const _MonthsIntent(-12),
+            const SingleActivator(LogicalKeyboardKey.pageDown, shift: true):
+                const _MonthsIntent(12),
+            const SingleActivator(LogicalKeyboardKey.enter):
+                const _SubmitIntent(),
+            const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                const _SubmitIntent(),
+            const SingleActivator(LogicalKeyboardKey.space):
+                const ActivateIntent(),
+          },
+          child: Actions(
+            actions: {
+              _DaysIntent: CallbackAction<_DaysIntent>(
+                onInvoke: (intent) => _moveDays(intent.days),
+              ),
+              _WeekEdgeIntent: CallbackAction<_WeekEdgeIntent>(
+                onInvoke: (intent) {
+                  final fromStart =
+                      (_current.weekday - widget.firstDayOfWeek) % 7;
+                  _moveDays(intent.last ? 6 - fromStart : -fromStart);
+                  return null;
+                },
+              ),
+              _MonthsIntent: CallbackAction<_MonthsIntent>(
+                onInvoke: (intent) => _moveMonths(intent.months),
+              ),
+              _SubmitIntent: CallbackAction<_SubmitIntent>(
+                onInvoke: (_) => _pickCurrent(submit: true),
+              ),
+              ActivateIntent: CallbackAction<ActivateIntent>(
+                onInvoke: (_) => _pickCurrent(),
+              ),
+            },
+            child: Focus(
+              focusNode: _focus,
+              autofocus: widget.autofocus,
+              canRequestFocus: widget.onSelected != null,
+              onFocusChange: (focused) {
+                // The ring shows where the keyboard is; it starts on the
+                // selected day.
+                if (focused &&
+                    _active.index == null &&
+                    CoilInputModality.instance.value == CoilModality.keyboard) {
+                  _moveTo(_current);
+                }
+                setState(() {});
+              },
+              child: Semantics(container: true, child: pager),
+            ),
+          ),
+        ),
+      ],
+    );
+
     // Seven cells wide when the calendar can choose; it fills a wider
     // space it's given up to its max and centers past it, and shares a
     // narrower one.
-    return CoilCalendarWidth(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: metrics.gap,
-        children: [
-          header,
-          weekdays,
-          Shortcuts(
-            shortcuts: {
-              SingleActivator(
-                rtl
-                    ? LogicalKeyboardKey.arrowRight
-                    : LogicalKeyboardKey.arrowLeft,
-              ): const _DaysIntent(
-                -1,
-              ),
-              SingleActivator(
-                rtl
-                    ? LogicalKeyboardKey.arrowLeft
-                    : LogicalKeyboardKey.arrowRight,
-              ): const _DaysIntent(
-                1,
-              ),
-              const SingleActivator(LogicalKeyboardKey.arrowUp):
-                  const _DaysIntent(-7),
-              const SingleActivator(LogicalKeyboardKey.arrowDown):
-                  const _DaysIntent(7),
-              const SingleActivator(LogicalKeyboardKey.home):
-                  const _WeekEdgeIntent(last: false),
-              const SingleActivator(LogicalKeyboardKey.end):
-                  const _WeekEdgeIntent(last: true),
-              const SingleActivator(LogicalKeyboardKey.pageUp):
-                  const _MonthsIntent(-1),
-              const SingleActivator(LogicalKeyboardKey.pageDown):
-                  const _MonthsIntent(1),
-              const SingleActivator(LogicalKeyboardKey.pageUp, shift: true):
-                  const _MonthsIntent(-12),
-              const SingleActivator(LogicalKeyboardKey.pageDown, shift: true):
-                  const _MonthsIntent(12),
-              const SingleActivator(LogicalKeyboardKey.enter):
-                  const ActivateIntent(),
-              const SingleActivator(LogicalKeyboardKey.space):
-                  const ActivateIntent(),
-            },
-            child: Actions(
-              actions: {
-                _DaysIntent: CallbackAction<_DaysIntent>(
-                  onInvoke: (intent) => _moveDays(intent.days),
-                ),
-                _WeekEdgeIntent: CallbackAction<_WeekEdgeIntent>(
-                  onInvoke: (intent) {
-                    final fromStart =
-                        (_current.weekday - widget.firstDayOfWeek) % 7;
-                    _moveDays(intent.last ? 6 - fromStart : -fromStart);
-                    return null;
-                  },
-                ),
-                _MonthsIntent: CallbackAction<_MonthsIntent>(
-                  onInvoke: (intent) => _moveMonths(intent.months),
-                ),
-                ActivateIntent: CallbackAction<ActivateIntent>(
-                  onInvoke: (_) => _pickCurrent(),
-                ),
-              },
-              child: Focus(
-                focusNode: _focus,
-                autofocus: widget.autofocus,
-                canRequestFocus: widget.onSelected != null,
-                onFocusChange: (focused) {
-                  // The ring shows where the keyboard is; it starts on the
-                  // selected day.
-                  if (focused &&
-                      _active.index == null &&
-                      CoilInputModality.instance.value ==
-                          CoilModality.keyboard) {
-                    _moveTo(_current);
-                  }
-                  setState(() {});
+    return Focus(
+      focusNode: _within,
+      canRequestFocus: false,
+      skipTraversal: true,
+      child: CoilCalendarWidth(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: metrics.gap,
+          children: [
+            header,
+            _CalendarZoom(
+              open: _monthsOpen,
+              motion: widget.motion,
+              days: days,
+              months: (context) => CalendarMonthView(
+                month: _month,
+                selected: widget.selected,
+                firstMonth: switch (widget.firstDate) {
+                  final first? => _monthOf(first),
+                  null => null,
                 },
-                child: Semantics(container: true, child: pager),
+                lastMonth: switch (widget.lastDate) {
+                  final last? => _monthOf(last),
+                  null => null,
+                },
+                monthName: labels.monthName,
+                year: labels.year,
+                monthLabel: labels.monthLabel,
+                inset: inset,
+                focusNode: _monthsFocus,
+                motion: widget.motion,
+                onPicked: _pickMonth,
+                onClose: () => _showMonths(open: false),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -814,4 +984,233 @@ class _MonthsIntent extends Intent {
   const _MonthsIntent(this.months);
 
   final int months;
+}
+
+/// Picks the keyboard's day and submits it: Enter.
+class _SubmitIntent extends Intent {
+  const _SubmitIntent();
+}
+
+/// The month title: a button that zooms out to the month view, with a
+/// chevron that turns as it opens. A new month's name blur-fades in as the
+/// old one leaves, and the button springs to its width.
+class _MonthTitle extends StatelessWidget {
+  const _MonthTitle({
+    required this.title,
+    required this.labels,
+    required this.open,
+    required this.motion,
+    required this.onPressed,
+  });
+
+  final DateTime title;
+  final CoilCalendarLabels labels;
+  final bool open;
+  final CoilMotion? motion;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final colors = theme.colors;
+    final metrics = CoilTheme.metricsOf(context);
+    final compact = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final text = CoilTheme.textOf(context);
+    final motion = CoilTheme.motionOf(context, override: this.motion);
+    final radius = theme.shape.radii(metrics.tier).item;
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: onPressed != null,
+      expanded: open,
+      liveRegion: true,
+      label: labels.monthLabel(title),
+      hint: labels.chooseMonthLabel,
+      excludeSemantics: true,
+      onTap: onPressed,
+      child: CoilInteraction(
+        onPressed: onPressed,
+        minHitTarget: compact.minHitTarget,
+        excludeFromSemantics: true,
+        builder: (context, states, _) {
+          final hovered = states.contains(WidgetState.hovered);
+          final pressed = states.contains(WidgetState.pressed);
+          final fill = pressed ? colors.active : colors.hover;
+          return CoilFocusRing(
+            visible: states.contains(WidgetState.focused),
+            borderRadius: BorderRadius.circular(radius),
+            child: SingleMotionBuilder(
+              value: hovered || pressed ? 1 : 0,
+              motion: hovered || pressed ? motion.fade : motion.fadeExit,
+              debugLabel: 'CoilCalendar.title.hover',
+              builder: (context, lit, child) => DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: fill.withValues(alpha: fill.a * lit.clamp(0.0, 1.0)),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                ),
+                child: child,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: compact.controlHeight),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: metrics.itemPaddingX,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: compact.gap,
+                    children: [
+                      Flexible(
+                        child: MotionSizeSwitcher(
+                          motion: motion.fade,
+                          exitMotion: motion.fadeExit,
+                          sizeMotion: motion.standard,
+                          alignment: AlignmentDirectional.centerStart,
+                          clipBehavior: Clip.none,
+                          debugLabel: 'CoilCalendar.title',
+                          transitionBuilder: CoilBlurFade.transition(
+                            blur: CoilBlurFade.defaultBlur / 2,
+                            scale: 1,
+                          ),
+                          child: KeyedSubtree(
+                            key: ValueKey(title),
+                            child: DefaultTextStyle(
+                              style: text.body.copyWith(
+                                fontWeight: text.emphasis,
+                                color: colors.foreground,
+                              ),
+                              maxLines: 1,
+                              softWrap: false,
+                              // Large text in a narrow calendar shrinks
+                              // the title rather than cut off the year.
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: AlignmentDirectional.centerStart,
+                                child: labels.monthTitle(title),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconTheme(
+                        data: IconThemeData(
+                          size: compact.iconSize,
+                          applyTextScaling: true,
+                          color: colors.mutedForeground,
+                          weight: CoilIconWeight.emphasis,
+                        ),
+                        child: SingleMotionBuilder(
+                          value: open ? 0.5 : 0,
+                          motion: open ? motion.standard : motion.standardExit,
+                          debugLabel: 'CoilCalendar.title.chevron',
+                          child: const CoilDrawnGlyph(CoilGlyph.chevronDown),
+                          builder: (context, turns, child) => Transform.rotate(
+                            angle: turns * 2 * math.pi,
+                            child: child,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The day grid and the month view in one place: zooming out, the days
+/// shrink toward the title and fade as the months settle in from a little
+/// larger; zooming in runs it back. The scale springs on `standard` (none
+/// under reduced motion) and the opacity on `fade`. Whichever is hidden
+/// takes no pointer, focus or semantics; the month view is only built
+/// while it shows. The days keep their layout, so the calendar's height
+/// never changes.
+class _CalendarZoom extends StatelessWidget {
+  const _CalendarZoom({
+    required this.open,
+    required this.motion,
+    required this.days,
+    required this.months,
+  });
+
+  final bool open;
+  final CoilMotion? motion;
+  final Widget days;
+  final WidgetBuilder months;
+
+  /// How much the leaving view shrinks, and the arriving one starts larger.
+  static const depth = 0.1;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CoilTheme.motionOf(context, override: this.motion);
+    // The title's corner: the top start.
+    final origin = Directionality.of(context) == TextDirection.rtl
+        ? Alignment.topRight
+        : Alignment.topLeft;
+    return SingleMotionBuilder(
+      value: open ? 1 : 0,
+      motion: open ? motion.standard : motion.standardExit,
+      debugLabel: 'CoilCalendar.zoom',
+      builder: (context, zoom, _) => SingleMotionBuilder(
+        value: open ? 1 : 0,
+        motion: open ? motion.fade : motion.fadeExit,
+        debugLabel: 'CoilCalendar.zoomFade',
+        builder: (context, fade, _) {
+          final shown = fade.clamp(0.0, 1.0);
+          return Stack(
+            children: [
+              IgnorePointer(
+                ignoring: open,
+                child: ExcludeFocus(
+                  excluding: open,
+                  child: ExcludeSemantics(
+                    excluding: open,
+                    child: Opacity(
+                      opacity: 1 - shown,
+                      child: Transform.scale(
+                        scale: 1 - depth * zoom,
+                        alignment: origin,
+                        filterQuality: zoom == 0 ? null : FilterQuality.medium,
+                        child: days,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (open || shown > 0)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !open,
+                    child: ExcludeFocus(
+                      excluding: !open,
+                      child: ExcludeSemantics(
+                        excluding: !open,
+                        child: Opacity(
+                          opacity: shown,
+                          child: Transform.scale(
+                            scale: 1 + depth * (1 - zoom),
+                            alignment: origin,
+                            filterQuality: zoom == 1
+                                ? null
+                                : FilterQuality.medium,
+                            child: Builder(builder: months),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }

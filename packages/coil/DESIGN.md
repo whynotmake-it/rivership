@@ -194,7 +194,7 @@ Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
 - **`sharp` nests square.** A family whose containers are no rounder than its items gets its container radius back: a square button in a near-square frame, never a rounded one.
 - Popover = row radius + `popupInset`: 8 + 4 = **12** pointer, 10 + 6 = **16** touch; under `pill` the rows are pills, so 18 + 4 = **22** pointer and 22 + 6 = **28** touch. A sheet's top corners are a superellipse of the glass sheet's 36 (`CoilSheetRoute.glassRadius`, scaled by container / 16 for tighter shapes, so `sharp` is near square).
 - The focus ring sits 2 px outside, so it's item + 2.
-- A number-stepper button 4 px inside an input has radius item − 4.
+- A number-stepper button 4 px inside an input has radius item − 4, and so does a button in an input's slot (`CoilInputSlotScope.radiusFor`, which counts the field's corner as drawn: under `pill` a compact button in a 36 field is 18 − 4 = 14, itself a pill).
 - Every corner gap is even.
 
 **Merged selection runs** round only their outer corners, at the item radius.
@@ -244,7 +244,6 @@ Two durations sit next to the springs:
 
 Named holds that aren't tokens:
 
-- **DatePicker close:** 200 ms after a pick.
 - **Copy result hold (InputCopy, every copy affordance):** 2 s after the last copy.
 - **Tooltip timing:** 200 ms delay, 300 ms group skip-delay.
 
@@ -615,6 +614,11 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** a hairline field → [leading muted icon] text [trailing slot].
 - **Sizes:** height = `controlHeight`, padding `controlPaddingX`, field text role.
+- **Slots:** placed by measuring them in the same layout pass as the text (`CoilInputSlotPlacement.auto`), so the first frame is right:
+  - a slot that fits a line of text (an icon, a "EUR" unit, a spinner, a kbd) sits **inline**: inside the padding, centered on the text;
+  - a taller slot (a button) sits **inset**: into the padding, centered, and as far from the side as from the top and bottom, so its corners are concentric with the field's. The field keeps its height while the slot and `slotInset` (4; 2 compact) on each side fit: a 28 compact button in a 36 field, a 36 one in a 44 touch field. Only a taller slot grows the field, by just enough (a 36 button makes a pointer field 44);
+  - a `CoilButton` in a slot defaults to compact and to the nested radius (`CoilInputSlotScope`); an explicit `size:` or `style:` wins. On touch it drops its own hit padding and the field gives taps in a 44 box around it to the button;
+  - `leadingPlacement` / `trailingPlacement` override: `inline` keeps today's padding (a button makes the field grow), `inset` tucks even a short slot in.
 - **States:**
   - rest: `border`, transparent; hover (pointer): `hover` fill;
   - focus: border `foreground` @ 40 %, hover fill removed (shown for any focus);
@@ -629,7 +633,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Textarea
 
-- **`CoilInput.multiline`:** the same widget, chrome and style as Input. It grows from 3 lines to 10, then scrolls. Leading and trailing slots sit on the first line.
+- **`CoilInput.multiline`:** the same widget, chrome and style as Input. It grows from 3 lines to 10, then scrolls. Inline slots sit on the first line; an inset slot (a button) sits in the bottom corner, as far in as it would be in a single-line field, like the composer's send button.
 - **Radius:** the item radius, capped at the `rounded` container radius (12 / 16), so a `pill` shape doesn't make a capsule.
 - **Sizes:** min 3 lines and max 10, each plus the vertical pad. The first line aligns with Input text.
 - **Motion:** growth is instant; colors on `fade`.
@@ -754,7 +758,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### InputGroup
 
-- **Anatomy:** a column of labeled Inputs sharing one hover scope. The field nearest the pointer gets the `hover` fill; nothing glides.
+- **Anatomy:** a column of labeled Inputs sharing one hover scope. The field nearest the pointer gets the `hover` fill; nothing glides. Each Input places its slots as Input does, so a button in one doesn't make it taller than its neighbors.
 - **Spacing:** 12 between fields (touch 16). Errors sit under each field.
 - **Keyboard:** Tab between fields. A tap anywhere in a field's box focuses its text.
 - **Touch:** no hover, only focus states.
@@ -1041,7 +1045,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### Calendar
 
 - **Anatomy:**
-  - caption: "‹ November 2026 ›" (title role) with the month/year label opening a jump grid;
+  - caption: the month title, a button "November 2026 ⌄" (body, semibold, a ghost-style fill on hover and press, the focus ring) at the start, and the ‹ › arrows at the end. The title zooms out to the month view (below);
   - weekday row (caption muted, locale first day);
   - a 6 × 7 day grid (body, tabular), **always 6 rows** so the height never jumps.
 - **Cell sizes:** square, the control height (36 / 28 / 44 / 36), grown by as much as the text scale grows the line box (the padding doesn't scale).
@@ -1055,10 +1059,15 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - disabled: 40 % and struck through for "booked";
   - hover (pointer): the gliding highlight; in range picking, the highlight *is* the proposed end.
 - **Months:** pointer and tablets show 2 side by side when they fit; phones show 1.
+- **Title follows the pages:** the title names the page more than half in view, so it changes mid-swipe while the finger is still down (and back, if the swipe returns), not when the page settles. The old and new names swap with the blur-fade (`MotionSizeSwitcher` with `CoilBlurFade` on `fade` / `fadeExit`, the width springing on `standard`). Large text in a narrow calendar scales the title down rather than cut off the year. It's announced (live region) as "November 2026".
+- **Month view:** tapping the title (or Enter/Space on it) zooms out to the months: each year's twelve months, 3 × 4, under a muted caption-semibold year heading, in a vertical list that scrolls through the years. It fills exactly the weekday row and grid's space (rows as tall as a week's), so the calendar's height doesn't change. It opens with the shown month's year in the middle, the previous and next years fading in at the edges (the scroll-edge fade). The picked day's month is filled like a selected day; this month is semibold. Months outside `firstDate`/`lastDate` are dimmed and take no tap, and the list starts and ends at their years. Picking a month zooms back into its days. The arrows fade out while it shows, and the chevron turns up.
+  - **Zoom:** spatial, from the title's corner: the days shrink to 90 % and fade while the months settle from 110 % to 100 % and fade in; back runs it in reverse. The scale springs on `standard` / `standardExit` (none under reduced motion, which keeps the fade on `fade` / `fadeExit`). The hidden view takes no pointer, focus or semantics; focus moves with the view when it was in the calendar.
+  - **Keyboard:** one focus stop; arrows move a month (Up/Down a row of three), PageUp/PageDown a year, Enter or Space picks, Escape returns to the days (it doesn't close a popup). Arrows mirror in RTL.
+  - In a sheet, the list uses `CoilSheetRoute.scrollBehaviorOf` like the pager, so a drag at its top hands off to the sheet.
 - **Motion:** the months are pages: the arrows and PageUp/PageDown slide a full page on `standard`, and a jump of more than one month (Shift+PageUp) is a cut. On touch, **horizontal paging follows the finger and keeps the fling velocity**: a swipe past half a page or a flick turns one page, anything less springs back, all on `standard`. A trackpad's horizontal swipe pages too; a mouse drag doesn't. Highlight `quick`; range band `standard`.
 - **Haptics:** `toggle` when a swipe lands on a new month and as a time column passes a row; `pick` when a finger picks a day (not on a click, Enter or Space, as in the select's list).
-- **Keyboard:** arrows move the day; PageUp/PageDown change the month; Shift+PageUp/PageDown change the year; Home and End go to the week's start and end; Enter selects.
-- **Semantics:** grid cells carry full-date labels; previous and next month are semantics actions.
+- **Keyboard:** Tab reaches the title, the arrows, then the grid. Arrows move the day; PageUp/PageDown change the month; Shift+PageUp/PageDown change the year; Home and End go to the week's start and end; Enter selects and submits (`onSubmitted`, which a date picker confirms with); Space only selects.
+- **Semantics:** grid cells carry full-date labels; previous and next month are semantics actions; the title is a button named by `monthLabel`, with the `chooseMonthLabel` hint and an expanded state; month cells carry "Month Year" labels and selected/enabled states.
 
 #### DatePicker
 
@@ -1072,8 +1081,13 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
     - The time page is **two snap columns** (hours | minutes in the minute step), flat rows: a line of body text in tabular figures and the tier's gap (28 pointer, 34 touch at 1×, grown with the text scale), **five visible**. The rows fade out toward the top and bottom over two rows (the scroll edge fade). A selection band in `active` with the day cells' radius sits across the center; the center row and the colon are foreground semibold and the others are muted. The columns are a day and a half wide each.
     - The columns snap on `standard` with the fling velocity. No 3D wheel.
     - A duration caption ("1 h 45 min") sits under the end column. "Type a time" opens a numeric field (opt-in).
-  - Footer: Clear (ghost) and **Done** (primary) in range and time modes. A single date commits on tap and closes after 200 ms.
-- **Keyboard:** as Calendar. Esc restores the previous range. Hardware keyboards on iPad get the typed time field.
+  - Footer: **Done** (primary, `CoilCalendarLabels.confirm`) pinned as the sheet's footer (`CoilSheetPanel.footer` with a `CoilActionBar`, §13.5: full width, 16 from the sides). Clear (ghost) joins it in range mode.
+- **Confirming (built):** what's picked in the open calendar is a draft; only a confirm reports it (`onChanged`), and every other way out cancels.
+  - **Sheet (date, or date and time): Done confirms.** The close button, the scrim, a drag down, back and Escape cancel; reopening starts from the value. A sheet is a modal task that takes the screen, the platform pickers presented that way confirm explicitly (Material's modal date picker dialog and bottom sheet: Cancel + OK), and the sheet already has its close button as the Cancel, so the footer holds the one primary action.
+  - **Popover, date only: a tap on a day confirms and closes**, as iOS's compact `UIDatePicker` popover, shadcn/Radix and React Aria (`shouldCloseOnSelect`, default true), MUI's desktop picker (no action bar on desktop) and Fluid Functionalism (`onValueChange` on a pick) do. One tap is the whole answer, so a button would only add a step.
+  - **Popover with time: Done (trailing, at its own width) confirms**, as MUI's desktop date-time picker's accept action does: a date and a time are two answers, and no single tap marks the end. A tap outside or Escape cancels.
+  - Done is disabled until something is picked. Enter anywhere in the popup confirms (on the grid it picks the focused day first); Space only picks; Escape cancels (in the month view it returns to the days first).
+- **Keyboard:** as Calendar, plus Enter to confirm and Escape to cancel. Esc restores the previous range. Hardware keyboards on iPad get the typed time field.
 - **Semantics:** the snap columns are adjustable (VoiceOver swipe up/down changes the hour).
 - **Scope:** v1 includes date, range, presets and time. The time page can land one milestone after the grid. A drag-to-select range is later.
 

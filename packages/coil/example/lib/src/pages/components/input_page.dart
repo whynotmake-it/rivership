@@ -81,9 +81,10 @@ class _InputPageState extends State<InputPage> {
                 obscureText: !_showPassword,
                 autofillHints: const [AutofillHints.password],
                 textInputAction: TextInputAction.done,
+                // A button in a slot is compact and sits in the field's
+                // padding, so the field keeps its height.
                 trailing: CoilButton(
                   variant: CoilButtonVariant.ghost,
-                  size: CoilSize.compact,
                   onPressed: () =>
                       setState(() => _showPassword = !_showPassword),
                   child: Text(_showPassword ? 'Hide' : 'Show'),
