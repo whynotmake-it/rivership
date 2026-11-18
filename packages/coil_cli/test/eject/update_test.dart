@@ -459,6 +459,77 @@ void main() {
     });
   });
 
+  test('components ejected --into folders of different depths update '
+      'cleanly against their bases', () async {
+    await eject(
+      workspace,
+      ['button'],
+      options: const EjectOptions(prefix: 'Acme', into: 'lib/ui/kit'),
+    );
+    await eject(workspace, ['dialog']);
+    final manifest = Manifest.read(app);
+    expect(manifest.components['button']!.path, 'lib/ui/kit/button');
+    expect(manifest.components['dialog']!.path, 'lib/acme/dialog');
+    const dialogPath = 'lib/acme/dialog/src/acme_dialog.dart';
+    const buttonImport = "import '../../../ui/kit/button/acme_button.dart';";
+    expect(read(dialogPath), contains(buttonImport));
+    expect(read('.coil/base/dialog/src/acme_dialog.dart'), read(dialogPath));
+
+    edit(dialogPath, (s) => '// Ours.\n$s');
+    release('1.1.0', 'src/components/dialog/dialog.dart', (s) {
+      return '$s\n// Upstream dialog change.\n';
+    });
+    release('1.1.0', 'src/components/button/button.dart', (s) {
+      return '$s\n// Upstream button change.\n';
+    });
+
+    for (final name in ['button', 'dialog']) {
+      final result = await update(workspace, name);
+      expect(result.needsAttention, isEmpty, reason: name);
+    }
+
+    expect(
+      read(dialogPath),
+      allOf(
+        startsWith('// Ours.\n'),
+        contains(buttonImport),
+        contains('// Upstream dialog change.'),
+        isNot(contains('<<<<<<<')),
+      ),
+    );
+    expect(
+      read('.coil/base/dialog/src/acme_dialog.dart'),
+      allOf(contains(buttonImport), contains('// Upstream dialog change.')),
+    );
+    expect(
+      read('lib/ui/kit/button/src/acme_button.dart'),
+      contains('// Upstream button change.'),
+    );
+  });
+
+  test('a later eject at another depth repoints the earlier base as its '
+      'copy', () async {
+    await eject(
+      workspace,
+      ['dialog'],
+      options: const EjectOptions(prefix: 'Acme', into: 'lib/ui/kit'),
+    );
+    await eject(workspace, ['button']);
+    const dialogPath = 'lib/ui/kit/dialog/src/acme_dialog.dart';
+    const buttonImport = "import '../../../../acme/button/acme_button.dart';";
+    expect(read(dialogPath), contains(buttonImport));
+    expect(read('.coil/base/dialog/src/acme_dialog.dart'), read(dialogPath));
+
+    release('1.1.0', 'src/components/dialog/dialog.dart', (s) {
+      return '$s\n// Upstream dialog change.\n';
+    });
+    final result = await update(workspace, 'dialog');
+
+    expect(result.files['src/dialog.dart'], FileUpdate.merged);
+    expect(read(dialogPath), contains(buttonImport));
+    expect(read('.coil/base/dialog/src/acme_dialog.dart'), read(dialogPath));
+  });
+
   test('--list shows every component', () async {
     final out = StringBuffer();
     expect(await ejectCommand(['--list'], appRoot: '.', out: out), 0);
