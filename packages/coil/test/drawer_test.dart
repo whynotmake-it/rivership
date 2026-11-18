@@ -284,11 +284,16 @@ void main() {
       // From 0.4, not 0: halfway is 0.7. It grows from 0.95 the same way.
       expect(_panelOpacity(tester), closeTo(0.7, 0.01));
       expect(_panelScale(tester), closeTo(0.975, 0.001));
-      // Step 8's blurs, centered so they show at the side.
+      // Step 7's blurs at half strength in light, centered so they show
+      // at the side.
       final shadow = [
-        for (final s in colors.shadow(8))
+        for (final s in colors.shadow(7))
           if (s.blurRadius > 0)
-            s.copyWith(offset: Offset.zero, spreadRadius: 0),
+            s.copyWith(
+              offset: Offset.zero,
+              spreadRadius: 0,
+              color: s.color.withValues(alpha: s.color.a * 0.5),
+            ),
       ];
       expect(shadow, isNotEmpty);
       expect(_edge(tester).shadows, [
@@ -925,6 +930,18 @@ void main() {
       expect(dark.scrimColor, CoilDrawerLook.behindScrimDark);
       expect(dark.scrimColor.a, closeTo(0.15, 0.001));
       expect(dark.scrimColor.r, 0, reason: 'a dim in dark');
+      // Lighter in light, where the veiled page makes a shadow read heavy.
+      final lightEdge = CoilDrawerLook.edgeShadows(CoilThemeData.light.colors);
+      final darkEdge = CoilDrawerLook.edgeShadows(CoilThemeData.dark.colors);
+      expect(dark.shadows, darkEdge);
+      expect(lightEdge, hasLength(5), reason: 'step 7 without its 1 px drop');
+      expect(darkEdge, hasLength(6), reason: 'step 8 without its 1 px drop');
+      for (final s in [...lightEdge, ...darkEdge]) {
+        expect(s.offset, Offset.zero);
+        expect(s.spreadRadius, 0);
+      }
+      expect(lightEdge.first.color.a, closeTo(0.06 * 0.5, 0.002));
+      expect(darkEdge.first.color.a, closeTo(0.18 * 0.7, 0.002));
       final over = CoilDrawerLook.fallback(
         CoilThemeData.dark,
         reveal: CoilDrawerReveal.over,

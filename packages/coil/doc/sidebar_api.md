@@ -146,8 +146,10 @@ current state.
   the theme: `drawerCornerRadius` (null follows the screen through
   `CoilScreenRadius`), `drawerFallbackCornerRadius` (where the screen
   can't tell: 40 on iOS, 24 on Android, square on desktop and the web),
-  `drawerShadows` (shadow step 8's blurs, centered on the page so they
-  show along its side, with a `border` hairline) and `drawerScrimColor`
+  `drawerShadows` (shadow blurs centered on the page so they show along
+  its side: step 7 at half strength in light, where the veiled page would
+  make a full shadow read heavy, and step 8 at 70 % in dark; with a
+  `border` hairline) and `drawerScrimColor`
   (null: from behind, `CoilDrawerLook.behindScrim`, a veil that
   lightens the page in light, white 35 %, and dims it in dark, black
   15 %, so it recedes either way; over the page, the theme's `scrim`,

@@ -108,8 +108,9 @@ class CoilSidebarStyle extends CoilComponentStyle<CoilSidebarStyle> {
 
   /// The page's shadow while the drawer pushes it aside, faded in with the
   /// slide, with a hairline in the border color. By default the blurs of
-  /// the theme's shadow step 8, centered on the page so they show along
-  /// its side (`CoilDrawerLook.edgeShadows`).
+  /// the theme's shadow step 7 at half strength in light and step 8 at
+  /// 70 % in dark, centered on the page so they show along its side
+  /// (`CoilDrawerLook.edgeShadows`).
   final List<BoxShadow>? drawerShadows;
 
   /// Springs for the sidebar's animated parts, keyed by [CoilSidebarTrack]s:

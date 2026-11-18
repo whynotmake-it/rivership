@@ -2,6 +2,13 @@
 
 Milestone M0, unreleased.
 
+- Breaking: the phone drawer's page edge shadow (`CoilDrawerReveal.behind`)
+  is lighter, most of all in light mode, where the white veil made the old
+  one read heavy: step 7 at half strength in light and step 8 at 70 % in
+  dark, still centered on the edge with the `border` hairline.
+  `CoilDrawerLook.edgeShadowLevel` is replaced by `edgeShadowLevelLight` /
+  `edgeShadowLevelDark` and `edgeShadowAlphaLight` / `edgeShadowAlphaDark`;
+  `shadows` / `drawerShadows` still override it.
 - Fix: a drag that opens `CoilDrawer` (the phone sidebar) from a
   horizontal scrollable's edge no longer janks when it moves back: the
   drawer keeps the drag in both directions (`ScrollDragMode.dragFirst`)

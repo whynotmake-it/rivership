@@ -87,9 +87,8 @@ class CoilDrawerLook {
   /// The look for [reveal] from [theme]'s tokens: the screen's corners
   /// (phone radii where unknown), [behindScrim] from behind (a lightening
   /// veil in light, a dim in dark) and the theme's [CoilColors.scrim]
-  /// over, shadow step
-  /// [edgeShadowLevel] on the content's side, and the page background for
-  /// the content and, from behind, the panels.
+  /// over, [edgeShadows] on the content's side (lighter in light), and the
+  /// page background for the content and, from behind, the panels.
   factory CoilDrawerLook.fallback(
     CoilThemeData theme, {
     required CoilDrawerReveal reveal,
@@ -132,9 +131,24 @@ class CoilDrawerLook {
     blue: 0,
   );
 
-  /// The shadow step on the content's edge while it is aside: the top of
-  /// the ladder, so the page reads as a sheet lifted off the panel.
-  static const edgeShadowLevel = 8;
+  /// The shadow step on the content's edge while it is aside in light:
+  /// one below the top of the ladder, so the widest blur (96) is dropped
+  /// and the shade stays close to the edge.
+  static const edgeShadowLevelLight = 7;
+
+  /// How much of [edgeShadowLevelLight]'s color the light edge keeps:
+  /// half. The [behindScrim] veil whitens the page, so a full shadow beside
+  /// it reads as a heavy gray band; at half it still parts the page from
+  /// the sidebar, with the hairline doing the rest.
+  static const edgeShadowAlphaLight = 0.5;
+
+  /// The shadow step on the content's edge while it is aside in dark: the
+  /// top of the ladder, so the page reads as a sheet lifted off the panel.
+  static const edgeShadowLevelDark = 8;
+
+  /// How much of [edgeShadowLevelDark]'s color the dark edge keeps: 70 %,
+  /// a little lighter than the ladder's step.
+  static const edgeShadowAlphaDark = 0.7;
 
   /// The content's corners while aside on a phone whose screen can't tell
   /// its own radius (the platform query failed or isn't registered): close
@@ -152,16 +166,27 @@ class CoilDrawerLook {
         null => BorderRadius.zero,
       };
 
-  /// Shadow step [edgeShadowLevel] of [colors], centered on the content
-  /// instead of dropped below it. The ladder's drops pull in their sides
-  /// (negative spread) to fall under a floating surface; on a page pushed
-  /// sideways, the side is the edge that has to show, so the same blurs
-  /// and colors spread evenly around it.
-  static List<BoxShadow> edgeShadows(CoilColors colors) => [
-    for (final shadow in colors.shadow(edgeShadowLevel))
-      if (shadow.blurRadius > 0)
-        shadow.copyWith(offset: Offset.zero, spreadRadius: 0),
-  ];
+  /// The content's edge shadow for [colors]' brightness: step
+  /// [edgeShadowLevelLight] at [edgeShadowAlphaLight] in light, step
+  /// [edgeShadowLevelDark] at [edgeShadowAlphaDark] in dark, centered on
+  /// the content instead of dropped below it. The ladder's drops pull in
+  /// their sides (negative spread) to fall under a floating surface; on a
+  /// page pushed sideways, the side is the edge that has to show, so the
+  /// same blurs spread evenly around it.
+  static List<BoxShadow> edgeShadows(CoilColors colors) {
+    final dark = colors.brightness == Brightness.dark;
+    final level = dark ? edgeShadowLevelDark : edgeShadowLevelLight;
+    final alpha = dark ? edgeShadowAlphaDark : edgeShadowAlphaLight;
+    return [
+      for (final shadow in colors.shadow(level))
+        if (shadow.blurRadius > 0)
+          shadow.copyWith(
+            offset: Offset.zero,
+            spreadRadius: 0,
+            color: shadow.color.withValues(alpha: shadow.color.a * alpha),
+          ),
+    ];
+  }
 
   /// The content's corners while it is aside, in physical corners. Null
   /// takes the screen's from [CoilScreenRadius], and [fallbackCornerRadius]
