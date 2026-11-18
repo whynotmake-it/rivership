@@ -2,6 +2,10 @@
 
 Milestone M0, unreleased.
 
+- Bold text: `CoilTheme.of` applies `CoilThemeData.boldText()` when
+  `MediaQuery.boldTextOf` is true, so every role lighter than semibold
+  becomes semibold (a variable font's `wght` axis too), as DESIGN.md
+  specifies.
 - Fix: `CoilSettingsDialog` no longer asks for a negative height in a
   window under 64 tall, and asserts it has a section.
 - Fix: `CoilDataTable`'s search field shows a `query` set from code

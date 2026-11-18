@@ -130,6 +130,29 @@ class CoilThemeData with Diagnosticable {
     );
   }
 
+  /// This theme for the platform's bold text setting: every text role
+  /// lighter than semibold becomes semibold (a variable font's `wght` axis
+  /// too), as DESIGN.md asks. [CoilTheme.of] applies it when
+  /// `MediaQuery.boldTextOf` is true.
+  CoilThemeData boldText() => copyWith(
+    typography: typography.map((role) {
+      final weight = role.fontWeight ?? FontWeight.normal;
+      if (weight.value >= FontWeight.w600.value) return role;
+      return role.copyWith(
+        fontWeight: FontWeight.w600,
+        fontVariations: role.fontVariations == null
+            ? null
+            : [
+                for (final axis in role.fontVariations!)
+                  if (axis.axis == 'wght' && axis.value < 600)
+                    const FontVariation.weight(600)
+                  else
+                    axis,
+              ],
+      );
+    }),
+  );
+
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
@@ -290,6 +313,9 @@ class CoilTheme extends StatelessWidget {
   /// theme data.
   static final _onSurface = Expando<CoilThemeData>('CoilTheme.onSurface');
 
+  /// [CoilThemeData.boldText] of each theme data.
+  static final _boldText = Expando<CoilThemeData>('CoilTheme.boldText');
+
   /// The theme at [context] before high contrast: the nearest theme's data,
   /// else the default for the platform brightness.
   static CoilThemeData _raw(BuildContext context) {
@@ -301,8 +327,9 @@ class CoilTheme extends StatelessWidget {
         : CoilThemeData.light;
   }
 
-  /// The theme at [context], resolved for high contrast when the platform
-  /// asks for it (`MediaQuery.highContrastOf`). Inside an elevated
+  /// The theme at [context], resolved for bold text and high contrast when
+  /// the platform asks for them (`MediaQuery.boldTextOf`,
+  /// `MediaQuery.highContrastOf`). Inside an elevated
   /// [CoilPlasticityScope] (a card, popover, dialog or sheet), its
   /// plasticity is [CoilPlasticity.flat]: controls there aren't lit.
   static CoilThemeData of(BuildContext context) {
@@ -311,6 +338,9 @@ class CoilTheme extends StatelessWidget {
       data = _onSurface[data] ??= data.copyWith(
         plasticity: CoilPlasticity.flat,
       );
+    }
+    if (MediaQuery.maybeBoldTextOf(context) ?? false) {
+      data = _boldText[data] ??= data.boldText();
     }
     return MediaQuery.maybeHighContrastOf(context) ?? false
         ? _highContrast[data] ??= data.highContrast()
