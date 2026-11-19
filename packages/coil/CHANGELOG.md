@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- Breaking: `CoilToggleGroup` draws its row, as DESIGN.md describes: a
+  1 px hairline with `CoilMetrics.segmentPadding` (4, compact 2) around
+  the segments, its corner concentric with theirs. The group is that
+  much taller and wider. New `CoilToggleGroupStyle.border` and
+  `padding`.
 - `CoilBadge(shape: CoilBadgeShape.pill)` draws a fully rounded badge
   under any shape family, as DESIGN.md describes; the default `item`
   keeps the theme's item radius. A ghost badge keeps the badge's

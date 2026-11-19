@@ -104,106 +104,126 @@ class CoilToggleGroup<T> extends StatelessWidget {
       spatial: spatial,
     );
 
+    final group = CoilChoiceGroup<T>(
+      options: options,
+      selected: values,
+      axis: Axis.horizontal,
+      tabStops: CoilRovingTabStops.one,
+      enabled: onChanged != null,
+      selectionColor: look.selection!,
+      highlightColor: look.highlight!,
+      radius: look.radius!,
+      selectionMotion: motionFor(
+        CoilToggleGroupTrack.selection,
+        tokens.standard,
+      ),
+      ringMotion: motionFor(CoilToggleGroupTrack.ring, tokens.quick),
+      fadeMotion: tokens.fade,
+      itemBuilder: (context, option, node, states) {
+        final selected = values.contains(option.value);
+        final onPressed = onChanged == null || !option.enabled
+            ? null
+            : () {
+                unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
+                onChanged!(
+                  selected
+                      ? ({...values}..remove(option.value))
+                      : {...values, option.value},
+                );
+              };
+        return Semantics(
+          container: true,
+          selected: selected,
+          enabled: onPressed != null,
+          label: option.semanticLabel,
+          child: CoilChoiceItem(
+            size: size,
+            onPressed: onPressed,
+            focusNode: node,
+            statesController: states,
+            pressFill: look.selection!,
+            radius: look.radius!,
+            pressMotion: motionFor(
+              CoilToggleGroupTrack.press,
+              tokens.fade,
+              spatial: false,
+            ),
+            releaseMotion: motionFor(
+              CoilToggleGroupTrack.press,
+              tokens.fadeExit,
+              spatial: false,
+            ),
+            builder: (context, itemStates, _) {
+              final color = look.label!.resolve({
+                if (selected) WidgetState.selected,
+                ...itemStates,
+              })!;
+              return ConstrainedBox(
+                constraints: BoxConstraints(minHeight: sizes.controlHeight),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: sizes.controlPaddingX,
+                    vertical: sizes.controlPaddingY(look.textStyle!),
+                  ),
+                  child: Center(
+                    widthFactor: 1,
+                    heightFactor: 1,
+                    child: MotionBuilder<Color>(
+                      value: color,
+                      motion: motionFor(
+                        CoilToggleGroupTrack.label,
+                        tokens.fade,
+                        spatial: false,
+                      ),
+                      converter: .colorRgb,
+                      builder: (context, color, child) => DefaultTextStyle(
+                        style: look.textStyle!.copyWith(color: color),
+                        maxLines: 1,
+                        softWrap: false,
+                        // The group cuts the widest items when they don't
+                        // all fit; their labels end in an ellipsis.
+                        overflow: TextOverflow.ellipsis,
+                        child: IconTheme(
+                          data: IconThemeData(
+                            size: sizes.iconSize,
+                            applyTextScaling: true,
+                            color: color,
+                          ),
+                          child: child!,
+                        ),
+                      ),
+                      child: option.label,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    // The row: a hairline around the segments, `segmentPadding` out, its
+    // corner sharing a center with theirs.
+    final padding = look.padding!;
+    final rowRadius = theme.shape
+        .radii(sizes.tier)
+        .concentric(
+          look.radius!,
+          padding,
+          innerExtent: sizes.controlHeight,
+        );
     return Semantics(
       container: true,
       label: semanticLabel,
-      child: CoilChoiceGroup<T>(
-        options: options,
-        selected: values,
-        axis: Axis.horizontal,
-        tabStops: CoilRovingTabStops.one,
-        enabled: onChanged != null,
-        selectionColor: look.selection!,
-        highlightColor: look.highlight!,
-        radius: look.radius!,
-        selectionMotion: motionFor(
-          CoilToggleGroupTrack.selection,
-          tokens.standard,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(rowRadius),
+            side: BorderSide(color: look.border!),
+          ),
         ),
-        ringMotion: motionFor(CoilToggleGroupTrack.ring, tokens.quick),
-        fadeMotion: tokens.fade,
-        itemBuilder: (context, option, node, states) {
-          final selected = values.contains(option.value);
-          final onPressed = onChanged == null || !option.enabled
-              ? null
-              : () {
-                  unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
-                  onChanged!(
-                    selected
-                        ? ({...values}..remove(option.value))
-                        : {...values, option.value},
-                  );
-                };
-          return Semantics(
-            container: true,
-            selected: selected,
-            enabled: onPressed != null,
-            label: option.semanticLabel,
-            child: CoilChoiceItem(
-              size: size,
-              onPressed: onPressed,
-              focusNode: node,
-              statesController: states,
-              pressFill: look.selection!,
-              radius: look.radius!,
-              pressMotion: motionFor(
-                CoilToggleGroupTrack.press,
-                tokens.fade,
-                spatial: false,
-              ),
-              releaseMotion: motionFor(
-                CoilToggleGroupTrack.press,
-                tokens.fadeExit,
-                spatial: false,
-              ),
-              builder: (context, itemStates, _) {
-                final color = look.label!.resolve({
-                  if (selected) WidgetState.selected,
-                  ...itemStates,
-                })!;
-                return ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: sizes.controlHeight),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: sizes.controlPaddingX,
-                      vertical: sizes.controlPaddingY(look.textStyle!),
-                    ),
-                    child: Center(
-                      widthFactor: 1,
-                      heightFactor: 1,
-                      child: MotionBuilder<Color>(
-                        value: color,
-                        motion: motionFor(
-                          CoilToggleGroupTrack.label,
-                          tokens.fade,
-                          spatial: false,
-                        ),
-                        converter: .colorRgb,
-                        builder: (context, color, child) => DefaultTextStyle(
-                          style: look.textStyle!.copyWith(color: color),
-                          maxLines: 1,
-                          softWrap: false,
-                          // The group cuts the widest items when they don't
-                          // all fit; their labels end in an ellipsis.
-                          overflow: TextOverflow.ellipsis,
-                          child: IconTheme(
-                            data: IconThemeData(
-                              size: sizes.iconSize,
-                              applyTextScaling: true,
-                              color: color,
-                            ),
-                            child: child!,
-                          ),
-                        ),
-                        child: option.label,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
+        child: Padding(padding: EdgeInsets.all(padding), child: group),
       ),
     );
   }

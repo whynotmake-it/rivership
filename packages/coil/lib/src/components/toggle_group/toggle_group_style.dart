@@ -19,6 +19,8 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     this.label,
     this.textStyle,
     this.radius,
+    this.border,
+    this.padding,
     this.motions,
   });
 
@@ -42,6 +44,8 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
             }),
       textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       radius: theme.shape.radii(metrics.tier).item,
+      border: c.border,
+      padding: metrics.segmentPadding,
     );
   }
 
@@ -57,8 +61,17 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
   /// The label style (color from [label]).
   final TextStyle? textStyle;
 
-  /// The corner radius of blocks and the highlight.
+  /// The corner radius of the segments: their blocks, the highlight and
+  /// the press fill. The row's corner is concentric with it, [padding]
+  /// out.
   final double? radius;
+
+  /// The row's 1 px outline; fully transparent draws none.
+  final Color? border;
+
+  /// The space between the row's edge and its segments
+  /// (`CoilMetrics.segmentPadding`).
+  final double? padding;
 
   /// Springs for the group's animated parts, keyed by
   /// [CoilToggleGroupTrack]s:
@@ -76,6 +89,8 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
           label: CoilComponentStyle.mergeStates(label, other.label),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
           radius: other.radius ?? radius,
+          border: other.border ?? border,
+          padding: other.padding ?? padding,
           motions: other.motions == null
               ? motions
               : {...?motions, ...?other.motions},
@@ -88,6 +103,8 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     label,
     textStyle,
     radius,
+    border,
+    padding,
     motions,
   ];
 }

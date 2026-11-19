@@ -12,8 +12,9 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 ## ToggleGroup
 
-- **Anatomy:** a horizontal segmented row with `segmentPadding`. Selected segments merge into one block.
-- **Sizes:** segment height `controlHeight`, padding `controlPaddingX`.
+- **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
+- **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
+- **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
 - **Motion:** merge/split `standard`, highlight `quick`.
 - **Keyboard:** roving; Left and Right move; Space toggles.
 - **Semantics:** toggle buttons with `selected`.
