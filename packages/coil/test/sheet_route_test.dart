@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'src/paint_probe.dart';
 import 'src/select_harness.dart';
 
 const _content = ValueKey('content');
@@ -23,13 +24,19 @@ Widget _app({CoilThemeData? theme}) => testApp(
 );
 
 /// The sheet's surface around [of] (the first sheet's content by default).
-Finder _sheet([Finder? of]) => find
+Finder _surface([Finder? of]) => find
     .ancestor(
       of: of ?? find.byKey(_content),
       matching: find.byWidgetPredicate(
         (w) => w is CoilSurface && w.offset == CoilSurface.popoverOffset,
       ),
     )
+    .first;
+
+/// The sheet around [of]: its surface's clip, which has the sheet's size
+/// (the surface itself runs on below the bottom edge).
+Finder _sheet([Finder? of]) => find
+    .descendant(of: _surface(of), matching: find.byType(ClipRSuperellipse))
     .first;
 
 Future<CoilSheetRoute<String>> _push(
@@ -131,7 +138,7 @@ void main() {
     expect(CoilSheetRoute.glassRadius, 36);
     const corners = BorderRadius.vertical(top: Radius.circular(36));
     expect(route.shape.borderRadius, corners);
-    final surface = tester.widget<CoilSurface>(_sheet());
+    final surface = tester.widget<CoilSurface>(_surface());
     expect(surface.borderRadius, corners);
     expect(
       tester
@@ -252,6 +259,65 @@ void main() {
       expect(tester.getRect(find.byKey(_content)), before);
     });
   });
+
+  for (final theme in [CoilThemeData.light, CoilThemeData.dark]) {
+    testWidgets('${theme.brightness.name}: dragged up past its rest, the '
+        'sheet shows its own fill below it, never the page, and settles '
+        'back', (tester) async {
+      useScreen(tester, TestScreen.phone);
+      // A loud page, so any of it showing below the sheet stands out.
+      await tester.pumpWidget(
+        testApp(
+          colors: theme.colors,
+          tier: CoilTier.touch,
+          home: Builder(
+            builder: (context) {
+              _home = context;
+              return const ColoredBox(color: Color(0xFFFF0000));
+            },
+          ),
+        ),
+      );
+      await _push(tester);
+      final boundary = find.byKey(appBoundary);
+      final rest = tester.getRect(_sheet());
+      // The sheet's fill as it shows, in the empty content.
+      final fill = await colorAt(
+        tester,
+        boundary,
+        tester.getCenter(find.byKey(_content)),
+      );
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Fruit')),
+      );
+      var lifted = false;
+      for (var i = 0; i < 12; i++) {
+        await gesture.moveBy(const Offset(0, -20));
+        await tester.pump(const Duration(milliseconds: 16));
+        final sheet = tester.getRect(_sheet());
+        if (sheet.bottom >= rest.bottom) continue;
+        lifted = true;
+        // Between the lifted sheet's bottom edge and the window's, at the
+        // middle and near the sides.
+        for (final x in [8.0, rest.center.dx, rest.right - 8]) {
+          for (final y in [sheet.bottom + 1, rest.bottom - 1]) {
+            final color = await colorAt(tester, boundary, Offset(x, y));
+            expect(
+              isNear(color, fill),
+              isTrue,
+              reason: 'the sheet, not the page, at ($x, $y), $color',
+            );
+          }
+        }
+      }
+      expect(lifted, isTrue, reason: 'the drag lifts the sheet');
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.getRect(_sheet()), rest, reason: 'it settles back');
+    });
+  }
 
   testWidgets('a sheet opened from a sheet slides over it with its own '
       'scrim', (tester) async {
