@@ -20,7 +20,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   | Labeled | 36 · 16 (12 next to icon) · 6 | 28 · 12/8 · 4 | 44 · 20/16 · 8 | 36 · 16/12 · 6, 44 hit |
   | Icon-only | 36 | 28 | 44 | 36 visual, 44 hit |
 
-  The label is body semibold.
+  The label is body at the theme's emphasis weight (`CoilTextTheme.emphasis`, semibold: wght 550 in the presets).
 - **Variants:**
 
   | Variant | Rest | Hover | Pressed / selected | Label |

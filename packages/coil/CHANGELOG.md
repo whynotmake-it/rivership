@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- Breaking: button labels are semibold, the theme's emphasis weight
+  (`CoilTextTheme.emphasis`, wght 550 in the presets), as DESIGN.md
+  says; `CoilButtonStyle.fallback`'s `textStyle` was the plain body
+  role. Every `CoilButton` gets it, dialog, sheet and card actions
+  included; a style's `textStyle` still overrides it.
 - Breaking: every focus ring sits 2 px outside its control, at the
   control's radius + 2, as DESIGN.md says. `CoilFocusRingTheme.offset`
   defaults to 2 (was 0, so single controls' rings hugged their edge),
