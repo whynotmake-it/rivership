@@ -53,8 +53,8 @@ class MotionPadding extends StatelessWidget {
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionPadding',
-      tracks: [
-        _padding.implicit(padding.resolve(Directionality.maybeOf(context))),
+      targets: [
+        _padding.target(padding.resolve(Directionality.maybeOf(context))),
       ],
       builder: (context, value, child) =>
           PaddingExtended(padding: value(_padding)!, child: child),

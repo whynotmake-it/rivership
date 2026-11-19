@@ -2,37 +2,42 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/on_end.dart';
 
-/// One optional property of an implicitly animated widget: a [track] and the
-/// [value] it should settle on, or null when the property is unset.
+/// A property of an implicitly animated widget: its [track], and the [value]
+/// it should settle on, or null while the property is unset.
+///
+/// Create one with [ImplicitTargetOf.target]: `MyTracks.padding.target(x)`.
 @immutable
-class ImplicitTrack<T extends Object> {
-  /// Pairs [track] with its target [value].
-  const ImplicitTrack(this.track, this.value);
+class ImplicitTarget<T extends Object> {
+  /// Pairs [track] with the [value] it should settle on.
+  const ImplicitTarget(this.track, this.value);
 
-  /// The identity of the property.
+  /// The track that animates the property.
   final Track<T> track;
 
-  /// The value the property animates to, or null when it is unset.
+  /// The value the property animates to, or null while it is unset.
   final T? value;
 
-  TrackAnimation<T> _animation(T value, Motion motion) =>
-      track([TrackStep.to(value, motion: motion)]);
+  // Generic here, where T is known, so the steps and values are typed.
+  TrackAnimation<T> _animation(Motion motion) =>
+      track([TrackStep.to(value!, motion: motion)]);
 
-  TrackValue<T> _initial(T value) => track.value(value);
+  TrackValue<T> _startValue() => track.value(value!);
 }
 
-/// Creates [ImplicitTrack]s whose type comes from the track, which a list
-/// literal's context would otherwise widen to `Object`.
-extension ImplicitTrackOf<T extends Object> on Track<T> {
-  /// This track with its target [value], or null when the property is unset.
-  ImplicitTrack<T> implicit(T? value) => ImplicitTrack<T>(this, value);
+/// Pairs a track with its target as an [ImplicitTarget] of the track's own
+/// type, which a list literal would otherwise widen to `Object`.
+extension ImplicitTargetOf<T extends Object> on Track<T> {
+  /// This track with the [value] it should settle on, or null while the
+  /// property is unset.
+  ImplicitTarget<T> target(T? value) => ImplicitTarget<T>(this, value);
 }
 
-/// Reads the current value of an [ImplicitTrack]'s track, or null while the
-/// property is unset.
+/// Reads a property's current value in [ImplicitTrackBuilder.builder]: null
+/// while the property is unset.
 typedef ImplicitTrackReader = T? Function<T extends Object>(Track<T> track);
 
-/// Builds a widget from the current values of [ImplicitTrackBuilder.tracks].
+/// Builds a widget from the current values of the
+/// [ImplicitTrackBuilder.targets].
 typedef ImplicitTrackWidgetBuilder =
     Widget Function(
       BuildContext context,
@@ -40,20 +45,39 @@ typedef ImplicitTrackWidgetBuilder =
       Widget? child,
     );
 
-/// Animates a set of optional properties on one [TrackBuilder], one track per
-/// property, so changing one never disturbs another that is in flight.
+/// The engine of this package's implicitly animated widgets: a
+/// [TrackBuilder] for properties that may be null, with the rules of
+/// Flutter's `Animated*` widgets.
 ///
-/// It only maps the set properties to [TrackBuilder]'s `animations` and
-/// `initialValues`, so Motor gives it Flutter's implicit-animation rules:
-/// - a property that is set the first time it is seen, at mount or later,
-///   starts at its value instead of animating in from zero;
-/// - a property that goes back to null drops its track;
-/// - a new text direction jumps every property to its value, as
-///   `AnimatedAlign` does, rather than sending the child across the box.
+/// Each property is a track and a target ([ImplicitTarget]). As in
+/// `ImplicitlyAnimatedWidget`, null means the property is unset, not a value
+/// to animate toward:
+///
+/// - **Unset to set**, also on the first build: the property starts at its
+///   target, without animating.
+/// - **Set to another value**: it animates there with its motion.
+/// - **Set to unset**: it is dropped at once, and [builder] reads null, so
+///   the widget builds as if it was never set (no `Padding`, a free edge of
+///   a `Positioned`, an `Align` that sizes to its child).
+///
+/// A new ambient text direction jumps every property to its target, as
+/// `AnimatedAlign` does, since directional values are resolved against it
+/// before they animate.
+///
+/// Unlike Flutter's widgets, which share one controller and restart every
+/// property's curve when one changes, each property is its own track:
+/// changing one leaves the others in flight, and a property retargeted
+/// mid-flight keeps its velocity.
+///
+/// It exists because [TrackBuilder] has no notion of unset: its reader
+/// returns a track's last or initial value whether or not it plays, and a
+/// value that should appear without animating has to be given twice, as an
+/// animation and an initial value. This widget derives both from the
+/// targets and reads null for the unset ones.
 class ImplicitTrackBuilder extends StatelessWidget {
   /// Creates an [ImplicitTrackBuilder].
   const ImplicitTrackBuilder({
-    required this.tracks,
+    required this.targets,
     required this.motion,
     required this.builder,
     this.motions,
@@ -64,8 +88,8 @@ class ImplicitTrackBuilder extends StatelessWidget {
     super.key,
   });
 
-  /// The properties to animate. Each track may appear once.
-  final List<ImplicitTrack<Object>> tracks;
+  /// The properties and their targets. Each track may appear once.
+  final List<ImplicitTarget<Object>> targets;
 
   /// The motion every property follows, unless [motions] has its own.
   final Motion motion;
@@ -76,7 +100,8 @@ class ImplicitTrackBuilder extends StatelessWidget {
   /// same motions redirects nothing.
   final Map<Track<Object>, Motion>? motions;
 
-  /// Builds the widget from the current values.
+  /// Builds the widget from the current values. A property reads null while
+  /// it is unset.
   final ImplicitTrackWidgetBuilder builder;
 
   /// Called when the properties have settled after a change.
@@ -93,18 +118,19 @@ class ImplicitTrackBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final animations = <TrackAnimation>[];
-    final initialValues = <TrackValue>[];
-    for (final property in tracks) {
-      _add(property, animations, initialValues);
-    }
-    final present = {for (final animation in animations) animation.track};
+    // Only set properties play. Their start value is their target, so one
+    // that appears doesn't animate, and TrackBuilder drops one that leaves.
+    final set = [
+      for (final target in targets)
+        if (target.value != null) target,
+    ];
+    final setTracks = {for (final target in set) target.track};
     return TrackBuilder(
-      animations: animations,
-      initialValues: initialValues,
-      // Properties are resolved against the text direction before they
-      // animate, so a new direction restarts: every track jumps to its
-      // initial value, which is its target.
+      animations: [
+        for (final target in set)
+          target._animation(motions?[target.track] ?? motion),
+      ],
+      initialValues: [for (final target in set) target._startValue()],
       restartTrigger: Directionality.maybeOf(context),
       debugLabel: debugLabel,
       tickerRate: tickerRate,
@@ -112,23 +138,10 @@ class ImplicitTrackBuilder extends StatelessWidget {
       builder: (context, value, child) => builder(
         context,
         <T extends Object>(Track<T> track) =>
-            present.contains(track) ? value(track) : null,
+            setTracks.contains(track) ? value(track) : null,
         child,
       ),
       child: child,
     );
-  }
-
-  void _add<T extends Object>(
-    ImplicitTrack<T> property,
-    List<TrackAnimation> animations,
-    List<TrackValue> initialValues,
-  ) {
-    final value = property.value;
-    if (value == null) return;
-    animations.add(
-      property._animation(value, motions?[property.track] ?? motion),
-    );
-    initialValues.add(property._initial(value));
   }
 }

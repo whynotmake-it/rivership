@@ -283,34 +283,34 @@ class MotionContainer extends StatelessWidget {
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionContainer',
-      tracks: [
-        MotionContainerTrack.alignment.implicit(alignment?.resolve(direction)),
-        MotionContainerTrack.padding.implicit(
+      targets: [
+        MotionContainerTrack.alignment.target(alignment?.resolve(direction)),
+        MotionContainerTrack.padding.target(
           _paddingIncludingDecoration?.resolve(direction),
         ),
-        MotionContainerTrack.color.implicit(
+        MotionContainerTrack.color.target(
           color ?? (decoration is BoxDecoration ? decoration.color : null),
         ),
         if (decoration is BoxDecoration) ...[
-          MotionContainerTrack.decorationBorderRadius.implicit(
+          MotionContainerTrack.decorationBorderRadius.target(
             decoration.borderRadius?.resolve(direction),
           ),
         ],
         if (foregroundDecoration is BoxDecoration) ...[
-          MotionContainerTrack.foregroundDecorationColor.implicit(
+          MotionContainerTrack.foregroundDecorationColor.target(
             foregroundDecoration.color,
           ),
-          MotionContainerTrack.foregroundDecorationBorderRadius.implicit(
+          MotionContainerTrack.foregroundDecorationBorderRadius.target(
             foregroundDecoration.borderRadius?.resolve(direction),
           ),
         ],
-        MotionContainerTrack.minWidth.implicit(finite(constraints?.minWidth)),
-        MotionContainerTrack.maxWidth.implicit(finite(constraints?.maxWidth)),
-        MotionContainerTrack.minHeight.implicit(finite(constraints?.minHeight)),
-        MotionContainerTrack.maxHeight.implicit(finite(constraints?.maxHeight)),
-        MotionContainerTrack.margin.implicit(margin?.resolve(direction)),
-        MotionContainerTrack.transform.implicit(transform),
-        MotionContainerTrack.transformAlignment.implicit(
+        MotionContainerTrack.minWidth.target(finite(constraints?.minWidth)),
+        MotionContainerTrack.maxWidth.target(finite(constraints?.maxWidth)),
+        MotionContainerTrack.minHeight.target(finite(constraints?.minHeight)),
+        MotionContainerTrack.maxHeight.target(finite(constraints?.maxHeight)),
+        MotionContainerTrack.margin.target(margin?.resolve(direction)),
+        MotionContainerTrack.transform.target(transform),
+        MotionContainerTrack.transformAlignment.target(
           transformAlignment?.resolve(direction),
         ),
       ],

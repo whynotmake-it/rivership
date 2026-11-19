@@ -154,13 +154,13 @@ class MotionPositioned extends StatelessWidget {
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionPositioned',
-      tracks: [
-        MotionPositionedTrack.left.implicit(left),
-        MotionPositionedTrack.top.implicit(top),
-        MotionPositionedTrack.right.implicit(right),
-        MotionPositionedTrack.bottom.implicit(bottom),
-        MotionPositionedTrack.width.implicit(width),
-        MotionPositionedTrack.height.implicit(height),
+      targets: [
+        MotionPositionedTrack.left.target(left),
+        MotionPositionedTrack.top.target(top),
+        MotionPositionedTrack.right.target(right),
+        MotionPositionedTrack.bottom.target(bottom),
+        MotionPositionedTrack.width.target(width),
+        MotionPositionedTrack.height.target(height),
       ],
       builder: (context, value, child) => Positioned(
         left: value(MotionPositionedTrack.left),
