@@ -2,6 +2,12 @@
 
 Milestone M0, unreleased.
 
+- `CoilCheckbox` (and `CoilCheckboxIndicator`, so a checkbox group's
+  rows) shows a press as it shows hover: the foreground 40 % border, and
+  the hover light under a plastic theme. A touch press had no feedback,
+  since the border changed on hover only. `CoilCheckboxStyle.border` is
+  resolved with `WidgetState.pressed` too; the pointer's hover look is
+  unchanged.
 - `CoilDataTable`'s default count reads "1 row" for a single row, not
   "1 rows". `CoilDataTableLabels.count` still replaces it, plural rules
   included, for other languages.

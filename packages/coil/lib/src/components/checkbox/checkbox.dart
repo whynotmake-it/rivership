@@ -195,9 +195,10 @@ BorderRadius _radiusOf(BuildContext context, CoilCheckboxStyle style) {
 
 /// The box and glyph of a checkbox, with no interaction of its own.
 ///
-/// [states] drives the border: `hovered` and `error` (invalid) are read, the
-/// checked look comes from [value]. Use it inside a row that is already the
-/// tap target. [CoilCheckbox] adds focus, hover and tap handling around it.
+/// [states] drives the border: `hovered`, `pressed` and `error` (invalid)
+/// are read, the checked look comes from [value]. Use it inside a row that
+/// is already the tap target. [CoilCheckbox] adds focus, hover and tap
+/// handling around it.
 ///
 /// The box and tick grow with the text scale.
 ///
@@ -265,6 +266,7 @@ class CoilCheckboxIndicator extends StatelessWidget {
     );
     final border = style.border!.resolve({
       if (states.contains(WidgetState.hovered)) WidgetState.hovered,
+      if (states.contains(WidgetState.pressed)) WidgetState.pressed,
       if (states.contains(WidgetState.error)) WidgetState.error,
       if (on) WidgetState.selected,
     })!;
@@ -304,7 +306,11 @@ class CoilCheckboxIndicator extends StatelessWidget {
               context,
               CoilReliefRole.recessed,
               override: style.plasticity,
-              hover: states.contains(WidgetState.hovered) ? 1 : 0,
+              hover:
+                  states.contains(WidgetState.hovered) ||
+                      states.contains(WidgetState.pressed)
+                  ? 1
+                  : 0,
               enabled: !states.contains(WidgetState.disabled),
             ),
           ),
