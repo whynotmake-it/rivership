@@ -580,7 +580,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** one cap per key of a shortcut (`⇧⌘O` → ⇧ ⌘ O; `Ctrl+K` → Ctrl K), 2 apart.
 - **Sizes:** 18 square at least (it scales with text), padding 4, 11 type with tabular figures, radius 3. No touch bump; it isn't interactive.
-- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps suit any surface, the inverted tooltip bubble included.
+- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps follow the text around them and suit any surface, the inverted tooltip bubble included. Where no color is set they take `foreground`, never a muted fallback; muted caps come only from a component that sets muted text around them on purpose (a menu's shortcut column, the command menu footer's hints, a text field's slot in its placeholder color).
 - **In a tooltip:** the shortcut slot pins the cap to 16, which fits the caption line, so the bubble stays 24 tall.
 - **Semantics:** the keys read as one label.
 
@@ -589,8 +589,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** a box (1.5 px border); when checked, a bare tick with no box (FF's signature); a dash when null.
 - **Sizes:** box 16 / 14 / 20 / 18, radius 5 / 4 / 6 / 5, glyph 18 / 16 / 22 / 20. Hit box 44 on touch. Inside a row, use `CoilCheckboxIndicator`, which has no hit box of its own.
 - **States:**
-  - unchecked: `border`; hover: foreground 40 %; invalid: destructive 50 %;
-  - checked / indeterminate: border transparent; hover brings the 40 % border back;
+  - unchecked: `border`; hover and press: foreground 40 % (so a finger, which never hovers, sees its press); invalid: destructive 50 %;
+  - checked / indeterminate: border transparent; hover and press bring the 40 % border back;
   - disabled: 50 %.
   - High contrast draws the box around the tick.
 - **API:** `value: bool?` + `tristate`. A tap cycles false → true → (null) → false.
@@ -625,7 +625,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Sizes:** height = `controlHeight`, padding `controlPaddingX`, field text role.
 - **Slots:** placed by measuring them in the same layout pass as the text (`CoilInputSlotPlacement.auto`), so the first frame is right:
   - a slot that fits a line of text (an icon, a "EUR" unit, a spinner, a kbd) sits **inline**: inside the padding, centered on the text;
-  - a taller slot (a button) sits **inset**: into the padding, centered, and as far from the side as from the top and bottom, so its corners are concentric with the field's. The field keeps its height while the slot and `slotInset` (4; 2 compact) on each side fit: a 28 compact button in a 36 field, a 36 one in a 44 touch field. Only a taller slot grows the field, by just enough (a 36 button makes a pointer field 44);
+  - a taller slot (a button) sits **inset**: into the padding, centered, and as far from the side as from the top and bottom, so its corners are concentric with the field's. The field keeps its height while the slot and `slotInset` (4; 2 compact) on each side fit: a 28 compact button in a 36 field, a 36 one in a 44 touch field. In a compact field the compact button takes the height that fits (`CoilInputSlotScope.maxExtent`): 24 in a 28 field, 32 in a 36 touch one, so the field keeps its compact height too. Only a taller slot grows the field, by just enough (a 36 button makes a pointer field 44);
   - a `CoilButton` in a slot defaults to compact and to the nested radius (`CoilInputSlotScope`); an explicit `size:` or `style:` wins. On touch it drops its own hit padding and the field gives taps in a 44 box around it to the button;
   - `leadingPlacement` / `trailingPlacement` override: `inline` keeps today's padding (a button makes the field grow), `inset` tucks even a short slot in.
 - **States:**

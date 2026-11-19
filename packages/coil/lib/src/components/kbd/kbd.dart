@@ -77,7 +77,11 @@ class CoilKbdStyle extends CoilComponentStyle<CoilKbdStyle> {
 /// separate the rest, so `'Ctrl+K'` draws Ctrl and K. Use
 /// [CoilKbd.keys] for a key whose name has a space, like `Page Up`.
 /// Screen readers hear the combination as one label. The caps take their
-/// colors from the ambient [DefaultTextStyle], so they suit any surface.
+/// colors from the ambient [DefaultTextStyle], so they follow the text
+/// around them and suit any surface; a component that wants them muted
+/// (a menu's shortcut column) sets a muted text style around them. With
+/// no ambient color they take the theme's `foreground`, the color text
+/// gets under a `CoilTheme`.
 class CoilKbd extends StatelessWidget {
   /// Shows [combination] split into keys.
   CoilKbd(
@@ -166,7 +170,7 @@ class CoilKbd extends StatelessWidget {
     final look = CoilKbdStyle.fallback(
       theme,
       CoilTheme.metricsOf(context),
-      DefaultTextStyle.of(context).style.color ?? theme.colors.mutedForeground,
+      DefaultTextStyle.of(context).style.color ?? theme.colors.foreground,
     ).merge(CoilTheme.styleOf<CoilKbdStyle>(context)).merge(style);
     final size = MediaQuery.textScalerOf(context).scale(look.size!);
     final shape = RoundedSuperellipseBorder(

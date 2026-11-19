@@ -90,11 +90,27 @@ class CoilTooltip extends StatelessWidget {
       spacing: 8,
       children: [
         Flexible(child: message),
-        // A 16 cap fits the caption line, so the bubble stays 24 tall.
-        CoilTheme.override(
-          transform: (theme) =>
-              theme.withComponentStyle(const CoilKbdStyle(size: 16)),
-          child: shortcut,
+        // A 16 cap fits the caption line, so the bubble stays 24 tall. The
+        // theme override sets the body style again, so the bubble's
+        // inverted text style is put back for the caps to take.
+        Builder(
+          builder: (context) {
+            final bubble = DefaultTextStyle.of(context);
+            return CoilTheme.override(
+              transform: (theme) =>
+                  theme.withComponentStyle(const CoilKbdStyle(size: 16)),
+              child: DefaultTextStyle(
+                style: bubble.style,
+                textAlign: bubble.textAlign,
+                softWrap: bubble.softWrap,
+                overflow: bubble.overflow,
+                maxLines: bubble.maxLines,
+                textWidthBasis: bubble.textWidthBasis,
+                textHeightBehavior: bubble.textHeightBehavior,
+                child: shortcut,
+              ),
+            );
+          },
         ),
       ],
     ),

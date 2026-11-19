@@ -68,8 +68,9 @@ class CoilDataTableLabels {
   /// The search field's name for screen readers.
   final String searchLabel;
 
-  /// The footer's count, like "2 of 40 selected" or "40 rows". It's a live
-  /// region, so changes are announced.
+  /// The footer's count, like "2 of 40 selected", "40 rows" or "1 row".
+  /// It's a live region, so changes are announced. Pass your own to
+  /// localize it, plural rules included.
   final Widget Function({required int selected, required int total}) count;
 
   /// The page position, like "Page 2 of 5", from the page number (from 1)
@@ -83,7 +84,11 @@ class CoilDataTableLabels {
   final String nextPageLabel;
 
   static Widget _count({required int selected, required int total}) =>
-      Text(selected > 0 ? '$selected of $total selected' : '$total rows');
+      Text(switch ((selected, total)) {
+        (> 0, _) => '$selected of $total selected',
+        (_, 1) => '1 row',
+        _ => '$total rows',
+      });
 
   static Widget _page(int page, int count) => Text('Page $page of $count');
 }

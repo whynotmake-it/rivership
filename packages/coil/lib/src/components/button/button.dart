@@ -236,7 +236,14 @@ class _CoilButtonState extends State<CoilButton> {
     // In a text field's slot: compact, concentric with the field's corner,
     // and the field takes the taps around it. Explicit size and style win.
     final slot = CoilInputSlotScope.maybeOf(context);
-    final sizes = CoilTheme.metricsOf(context, size: widget.size ?? slot?.size);
+    var sizes = CoilTheme.metricsOf(context, size: widget.size ?? slot?.size);
+    // At the slot's size step, as tall as fits the field without growing
+    // it: a compact button is as tall as a compact field.
+    if (slot != null &&
+        sizes.size == slot.size &&
+        sizes.controlHeight > slot.maxExtent) {
+      sizes = sizes.copyWith(controlHeight: slot.maxExtent);
+    }
     final iconOnly = widget.icon != null;
     var style = CoilButtonStyle.fallback(
       theme,

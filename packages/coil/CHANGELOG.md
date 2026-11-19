@@ -2,6 +2,29 @@
 
 Milestone M0, unreleased.
 
+- `CoilKbd` with no ambient text color takes the theme's `foreground`
+  instead of `mutedForeground`, so its caps follow the surrounding text
+  as DESIGN.md says. Where a component sets muted text around them on
+  purpose (menu shortcuts, the command menu footer, a text field's slot)
+  they stay muted.
+- Fix: a `CoilTooltip`'s `shortcut` caps showed in the page's text color
+  on the inverted bubble, so they were invisible: the theme override that
+  pins them to 16 set the body style again. They take the bubble's text
+  color now.
+- `CoilCheckbox` (and `CoilCheckboxIndicator`, so a checkbox group's
+  rows) shows a press as it shows hover: the foreground 40 % border, and
+  the hover light under a plastic theme. A touch press had no feedback,
+  since the border changed on hover only. `CoilCheckboxStyle.border` is
+  resolved with `WidgetState.pressed` too; the pointer's hover look is
+  unchanged.
+- `CoilDataTable`'s default count reads "1 row" for a single row, not
+  "1 rows". `CoilDataTableLabels.count` still replaces it, plural rules
+  included, for other languages.
+- A compact `CoilButton` in a compact `CoilInput`'s slot no longer grows
+  the field to fit (a 28 field became 32, a 36 touch one 40): at the
+  slot's size step the button takes the height that fits with
+  `slotInset` on each side (`CoilInputSlotScope.maxExtent`, 24 in a 28
+  field, 32 in a 36 one), inset and concentric as in a regular field.
 - DESIGN.md now matches the code on two points the owner kept: a
   switch's label is muted while off on every tier (it said touch kept
   it foreground), and a dropdown's empty state is padded

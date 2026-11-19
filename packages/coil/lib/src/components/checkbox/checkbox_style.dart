@@ -7,8 +7,9 @@ import 'package:motor/motor.dart';
 /// Overrides for how a `CoilCheckbox` looks; unset fields come from
 /// [CoilCheckboxStyle.fallback].
 ///
-/// [border] is resolved with [WidgetState.hovered], [WidgetState.selected]
-/// (checked or indeterminate) and [WidgetState.error] (`invalid`).
+/// [border] is resolved with [WidgetState.hovered], [WidgetState.pressed],
+/// [WidgetState.selected] (checked or indeterminate) and
+/// [WidgetState.error] (`invalid`).
 class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
   /// Creates a checkbox style.
   const CoilCheckboxStyle({
@@ -31,6 +32,8 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
       plasticity: theme.plasticity,
       border: WidgetStateProperty<Color?>.fromMap({
         WidgetState.hovered: c.foreground.withValues(alpha: 0.4),
+        // A press shows what hover does, so a finger sees it too.
+        WidgetState.pressed: c.foreground.withValues(alpha: 0.4),
         WidgetState.selected: c.border.withValues(alpha: 0),
         WidgetState.error: c.destructive.withValues(alpha: 0.5),
         WidgetState.any: c.border,

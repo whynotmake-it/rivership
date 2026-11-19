@@ -27,8 +27,9 @@ import 'package:flutter/widgets.dart';
 ///   names what Done will confirm on its leading side
 ///   ([CoilCalendarLabels.summary]), so the draft stays readable however
 ///   far the calendar has paged or zoomed.
-/// - **Keyboard:** Enter confirms (on the grid, it picks the focused day
-///   first); Space only picks; Escape closes.
+/// - **Keyboard:** Enter is done: it confirms a sheet's draft and closes
+///   a popover (on the grid, it picks the focused day first); Space only
+///   picks; Escape closes.
 ///
 /// With [withTime], two columns under the calendar pick the time of day.
 /// In a short, wide window (a phone in landscape) they sit beside the
@@ -66,7 +67,8 @@ class CoilDatePicker extends StatefulWidget {
   /// The picked date, or null.
   final DateTime? value;
 
-  /// Called with the confirmed date. Null disables the picker.
+  /// Called with each date a popover applies, or the one a sheet's Done
+  /// confirms. Null disables the picker.
   final ValueChanged<DateTime>? onChanged;
 
   /// Shown, muted, in the field when no date is picked. Usually a [Text].
@@ -88,14 +90,16 @@ class CoilDatePicker extends StatefulWidget {
   final int firstDayOfWeek;
 
   /// Whether a time of day is picked too, in two columns under the
-  /// calendar. The popover then confirms with a button, like the sheet.
+  /// calendar. The popover then stays open after a day is picked, for the
+  /// time; every pick still applies at once, and closing it is done. Only
+  /// the sheet has a Done button.
   final bool withTime;
 
   /// The minute step of the time columns.
   final int minuteInterval;
 
-  /// Month and weekday names, how the field shows a date, and the confirm
-  /// button's label.
+  /// Month and weekday names, how the field shows a date, and the label
+  /// of the sheet's Done button.
   final CoilCalendarLabels labels;
 
   /// A heading for the sheet presentation.
