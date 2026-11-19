@@ -95,7 +95,8 @@ class CoilCalendarLabels {
   final String Function(DateTime month) showDaysLabel;
 
   /// A date picker's confirming button, "Done": it sets the picked date
-  /// and closes the sheet, or a popover that picks a time too.
+  /// and closes the sheet. Only the sheet has one; a popover applies each
+  /// pick at once, with or without a time.
   final Widget confirm;
 
   /// A weekday's column heading, like "Mo", from [DateTime.weekday].
