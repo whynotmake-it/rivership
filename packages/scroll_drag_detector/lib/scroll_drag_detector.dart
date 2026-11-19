@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -706,8 +707,8 @@ class ScrollDragBehavior extends ScrollBehavior {
       oldDelegate is! ScrollDragBehavior ||
       parent.runtimeType != oldDelegate.parent.runtimeType ||
       parent.shouldNotify(oldDelegate.parent) ||
-      oldDelegate._axes != _axes ||
-      oldDelegate._blockedDirections != _blockedDirections;
+      !setEquals(oldDelegate._axes, _axes) ||
+      !setEquals(oldDelegate._blockedDirections, _blockedDirections);
 }
 
 class _ScrollDragBehaviorScope extends InheritedWidget {
