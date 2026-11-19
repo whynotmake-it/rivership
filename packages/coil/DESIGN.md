@@ -608,7 +608,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - off: `accent`; on: `brand`;
   - hover shifts the track 10 % toward `overlay` (off) or 8 % toward black (on), in Oklab;
   - thumb white with `shadow(2)`;
-  - the label is muted when off and foreground when on (pointer); always foreground on touch.
+  - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
 - **Motion** (tracks `CoilSwitchTrack.thumb` / `.squish` / `.tint`):
   - thumb on `standard`, squish on `quick`, tint on `fade`;
   - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
@@ -830,7 +830,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Dropdown (action menu; +sub, +search)
 
-- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px, edge to edge, 4 above and below, in `border` at 60 % of its own alpha: foreground at about 7 %); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding 24).
+- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px, edge to edge, 4 above and below, in `border` at 60 % of its own alpha: foreground at about 7 %); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding `popupInset + itemPaddingX`: 12 pointer, 16 touch, on the rows' text edge).
 - **Sizes:** rows per §13.1. Default width 288 (pointer), `max(trigger, 220)` (touch). Submenu width 224.
 - **States:** the pointer highlight glides; checked rows are semibold with a check; the single-choice selected fill glides on `standard`; disabled rows are skipped.
 - **Submenus:**

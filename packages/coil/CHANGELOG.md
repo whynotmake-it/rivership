@@ -2,6 +2,10 @@
 
 Milestone M0, unreleased.
 
+- DESIGN.md now matches the code on two points the owner kept: a
+  switch's label is muted while off on every tier (it said touch kept
+  it foreground), and a dropdown's empty state is padded
+  `popupInset + itemPaddingX` (12 pointer, 16 touch; it said 24).
 - Breaking: the command menu follows DESIGN.md. Its search field is the
   subtitle role on a line 48 high on the pointer tier and 52 on touch
   (`CoilCommandMenu.searchHeightOf`; it was a body field at the control

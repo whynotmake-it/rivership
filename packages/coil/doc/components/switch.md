@@ -18,7 +18,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - off: `accent`; on: `brand`;
   - hover shifts the track 10 % toward `overlay` (off) or 8 % toward black (on), in Oklab;
   - thumb white with `shadow(2)`;
-  - the label is muted when off and foreground when on (pointer); always foreground on touch.
+  - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
 - **Motion** (tracks `CoilSwitchTrack.thumb` / `.squish` / `.tint`):
   - thumb on `standard`, squish on `quick`, tint on `fade`;
   - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;

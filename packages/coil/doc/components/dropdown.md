@@ -13,7 +13,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 
 ## Dropdown (action menu; +sub, +search)
 
-- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px, edge to edge, 4 above and below, in `border` at 60 % of its own alpha: foreground at about 7 %); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding 24).
+- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px, edge to edge, 4 above and below, in `border` at 60 % of its own alpha: foreground at about 7 %); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding `popupInset + itemPaddingX`: 12 pointer, 16 touch, on the rows' text edge).
 - **Sizes:** rows per §13.1. Default width 288 (pointer), `max(trigger, 220)` (touch). Submenu width 224.
 - **States:** the pointer highlight glides; checked rows are semibold with a check; the single-choice selected fill glides on `standard`; disabled rows are skipped.
 - **Submenus:**
