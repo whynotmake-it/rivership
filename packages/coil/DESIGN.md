@@ -580,7 +580,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** one cap per key of a shortcut (`⇧⌘O` → ⇧ ⌘ O; `Ctrl+K` → Ctrl K), 2 apart.
 - **Sizes:** 18 square at least (it scales with text), padding 4, 11 type with tabular figures, radius 3. No touch bump; it isn't interactive.
-- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps suit any surface, the inverted tooltip bubble included.
+- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps follow the text around them and suit any surface, the inverted tooltip bubble included. Where no color is set they take `foreground`, never a muted fallback; muted caps come only from a component that sets muted text around them on purpose (a menu's shortcut column, the command menu footer's hints, a text field's slot in its placeholder color).
 - **In a tooltip:** the shortcut slot pins the cap to 16, which fits the caption line, so the bubble stays 24 tall.
 - **Semantics:** the keys read as one label.
 

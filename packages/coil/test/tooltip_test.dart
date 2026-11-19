@@ -242,6 +242,53 @@ void main() {
     expect(icons.color, CoilColors.light.background);
   });
 
+  testWidgets('shortcut caps read in the bubble, light and dark', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    Color? colorOf(Finder text) =>
+        tester.renderObject<RenderParagraph>(text).text.style?.color;
+    for (final colors in [CoilColors.light, CoilColors.dark]) {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(
+        testApp(
+          colors: colors,
+          tier: CoilTier.pointer,
+          home: Center(
+            child: CoilTooltip(
+              message: const Text('Search'),
+              shortcut: CoilKbd('⌘K'),
+              child: CoilButton.icon(
+                onPressed: () {},
+                semanticLabel: 'Search button',
+                icon: const SizedBox.square(dimension: 16),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      final message = colorOf(
+        find.descendant(
+          of: find.text('Search'),
+          matching: find.byType(RichText),
+        ),
+      );
+      final key = find.descendant(
+        of: find.byType(CoilKbd),
+        matching: find.text('K'),
+      );
+      // The keys in the message's color, not the page's, which is the
+      // bubble's fill and would hide them.
+      expect(
+        colorOf(find.descendant(of: key, matching: find.byType(RichText))),
+        message,
+      );
+      expect(message, isNot(colors.foreground));
+    }
+  });
+
   testWidgets('screen readers get the message', (tester) async {
     await tester.pumpWidget(_toolbar());
     final node = tester.getSemantics(find.bySemanticsLabel('Bold button'));

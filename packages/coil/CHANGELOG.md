@@ -2,6 +2,15 @@
 
 Milestone M0, unreleased.
 
+- `CoilKbd` with no ambient text color takes the theme's `foreground`
+  instead of `mutedForeground`, so its caps follow the surrounding text
+  as DESIGN.md says. Where a component sets muted text around them on
+  purpose (menu shortcuts, the command menu footer, a text field's slot)
+  they stay muted.
+- Fix: a `CoilTooltip`'s `shortcut` caps showed in the page's text color
+  on the inverted bubble, so they were invisible: the theme override that
+  pins them to 16 set the body style again. They take the bubble's text
+  color now.
 - `CoilCheckbox` (and `CoilCheckboxIndicator`, so a checkbox group's
   rows) shows a press as it shows hover: the foreground 40 % border, and
   the hover light under a plastic theme. A touch press had no feedback,
