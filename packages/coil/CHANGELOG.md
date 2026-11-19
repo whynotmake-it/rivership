@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- A compact `CoilButton` in a compact `CoilInput`'s slot no longer grows
+  the field to fit (a 28 field became 32, a 36 touch one 40): at the
+  slot's size step the button takes the height that fits with
+  `slotInset` on each side (`CoilInputSlotScope.maxExtent`, 24 in a 28
+  field, 32 in a 36 one), inset and concentric as in a regular field.
 - DESIGN.md now matches the code on two points the owner kept: a
   switch's label is muted while off on every tier (it said touch kept
   it foreground), and a dropdown's empty state is padded

@@ -29,7 +29,8 @@ enum CoilInputSlotPlacement {
 ///
 /// `CoilInput` puts one around its [CoilInputSlotPlacement.auto] and
 /// [CoilInputSlotPlacement.inset] slots. A `CoilButton` inside defaults to
-/// [size] and to [radiusFor] its height, so its corners are concentric with
+/// [size], at most [maxExtent] tall so it fits the field without growing
+/// it, and to [radiusFor] its height, so its corners are concentric with
 /// the field's, and drops its own touch hit padding: the field takes taps
 /// around an inset slot instead. An explicit `size:` or `style:` on the
 /// button still wins.
@@ -62,6 +63,15 @@ class CoilInputSlotScope extends InheritedWidget {
 
   /// The least space between an inset slot and the field's edge.
   final double minInset;
+
+  /// The tallest a control can be and still sit inset without growing the
+  /// field: its minimum height less [minInset] on each side, 28 in a 36
+  /// field and 24 in a 28 compact one.
+  ///
+  /// A control at [size] that is taller (a compact button is 28, as tall as
+  /// a compact field) takes this height instead, so a compact field keeps
+  /// its height as a regular one does.
+  double get maxExtent => fieldHeight - 2 * minInset;
 
   /// The corner radius that keeps a control [extent] tall concentric with
   /// the field's corner when it sits inset, or null where the control

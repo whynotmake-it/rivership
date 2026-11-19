@@ -192,17 +192,61 @@ void main() {
       expect(insets.end, 4);
     });
 
-    testWidgets('a compact field gives a button its 2 px inset', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        CoilInput(key: _field, size: CoilSize.compact, trailing: _show()),
-      );
-      final field = _fieldRect(tester);
-      expect(field.height, 32);
-      expect(_insets(field, _buttonRect(tester)).end, 2);
-    });
+    for (final tier in CoilTier.values) {
+      for (final (name, shape) in [
+        ('rounded', CoilShape.rounded),
+        ('pill', CoilShape.pill),
+      ]) {
+        testWidgets(
+          'a compact field keeps its height with a button, inset and '
+          'concentric: ${tier.name}, $name',
+          (tester) async {
+            await _pump(
+              tester,
+              const CoilInput(key: _field, size: CoilSize.compact),
+              tier: tier,
+              shape: shape,
+            );
+            final plain = _fieldRect(tester).height;
+
+            // Whether the slot makes it compact or the app says so.
+            for (final size in [null, CoilSize.compact]) {
+              var presses = 0;
+              await _pump(
+                tester,
+                CoilInput(
+                  key: _field,
+                  size: CoilSize.compact,
+                  trailing: _show(size: size, onPressed: () => presses++),
+                ),
+                tier: tier,
+                shape: shape,
+              );
+              final field = _fieldRect(tester);
+              final button = _buttonRect(tester);
+              expect(field.height, plain, reason: 'the field keeps its height');
+              final insets = _insets(field, button);
+              expect(insets.top, greaterThan(0));
+              expect(insets.bottom, insets.top);
+              expect(insets.end, insets.top);
+              final fieldRadius = shape.radii(tier).item;
+              expect(
+                _buttonRadius(tester),
+                CoilShape.nested(
+                  fieldRadius < field.height / 2
+                      ? fieldRadius
+                      : field.height / 2,
+                  insets.top,
+                ),
+              );
+
+              await tester.tap(find.byKey(_slot));
+              expect(presses, 1);
+            }
+          },
+        );
+      }
+    }
 
     testWidgets('inline keeps the button beside the text; the field grows', (
       tester,
