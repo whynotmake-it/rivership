@@ -152,8 +152,16 @@ Every rounded shape is a superellipse (`RoundedSuperellipseBorder`,
 ## Icons
 
 coil bundles no icons. Slots take any widget and are styled through
-Flutter's `IconTheme`, with `applyTextScaling` on so icons grow with text. Glyphs a component draws itself (check, chevron,
-spinner) can be replaced through a slot or builder.
+Flutter's `IconTheme`, with `applyTextScaling` on so icons grow with text.
+
+The glyphs coil draws itself (check, dash, copy, ×, alert, chevrons, send,
+stop) are a role map in the theme, `CoilThemeData.icons`, so an app swaps
+them for its own icon set in one place, including where a component has no
+slot (the calendar's arrows, the sheet's close button). A component's slot
+still wins. Where coil animates an icon, it hands it a `CoilIconPresence`:
+an icon can animate itself from it, and any other fades and scales in.
+[doc/icons.md](doc/icons.md) has complete sets for Lucide and Material
+Symbols, and an animated check.
 
 ## Tests
 

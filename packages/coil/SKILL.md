@@ -28,6 +28,7 @@ Change things here before ejecting. Every layer below wraps a subtree.
 - **App-wide:** `CoilTheme(data: CoilThemeData(...), child: app)`. Start from `CoilThemeData.light` or `.dark`.
 - **Colors:** `CoilColors.fromSeed(brightness:, brand:, neutralHue:, neutralChroma:)`.
 - **Shape:** `shape: CoilShape.rounded`, `.pill` or `.sharp`.
+- **Icons:** `icons: CoilIcons(check: Icon(...), close: Icon(...))` swaps coil's drawn glyphs for an icon set everywhere they show; unnamed roles keep coil's. An icon can animate itself from `CoilIconPresence.maybeOf(context)`. See `doc/icons.md`.
 - **Size tier:** `tier: CoilTier.pointer` or `.touch`. By default it follows the platform.
 - **Motion:** `motion: CoilMotion(...)` on `CoilThemeData` for the tokens. For one track of one component type, set its style's `motions`: `theme.withComponentStyle(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: ...}))`. Per instance, use the component's `motion:` and `motions:`.
 - **One component type:** `theme.withComponentStyle(CoilButtonStyle(...))`. Per instance, use the `style:` parameter.

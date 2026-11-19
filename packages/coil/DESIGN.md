@@ -277,6 +277,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 - `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
 - overlays fade only, with no blur, scale or slide;
 - `stagger` becomes zero, so revealed siblings fade in together;
+- icon presences (§11) land at once: a checkbox tick, a select check or a copy result appears complete, and swapped icons trade places without crossing;
 - loops (spinners, Skeleton pulse) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
 - the holds stay.
 
@@ -422,8 +423,11 @@ Every component ships with all of these. They're required to call it done.
   - `color` = the label's current color;
   - `weight` = 400 at rest, 533 when hovered or active (`CoilIconWeight`, the 1.5 → 2 stroke);
   - `applyTextScaling: true`.
-- Variable icon fonts read `weight` directly. Stroke icons scale their stroke by `1.5 · weight / 400`.
-- **Glyphs a component draws itself** (checkbox tick and dash, select check, chevrons, spinner, radio dot) are private painters on a 24-unit grid with stroke 2 and round caps. They size through `CoilIconSize.of(context)`, and each can be replaced through a slot or builder (`checkmark:`, `indicator:`, `glyphBuilder:`, `loadingIndicator:`).
+- Variable icon fonts read `weight` directly. Stroke icons scale their stroke by `1.5 · weight / 400`. A set with one static font per stroke picks its font by `weight`; a filled set loses the cue.
+- **Glyphs coil draws** are icons with a role, named for what they mean: `check`, `dash`, `copy`, `failed`, `close`, `alert`, `chevronStart`, `chevronEnd`, `chevronDown`, `chevronUp`, `send`, `stop` (`CoilIconRole`). Each is a field of `CoilIcons`, the theme's role map (`CoilThemeData.icons`), so an app swaps coil's glyphs for its icon set app-wide, as Fluid Functionalism's `IconProvider` does, also where a component has no slot (calendar arrows, the sheet's close button). Precedence: a component's slot (`checkmark:`, `indicator:`, `dismissIcon:`, `separator:`, `glyphBuilder:`…), then the theme's entry, then coil's drawn glyph (`CoilDrawnGlyph`: a 24-unit grid, round caps, the stroke following `weight`; the select trigger's chevron keeps a fixed 2). Icons are plain widgets in the slot's `IconTheme`, never `IconData`, and a custom icon sits where coil's glyph sat, at the same size and center. [doc/icons.md](doc/icons.md) lists where each role shows and has complete Lucide and Material Symbols sets.
+- **Direction:** coil's `chevronStart` and `chevronEnd` mirror in RTL. A custom icon mirrors itself (`matchTextDirection: true`).
+- **Animated icons:** where coil animates an icon in, out or into another (checkbox tick and dash, select and question-row check, the copy feedback, the composer's send and stop), it wraps it in a `CoilIconPresence`: an `Animation<double>`, 0 absent to 1 fully there, clamped (a bounce belongs outside the icon), on the component's motion tokens, and jumping to its end under reduced motion. An icon that reads it (`CoilIconPresence.maybeOf`) animates itself, as coil's tick does by drawing in; any other gets coil's fallback, a fade and a scale from 80 %, applied when it paints. A swap is two presences crossing. coil's own glyphs keep their look: the tick and dash draw in, the copy feedback and send/stop blur-fade. Morphs between two shapes and a linear-progress contract are out of scope.
+- **Not icons:** the spinner (it loops; `loadingIndicator:` replaces it), the radio dot and the thinking steps' dots are drawn and aren't roles.
 - **Icons are optional decoration.** Never put meaning only in an icon: icon-only buttons need `semanticLabel`.
 
 ## 12. Writing
@@ -588,7 +592,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - disabled: 50 %.
   - High contrast draws the box around the tick.
 - **API:** `value: bool?` + `tristate`. A tap cycles false → true → (null) → false.
-- **Motion:** the tick draws on `fade` and retracts on `fadeExit`; check ↔ dash re-keys (old retracts, new draws); border on `fade`.
+- **Motion:** the tick draws on `fade` and retracts on `fadeExit`; check ↔ dash re-keys (old retracts, new draws); border on `fade`. The tick and dash are the theme's `check` and `dash` icons (§11) in a `CoilIconPresence` on the `glyph` track: coil's draw themselves, an app's animate themselves or fade and scale. Reduced motion lands them at once.
 - **Keyboard:** Space toggles. Enter toggles only inside a choice card (Field).
 - **Semantics:** `checked`, `mixed`, `enabled`, label from the Field.
 - **Do:** use it for independent on/off in forms, with a visible label.
@@ -768,7 +772,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### InputCopy
 
-- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. The action always shows: without an `icon`, coil draws its own copy glyph (two sheets). Label it with a Field: a tap on the label copies.
+- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. The action always shows: without an `icon`, it is the theme's `copy` icon (§11), else coil's drawn copy glyph (two sheets). Label it with a Field: a tap on the label copies.
 - **Sizes:** row = `controlHeight`, padding `controlPaddingX`.
 - **States:**
   - idle;
@@ -776,8 +780,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s after the last copy, then idle. Any failure to set the clipboard counts as `failed`, not only a platform error.
   - Copying again while the result shows animates nothing and only restarts the 2 s. Copying while the result leaves turns it around from where it is (no restart, the check stays drawn). This is `CoilCopyController` plus `CoilCopySwitcher`, the one state machine every copy affordance uses.
   - The button label width is reserved by a "Copied" ghost.
-- **Feedback:** **inline on every platform.** The icon swaps to a drawn check and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap: blur-fade at scale 0.8, in on `quick`, out on `quickExit`. The two overlap briefly. The check and × draw in on `fade`, once per appearance. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`; the swap and draw run in the shared `CoilCopySwitcher` / `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`, so reduced motion makes a custom swap instant while the draw stays a fade.
+- **Feedback:** **inline on every platform.** The icon swaps to a check (the theme's `check`, or a drawn one; `failed` for an ×) and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
+- **Motion:** icon swap: two icon presences crossing (§11), in on `quick`, out on `quickExit`; coil's glyphs blur-fade at scale 0.8 with them and its check and × also draw in on `fade`, once per appearance; an app's icons animate themselves or fade and scale. The icon stays in place while the button's label cross-fades beside it, start-aligned (`CoilCopySwitcher`), so nothing shifts when the longer label leaves. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`; the swap and draw run in the shared `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`. Reduced motion lands the swap and the draw at once.
 - **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
 - **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed" when the result appears (not again for a copy that only extends it).
 - **Keyboard:** Enter or Space copies.
@@ -1107,7 +1111,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **Anatomy:** a container (hairline, padding 8) → attachment tray (FileThumbnail 80 tiles, each with a 20 × badge with a 32 / 44 hit) → queue rows (32 / 28 / 44, muted, reorderable) → textarea (subtitle role, 1–10 lines) → toolbar (attach, model, trailing **send button**).
 - **Corners:** concentric with the send button in the bottom trailing corner (§5): its drawn radius + its visual inset. Pointer 8 + 8 = **16**, touch 10 + 16 = **26** (`rounded`); pointer 14 + 8 = **22**, touch 18 + 16 = **34** (`pill`); `sharp` stays 1. The corner holds however tall the draft grows, and the attach button in the other bottom corner shares it. The attachment tray's tiles take the nested radius (corner − 8), so the top corners match too.
-- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**. Send and queue share the arrow, so only the swap to and from stop animates, with the blur-fade on `quick`.
+- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**. Send and queue share the arrow, so only the swap to and from stop animates: two icon presences crossing on `quick` (§11), coil's arrow and square blur-fading with them. The icons are the theme's `send` and `stop`.
 - **Queue:** while a reply streams, a draft queues instead of sending. Enter or the queue button hands the trimmed text to `onQueue` and clears the field. With an empty field the button is stop. Without `onQueue`, nothing sends until the reply ends. The app owns the queue: it shows it in a QueuedStack and sends the front message when the reply ends.
 - **Behavior:**
   - **Hardware keyboard:** Enter sends, Shift+Enter makes a newline, ↑ in an empty field recalls history.

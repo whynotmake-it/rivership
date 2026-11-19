@@ -2,6 +2,41 @@
 
 Milestone M0, unreleased.
 
+- An app can swap coil's icons for its own icon set app-wide:
+  `CoilThemeData.icons` takes a `CoilIcons`, one widget per role coil draws
+  (`check`, `dash`, `copy`, `failed`, `close`, `alert`, `chevronStart`,
+  `chevronEnd`, `chevronDown`, `chevronUp`, `send`, `stop`), and a partial
+  set `merge`s onto the default. Every glyph coil drew now goes through it,
+  including places with no slot: the calendar's arrows, the sheet's and
+  dialog's close buttons, the data table's pages, menu checks and chevrons,
+  chip and attachment remove, table sort and the select and combobox
+  chevrons. A component's own slot still wins. `CoilIcon(role)` shows the
+  theme's icon or coil's glyph. doc/icons.md has complete Lucide and
+  Material Symbols sets.
+- Icons that animate get a `CoilIconPresence`, a 0 to 1 `Animation` on
+  coil's motion tokens: the checkbox's tick and dash, the select's and
+  question rows' check, the copy feedback and the composer's send and stop.
+  An icon that reads `CoilIconPresence.maybeOf` animates itself (a Lottie,
+  a painter); any other fades and scales in and out. `CoilIconSwitcher`
+  shows an icon in a presence and crosses two on a swap. coil's own glyphs
+  look and move as before, frame for frame.
+- Breaking: under reduced motion icon presences land at once: the checkbox
+  tick, the select check and the copy check no longer draw in on `fade`.
+- Breaking: a checkbox going from checked to indeterminate retracts the
+  tick while the dash draws in (it used to cut to the dash), as DESIGN.md
+  describes. A custom `checkmark:` in a select fades and scales instead of
+  only fading.
+- Breaking: `CoilCopyGlyph(status:)` swaps between statuses itself and
+  isn't a `CoilCopySwitcher`'s content any more. `CoilInputCopy`'s button
+  keeps its icon in place while only the label cross-fades, and
+  `CoilCopySwitcher` lines its contents up at the start, so the action no
+  longer jumps when "Copied" leaves.
+- Breaking: `CoilDrawnGlyph.progress` is nullable (null follows the icon's
+  presence); `CoilCheckboxIndicator` is a `StatelessWidget`.
+- Fix: the attachment's and combobox chip's remove × declared a 14 and 12
+  icon while drawing across their 20 box; they declare 20, so an app's
+  icon lands where coil's × is. coil's × is unchanged.
+
 - Breaking: `CoilDatePicker`'s popover applies each pick at once, with
   time too: `onChanged` reports every day and every turn of a time column,
   the field's label follows, and closing the popover (a tap outside,

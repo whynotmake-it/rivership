@@ -57,6 +57,8 @@ then this guide, and FF's web names last.
 | Corner family | `CoilShape` (`.rounded`, `.pill`, `.sharp` or your own `CoilRadii` per tier) | none |
 | Type | `CoilTypography` (roles per tier and size), `CoilTextTheme` (the roles as `TextStyle`s), `CoilTheme.textOf` | `FluidTypographyThemeData`, `FluidTypeRole` |
 | Focus ring | `CoilFocusRingTheme` (width, gap, color) | none |
+| An app's icon set | `CoilIcons` (one `Widget?` per `CoilIconRole`: `check`, `dash`, `copy`, `failed`, `close`, `alert`, `chevronStart`, `chevronEnd`, `chevronDown`, `chevronUp`, `send`, `stop`) on `CoilThemeData.icons`; `CoilIcon(role)` shows the theme's or coil's drawn glyph | FF's `IconProvider` / `useIcons()` |
+| An icon's presence while it animates | `CoilIconPresence` (`maybeOf`, `transition`), shown with `CoilIconSwitcher` | none |
 | Lighting (flat → lit) | `CoilPlasticity(amount:)` (0 to 1; `.flat` is 0, the default, `.subtle` 0.5; `flattenAbove`) on `CoilThemeData.plasticity` and each control style's `plasticity`; resolved per `CoilReliefRole { raised, filled, quiet, recessed, field, track }` into a `CoilRelief` with `CoilTheme.reliefOf(context, role)` and painted by `CoilRelief.decorate(shapeDecoration, relief)` | none |
 
 Rules:
@@ -86,7 +88,7 @@ Rules:
 | Text a component builds from data | a builder returning a `Widget`, with a `…Label` string function beside it if screen readers need it | `CoilCalendarLabels.monthTitle` / `.dayLabel`, `CoilDataTableLabels.count` |
 | Leading / trailing slot | `leading`, `trailing` | any `Widget`, styled by `IconTheme` and `DefaultTextStyle`. Where the slot's place can change, `leadingPlacement` / `trailingPlacement` (`CoilInputSlotPlacement?`, null is `auto`) |
 | Icon-only content | `icon` | named constructor `.icon(...)` where a widget can be icon-only |
-| Drawn glyph replacement | `<glyph>Builder` or a `Widget?` slot | e.g. `CoilCheckbox.glyphBuilder`, `CoilSelect.checkmark` |
+| Drawn glyph replacement | `<glyph>Builder` or a `Widget?` slot for one instance; `CoilThemeData.icons` (a `CoilIcons` role) for the whole app | e.g. `CoilCheckbox.glyphBuilder`, `CoilSelect.checkmark`, `CoilIcons.check` |
 | Per-instance motion | `motion: CoilMotion?`, plus `motions: Map<Coil<Name>Track<Object>, Motion>?` on multi-track components | see §6 |
 | Per-instance style | `style: Coil<Name>Style?` | see §6 |
 | Overlay presentation | `presentation: CoilPresentation?` | null lets `CoilAdaptivePopup` decide |
@@ -119,7 +121,9 @@ Rules:
 | enter/exit of a popover | `CoilBlurFade` (via `CoilAdaptivePopup`) |
 | haptic feedback | `CoilHaptics.play(context, event)` |
 | a pile of cards that peeks folded and fans out into a list (folded peeks, fanned spacing by measured heights, anchoring, which card takes input, Tab order) | `CoilCardStack` with `CoilCardStackItem`s and a `CoilCardStackController` |
-| copy to clipboard with feedback (copy glyph → check, 2 s hold, extend on repeat, announce) | `CoilCopyController` with `CoilCopySwitcher` / `CoilCopyGlyph` |
+| copy to clipboard with feedback (copy glyph → check, 2 s hold, extend on repeat, announce) | `CoilCopyController` with `CoilCopyGlyph` (the icon) and `CoilCopySwitcher` (a label beside it) |
+| an icon coil draws (a check, an ×, a chevron) | `CoilIcon(role)`, after the component's own slot: `slot ?? const CoilIcon(.close)`. A default that draws its own way (the copy feedback, send/stop) checks `CoilTheme.of(context).icons[role]` first; a bare `CoilDrawnGlyph` would skip an app's `CoilIcons` |
+| an icon that appears, disappears or swaps | `CoilIconSwitcher` (a `MotionSwitcher` whose children get a `CoilIconPresence`), on the component's tokens; a default glyph that must look its own way reads `CoilIconPresence.maybeOf` itself |
 | keyboard commands | `Shortcuts` mapping keys to intents, handled in `Actions`; never `Focus.onKeyEvent` or `CallbackShortcuts` (typeahead is the exception). A command an app may want to change gets a public `Coil…Intent` handled by `CoilDefaultAction` (`CoilDismissIntent` for Escape on any popup); the rest use private intents. Flutter's intents only where coil's action is the nearest (`ActivateIntent`), never `DismissIntent`, `ScrollIntent` or `DirectionalFocusIntent` (DESIGN.md §9.2.1) |
 | cross-fades and size changes in place | `motor_widgets`' `MotionSwitcher`, `MotionSizeSwitcher`, `MotionSize`, with `CoilBlurFade` as the `transitionBuilder` |
 
@@ -146,8 +150,25 @@ already has a shape for a state, coil uses it: `CoilCheckbox` takes
   with `IconTheme` (size, color, `weight`, `applyTextScaling: true`) and
   `DefaultTextStyle`. A custom slot glyph that paints itself should size
   with `CoilIconSize.of(context)` so it grows with text like `Icon` does.
-- Glyphs a component draws itself (checkbox tick, chevron, spinner) are
-  private painters, replaceable through a slot or a builder.
+  Icons are widgets, never `IconData` (`test/architecture/widget_params_test.dart`).
+- Glyphs a component draws itself are icons with a role: the component
+  shows `CoilIcon(role)` after its slot, so the order is the slot, then the
+  theme's `CoilIcons` entry, then coil's `CoilDrawnGlyph`. Roles are named
+  for what they mean (`close`, `failed`, `chevronEnd`), not their shape
+  (`cross`); a new glyph gets a role, a `CoilIcons` field and a row in
+  doc/icons.md. A place without a slot still reaches the theme's icon.
+- Lay an icon out like `Icon` does: give it `IconTheme.size` and let it
+  sit in its box. Where a component's box is bigger than the icon, set
+  `IconTheme.size` to what coil's glyph fills, so an app's `Icon` lands on
+  the same rect.
+- An icon that animates in, out or into another gets a
+  `CoilIconPresence` (via `CoilIconSwitcher`): 0 to 1, clamped, on the
+  component's tokens, instant under reduced motion. An icon that reads it
+  animates itself; the rest get the fade-and-scale fallback. coil's own
+  defaults read it too, so they use the API apps use. A spring's bounce
+  goes on a container outside the icon, never into the presence.
+- The spinner, the radio dot and step dots aren't roles: they are
+  indicators, not icons.
 - State-dependent slot content uses a builder
   `Widget Function(BuildContext, Set<WidgetState>)`.
 
@@ -386,3 +407,4 @@ Look:
 | 2026-11-19 | No selection chip in the calendar's header (supersedes the 2026-11-19 chip entry): a date picker's footer names the draft instead, wherever it has a footer with Done (every sheet; a popover that picks a time), with the draft on the leading side (`CoilCalendarLabels.summary`, "Fri, Nov 22, 2019", with the time when it picks one; `summaryLabel`, "Selected: Friday, November 22, 2019", for screen readers; nothing before a pick) and Done on the trailing side at its own width, not full width. A date-only popover stays footer-less. `CoilCalendarLabels.selection` / `selectionLabel` are gone. The summary isn't a button, and the layout is the date picker's own, not a `CoilActionBar` option, with Done in a `CoilActionBar` row | owner: the chip "reads like a second title"; of five rendered directions, the owner chose the footer. It sits beside the action it describes, so it reads as "this is what Done confirms" rather than a heading, and the footer is already there. A summary-plus-action row is one layout so far; it moves into `CoilActionBar` once a second component needs it |
 | 2026-11-19 | A calendar's edges are its days' edges: the title's text and the arrows' glyphs line up with them (ghost padding hangs outside), and a date picker puts its time band and footer on them, in a sheet on the sheet's text inset. The date picker's popover hugs the calendar (`CoilAdaptivePopup.minWidth: 0`) rather than the field's width. Days grow up to 30 % in a wide space | owner review: the popover centered the calendar in a field-wide box and nothing in the sheet shared an edge ("nothing is aligned") |
 | 2026-11-19 | A date picker's popover applies each pick at once (`onChanged` per pick), with or without time; closing it is done, with no Done and no Cancel. Only the sheet keeps a draft and Done (supersedes the 2026-11-18 confirm entry for popovers) | owner: "on desktop not to have the done button, but instead just update the label"; iOS's compact picker, macOS and MUI's desktop pickers commit live, while the confirm camp is mostly modal (Material) or Ant, Mantine and Windows' time flyout |
+| 2026-11-19 | An app's icon set is a role map in the theme, like Fluid Functionalism's `IconProvider`: `CoilThemeData.icons` is a `CoilIcons` with one `Widget?` per role coil draws (`CoilIconRole`, named for meaning: `close` and `failed` are both an ×), `merge`d so a partial set replaces only what it names, and every drawn glyph goes through `CoilIcon(role)`, slot first. Icons are plain widgets styled by `IconTheme`, not `IconData` or a builder. Animation goes through an inherited widget, not a wrapper: `CoilIconPresence` hands the icon a clamped 0–1 `Animation` on coil's tokens (instant under reduced motion); reading it claims it, and an icon that doesn't gets a fade and a scale from 0.8 at paint time. A swap is two presences crossing; coil's own tick, copy feedback and send/stop read the presence and keep their look. No morph or linear-progress contract; the spinner isn't a role | owner: apps swap coil's icons app-wide, the slotless places (calendar arrows, the sheet's close) were the gap; an inherited presence lets a custom set bring its own animations (a Lottie, a painter) while plain icons still animate, without a per-frame rebuild |

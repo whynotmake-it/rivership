@@ -105,6 +105,9 @@ existing component (`select`, `switch`, `tabs`) as the worked example.
   - gaps don't scale.
 - Heights are minimums (`pad + line box + pad`), never fixed.
 - No bundled icons: slots take any widget.
+- A glyph the component draws is `slot ?? const CoilIcon(role)`, so an app's
+  `CoilIcons` reach it; one that animates in or out sits in a
+  `CoilIconSwitcher` (api_guide.md §5, doc/icons.md).
 
 ## 7. Tests (all required)
 

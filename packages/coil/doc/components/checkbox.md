@@ -20,7 +20,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - disabled: 50 %.
   - High contrast draws the box around the tick.
 - **API:** `value: bool?` + `tristate`. A tap cycles false → true → (null) → false.
-- **Motion:** the tick draws on `fade` and retracts on `fadeExit`; check ↔ dash re-keys (old retracts, new draws); border on `fade`.
+- **Motion:** the tick draws on `fade` and retracts on `fadeExit`; check ↔ dash re-keys (old retracts, new draws); border on `fade`. The tick and dash are the theme's `check` and `dash` icons (§11) in a `CoilIconPresence` on the `glyph` track: coil's draw themselves, an app's animate themselves or fade and scale. Reduced motion lands them at once.
 - **Keyboard:** Space toggles. Enter toggles only inside a choice card (Field).
 - **Semantics:** `checked`, `mixed`, `enabled`, label from the Field.
 - **Do:** use it for independent on/off in forms, with a visible label.
