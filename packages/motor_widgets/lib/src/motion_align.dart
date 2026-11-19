@@ -107,12 +107,12 @@ class MotionAlign extends StatelessWidget {
       onEnd: onEnd,
       tickerRate: tickerRate,
       debugLabel: debugLabel ?? 'MotionAlign',
-      tracks: [
-        MotionAlignTrack.alignment.implicit(
+      targets: [
+        MotionAlignTrack.alignment.target(
           alignment.resolve(Directionality.maybeOf(context)),
         ),
-        MotionAlignTrack.widthFactor.implicit(widthFactor),
-        MotionAlignTrack.heightFactor.implicit(heightFactor),
+        MotionAlignTrack.widthFactor.target(widthFactor),
+        MotionAlignTrack.heightFactor.target(heightFactor),
       ],
       builder: (context, value, child) => Align(
         alignment: value(MotionAlignTrack.alignment)!,
