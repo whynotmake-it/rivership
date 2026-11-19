@@ -125,8 +125,8 @@ final class CoilCopyTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilCopy.swap',
   );
 
-  /// coil's drawn check or × drawing itself in. Default motion: `fade`;
-  /// under reduced motion it is drawn at once.
+  /// coil's drawn check or × drawing itself in. Default motion: `fade`,
+  /// which reduced motion keeps (the swap around it is instant).
   static final draw = CoilCopyTrack<double>._(
     .single,
     debugLabel: 'CoilCopy.draw',
@@ -267,12 +267,16 @@ class CoilCopyGlyph extends StatelessWidget {
           styled: null,
           token: token,
         );
-    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    // The check draws in on `fade`; under reduced motion it is there at
-    // once, like every icon presence.
-    final draw = reduced
-        ? const Motion.instant()
-        : track(CoilCopyTrack.draw, tokens.fade);
+    // coil's check draws itself in on `fade`, which survives reduced
+    // motion; only its presence (the swap) lands at once.
+    final draw = CoilTheme.trackMotionOf(
+      context,
+      CoilCopyTrack.draw,
+      instance: motions,
+      styled: null,
+      token: tokens.fade,
+      spatial: false,
+    );
     final icons = CoilTheme.of(context).icons;
     final status = this.status!;
     return CoilIconSwitcher(
@@ -307,7 +311,7 @@ class _SwapGlyph extends StatelessWidget {
   Widget build(BuildContext context) {
     final presence = CoilIconPresence.maybeOf(context);
     final draw = this.draw;
-    Widget drawn = CoilDrawnGlyph(glyph, progress: 1);
+    Widget drawn = CoilDrawnGlyph(glyph);
     if (draw != null) {
       drawn = SingleMotionBuilder(
         value: 1,

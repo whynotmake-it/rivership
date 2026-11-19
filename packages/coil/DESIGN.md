@@ -277,7 +277,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 - `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
 - overlays fade only, with no blur, scale or slide;
 - `stagger` becomes zero, so revealed siblings fade in together;
-- icon presences (§11) land at once: a checkbox tick, a select check or a copy result appears complete, and swapped icons trade places without crossing;
+- icon presences (§11) land at once: a checkbox tick or a select check appears complete, and swapped icons (the copy feedback, send and stop) trade places without crossing. coil's copy check still draws itself in on `fade` inside its presence;
 - loops (spinners, Skeleton pulse) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
 - the holds stay.
 
@@ -781,7 +781,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Copying again while the result shows animates nothing and only restarts the 2 s. Copying while the result leaves turns it around from where it is (no restart, the check stays drawn). This is `CoilCopyController` plus `CoilCopySwitcher`, the one state machine every copy affordance uses.
   - The button label width is reserved by a "Copied" ghost.
 - **Feedback:** **inline on every platform.** The icon swaps to a check (the theme's `check`, or a drawn one; `failed` for an ×) and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap: two icon presences crossing (§11), in on `quick`, out on `quickExit`; coil's glyphs blur-fade at scale 0.8 with them and its check and × also draw in on `fade`, once per appearance; an app's icons animate themselves or fade and scale. The icon stays in place while the button's label cross-fades beside it, start-aligned (`CoilCopySwitcher`), so nothing shifts when the longer label leaves. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`; the swap and draw run in the shared `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`. Reduced motion lands the swap and the draw at once.
+- **Motion:** icon swap: two icon presences crossing (§11), in on `quick`, out on `quickExit`; coil's glyphs blur-fade at scale 0.8 with them and its check and × also draw in on `fade`, once per appearance; an app's icons animate themselves or fade and scale. The icon stays in place while the button's label cross-fades beside it, start-aligned (`CoilCopySwitcher`), so nothing shifts when the longer label leaves. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`; the swap and draw run in the shared `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`. Reduced motion makes the swap instant; coil's check still draws in on `fade`.
 - **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
 - **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed" when the result appears (not again for a copy that only extends it).
 - **Keyboard:** Enter or Space copies.

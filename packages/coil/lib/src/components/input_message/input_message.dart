@@ -380,7 +380,7 @@ class _SendGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (CoilTheme.of(context).icons[role] case final icon?) return icon;
-    final drawn = CoilDrawnGlyph(CoilIcon.glyphFor(role), progress: 1);
+    final drawn = CoilDrawnGlyph(CoilIcon.glyphFor(role));
     final presence = CoilIconPresence.maybeOf(context);
     if (presence == null) return drawn;
     return CoilBlurFade(presence: presence, child: drawn);

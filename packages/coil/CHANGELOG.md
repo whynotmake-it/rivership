@@ -21,7 +21,8 @@ Milestone M0, unreleased.
   shows an icon in a presence and crosses two on a swap. coil's own glyphs
   look and move as before, frame for frame.
 - Breaking: under reduced motion icon presences land at once: the checkbox
-  tick, the select check and the copy check no longer draw in on `fade`.
+  tick and the select check no longer draw in on `fade` (the copy swap was
+  already instant, and coil's copy check still draws itself in).
 - Breaking: a checkbox going from checked to indeterminate retracts the
   tick while the dash draws in (it used to cut to the dash), as DESIGN.md
   describes. A custom `checkmark:` in a select fades and scales instead of
@@ -31,8 +32,8 @@ Milestone M0, unreleased.
   keeps its icon in place while only the label cross-fades, and
   `CoilCopySwitcher` lines its contents up at the start, so the action no
   longer jumps when "Copied" leaves.
-- Breaking: `CoilDrawnGlyph.progress` is nullable (null follows the icon's
-  presence); `CoilCheckboxIndicator` is a `StatelessWidget`.
+- `CoilDrawnGlyph.presence` draws a glyph in and out with its icon
+  presence. Breaking: `CoilCheckboxIndicator` is a `StatelessWidget`.
 - Fix: the attachment's and combobox chip's remove × declared a 14 and 12
   icon while drawing across their 20 box; they declare 20, so an app's
   icon lands where coil's × is. coil's × is unchanged.

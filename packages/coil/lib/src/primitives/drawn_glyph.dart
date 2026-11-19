@@ -36,7 +36,8 @@ class CoilIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      CoilTheme.of(context).icons[role] ?? CoilDrawnGlyph(glyphFor(role));
+      CoilTheme.of(context).icons[role] ??
+      CoilDrawnGlyph.presence(glyphFor(role));
 }
 
 /// The small glyphs coil draws itself (DESIGN.md §11), by shape. Components
@@ -84,19 +85,28 @@ enum CoilGlyph {
 /// [CoilIconWeight.rest] and 2 at [CoilIconWeight.emphasis]. Indicators
 /// (a checkbox tick, a select check, a field alert) draw at emphasis.
 /// [progress] draws the strokes in from 0 (nothing) to 1
-/// (complete), for a glyph that animates in. Without it, the glyph draws
-/// itself in and out with its [CoilIconPresence] when a component animates
-/// it (claiming it, so no fallback applies), and is complete otherwise.
+/// (complete), for a glyph that animates in. [CoilDrawnGlyph.presence]
+/// draws itself in and out with its [CoilIconPresence] instead.
 class CoilDrawnGlyph extends StatelessWidget {
-  /// Creates a drawn glyph.
-  const CoilDrawnGlyph(this.glyph, {super.key, this.progress, this.color});
+  /// Creates a drawn glyph, [progress] of the way in.
+  const CoilDrawnGlyph(this.glyph, {super.key, this.progress = 1, this.color})
+    : _followsPresence = false;
+
+  /// A glyph that draws itself in and out with its [CoilIconPresence] when
+  /// a component animates it (reading it, so coil applies no fallback),
+  /// and is complete outside one. coil's role icons ([CoilIcon]) are these.
+  const CoilDrawnGlyph.presence(this.glyph, {super.key, this.color})
+    : progress = 1,
+      _followsPresence = true;
 
   /// Which glyph.
   final CoilGlyph glyph;
 
-  /// How much of the strokes is drawn, 0 to 1. Null follows the icon's
-  /// [CoilIconPresence], or draws it all outside one.
-  final double? progress;
+  /// How much of the strokes is drawn, 0 to 1. A
+  /// [CoilDrawnGlyph.presence] follows its presence instead.
+  final double progress;
+
+  final bool _followsPresence;
 
   /// The stroke color; the ambient [IconTheme]'s when null.
   final Color? color;
@@ -106,7 +116,8 @@ class CoilDrawnGlyph extends StatelessWidget {
     child: CustomPaint(
       size: Size.square(CoilIconSize.of(context)),
       painter: _GlyphPainter(
-        progress?.clamp(0.0, 1.0) ?? CoilIconPresence.maybeOf(context) ?? 1.0,
+        (_followsPresence ? CoilIconPresence.maybeOf(context) : null) ??
+            progress.clamp(0.0, 1.0),
         color ?? IconTheme.of(context).color ?? const Color(0xFF000000),
         glyph: glyph,
         // Like a stroke icon: 1.5 at rest, 2 at emphasis. IconTheme.of
