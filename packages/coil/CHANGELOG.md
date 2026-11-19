@@ -2,6 +2,10 @@
 
 Milestone M0, unreleased.
 
+- `CoilBadge(shape: CoilBadgeShape.pill)` draws a fully rounded badge
+  under any shape family, as DESIGN.md describes; the default `item`
+  keeps the theme's item radius. A ghost badge keeps the badge's
+  minimum height (24, compact 20) like the other variants.
 - Breaking: button labels are semibold, the theme's emphasis weight
   (`CoilTextTheme.emphasis`, wght 550 in the presets), as DESIGN.md
   says; `CoilButtonStyle.fallback`'s `textStyle` was the plain body

@@ -568,9 +568,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Variants:**
   - `solid`: the hue at 15 % into the background, foreground text; gray uses `accent`.
   - `dot`: hairline outline, foreground text, colored dot.
-  - `ghost`: no outline, no padding, inherits text color.
+  - `ghost`: no outline, no padding, inherits text color. It keeps the badge's height (24, compact 20), so it lines up with the others in a row.
   - Colors: gray (default), brand, and the Tailwind-500 hues (red … rose).
-- **Shape:** item radius, `pill` → full.
+- **Shape** (`shape: CoilBadgeShape`): `item` (the default) takes the theme's item radius, which `CoilShape.pill` already makes full; `pill` is full (half the height) under any shape family.
 - **Motion:** none. When a host adds one (ThinkingSteps sources), scale 0.85 → 1 + fade on `standard`.
 - **Semantics:** plain text; the dot is excluded.
 - **Do:** status and categories.

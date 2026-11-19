@@ -14,6 +14,16 @@ enum CoilBadgeVariant {
   ghost,
 }
 
+/// The corners of a `CoilBadge`.
+enum CoilBadgeShape {
+  /// The theme's item radius, like a button's (`CoilShape.pill` makes
+  /// that a pill too).
+  item,
+
+  /// Fully rounded: half the badge's height, whatever the theme's shape.
+  pill,
+}
+
 /// The hue of a `CoilBadge`: gray, the theme's brand, or one of sixteen
 /// fixed hues.
 enum CoilBadgeColor {
@@ -146,10 +156,13 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
   /// The label style. Ghost leaves its color unset so it inherits.
   final TextStyle? textStyle;
 
-  /// The corner radius of the superellipse.
+  /// The corner radius of the superellipse, for the
+  /// [CoilBadgeShape.item] shape (a `pill` badge is always fully
+  /// rounded).
   final double? radius;
 
-  /// The minimum height; the badge grows with the text scale.
+  /// The minimum height, kept by every variant (ghost included); the
+  /// badge grows with the text scale.
   final double? minHeight;
 
   /// The horizontal padding.

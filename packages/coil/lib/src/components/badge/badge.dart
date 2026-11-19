@@ -15,6 +15,7 @@ class CoilBadge extends StatelessWidget {
     super.key,
     this.variant = CoilBadgeVariant.solid,
     this.color = CoilBadgeColor.gray,
+    this.shape = CoilBadgeShape.item,
     this.size,
     this.style,
   });
@@ -28,12 +29,19 @@ class CoilBadge extends StatelessWidget {
   /// The hue.
   final CoilBadgeColor color;
 
+  /// The corners: the theme's item radius, or a [CoilBadgeShape.pill].
+  final CoilBadgeShape shape;
+
   /// Pins the badge to one size step. Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides for this badge's look, on top of the theme's
   /// [CoilBadgeStyle] and the defaults.
   final CoilBadgeStyle? style;
+
+  /// A radius past half of any badge's height, which a superellipse
+  /// draws as a full pill.
+  static const _pillRadius = 1000.0;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +93,10 @@ class CoilBadge extends StatelessWidget {
       decoration: ShapeDecoration(
         color: look.fill,
         shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(look.radius!),
+          borderRadius: BorderRadius.circular(switch (shape) {
+            CoilBadgeShape.item => look.radius!,
+            CoilBadgeShape.pill => _pillRadius,
+          }),
           side: look.border == null
               ? BorderSide.none
               : BorderSide(color: look.border!),
