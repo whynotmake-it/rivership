@@ -665,7 +665,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** a label (body; muted when stacked, foreground beside a control), the control, a description (caption muted), and an error (caption `destructive` with a 14 alert icon, live region). These are Widget slots, not discovery.
 - **Orientation:**
   - `vertical`: gaps 6 and 4 (touch 6 and 6);
-  - `horizontal`: label left, control right, `gap`;
+  - `horizontal`: label left, control right, the tier's `gap` apart (8 pointer, 12 touch; 4 and 8 compact);
   - `responsive`: vertical below 448 of group width, horizontal above.
 - **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
 - **ChoiceCard:** a checkbox, switch or radio at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).

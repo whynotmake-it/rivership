@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- Breaking: a horizontal field's label and control sit the tier's `gap`
+  apart (8 pointer, 12 touch, 4 and 8 compact), as DESIGN.md says;
+  `CoilFieldStyle.besideGap` was a fixed 12.
 - Breaking: `CoilToggleGroup` draws its row, as DESIGN.md describes: a
   1 px hairline with `CoilMetrics.segmentPadding` (4, compact 2) around
   the segments, its corner concentric with theirs. The group is that

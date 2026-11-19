@@ -56,7 +56,7 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
       separatorLabelGap: 8,
       labelGap: 6,
       messageGap: touch ? 6 : 4,
-      besideGap: 12,
+      besideGap: metrics.gap,
       fieldGap: touch ? 16 : 12,
       responsiveBreakpoint: 448,
     );
@@ -125,7 +125,8 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
   /// Control to description to error.
   final double? messageGap;
 
-  /// Label to control in a horizontal field.
+  /// Label to control in a horizontal field: the tier's `gap` (8
+  /// pointer, 12 touch) by default.
   final double? besideGap;
 
   /// Field to field, in a set, group or input group.
