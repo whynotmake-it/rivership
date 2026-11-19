@@ -156,6 +156,8 @@ class CoilMenuSearch {
     this.placeholder = const Text('Search'),
     this.semanticLabel = 'Search',
     this.empty = const Text('No results'),
+    this.textStyle,
+    this.minHeight,
   });
 
   /// The field's placeholder, usually a [Text].
@@ -166,6 +168,15 @@ class CoilMenuSearch {
 
   /// Shown when no row matches, usually a [Text].
   final Widget empty;
+
+  /// The type role of the field's text and placeholder (its color is
+  /// the list's), or null for the rows' body role. A command menu's is
+  /// the subtitle role.
+  final TextStyle? textStyle;
+
+  /// How tall the search line is at least, or null for a row's height
+  /// (the list's control height).
+  final double? minHeight;
 }
 
 /// A heading over a group of rows.
@@ -1242,7 +1253,9 @@ class _SearchField extends StatelessWidget {
     final field = Semantics(
       label: search.semanticLabel,
       child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: metrics.controlHeight),
+        constraints: BoxConstraints(
+          minHeight: search.minHeight ?? metrics.controlHeight,
+        ),
         child: Padding(
           padding: EdgeInsetsDirectional.only(
             start: inset,
@@ -1256,10 +1269,12 @@ class _SearchField extends StatelessWidget {
               autofocus: true,
               placeholder: search.placeholder,
               placeholderColor: colors.mutedForeground,
-              style: theme.typography
-                  .resolve(metrics.tier, metrics.size)
-                  .body
-                  .copyWith(color: colors.foreground),
+              style:
+                  (search.textStyle ??
+                          theme.typography
+                              .resolve(metrics.tier, metrics.size)
+                              .body)
+                      .copyWith(color: colors.foreground),
               cursorColor: colors.foreground,
               textInputAction: TextInputAction.search,
               autocorrect: false,

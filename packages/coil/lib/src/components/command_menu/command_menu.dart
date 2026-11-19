@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
+import 'package:coil/kbd.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// Opens a command menu over the current route: a search field over
 /// [entries], filtered as the user types. The filter matches each row's
@@ -11,8 +13,8 @@ import 'package:flutter/widgets.dart';
 ///
 /// The arrows move through the matching rows and Enter runs one; picking a
 /// row closes the menu, then runs its action. Escape or a tap outside
-/// closes it. It opens near the top of a large window and as a sheet on a
-/// phone.
+/// closes it. It opens near the top of a large window, with a [footer] of
+/// key hints, and as a sheet on a phone.
 ///
 /// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
 /// the app's own, mapped in `Shortcuts` near the app's root (or registered
@@ -72,6 +74,7 @@ Future<void> showCoilCommandMenu({
   Widget placeholder = const Text('Type a command or search…'),
   String semanticLabel = 'Type a command or search…',
   Widget empty = const Text('No results'),
+  Widget? footer = const CoilCommandMenuFooter(),
   CoilMotion? motion,
 }) => showCoilModal<void>(
   context: context,
@@ -82,15 +85,19 @@ Future<void> showCoilCommandMenu({
     placeholder: placeholder,
     semanticLabel: semanticLabel,
     empty: empty,
+    footer: footer,
     motion: motion,
   ),
 );
 
-/// The panel [showCoilCommandMenu] opens: a search field over [entries].
+/// The panel [showCoilCommandMenu] opens: a search field over [entries],
+/// and in a dialog a [footer] with key hints.
 ///
 /// Show it in a [CoilModalRoute] or [CoilModalPage] with no presentation,
 /// so it's a sheet on a phone and centered elsewhere. In a sheet it uses
-/// touch rows; centered, it sits a fifth of the way down the window.
+/// touch rows and has no footer; centered, it sits a fifth of the way down
+/// the window, at most [maxHeight] or [maxHeightFraction] of the window
+/// tall.
 class CoilCommandMenu extends StatelessWidget {
   /// Creates a command menu panel.
   const CoilCommandMenu({
@@ -99,6 +106,7 @@ class CoilCommandMenu extends StatelessWidget {
     this.placeholder = const Text('Type a command or search…'),
     this.semanticLabel = 'Type a command or search…',
     this.empty = const Text('No results'),
+    this.footer = const CoilCommandMenuFooter(),
     this.motion,
   });
 
@@ -114,28 +122,49 @@ class CoilCommandMenu extends StatelessWidget {
   /// What the list shows when nothing matches.
   final Widget empty;
 
+  /// The strip under the list in a dialog: a [CoilCommandMenuFooter] with
+  /// the default key hints, your own, or null for none. A sheet (a phone,
+  /// with no keyboard to hint at) never shows it.
+  final Widget? footer;
+
   /// Motion tokens for the list, instead of the theme's.
   final CoilMotion? motion;
 
   /// The widest the panel gets.
   static const maxWidth = 560.0;
 
-  /// The tallest the list gets in a window.
-  static const maxListHeight = 360.0;
+  /// The tallest the panel gets in a window, search field and footer
+  /// included.
+  static const maxHeight = 440.0;
+
+  /// The tallest the panel gets as a share of the window's height, when
+  /// that's less than [maxHeight].
+  static const maxHeightFraction = 0.76;
+
+  /// The height of the search line on [tier]: 48 on the pointer tier, 52
+  /// on touch.
+  static double searchHeightOf(CoilTier tier) => switch (tier) {
+    CoilTier.pointer => 48,
+    CoilTier.touch => 52,
+  };
 
   @override
   Widget build(BuildContext context) {
     final sheet =
         CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet;
-    final search = CoilMenuSearch(
-      placeholder: placeholder,
-      semanticLabel: semanticLabel,
-      empty: empty,
-    );
     final theme = CoilTheme.of(context);
     final metrics = sheet
         ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)
         : CoilTheme.metricsOf(context);
+    final searchHeight = searchHeightOf(metrics.tier);
+    // A larger line than a menu's: the field is what the panel is for.
+    final search = CoilMenuSearch(
+      placeholder: placeholder,
+      semanticLabel: semanticLabel,
+      empty: empty,
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).subtitle,
+      minHeight: searchHeight,
+    );
     final scroll = CoilScrollAreaStyle.fallback(
       theme,
       metrics,
@@ -158,9 +187,14 @@ class CoilCommandMenu extends StatelessWidget {
     if (sheet) {
       return CoilSheetPanel(
         close: null,
-        child: Padding(
+        // The search line's middle runs through the close button's, the
+        // corner's center: a 52 line reaches 2 into the sheet's top gap.
+        child: PaddingExtended(
           padding: EdgeInsets.only(
-            top: CoilSheetPanel.lineTopOf(context, metrics.controlHeight),
+            top:
+                CoilSheetPanel.headerCenterOf(context) -
+                CoilSheetPanel.topGap -
+                searchHeight / 2,
           ),
           child: list,
         ),
@@ -177,6 +211,7 @@ class CoilCommandMenu extends StatelessWidget {
         innerExtent: metrics.controlHeight,
       ),
     );
+    final footer = this.footer;
     return SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
@@ -195,13 +230,113 @@ class CoilCommandMenu extends StatelessWidget {
               child: ClipRSuperellipse(
                 borderRadius: radius,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: maxListHeight),
-                  child: list,
+                  constraints: BoxConstraints(
+                    maxHeight: math.min(
+                      maxHeight,
+                      window.height * maxHeightFraction,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Flexible(child: list),
+                      if (footer != null) footer,
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A key hint in a [CoilCommandMenuFooter]: what [keys] do.
+@immutable
+class CoilCommandMenuHint {
+  /// Creates a hint.
+  const CoilCommandMenuHint({required this.label, required this.keys});
+
+  /// What the keys do, usually a [Text].
+  final Widget label;
+
+  /// The keys, usually a [CoilKbd].
+  final Widget keys;
+}
+
+/// The strip under a [CoilCommandMenu]'s list in a dialog: what the keys
+/// do there, each hint a muted caption followed by its key caps.
+///
+/// It sits under a hairline, one control high, with its text on the rows'
+/// text edge. Screen readers skip it: the list and the field already say
+/// what they do.
+class CoilCommandMenuFooter extends StatelessWidget {
+  /// Creates a footer with [hints].
+  const CoilCommandMenuFooter({super.key, this.hints = defaultHints});
+
+  /// The hints, from the start.
+  final List<CoilCommandMenuHint> hints;
+
+  /// Arrows select a row, Enter runs it, Escape closes the menu.
+  static const defaultHints = [
+    CoilCommandMenuHint(
+      label: Text('Select'),
+      keys: CoilKbd.keys(['↑', '↓']),
+    ),
+    CoilCommandMenuHint(label: Text('Run'), keys: CoilKbd.keys(['↵'])),
+    CoilCommandMenuHint(label: Text('Close'), keys: CoilKbd.keys(['esc'])),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final metrics = CoilTheme.metricsOf(context);
+    final colors = theme.colors;
+    final text = theme.typography.resolve(metrics.tier, metrics.size);
+    // The list's separators: the hairline at 60 % of its own alpha.
+    final line = colors.border.withValues(alpha: colors.border.a * 0.6);
+    final style = text.caption.copyWith(color: colors.mutedForeground);
+    return ExcludeSemantics(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: 1, child: ColoredBox(color: line)),
+          Padding(
+            // One control high, its text on the rows' text edge.
+            padding: EdgeInsets.symmetric(
+              horizontal: metrics.popupInset + metrics.itemPaddingX,
+              vertical: math.max(0, metrics.controlPaddingY(style)),
+            ),
+            child: DefaultTextStyle(
+              style: style,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              // One line: hints that don't fit are cut at the end, so
+              // the footer never grows into the list's room.
+              child: UnconstrainedBox(
+                constrainedAxis: Axis.vertical,
+                alignment: AlignmentDirectional.centerStart,
+                clipBehavior: Clip.hardEdge,
+                child: Row(
+                  spacing: metrics.gap * 2,
+                  children: [
+                    for (final hint in hints)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: metrics.buttonGap,
+                        children: [hint.label, hint.keys],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,18 @@
 
 Milestone M0, unreleased.
 
+- Breaking: the command menu follows DESIGN.md. Its search field is the
+  subtitle role on a line 48 high on the pointer tier and 52 on touch
+  (`CoilCommandMenu.searchHeightOf`; it was a body field at the control
+  height), through new `CoilMenuSearch.textStyle` and `minHeight`. The
+  dialog is at most `min(440, 76 %)` of the window tall, search and
+  footer included (`CoilCommandMenu.maxHeight`, `maxHeightFraction`);
+  `CoilCommandMenu.maxListHeight` (the list's 360) is gone. The dialog
+  ends in a footer of key hints, `CoilCommandMenuFooter` with
+  `CoilCommandMenuHint`s (Select ↑ ↓, Run ↵, Close esc by default),
+  set or removed with `footer:` on `CoilCommandMenu` and
+  `showCoilCommandMenu`. Its width, its place a fifth of the way down
+  and the phone's sheet are unchanged.
 - Breaking: a horizontal field's label and control sit the tier's `gap`
   apart (8 pointer, 12 touch, 4 and 8 compact), as DESIGN.md says;
   `CoilFieldStyle.besideGap` was a fixed 12.
