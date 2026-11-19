@@ -33,7 +33,6 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
     CoilButtonVariant variant,
   ) {
     final c = theme.colors;
-    final text = theme.typography.resolve(metrics.tier, metrics.size);
     final dark = c.brightness == Brightness.dark;
     final clear = c.hover.withValues(alpha: 0);
     final held = WidgetState.selected | WidgetState.pressed;
@@ -95,8 +94,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
           ? c.border
           : const Color(0x00000000),
       radius: theme.shape.radii(metrics.tier).item,
-      // Labels are semibold: the theme's emphasis weight.
-      textStyle: text.body.copyWith(fontWeight: text.emphasis),
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
       iconSize: metrics.iconSize,
       minHeight: metrics.controlHeight,
     );
@@ -114,8 +112,7 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
   /// The corner radius of the superellipse.
   final double? radius;
 
-  /// The label style (its color comes from [foreground]): the body role
-  /// at the theme's emphasis weight by default.
+  /// The label style (its color comes from [foreground]).
   final TextStyle? textStyle;
 
   /// The icon slot size, before text scaling.

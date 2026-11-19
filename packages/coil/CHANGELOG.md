@@ -30,11 +30,6 @@ Milestone M0, unreleased.
   under any shape family, as DESIGN.md describes; the default `item`
   keeps the theme's item radius. A ghost badge keeps the badge's
   minimum height (24, compact 20) like the other variants.
-- Breaking: button labels are semibold, the theme's emphasis weight
-  (`CoilTextTheme.emphasis`, wght 550 in the presets), as DESIGN.md
-  says; `CoilButtonStyle.fallback`'s `textStyle` was the plain body
-  role. Every `CoilButton` gets it, dialog, sheet and card actions
-  included; a style's `textStyle` still overrides it.
 - Breaking: every focus ring sits 2 px outside its control, at the
   control's radius + 2, as DESIGN.md says. `CoilFocusRingTheme.offset`
   defaults to 2 (was 0, so single controls' rings hugged their edge),
