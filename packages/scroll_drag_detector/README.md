@@ -43,6 +43,25 @@ migrate the previous `scrollableCanMoveBack` and
 `onlyDragWhenScrollWasAtTop` configuration without changing conventional
 sheet behavior.
 
+### Overriding child scroll behavior
+
+When a child overrides its scroll behavior, wrap it in `ScrollDragBehavior` so
+the detector can still stop scrolling during a drag:
+
+```dart
+ScrollConfiguration(
+  behavior: ScrollDragBehavior(
+    parent: const ScrollBehavior().copyWith(scrollbars: false),
+  ),
+  child: ListView.builder(itemBuilder: buildItem),
+)
+```
+
+The wrapper also works with per-view overrides such as
+`CustomScrollView(scrollBehavior: ScrollDragBehavior(parent: customBehavior))`.
+It preserves the consumer's settings, including `copyWith(...)` overrides, and
+delegates unchanged when there is no ancestor detector.
+
 --- 
 
 [dart_install_link]: https://dart.dev/get-dart

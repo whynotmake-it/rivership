@@ -1,3 +1,11 @@
+## 0.7.2+2
+
+ - **FIX**(heroine): hide incoming page until the first flight frame (#348).
+
+## 0.7.2+1
+
+ - **FIX**(heroine): don't crash when diverting a flight whose hero was disposed (#346).
+
 ## 0.7.2
 
  - **FEAT**: add `shouldTransition` callback to `Heroine` for route-based filtering.

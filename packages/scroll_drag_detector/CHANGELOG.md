@@ -1,3 +1,23 @@
+## 1.0.0-dev.3
+
+ - **FIX**(scroll_drag_detector): preserve handoff with custom scroll behaviors (#339).
+
+    * test(scroll_drag_detector): reproduce wrapped behavior crashes
+    
+    * fix(scroll_drag_detector): preserve handoff with child behavior overrides
+    
+    ---------
+
+
+## 1.0.0-dev.2
+
+ - **FIX**(scroll_drag_detector): defer layout-time notifier updates (#344).
+
+## 1.0.0-dev.1
+
+ - **FIX**(scroll_drag_detector): reach the boundary before drag handoff (#337).
+
+
 ## 1.0.0-dev.0
 
 > Note: This release has breaking changes.
@@ -52,4 +72,3 @@
 ## 0.0.2
 
  - **FEAT**: stupid simple sheet and drag detector (#154).
-
