@@ -12,6 +12,7 @@ import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 /// coil's sheet: a `stupid_simple_sheet` route (drag to dismiss, scroll
@@ -23,7 +24,9 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 ///   dismisses hands its fling velocity to it);
 /// - the surface: two levels above the one `context` sits on
 ///   (`CoilSurface.popoverOffset`), its fill, shadow and dark-mode edge;
-///   [child] sits on it too, clipped to its corners;
+///   [child] sits on it too, clipped to its corners. The surface runs a
+///   window's height past the sheet's bottom edge, so a sheet dragged up
+///   past its rest shows its own fill below it, not the page;
 /// - the top corners: a superellipse of the glass sheet's
 ///   [glassRadius] (36) for the `rounded` and `pill` shapes, scaled down
 ///   with tighter shapes;
@@ -179,6 +182,12 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
 
 /// The sheet's surface: coil's fill, shadow and edge at the popover level,
 /// in [shape], clipping [child] to it.
+///
+/// The surface runs a window's height past the sheet's bottom edge, so a
+/// sheet dragged up past its rest still shows its own fill below, not the
+/// page. [child] keeps the sheet's size and is laid out as without it.
+/// This is how `stupid_simple_sheet`'s `SheetBackground` extends its fill,
+/// done on coil's surface.
 class _SheetSurface extends StatelessWidget {
   const _SheetSurface({required this.shape, required this.child});
 
@@ -188,10 +197,17 @@ class _SheetSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = shape.borderRadius;
-    return CoilSurface(
-      offset: CoilSurface.popoverOffset,
-      borderRadius: radius,
-      child: ClipRSuperellipse(borderRadius: radius, child: child),
+    final below = MediaQuery.sizeOf(context).height;
+    return PaddingExtended(
+      padding: EdgeInsets.only(bottom: -below),
+      child: CoilSurface(
+        offset: CoilSurface.popoverOffset,
+        borderRadius: radius,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: below),
+          child: ClipRSuperellipse(borderRadius: radius, child: child),
+        ),
+      ),
     );
   }
 }

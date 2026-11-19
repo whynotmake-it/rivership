@@ -14,6 +14,12 @@ Milestone M0, unreleased.
   that month, zooming in from the month view. `CoilCalendarLabels.selection`
   ("Nov 14", with the year when it isn't this year's) and
   `selectionLabel` name it.
+- Fix: a sheet dragged up past its rest showed the page below it. Its
+  surface (fill, outline and dark-mode edge) now runs a window's height
+  past its bottom edge, as `stupid_simple_sheet`'s `SheetBackground`
+  extends its fill, so the sheet's own fill shows below it, also above
+  the keyboard. The content keeps its size and its clearance of the home
+  indicator.
 - Breaking: the phone drawer's page edge shadow (`CoilDrawerReveal.behind`)
   is lighter, most of all in light mode, where the white veil made the old
   one read heavy: step 7 at half strength in light and step 8 at 70 % in

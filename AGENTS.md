@@ -20,6 +20,15 @@
 - Error handling: Use assert statements for parameter validation
 - File structure: Organize by feature in `src/` subdirectories
 
+## Testing
+- Don't add tests unless they cover real behavior, and each one covers a lot of it at once.
+- Don't touch existing tests unless the instructions ask for a change in behavior that a test locks in. Then change only what that behavior change requires.
+- No tests that pin values (durations, colors, alphas, sizes, counts, offsets).
+- No tests that only check a widget or element is in the tree; they break whenever the UI changes.
+- Test from the user's perspective, or the consumer's when testing an API. Use real cases, especially ones that could break.
+- Test how it should work, not how it works today.
+- Otherwise, don't add tests and don't touch tests.
+
 ## Architecture
 - Melos monorepo with packages in `packages/` directory
 - Flutter/Dart project using hooks_riverpod for state management
