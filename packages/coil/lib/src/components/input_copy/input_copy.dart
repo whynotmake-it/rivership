@@ -166,8 +166,10 @@ class CoilInputCopy extends StatefulWidget {
   /// The text shown and copied.
   final String value;
 
-  /// The copy icon. Null draws coil's own copy glyph, so the action always
-  /// shows; the check and × are drawn too.
+  /// The copy icon. Null shows the theme's [CoilIcons.copy], else coil's
+  /// drawn copy glyph, so the action always shows. The check and × after a
+  /// copy are [CoilIcons.check] and [CoilIcons.failed] (see
+  /// [CoilCopyGlyph]).
   final Widget? icon;
 
   /// Icon only, or icon and a "Copy" label.
@@ -494,39 +496,22 @@ class _Action extends StatelessWidget {
     CoilCopyStatus.failed => labels.failed,
   };
 
-  Widget _content(CoilCopyStatus status, {bool ghost = false}) {
-    final glyph = ghost
-        ? SizedBox.square(dimension: style.iconSize)
-        : CoilCopyGlyph(
-            status: status,
-            icon: icon,
-            motion: motion,
-            motions: motions,
-          );
-    if (variant == CoilInputCopyVariant.icon) return glyph;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: style.actionGap!,
-      children: [
-        glyph,
-        DefaultTextStyle.merge(
-          maxLines: 1,
-          softWrap: false,
-          child: _text(status),
-        ),
-      ],
-    );
-  }
+  Widget _label(CoilCopyStatus status) => DefaultTextStyle.merge(
+    maxLines: 1,
+    softWrap: false,
+    child: _text(status),
+  );
 
   @override
   Widget build(BuildContext context) {
-    // Keyed by status alone: a copy while "Copied" shows animates nothing,
+    // The icon swaps itself; the label cross-fades beside it. Both are
+    // keyed by status alone: a copy while "Copied" shows animates nothing,
     // and one while it leaves turns it around.
-    final swap = CoilCopySwitcher(
+    final glyph = CoilCopyGlyph(
       status: status,
+      icon: icon,
       motion: motion,
       motions: motions,
-      builder: (context, status) => _content(status),
     );
     return ExcludeSemantics(
       child: IconTheme(
@@ -539,18 +524,30 @@ class _Action extends StatelessWidget {
         child: DefaultTextStyle(
           style: style.actionStyle!.copyWith(color: color),
           child: variant == CoilInputCopyVariant.icon
-              ? swap
+              ? glyph
               // Every label's width is reserved, so the row never shifts
               // as "Copy" becomes "Copied".
-              : Stack(
-                  alignment: AlignmentDirectional.centerStart,
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: style.actionGap!,
                   children: [
-                    for (final ghost in CoilCopyStatus.values)
-                      Visibility.maintain(
-                        visible: false,
-                        child: _content(ghost, ghost: true),
-                      ),
-                    swap,
+                    glyph,
+                    Stack(
+                      alignment: AlignmentDirectional.centerStart,
+                      children: [
+                        for (final ghost in CoilCopyStatus.values)
+                          Visibility.maintain(
+                            visible: false,
+                            child: _label(ghost),
+                          ),
+                        CoilCopySwitcher(
+                          status: status,
+                          motion: motion,
+                          motions: motions,
+                          builder: (context, status) => _label(status),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
         ),

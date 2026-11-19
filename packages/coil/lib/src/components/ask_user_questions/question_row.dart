@@ -364,12 +364,15 @@ class QuestionKey extends StatelessWidget {
             color: look.keySelected,
             weight: CoilIconWeight.emphasis,
           ),
-          child: SingleMotionBuilder(
-            value: filled ? 1 : 0,
-            motion: motions.label,
-            debugLabel: 'CoilAskUserQuestions check',
-            builder: (context, t, _) =>
-                CoilDrawnGlyph(CoilGlyph.check, progress: t),
+          // The slot keeps its width while the check is out.
+          child: Builder(
+            builder: (context) => SizedBox.square(
+              dimension: CoilIconSize.of(context),
+              child: CoilIconSwitcher(
+                motion: motions.label,
+                child: filled ? const CoilIcon(CoilIconRole.check) : null,
+              ),
+            ),
           ),
         ),
       );
@@ -466,7 +469,7 @@ class QuestionKey extends StatelessWidget {
                             color: look.keySelectedLabel,
                             weight: CoilIconWeight.emphasis,
                           ),
-                          child: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+                          child: const CoilIcon(CoilIconRole.chevronEnd),
                         ),
                       ),
                     ),

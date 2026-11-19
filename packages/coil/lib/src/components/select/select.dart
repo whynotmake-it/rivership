@@ -29,6 +29,8 @@ import 'package:motor_widgets/motor_widgets.dart';
 ///
 /// No icons are bundled: [icon], [indicator], [checkmark] and
 /// [CoilOption.icon] take any widget and are styled through [IconTheme].
+/// The chevron and check default to the theme's [CoilIcons.chevronDown]
+/// and [CoilIcons.check], else coil's drawn ones.
 class CoilSelect<T> extends StatelessWidget {
   /// Creates a single-choice select.
   const CoilSelect({
@@ -65,10 +67,11 @@ class CoilSelect<T> extends StatelessWidget {
   /// A leading glyph in the trigger.
   final Widget? icon;
 
-  /// Replaces the trigger's chevron.
+  /// Replaces the trigger's chevron ([CoilIcons.chevronDown]).
   final Widget? indicator;
 
-  /// Replaces the check in the rows.
+  /// Replaces the check in the rows ([CoilIcons.check]). It appears in a
+  /// `CoilIconPresence`.
   final Widget? checkmark;
 
   /// A heading for the sheet presentation.
@@ -162,10 +165,11 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// A leading glyph in the trigger.
   final Widget? icon;
 
-  /// Replaces the trigger's chevron.
+  /// Replaces the trigger's chevron ([CoilIcons.chevronDown]).
   final Widget? indicator;
 
-  /// Replaces the check in the rows.
+  /// Replaces the check in the rows ([CoilIcons.check]). It appears in a
+  /// `CoilIconPresence`.
   final Widget? checkmark;
 
   /// A heading for the sheet presentation.

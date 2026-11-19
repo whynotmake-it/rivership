@@ -7,7 +7,6 @@ import 'package:coil/primitives.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
-import 'package:motor_widgets/motor_widgets.dart';
 
 /// Whether a [CoilInputMessage]'s conversation is waiting on a reply.
 enum CoilMessageStatus {
@@ -201,7 +200,7 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
     final textStyle = look.textStyle!;
 
     // Send, queue or stop. Send and queue share the arrow; only the swap
-    // to and from stop animates, with the blur-fade on `quick`.
+    // to and from stop animates, two icon presences crossing on `quick`.
     final button = ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
@@ -219,16 +218,12 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
               : _streaming
               ? widget.queueLabel
               : widget.sendLabel,
-          icon: MotionSwitcher(
+          icon: CoilIconSwitcher(
             motion: motion.quick,
             exitMotion: motion.quickExit,
-            transitionBuilder: CoilBlurFade.transition(),
             child: stop
-                ? const CoilDrawnGlyph(CoilGlyph.stop, key: ValueKey('stop'))
-                : const CoilDrawnGlyph(
-                    CoilGlyph.arrowUp,
-                    key: ValueKey('send'),
-                  ),
+                ? const _SendGlyph(CoilIconRole.stop, key: ValueKey('stop'))
+                : const _SendGlyph(CoilIconRole.send, key: ValueKey('send')),
           ),
         );
       },
@@ -371,5 +366,23 @@ class _NestedShape extends StatelessWidget {
       },
       child: child,
     );
+  }
+}
+
+/// The send button's icon: the theme's [CoilIcons.send] or
+/// [CoilIcons.stop], else coil's drawn arrow or square, which blur-fade with
+/// their icon presence.
+class _SendGlyph extends StatelessWidget {
+  const _SendGlyph(this.role, {super.key});
+
+  final CoilIconRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    if (CoilTheme.of(context).icons[role] case final icon?) return icon;
+    final drawn = CoilDrawnGlyph(CoilIcon.glyphFor(role), progress: 1);
+    final presence = CoilIconPresence.maybeOf(context);
+    if (presence == null) return drawn;
+    return CoilBlurFade(presence: presence, child: drawn);
   }
 }

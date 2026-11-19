@@ -69,7 +69,8 @@ class CoilOptionList<T> extends StatefulWidget {
   /// foreground fade says "the pointer is here", which a finger can't).
   final bool fullEmphasis;
 
-  /// Replaces the check glyph.
+  /// Replaces the check: the theme's [CoilIcons.check], or coil's drawn
+  /// one.
   final Widget? checkmark;
 
   /// Drives the active row from outside. The owner handles the keys, like a
@@ -550,8 +551,10 @@ class _OptionRowState extends State<_OptionRow> {
 }
 
 /// The row's check: a fixed, [IconTheme]-sized slot, so a check appearing
-/// never changes the row's width. The default glyph draws in on `fade` and
-/// erases on `fadeExit`; a custom [glyph] fades instead.
+/// never changes the row's width. It comes in on `fade` and leaves on
+/// `fadeExit` in a `CoilIconPresence`: coil's drawn check (and any icon
+/// that reads the presence) draws itself in and out; another [glyph] or
+/// theme check fades and scales.
 class _Check extends StatelessWidget {
   const _Check({required this.checked, this.glyph});
 
@@ -563,19 +566,16 @@ class _Check extends StatelessWidget {
     final motion = CoilTheme.motionOf(context);
     return SizedBox.square(
       dimension: CoilIconSize.of(context),
-      child: SingleMotionBuilder(
-        value: checked ? 1 : 0,
-        debugLabel: 'CoilSelect check',
-        motion: checked ? motion.fade : motion.fadeExit,
-        child: glyph,
-        builder: (context, progress, glyph) {
-          final t = progress.clamp(0.0, 1.0);
-          if (glyph != null) return Opacity(opacity: t, child: glyph);
-          return IconTheme.merge(
-            data: const IconThemeData(weight: CoilIconWeight.emphasis),
-            child: CoilDrawnGlyph(CoilGlyph.check, progress: t),
-          );
-        },
+      child: CoilIconSwitcher(
+        motion: motion.fade,
+        exitMotion: motion.fadeExit,
+        child: !checked
+            ? null
+            : glyph ??
+                  IconTheme.merge(
+                    data: const IconThemeData(weight: CoilIconWeight.emphasis),
+                    child: const CoilIcon(CoilIconRole.check),
+                  ),
       ),
     );
   }

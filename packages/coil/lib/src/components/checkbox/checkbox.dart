@@ -17,8 +17,9 @@ final class CoilCheckboxTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilCheckbox.border',
   );
 
-  /// The tick or dash drawing in and out. Default motion: `fade` in,
-  /// `fadeExit` out.
+  /// The tick or dash drawing in and out: its icon presence (a
+  /// `CoilIconPresence`). Default motion: `fade` in, `fadeExit` out; under
+  /// reduced motion it lands at once.
   static final glyph = CoilCheckboxTrack<double>._(
     .single,
     debugLabel: 'CoilCheckbox.glyph',
@@ -92,7 +93,8 @@ class CoilCheckbox extends StatelessWidget {
   /// A label for assistive technology.
   final String? semanticLabel;
 
-  /// Replaces the built-in tick and dash.
+  /// Replaces the tick and dash: the theme's [CoilIcons.check] and
+  /// [CoilIcons.dash], or coil's drawn ones.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
 
   bool? get _next => switch (value) {
@@ -173,7 +175,9 @@ enum CoilCheckboxGlyph {
 }
 
 /// Draws a checkbox glyph [progress] of the way in (0 hidden, 1 complete),
-/// at [size] in [color]. Replaces the built-in drawn tick.
+/// at [size] in [color]. Replaces the tick and dash, the theme's included.
+/// The tick and dash are icons too ([CoilIcons.check], [CoilIcons.dash]):
+/// an icon that reads its `CoilIconPresence` animates the same way.
 typedef CoilCheckboxGlyphBuilder =
     Widget Function(
       BuildContext context,
@@ -182,8 +186,6 @@ typedef CoilCheckboxGlyphBuilder =
       Color color,
       double size,
     );
-
-enum _Glyph { none, check, dash }
 
 /// The corner radius of the box at the current text scale.
 BorderRadius _radiusOf(BuildContext context, CoilCheckboxStyle style) {
@@ -198,7 +200,12 @@ BorderRadius _radiusOf(BuildContext context, CoilCheckboxStyle style) {
 /// tap target. [CoilCheckbox] adds focus, hover and tap handling around it.
 ///
 /// The box and tick grow with the text scale.
-class CoilCheckboxIndicator extends StatefulWidget {
+///
+/// The tick and dash are [CoilIcons.check] and [CoilIcons.dash] (coil's
+/// drawn ones by default), shown in a `CoilIconPresence` that rises as they
+/// appear: coil's draw themselves in, other icons fade and scale. Changing
+/// between them crosses the two.
+class CoilCheckboxIndicator extends StatelessWidget {
   /// Creates a checkbox indicator.
   const CoilCheckboxIndicator({
     required this.value,
@@ -231,54 +238,34 @@ class CoilCheckboxIndicator extends StatefulWidget {
   /// [CoilCheckboxStyle] and the defaults.
   final CoilCheckboxStyle? style;
 
-  /// Replaces the built-in tick and dash.
+  /// Replaces the tick and dash, the theme's included.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
 
-  @override
-  State<CoilCheckboxIndicator> createState() => _CoilCheckboxIndicatorState();
-}
-
-class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
-  _Glyph get _glyph => switch (widget.value) {
-    null => _Glyph.dash,
-    true => _Glyph.check,
-    false => _Glyph.none,
+  CoilCheckboxGlyph? get _glyph => switch (value) {
+    null => CoilCheckboxGlyph.dash,
+    true => CoilCheckboxGlyph.check,
+    false => null,
   };
-
-  /// The glyph being drawn, kept while it retracts.
-  late _Glyph _shown = _glyph;
-
-  /// Bumped when the glyph changes shape, so a new one draws from 0.
-  int _generation = 0;
-
-  @override
-  void didUpdateWidget(CoilCheckboxIndicator oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final glyph = _glyph;
-    if (glyph != _Glyph.none && glyph != _shown) {
-      _shown = glyph;
-      _generation++;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
-    final tokens = CoilTheme.motionOf(context, override: widget.motion);
-    final sizes = CoilTheme.metricsOf(context, size: widget.size);
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    final sizes = CoilTheme.metricsOf(context, size: size);
     final style = CoilCheckboxStyle.fallback(
       theme,
       sizes,
-    ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(widget.style);
-    final on = _glyph != _Glyph.none;
+    ).merge(CoilTheme.styleOf<CoilCheckboxStyle>(context)).merge(this.style);
+    final glyph = _glyph;
+    final on = glyph != null;
     final scaler = MediaQuery.textScalerOf(context);
     final boxSize = scaler.scale(style.size!);
     final glyphSize = scaler.scale(
       sizes.checkboxGlyphSize * style.size! / sizes.checkboxSize,
     );
     final border = style.border!.resolve({
-      if (widget.states.contains(WidgetState.hovered)) WidgetState.hovered,
-      if (widget.states.contains(WidgetState.error)) WidgetState.error,
+      if (states.contains(WidgetState.hovered)) WidgetState.hovered,
+      if (states.contains(WidgetState.error)) WidgetState.error,
       if (on) WidgetState.selected,
     })!;
 
@@ -286,7 +273,7 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
         CoilTheme.trackMotionOf(
           context,
           track,
-          instance: widget.motions,
+          instance: motions,
           styled: style.motions,
           token: token,
           spatial: false,
@@ -317,8 +304,8 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
               context,
               CoilReliefRole.recessed,
               override: style.plasticity,
-              hover: widget.states.contains(WidgetState.hovered) ? 1 : 0,
-              enabled: !widget.states.contains(WidgetState.disabled),
+              hover: states.contains(WidgetState.hovered) ? 1 : 0,
+              enabled: !states.contains(WidgetState.disabled),
             ),
           ),
           child: child,
@@ -326,44 +313,65 @@ class _CoilCheckboxIndicatorState extends State<CoilCheckboxIndicator> {
         child: OverflowBox(
           maxWidth: glyphSize,
           maxHeight: glyphSize,
-          child: SingleMotionBuilder(
-            key: ValueKey(_generation),
-            value: on ? 1 : 0,
-            // A new glyph shape draws itself in from nothing.
-            from: _generation == 0 ? null : 0,
-            motion: motionFor(
-              CoilCheckboxTrack.glyph,
-              on ? tokens.fade : tokens.fadeExit,
+          child: IconTheme(
+            data: IconThemeData(
+              size: glyphSize,
+              applyTextScaling: false,
+              color: style.glyphColor,
+              weight: CoilIconWeight.emphasis,
             ),
-            builder: (context, progress, _) {
-              final builder = widget.glyphBuilder;
-              if (builder != null && _shown != _Glyph.none) {
-                return builder(
-                  context,
-                  _shown == _Glyph.dash
-                      ? CoilCheckboxGlyph.dash
-                      : CoilCheckboxGlyph.check,
-                  progress.clamp(0, 1),
-                  style.glyphColor!,
-                  glyphSize,
-                );
-              }
-              return IconTheme(
-                data: IconThemeData(
-                  size: glyphSize,
-                  applyTextScaling: false,
-                  color: style.glyphColor,
-                  weight: CoilIconWeight.emphasis,
+            child: CoilIconSwitcher(
+              motion: motionFor(CoilCheckboxTrack.glyph, tokens.fade),
+              exitMotion: motionFor(CoilCheckboxTrack.glyph, tokens.fadeExit),
+              child: switch (glyph) {
+                null => null,
+                final glyph => KeyedSubtree(
+                  key: ValueKey(glyph),
+                  child: switch (glyphBuilder) {
+                    final builder? => _BuiltGlyph(
+                      builder: builder,
+                      glyph: glyph,
+                      color: style.glyphColor!,
+                      size: glyphSize,
+                    ),
+                    null => CoilIcon(switch (glyph) {
+                      CoilCheckboxGlyph.check => CoilIconRole.check,
+                      CoilCheckboxGlyph.dash => CoilIconRole.dash,
+                    }),
+                  },
                 ),
-                child: CoilDrawnGlyph(
-                  _shown == _Glyph.dash ? CoilGlyph.dash : CoilGlyph.check,
-                  progress: progress,
-                ),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A [CoilCheckboxGlyphBuilder]'s glyph, drawn as far in as its icon
+/// presence.
+class _BuiltGlyph extends StatelessWidget {
+  const _BuiltGlyph({
+    required this.builder,
+    required this.glyph,
+    required this.color,
+    required this.size,
+  });
+
+  final CoilCheckboxGlyphBuilder builder;
+  final CoilCheckboxGlyph glyph;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final presence =
+        CoilIconPresence.maybeOf(context) ?? kAlwaysCompleteAnimation;
+    return AnimatedBuilder(
+      animation: presence,
+      builder: (context, _) =>
+          builder(context, glyph, presence.value, color, size),
     );
   }
 }
