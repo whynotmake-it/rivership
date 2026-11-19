@@ -37,21 +37,22 @@ class CoilCalendarLabels {
     this.chooseMonthLabel = 'Choose a month and year',
     this.showDaysLabel = _showDaysLabel,
     this.confirm = const Text('Done'),
-    this.selection = _selection,
-    this.selectionLabel = _selectionLabel,
+    this.summary = _summary,
+    this.summaryLabel = _summaryLabel,
     this.previousYearLabel = 'Previous year',
     this.nextYearLabel = 'Next year',
   });
 
-  /// The picked day in the chip that shows it while its month is out of
-  /// view, like "Nov 14" (with the year when it isn't this year's).
-  /// Tapping the chip goes back to the day's month; [selectionLabel]
-  /// announces it.
-  final Widget Function(DateTime day) selection;
+  /// What a date picker's Done will confirm, on the leading side of its
+  /// footer, like "Fri, Nov 22, 2019", with the time when the picker picks
+  /// one ("Fri, Nov 22, 2019, 09:30"). It names the draft, so it stays
+  /// readable however far the calendar has paged or zoomed;
+  /// [summaryLabel] announces it.
+  final Widget Function(DateTime value, {required bool withTime}) summary;
 
-  /// The [selection] chip for screen readers, like "Go to the selected
-  /// day, Saturday, November 14, 2026".
-  final String Function(DateTime day) selectionLabel;
+  /// [summary] for screen readers, like "Selected: Friday, November 22,
+  /// 2019".
+  final String Function(DateTime value, {required bool withTime}) summaryLabel;
 
   /// The previous-year button's label in the month view, for screen
   /// readers.
@@ -141,15 +142,22 @@ class CoilCalendarLabels {
   static String _showDaysLabel(DateTime month) =>
       'Back to the days of ${_monthLabel(month)}';
 
-  static Widget _selection(DateTime day) {
-    final short = '${_months[day.month - 1].substring(0, 3)} ${day.day}';
-    return Text(
-      day.year == DateTime.now().year ? short : '$short, ${day.year}',
-    );
+  static Widget _summary(DateTime value, {required bool withTime}) {
+    final date =
+        '${_weekdays[value.weekday - 1].substring(0, 3)}, '
+        '${_months[value.month - 1].substring(0, 3)} ${value.day}, '
+        '${value.year}';
+    return Text(withTime ? '$date, ${_time(value)}' : date);
   }
 
-  static String _selectionLabel(DateTime day) =>
-      'Go to the selected day, ${_dayLabel(day)}';
+  static String _summaryLabel(DateTime value, {required bool withTime}) {
+    final day = 'Selected: ${_dayLabel(value)}';
+    return withTime ? '$day, ${_time(value)}' : day;
+  }
+
+  static String _time(DateTime value) =>
+      '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
 
   static Widget _weekday(int weekday) =>
       Text(_weekdays[weekday - 1].substring(0, 2));
@@ -159,10 +167,7 @@ class CoilCalendarLabels {
 
   static String _dateLabel(DateTime value, {required bool withTime}) {
     final date = '${_months[value.month - 1]} ${value.day}, ${value.year}';
-    if (!withTime) return date;
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '$date, $hour:$minute';
+    return withTime ? '$date, ${_time(value)}' : date;
   }
 
   static String _dayLabel(DateTime day) =>
@@ -184,10 +189,6 @@ class CoilCalendarLabels {
 /// months per page, paging sideways like the days, opening on the shown
 /// month's year. The arrows turn a year there, and the title follows the
 /// year in view. Picking a month zooms back into its days.
-///
-/// While the [selected] day is out of view (on another page of days, or in
-/// another year of months), a small chip beside the arrows shows it
-/// ([CoilCalendarLabels.selection]); tapping it goes back to its month.
 ///
 /// The grid is one focus stop: the arrows move a day or a week, Home and
 /// End go to the week's ends, PageUp and PageDown change the month (with
@@ -519,34 +520,6 @@ class _CoilCalendarState extends State<CoilCalendar> {
     _turnTo(month);
   }
 
-  /// The selected day's month, when it can be shown.
-  DateTime? get _selectedMonth => switch (widget.selected) {
-    final day? when _canShow(_monthOf(day)) => _monthOf(day),
-    _ => null,
-  };
-
-  /// Whether the selected day is out of view: on another page of days, or
-  /// in another year of the month view.
-  bool get _selectionAway {
-    final month = _selectedMonth;
-    if (month == null) return false;
-    return _monthsOpen ? month.year != _monthsTitle.year : month != _title;
-  }
-
-  /// Goes back to the selected day's month: the days turn to it, and the
-  /// month view zooms into it.
-  void _showSelected() {
-    final month = _selectedMonth;
-    if (month == null) return;
-    if (_monthsOpen) {
-      _pickMonth(month);
-      return;
-    }
-    setState(() => _month = month);
-    _active.clear();
-    _turnTo(month);
-  }
-
   void _pick(DateTime day, {required bool touch}) {
     if (!_enabled(day)) return;
     // A finger's pick ticks, as a platform picker does (iOS only by
@@ -652,12 +625,6 @@ class _CoilCalendarState extends State<CoilCalendar> {
                 onPressed: widget.onSelected == null ? null : _toggleMonths,
               ),
             ),
-          ),
-          _SelectionChip(
-            day: _selectionAway ? widget.selected : null,
-            labels: labels,
-            motion: widget.motion,
-            onPressed: _showSelected,
           ),
           // A month of days in the day view, a year of months in the month
           // view.
@@ -1537,67 +1504,6 @@ class _RenderZoomTitleBox extends RenderBox
     _clip.layer = null;
     _mask.layer = null;
     super.dispose();
-  }
-}
-
-/// The selected [day] as a small tinted chip beside the arrows, while its
-/// month is out of view: tapping it goes back. It blur-fades in and out,
-/// and the room for it springs open and closed, on `fade` and `standard`.
-class _SelectionChip extends StatelessWidget {
-  const _SelectionChip({
-    required this.day,
-    required this.labels,
-    required this.motion,
-    required this.onPressed,
-  });
-
-  /// The selected day while it's out of view, else null.
-  final DateTime? day;
-  final CoilCalendarLabels labels;
-  final CoilMotion? motion;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final motion = CoilTheme.motionOf(context, override: this.motion);
-    final compact = CoilTheme.metricsOf(context, size: CoilSize.compact);
-    final text = CoilTheme.textOf(context);
-    final day = this.day;
-    return MotionSizeSwitcher(
-      motion: motion.fade,
-      exitMotion: motion.fadeExit,
-      sizeMotion: motion.standard,
-      // MotionSizeSwitcher takes a resolved Alignment.
-      alignment: AlignmentDirectional.centerEnd.resolve(
-        Directionality.of(context),
-      ),
-      clipBehavior: Clip.none,
-      debugLabel: 'CoilCalendar.selection',
-      transitionBuilder: CoilBlurFade.transition(
-        blur: CoilBlurFade.defaultBlur / 2,
-      ),
-      child: day == null
-          ? const SizedBox.shrink(key: ValueKey('none'))
-          : Padding(
-              key: ValueKey(day),
-              padding: EdgeInsetsDirectional.only(
-                start: compact.gap,
-                end: compact.gap,
-              ),
-              child: CoilButton(
-                variant: CoilButtonVariant.secondary,
-                size: CoilSize.compact,
-                semanticLabel: labels.selectionLabel(day),
-                style: CoilButtonStyle(
-                  textStyle: text.caption.tabular.copyWith(
-                    fontWeight: text.emphasis,
-                  ),
-                ),
-                onPressed: onPressed,
-                child: ExcludeSemantics(child: labels.selection(day)),
-              ),
-            ),
-    );
   }
 }
 

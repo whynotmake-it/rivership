@@ -17,12 +17,18 @@ Milestone M0, unreleased.
   (`CoilCalendarLabels.previousYearLabel` / `nextYearLabel`), and the
   title, like Escape, zooms back into the month it names. In a sheet, a
   vertical drag on the months moves the sheet.
-- `CoilCalendar` (and so `CoilDatePicker`, with its draft) shows the
-  selected day in a small tinted chip beside the arrows while its month,
-  or in the month view its year, is out of view. Tapping it turns back to
-  that month, zooming in from the month view. `CoilCalendarLabels.selection`
-  ("Nov 14", with the year when it isn't this year's) and
-  `selectionLabel` name it.
+- Breaking: `CoilCalendar` no longer shows the selected day in a chip
+  beside the arrows while it's out of view; it read like a second title.
+  `CoilCalendarLabels.selection` and `selectionLabel` are gone, and Tab no
+  longer stops on the chip. Instead, `CoilDatePicker`'s footer names what
+  Done will confirm: in the phone sheet and in a popover that also picks a
+  time, the draft ("Fri, Nov 22, 2019", with the time when the picker picks
+  one) sits on the footer's leading side and Done on its trailing side, at
+  its own width rather than full width, however far the calendar has paged
+  or zoomed. Before a pick it shows the picker's `placeholder`, muted. A
+  date-only popover still commits on the tap and has no footer. New
+  `CoilCalendarLabels.summary` and `summaryLabel` ("Selected: Friday,
+  November 22, 2019") localize it.
 - Fix: a sheet dragged up past its rest showed the page below it. Its
   surface (fill, outline and dark-mode edge) now runs a window's height
   past its bottom edge, as `stupid_simple_sheet`'s `SheetBackground`

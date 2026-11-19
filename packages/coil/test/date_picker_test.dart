@@ -646,7 +646,7 @@ void confirmTests() {
 
 void monthViewSheetTests() {
   testWidgets('in a sheet, a drag down on the months moves the sheet, and '
-      'the chip goes back to the draft', (tester) async {
+      'the footer names the draft', (tester) async {
     await _openConfirmDemo(tester, presentation: .sheet);
     // A draft pick, then out to the months and two years back.
     await tester.tap(find.text('20').first);
@@ -681,17 +681,62 @@ void monthViewSheetTests() {
     expect(tester.getRect(sheet).top, top);
     expect(find.text('2024'), findsOneWidget);
 
-    // The chip names the draft and goes back to its month.
-    await tester.tap(
-      find.bySemanticsLabel(
-        'Go to the selected day, Friday, November 20, 2026',
-      ),
+    // Years from the draft, the footer still names it.
+    expect(
+      find.bySemanticsLabel('Selected: Friday, November 20, 2026'),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    expect(find.text('November 2026'), findsOneWidget);
-    expect(_isSelected(tester, '20'), isTrue);
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(_changes(tester), [DateTime(2026, 11, 20)]);
+  });
+
+  testWidgets('the footer follows the draft wherever the calendar goes, and '
+      'Done confirms what it says', (tester) async {
+    await _openConfirmDemo(tester, presentation: .sheet, withTime: true);
+    Finder footer(String label) => find.bySemanticsLabel('Selected: $label');
+    // It opens on the value.
+    expect(footer('Saturday, November 14, 2026, 09:30'), findsOneWidget);
+
+    // A day and an hour: the footer follows the draft, the field doesn't.
+    await tester.tap(find.text('20').first);
+    await tester.pumpAndSettle();
+    tester.semantics.increase(find.semantics.byLabel('Hour'));
+    await tester.pumpAndSettle();
+    expect(footer('Friday, November 20, 2026, 10:30'), findsOneWidget);
+    expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
+
+    // Months on, then zoomed out and years back: it still names the draft.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.bySemanticsLabel('Next month'));
+      await tester.pumpAndSettle();
+    }
+    expect(_isSelected(tester, '20'), isFalse);
+    expect(footer('Friday, November 20, 2026, 10:30'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('February 2027'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.bySemanticsLabel('Previous year'));
+      await tester.pumpAndSettle();
+    }
+    expect(footer('Friday, November 20, 2026, 10:30'), findsOneWidget);
+
+    // Another day, years away: the footer follows, keeping the time.
+    await tester.tap(find.bySemanticsLabel('March 2025'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('17').first);
+    await tester.pumpAndSettle();
+    expect(footer('Monday, March 17, 2025, 10:30'), findsOneWidget);
+    expect(footer('Friday, November 20, 2026, 10:30'), findsNothing);
+
+    // The summary is no button, and Done confirms exactly what it said.
+    await tester.tap(footer('Monday, March 17, 2025, 10:30'));
+    await tester.pumpAndSettle();
+    expect(_changes(tester), isEmpty);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSheetPanel), findsNothing);
+    expect(_changes(tester), [DateTime(2025, 3, 17, 10, 30)]);
+    expect(find.text('March 17, 2025, 10:30'), findsOneWidget);
   });
 }

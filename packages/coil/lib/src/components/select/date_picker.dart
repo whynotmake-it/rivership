@@ -26,6 +26,10 @@ import 'package:flutter/widgets.dart';
 ///   answers, and a sheet takes a whole screen's attention, so there is no
 ///   tap that could close it without cutting a choice short; Material's
 ///   modal pickers confirm with OK for the same reason.
+///   The footer names what Done will confirm on its leading side
+///   ([CoilCalendarLabels.summary]), so the draft stays readable however
+///   far the calendar has paged or zoomed; before a pick it shows
+///   [placeholder], muted.
 /// - **Keyboard:** Enter confirms the draft (on the grid, it picks the
 ///   focused day first); Space only picks; Escape cancels.
 ///
@@ -196,15 +200,28 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
         metrics,
       ).merge(CoilTheme.styleOf<CoilSelectStyle>(context)).merge(widget.style);
 
-  /// The Done button: it confirms once something is picked.
-  Widget _confirmButton(CoilPopupHandle popup) =>
-      ValueListenableBuilder<DateTime?>(
-        valueListenable: _draft,
-        builder: (context, draft, _) => CoilButton(
-          onPressed: draft == null ? null : () => _confirm(popup),
-          child: widget.labels.confirm,
-        ),
-      );
+  /// The footer: what Done will confirm on the leading side, and Done,
+  /// which confirms once something is picked, on the trailing side.
+  Widget _footer(CoilPopupHandle popup) => ValueListenableBuilder<DateTime?>(
+    valueListenable: _draft,
+    builder: (context, draft, _) => _DraftFooter(
+      summary: draft == null
+          ? null
+          : Semantics(
+              label: widget.labels.summaryLabel(
+                draft,
+                withTime: widget.withTime,
+              ),
+              excludeSemantics: true,
+              child: widget.labels.summary(draft, withTime: widget.withTime),
+            ),
+      placeholder: widget.placeholder,
+      action: CoilButton(
+        onPressed: draft == null ? null : () => _confirm(popup),
+        child: widget.labels.confirm,
+      ),
+    ),
+  );
 
   Widget _content(BuildContext context, CoilPopupHandle popup) {
     final sheet = popup.presentation == CoilPresentation.sheet;
@@ -244,7 +261,7 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
                 spacing: metrics.gap * 2,
                 children: [
                   panel,
-                  CoilActionBar(actions: [_confirmButton(popup)]),
+                  _footer(popup),
                 ],
               ),
       ),
@@ -271,7 +288,8 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       ),
     );
     if (!sheet) return content;
-    // The sheet pins Done under the calendar, lined up with the title.
+    // The sheet pins the footer under the calendar, lined up with the
+    // title.
     final touch = CoilTheme.of(
       context,
     ).metrics.resolve(CoilTier.touch, CoilSize.regular);
@@ -280,7 +298,7 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       title: widget.sheetTitle,
       footer: Padding(
         padding: EdgeInsets.symmetric(horizontal: side),
-        child: CoilActionBar(actions: [_confirmButton(popup)]),
+        child: _footer(popup),
       ),
       child: content,
     );
@@ -359,6 +377,54 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A date picker's footer: the [summary] of what [action] confirms on the
+/// leading side, or [placeholder], muted, before anything is picked, and
+/// [action] on the trailing side at its own width (DESIGN.md §13.5).
+///
+/// [action] never gives up width: the summary takes what's left, wraps
+/// onto a second line and then ends in an ellipsis, so large text on a
+/// narrow phone squeezes the date, never the button. The summary isn't a
+/// button; tapping it does nothing.
+class _DraftFooter extends StatelessWidget {
+  const _DraftFooter({
+    required this.summary,
+    required this.placeholder,
+    required this.action,
+  });
+
+  /// What [action] will confirm, or null when nothing is picked.
+  final Widget? summary;
+
+  /// Shown, muted, while [summary] is null.
+  final Widget placeholder;
+
+  /// The confirming button.
+  final Widget action;
+
+  /// The summary's lines before it ends in an ellipsis.
+  static const maxLines = 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final summary = this.summary;
+    return Row(
+      spacing: CoilTheme.metricsOf(context).gap * 2,
+      children: [
+        Expanded(
+          child: DefaultTextStyle(
+            style: (summary == null ? text.muted.body : text.body).tabular,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            child: summary ?? placeholder,
+          ),
+        ),
+        CoilActionBar(layout: CoilActionBarLayout.row, actions: [action]),
+      ],
     );
   }
 }

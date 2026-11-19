@@ -214,9 +214,8 @@ void pagingTests() {
     expect(find.text('January 2027'), findsOneWidget);
     // One page in the tree once it settles.
     expect(_days(), findsNWidgets(42));
-    // Title, the selected day's chip (November is out of view), the
-    // arrows, then the grid.
-    for (var i = 0; i < 5; i++) {
+    // Title, the arrows, then the grid.
+    for (var i = 0; i < 4; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     }
     await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
@@ -865,60 +864,6 @@ void monthViewTests() {
       expect(tester.takeException(), isNull);
     });
   }
-
-  testWidgets('the selection chip brings back the picked month from away', (
-    tester,
-  ) async {
-    useScreen(tester, TestScreen.desktop);
-    await tester.pumpWidget(
-      testApp(tier: CoilTier.pointer, home: const _MonthsDemo()),
-    );
-    final chip = find.bySemanticsLabel(
-      'Go to the selected day, Saturday, November 14, 2026',
-    );
-    bool fourteenSelected() =>
-        tester
-            .getSemantics(
-              find.bySemanticsLabel('Saturday, November 14, 2026'),
-            )
-            .flagsCollection
-            .isSelected ==
-        Tristate.isTrue;
-    // The picked day is in view: nothing to go back to.
-    expect(chip, findsNothing);
-    // Months away in the days, the chip takes them back.
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.bySemanticsLabel('Previous month'));
-      await tester.pumpAndSettle();
-    }
-    expect(find.text('August 2026'), findsOneWidget);
-    await tester.tap(chip);
-    await tester.pumpAndSettle();
-    expect(find.text('November 2026'), findsOneWidget);
-    expect(fourteenSelected(), isTrue);
-    expect(chip, findsNothing);
-    // Zoomed out and years away, it zooms back into the picked month.
-    await tester.tap(find.bySemanticsLabel('November 2026'));
-    await tester.pumpAndSettle();
-    await tester.fling(_years(), const Offset(200, 0), 1000);
-    await tester.pumpAndSettle();
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.bySemanticsLabel('Previous year'));
-      await tester.pumpAndSettle();
-    }
-    expect(_visibleYears(tester), [2022]);
-    await tester.tap(chip);
-    await tester.pumpAndSettle();
-    expect(_years(), findsNothing);
-    expect(find.text('November 2026'), findsOneWidget);
-    expect(fourteenSelected(), isTrue);
-    // Its day is still one tap away.
-    await tester.tap(find.text('20').first);
-    expect(
-      tester.state<_MonthsDemoState>(find.byType(_MonthsDemo)).picked,
-      DateTime(2026, 11, 20),
-    );
-  });
 
   testWidgets('reduced motion zooms with a fade only', (tester) async {
     useScreen(tester, TestScreen.desktop);
