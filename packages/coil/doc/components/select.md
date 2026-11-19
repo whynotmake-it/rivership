@@ -37,7 +37,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 ## DatePicker
 
 - **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
-- **Sizing:** the popover hugs the calendar's seven cells; a sheet's calendar fills the sheet's width up to days 20 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
+- **Sizing:** the popover hugs the calendar's seven cells, not the field's width (`CoilAdaptivePopup.minWidth: 0`); a sheet's calendar fills the sheet's width up to days 30 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
 - **Phone (touch, < 600): a sheet built for the thumb.**
   - Caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.
@@ -51,7 +51,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - date: "Fri, Nov 22, 2019" ("Selected: Friday, November 22, 2019");
   - with time: "Fri, Nov 22, 2019, 14:30";
   - range (when range mode lands): "Nov 13 – 15, 2026", "Nov 28 – Dec 3, 2026" across months, "Dec 29, 2026 – Jan 2, 2027" across years;
-  - nothing picked: the picker's `placeholder` ("Pick a date"), muted, beside the disabled Done.
+  - nothing picked: nothing, beside the disabled Done. The field says what to pick; the footer only says what Done would confirm.
   - A date-only popover gets **no** footer for it: a tap there commits and closes, and the field under it shows the value. Nothing is added to the popover just to show the selection.
 - **Confirming (built):** what's picked in the open calendar is a draft; only a confirm reports it (`onChanged`), and every other way out cancels.
   - **Sheet (date, or date and time): Done confirms.** The close button, the scrim, a drag down, back and Escape cancel; reopening starts from the value. A sheet is a modal task that takes the screen, the platform pickers presented that way confirm explicitly (Material's modal date picker dialog and bottom sheet: Cancel + OK), and the sheet already has its close button as the Cancel, so the footer holds the one primary action.

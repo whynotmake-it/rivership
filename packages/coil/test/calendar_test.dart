@@ -405,8 +405,8 @@ void sizingTests() {
         CoilTier.touch => 44.0,
       };
       final grid = tester.getRect(find.byType(PageView));
-      // At most 20 % past the natural cell, and centered in the 800.
-      expect(grid.width, lessThanOrEqualTo(natural * 1.2 * 7 + 8));
+      // At most 30 % past the natural cell, and centered in the 800.
+      expect(grid.width, lessThanOrEqualTo(natural * 1.3 * 7 + 8));
       expect(grid.center.dx, moreOrLessEquals(500, epsilon: 0.5));
       // Every day's cell (its tap area) is square, and its fill is too.
       for (final cell in _cells().evaluate().take(7)) {

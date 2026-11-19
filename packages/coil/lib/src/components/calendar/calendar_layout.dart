@@ -117,9 +117,10 @@ double calendarTimeRowExtent(
 }
 
 /// How much bigger than its natural side a day may grow when the calendar
-/// is given more room than seven cells (a sheet): 20 %. A phone sheet is
-/// filled; a tablet's sheet centers the calendar rather than stretch it.
-const calendarMaxCellScale = 1.2;
+/// is given more room than seven cells (a sheet): 30 %, so a sheet fills
+/// with it on phones up to the widest (430); a wider sheet centers the
+/// calendar rather than stretch it.
+const calendarMaxCellScale = 1.3;
 
 /// A calendar's widths at [context]: the natural side of a day (`cell`),
 /// the room for the focus ring on each side (`inset`), seven cells and the

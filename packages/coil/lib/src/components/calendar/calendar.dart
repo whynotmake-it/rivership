@@ -261,6 +261,13 @@ class CoilCalendar extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
+  /// How far the days sit inside a calendar's box at [context]: room for
+  /// the focus ring around the edge days. Content that lines up with the
+  /// days (a footer, a time band) insets this much from the calendar's
+  /// edges.
+  static double edgeInsetOf(BuildContext context) =>
+      calendarWidths(context).inset;
+
   @override
   State<CoilCalendar> createState() => _CoilCalendarState();
 }
@@ -610,6 +617,15 @@ class _CoilCalendarState extends State<CoilCalendar> {
         icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
       ),
     ];
+    // The title's text starts where the days start, and the arrows'
+    // glyphs end where they end: both are ghost buttons, so their padding
+    // hangs outside the grid rather than pushing the text in.
+    final compact = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final titleBleed = metrics.itemPaddingX;
+    final arrowExtent = math.max(compact.controlHeight, compact.minHitTarget);
+    final arrowGlyph = MediaQuery.textScalerOf(context).scale(compact.iconSize);
+    final arrowBleed = math.max(0, (arrowExtent - arrowGlyph) / 2).toDouble();
+    final direction = rtl ? -1.0 : 1.0;
     final header = Padding(
       padding: EdgeInsets.symmetric(horizontal: inset),
       child: Row(
@@ -617,18 +633,26 @@ class _CoilCalendarState extends State<CoilCalendar> {
           Flexible(
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: _MonthTitle(
-                title: _monthsOpen ? _monthsTitle : _title,
-                labels: labels,
-                open: _monthsOpen,
-                motion: widget.motion,
-                onPressed: widget.onSelected == null ? null : _toggleMonths,
+              child: Transform.translate(
+                offset: Offset(-titleBleed * direction, 0),
+                child: _MonthTitle(
+                  title: _monthsOpen ? _monthsTitle : _title,
+                  labels: labels,
+                  open: _monthsOpen,
+                  motion: widget.motion,
+                  onPressed: widget.onSelected == null
+                      ? null
+                      : _toggleMonths,
+                ),
               ),
             ),
           ),
           // A month of days in the day view, a year of months in the month
           // view.
-          Row(mainAxisSize: MainAxisSize.min, children: arrows),
+          Transform.translate(
+            offset: Offset(arrowBleed * direction, 0),
+            child: Row(mainAxisSize: MainAxisSize.min, children: arrows),
+          ),
         ],
       ),
     );

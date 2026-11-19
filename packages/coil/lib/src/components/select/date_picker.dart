@@ -215,7 +215,6 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
               excludeSemantics: true,
               child: widget.labels.summary(draft, withTime: widget.withTime),
             ),
-      placeholder: widget.placeholder,
       action: CoilButton(
         onPressed: draft == null ? null : () => _confirm(popup),
         child: widget.labels.confirm,
@@ -244,6 +243,14 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       },
       onSubmitted: () => _confirm(popup),
     );
+    // Everything lines up with the days, which sit [edge] inside the
+    // calendar's box: in a sheet, on the sheet's text inset (where its
+    // title and footer start); in a popover, [edge] inside its padding.
+    final edge = CoilCalendar.edgeInsetOf(context);
+    final touch = CoilTheme.of(
+      context,
+    ).metrics.resolve(CoilTier.touch, CoilSize.regular);
+    final side = touch.popupInset + touch.itemPaddingX;
     // Scrolls when the window is too short for it (a phone in landscape,
     // large text). The popover hugs the calendar's width; a sheet's width
     // is the calendar's to fill.
@@ -252,17 +259,27 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       // the sheet's, so a drag hands off to dismissing it.
       primary: sheet ? null : false,
       child: Padding(
-        padding: EdgeInsets.all(metrics.popupInset * 2),
+        padding: sheet
+            ? EdgeInsets.symmetric(
+                horizontal: side - edge,
+                vertical: metrics.popupInset * 2,
+              )
+            : EdgeInsets.all(metrics.popupInset * 2),
         child: sheet || !widget.withTime
             ? panel
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: metrics.gap * 2,
-                children: [
-                  panel,
-                  _footer(popup),
-                ],
+            : CoilCalendarWidth(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: metrics.gap * 2,
+                  children: [
+                    panel,
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: edge),
+                      child: _footer(popup),
+                    ),
+                  ],
+                ),
               ),
       ),
     );
@@ -288,12 +305,8 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       ),
     );
     if (!sheet) return content;
-    // The sheet pins the footer under the calendar, lined up with the
-    // title.
-    final touch = CoilTheme.of(
-      context,
-    ).metrics.resolve(CoilTier.touch, CoilSize.regular);
-    final side = touch.popupInset + touch.itemPaddingX;
+    // The sheet pins the footer under the calendar, on the same edge as
+    // the title and the days.
     return CoilSheetPanel(
       title: widget.sheetTitle,
       footer: Padding(
@@ -316,6 +329,9 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
       controller: _popup,
       presentation: widget.presentation,
       motion: widget.motion,
+      // The popover hugs the calendar, not the field: a calendar centered
+      // in a field-wide popover has edges nothing else lines up with.
+      minWidth: 0,
       traits: () => const CoilOverlayTraits(
         kind: CoilOverlayKind.dateTime,
         itemCount: 0,
@@ -382,25 +398,18 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
 }
 
 /// A date picker's footer: the [summary] of what [action] confirms on the
-/// leading side, or [placeholder], muted, before anything is picked, and
-/// [action] on the trailing side at its own width (DESIGN.md §13.5).
+/// leading side, nothing before anything is picked, and [action] on the
+/// trailing side at its own width (DESIGN.md §13.5).
 ///
 /// [action] never gives up width: the summary takes what's left, wraps
 /// onto a second line and then ends in an ellipsis, so large text on a
 /// narrow phone squeezes the date, never the button. The summary isn't a
 /// button; tapping it does nothing.
 class _DraftFooter extends StatelessWidget {
-  const _DraftFooter({
-    required this.summary,
-    required this.placeholder,
-    required this.action,
-  });
+  const _DraftFooter({required this.summary, required this.action});
 
   /// What [action] will confirm, or null when nothing is picked.
   final Widget? summary;
-
-  /// Shown, muted, while [summary] is null.
-  final Widget placeholder;
 
   /// The confirming button.
   final Widget action;
@@ -417,10 +426,10 @@ class _DraftFooter extends StatelessWidget {
       children: [
         Expanded(
           child: DefaultTextStyle(
-            style: (summary == null ? text.muted.body : text.body).tabular,
+            style: text.body.tabular,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
-            child: summary ?? placeholder,
+            child: summary ?? const SizedBox.shrink(),
           ),
         ),
         CoilActionBar(layout: CoilActionBarLayout.row, actions: [action]),
@@ -567,7 +576,13 @@ class _DateTimePanelState extends State<_DateTimePanel> {
         spacing: gap,
         children: [
           calendar,
-          columns,
+          // On the days' edge, inside the calendar's focus-ring room.
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: CoilCalendar.edgeInsetOf(context),
+            ),
+            child: columns,
+          ),
         ],
       ),
     );

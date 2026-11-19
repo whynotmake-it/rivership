@@ -17,6 +17,15 @@ Milestone M0, unreleased.
   (`CoilCalendarLabels.previousYearLabel` / `nextYearLabel`), and the
   title, like Escape, zooms back into the month it names. In a sheet, a
   vertical drag on the months moves the sheet.
+- Fix: the date picker lines up. Its popover hugs the calendar instead of
+  matching the field's width, which left the calendar centered with edges
+  nothing else shared. In a sheet, the month title, the days, the time
+  band and the footer start and end on the sheet's 16 px text inset, with
+  the title. In every calendar the title's text starts where the days
+  start and the arrows' glyphs end where they end; the ghost buttons'
+  padding hangs outside the grid. Days in a wide space grow up to 30 %
+  (was 20 %) past their natural side, so a sheet fills on every phone.
+  `CoilAdaptivePopup.minWidth` and `CoilCalendar.edgeInsetOf` are new.
 - Breaking: `CoilCalendar` no longer shows the selected day in a chip
   beside the arrows while it's out of view; it read like a second title.
   `CoilCalendarLabels.selection` and `selectionLabel` are gone, and Tab no
@@ -25,7 +34,7 @@ Milestone M0, unreleased.
   time, the draft ("Fri, Nov 22, 2019", with the time when the picker picks
   one) sits on the footer's leading side and Done on its trailing side, at
   its own width rather than full width, however far the calendar has paged
-  or zoomed. Before a pick it shows the picker's `placeholder`, muted. A
+  or zoomed. Before a pick it's empty, beside the disabled Done. A
   date-only popover still commits on the tap and has no footer. New
   `CoilCalendarLabels.summary` and `summaryLabel` ("Selected: Friday,
   November 22, 2019") localize it.

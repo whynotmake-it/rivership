@@ -80,6 +80,7 @@ class CoilAdaptivePopup extends StatefulWidget {
     required this.child,
     super.key,
     this.presentation,
+    this.minWidth,
     this.maxHeight = double.infinity,
     this.takeFocus = true,
     this.motion,
@@ -106,6 +107,10 @@ class CoilAdaptivePopup extends StatefulWidget {
 
   /// The anchor.
   final Widget child;
+
+  /// Minimum popover width; see [CoilPopover.minWidth]. Null matches the
+  /// anchor's width; 0 lets the popover hug its content.
+  final double? minWidth;
 
   /// Maximum popover height.
   final double maxHeight;
@@ -275,6 +280,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     return CoilPopover(
       controller: _popover,
       onClose: (reason) => _open?.close(reason),
+      minWidth: widget.minWidth,
       maxHeight: widget.maxHeight,
       takeFocus: widget.takeFocus,
       motion: widget.motion,

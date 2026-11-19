@@ -172,15 +172,37 @@ void sizingTests() {
     expect(surface.height, calendar.height + 16);
   });
 
-  testWidgets('in a phone sheet the calendar fills the width', (tester) async {
+  testWidgets('in a phone sheet the days fill the width, on one edge with '
+      'the month title and the footer', (tester) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
     await tester.tap(find.text('Pick a date'));
     await tester.pumpAndSettle();
+    // A day's cell: its column, which takes its taps.
+    final days = find.descendant(
+      of: find.byType(PageView),
+      matching: find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_Day',
+      ),
+    );
+    final first = tester.getRect(days.first);
+    final title = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(CoilCalendar),
+            matching: find.textContaining(RegExp(r'\d{4}')),
+          )
+          .first,
+    );
+    final done = tester.getRect(find.widgetWithText(CoilButton, 'Done'));
+    // The month title's text starts where the first day starts, and Done
+    // ends where the last day ends, mirrored about the sheet's middle.
     final sheet = tester.getRect(find.byType(CoilSheetPanel));
-    final calendar = tester.getRect(find.byType(CoilCalendar));
-    // The content's 12 px padding; the glass sheet insets the panel itself.
-    expect(calendar.width, sheet.width - 2 * 12);
+    expect(title.left, moreOrLessEquals(first.left, epsilon: 1));
+    expect(
+      sheet.right - done.right,
+      moreOrLessEquals(first.left - sheet.left, epsilon: 1),
+    );
   });
 
   testWidgets('a wide sheet centers the calendar and time at their widest', (
@@ -199,11 +221,12 @@ void sizingTests() {
     final sheet = tester.getRect(find.byType(CoilSheetPanel));
     final grid = tester.getRect(find.byType(PageView));
     final time = tester.getRect(find.byType(CoilTimeColumns));
-    // Days 20 % past the 44 touch cell at most, so the 560 sheet doesn't
-    // stretch them; the calendar and the time band share its width.
-    expect(grid.width, lessThanOrEqualTo(44 * 1.2 * 7 + 8));
+    // Days 30 % past the 44 touch cell at most, so the 560 sheet doesn't
+    // stretch them; the time band spans the days, inside the calendar's
+    // focus-ring room.
+    expect(grid.width, lessThanOrEqualTo(44 * 1.3 * 7 + 8));
     expect(grid.center.dx, moreOrLessEquals(sheet.center.dx, epsilon: 0.5));
-    expect(time.width, moreOrLessEquals(grid.width, epsilon: 0.5));
+    expect(time.width, moreOrLessEquals(grid.width - 4, epsilon: 0.5));
     expect(time.center.dx, moreOrLessEquals(sheet.center.dx, epsilon: 0.5));
     // Square rows: six of them as tall as the columns are wide.
     expect(grid.height, moreOrLessEquals((grid.width - 6) * 6 / 7, epsilon: 6));
