@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -9,13 +8,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 /// The month view a calendar zooms out to: a horizontal pager, one year
-/// per page, each year's twelve months three across and four down under
-/// the year.
+/// per page, each year's twelve months three across and four down. The
+/// calendar's title names the year, so the months take the page.
 ///
 /// It opens on [month]'s year. Months outside [firstMonth] and [lastMonth]
 /// are dimmed and can't be picked; the pages end at their years. The
 /// month of [selected] is filled like a selected day, and this month is
-/// semibold, like today.
+/// semibold, like today. The keyboard's month, which the title zooms back
+/// into, has the pressed wash while it isn't the selected one.
 ///
 /// The view keeps a month the keyboard acts on (it starts on [month]) and
 /// reports the month a calendar's title names with [onShown]: that month in
@@ -32,7 +32,6 @@ class CalendarMonthView extends StatefulWidget {
     required this.firstMonth,
     required this.lastMonth,
     required this.monthName,
-    required this.year,
     required this.monthLabel,
     required this.inset,
     required this.focusNode,
@@ -58,9 +57,6 @@ class CalendarMonthView extends StatefulWidget {
 
   /// A month's name in its cell, from 1 to 12.
   final Widget Function(int month) monthName;
-
-  /// A year's heading.
-  final Widget Function(int year) year;
 
   /// A month's name for screen readers.
   final String Function(DateTime month) monthLabel;
@@ -223,106 +219,97 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
   Widget build(BuildContext context) {
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final motion = CoilTheme.motionOf(context, override: widget.motion);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // The year's heading is as tall as a week's row, so the months sit
-        // where the weeks did.
-        final row = math.max(0, constraints.maxWidth - widget.inset * 2) / 7;
-        return Shortcuts(
-          shortcuts: {
-            SingleActivator(
-              rtl
-                  ? LogicalKeyboardKey.arrowRight
-                  : LogicalKeyboardKey.arrowLeft,
-            ): const _MoveIntent(
-              -1,
-            ),
-            SingleActivator(
-              rtl
-                  ? LogicalKeyboardKey.arrowLeft
-                  : LogicalKeyboardKey.arrowRight,
-            ): const _MoveIntent(
-              1,
-            ),
-            const SingleActivator(LogicalKeyboardKey.arrowUp):
-                const _MoveIntent(-3),
-            const SingleActivator(LogicalKeyboardKey.arrowDown):
-                const _MoveIntent(3),
-            const SingleActivator(LogicalKeyboardKey.pageUp): const _MoveIntent(
-              -12,
-            ),
-            const SingleActivator(LogicalKeyboardKey.pageDown):
-                const _MoveIntent(12),
-            const SingleActivator(LogicalKeyboardKey.enter):
-                const ActivateIntent(),
-            const SingleActivator(LogicalKeyboardKey.numpadEnter):
-                const ActivateIntent(),
-            const SingleActivator(LogicalKeyboardKey.space):
-                const ActivateIntent(),
-            const SingleActivator(LogicalKeyboardKey.escape):
-                const _CloseIntent(),
+    return Shortcuts(
+      shortcuts: {
+        SingleActivator(
+          rtl ? LogicalKeyboardKey.arrowRight : LogicalKeyboardKey.arrowLeft,
+        ): const _MoveIntent(
+          -1,
+        ),
+        SingleActivator(
+          rtl ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight,
+        ): const _MoveIntent(
+          1,
+        ),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): const _MoveIntent(
+          -3,
+        ),
+        const SingleActivator(LogicalKeyboardKey.arrowDown): const _MoveIntent(
+          3,
+        ),
+        const SingleActivator(LogicalKeyboardKey.pageUp): const _MoveIntent(
+          -12,
+        ),
+        const SingleActivator(LogicalKeyboardKey.pageDown): const _MoveIntent(
+          12,
+        ),
+        const SingleActivator(LogicalKeyboardKey.enter): const ActivateIntent(),
+        const SingleActivator(LogicalKeyboardKey.numpadEnter):
+            const ActivateIntent(),
+        const SingleActivator(LogicalKeyboardKey.space): const ActivateIntent(),
+        const SingleActivator(LogicalKeyboardKey.escape): const _CloseIntent(),
+      },
+      child: Actions(
+        actions: {
+          _MoveIntent: CallbackAction<_MoveIntent>(
+            onInvoke: (intent) => _move(intent.months),
+          ),
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) => _pick(_cursor, touch: false),
+          ),
+          _CloseIntent: CallbackAction<_CloseIntent>(
+            onInvoke: (_) => widget.onClose(),
+          ),
+        },
+        child: Focus(
+          focusNode: widget.focusNode,
+          onFocusChange: (focused) {
+            // The ring starts on the month the grid showed.
+            if (focused &&
+                CoilInputModality.instance.value == CoilModality.keyboard) {
+              _active.activate(_cursor.month - 1, via: .keyboard);
+            }
+            setState(() {});
           },
-          child: Actions(
-            actions: {
-              _MoveIntent: CallbackAction<_MoveIntent>(
-                onInvoke: (intent) => _move(intent.months),
-              ),
-              ActivateIntent: CallbackAction<ActivateIntent>(
-                onInvoke: (_) => _pick(_cursor, touch: false),
-              ),
-              _CloseIntent: CallbackAction<_CloseIntent>(
-                onInvoke: (_) => widget.onClose(),
-              ),
-            },
-            child: Focus(
-              focusNode: widget.focusNode,
-              onFocusChange: (focused) {
-                // The ring starts on the month the grid showed.
-                if (focused &&
-                    CoilInputModality.instance.value == CoilModality.keyboard) {
-                  _active.activate(_cursor.month - 1, via: .keyboard);
-                }
-                setState(() {});
-              },
-              child: Semantics(
-                container: true,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: _onScroll,
-                  child: PageView.builder(
-                    controller: _pages,
-                    itemCount: switch (_lastYear) {
-                      final last? => last - _firstYear + 1,
-                      null => null,
-                    },
-                    pageSnapping: false,
-                    // Hands drags off to a sheet it sits in: a vertical
-                    // drag moves the sheet.
-                    scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
-                    physics: CalendarPagePhysics(motion: motion.standard),
-                    itemBuilder: (context, page) =>
-                        _year(_firstYear + page, row: row),
-                  ),
-                ),
+          child: Semantics(
+            container: true,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScroll,
+              child: PageView.builder(
+                controller: _pages,
+                itemCount: switch (_lastYear) {
+                  final last? => last - _firstYear + 1,
+                  null => null,
+                },
+                pageSnapping: false,
+                // Hands drags off to a sheet it sits in: a vertical
+                // drag moves the sheet.
+                scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
+                physics: CalendarPagePhysics(motion: motion.standard),
+                itemBuilder: (context, page) => _year(_firstYear + page),
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  /// [year]'s heading and its twelve months.
-  Widget _year(int year, {required double row}) {
+  /// [year]'s twelve months.
+  Widget _year(int year) {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context);
-    final text = CoilTheme.textOf(context);
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final radius = theme.shape.radii(metrics.tier).item;
     final current = year == _cursor.year;
     final selected = widget.selected;
     final selectedIndex = selected != null && selected.year == year
         ? selected.month - 1
+        : null;
+    // Where the title zooms back into, when it isn't the selected month.
+    final cursorIndex = current && _cursor.month - 1 != selectedIndex
+        ? _cursor.month - 1
         : null;
     final now = DateTime.now();
     final grid = Column(
@@ -348,91 +335,78 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
     );
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: widget.inset),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: row,
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(start: metrics.itemPaddingX),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Semantics(
-                  header: true,
-                  child: DefaultTextStyle(
-                    style: text.muted.caption.copyWith(
-                      fontWeight: text.emphasis,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    child: widget.year(year),
+      child: CoilHoverRegion(
+        axis: CoilHoverAxis.xy,
+        activeItem: current ? _active : null,
+        followFocus: false,
+        child: ListenableBuilder(
+          listenable: _active,
+          builder: (context, child) => CoilHoverHighlight(
+            radius: radius,
+            motion: widget.motion,
+            background: [
+              CoilHighlight(
+                debugLabel: 'CalendarMonthView.cursor',
+                target: cursorIndex,
+                motion: motion.quick,
+                exitMotion: motion.fadeExit,
+                exitTravelMotion: motion.quick,
+                fade: motion.fade,
+                decoration: ShapeDecoration(
+                  color: colors.active,
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(radius),
                   ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: CoilHoverRegion(
-              axis: CoilHoverAxis.xy,
-              activeItem: current ? _active : null,
-              followFocus: false,
-              child: ListenableBuilder(
-                listenable: _active,
-                builder: (context, child) => CoilHoverHighlight(
-                  radius: radius,
-                  motion: widget.motion,
-                  background: [
-                    CoilHighlight(
-                      debugLabel: 'CalendarMonthView.selected',
-                      target: selectedIndex,
-                      fadeIn: false,
-                      motion: motion.standard,
-                      exitMotion: motion.fadeExit,
-                      exitTravelMotion: motion.standard,
-                      fade: motion.fade,
-                      decoration: ShapeDecoration(
-                        color: colors.foreground,
-                        shape: RoundedSuperellipseBorder(
-                          borderRadius: BorderRadius.circular(radius),
-                        ),
-                      ),
-                    ),
-                  ],
-                  foreground: [
-                    CoilHighlight(
-                      debugLabel: 'CalendarMonthView.ring',
-                      target:
-                          current &&
-                              widget.focusNode.hasFocus &&
-                              _active.keyboardDriven
-                          ? _active.index
-                          : null,
-                      fadeIn: false,
-                      motion: motion.quick,
-                      exitMotion: motion.fadeExit,
-                      exitTravelMotion: motion.quick,
-                      fade: motion.fade,
-                      inflate: 1 + theme.focusRing.width,
-                      decoration: ShapeDecoration(
-                        shape: RoundedSuperellipseBorder(
-                          borderRadius: BorderRadius.circular(
-                            theme.shape.radii(metrics.tier).focusRing,
-                          ),
-                          side: BorderSide(
-                            color: theme.focusRing.colorOf(colors),
-                            width: theme.focusRing.width,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  child: child!,
+              CoilHighlight(
+                debugLabel: 'CalendarMonthView.selected',
+                target: selectedIndex,
+                fadeIn: false,
+                motion: motion.standard,
+                exitMotion: motion.fadeExit,
+                exitTravelMotion: motion.standard,
+                fade: motion.fade,
+                decoration: ShapeDecoration(
+                  color: colors.foreground,
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
                 ),
-                child: grid,
               ),
-            ),
+            ],
+            foreground: [
+              CoilHighlight(
+                debugLabel: 'CalendarMonthView.ring',
+                target:
+                    current &&
+                        widget.focusNode.hasFocus &&
+                        _active.keyboardDriven
+                    ? _active.index
+                    : null,
+                fadeIn: false,
+                motion: motion.quick,
+                exitMotion: motion.fadeExit,
+                exitTravelMotion: motion.quick,
+                fade: motion.fade,
+                inflate: 1 + theme.focusRing.width,
+                decoration: ShapeDecoration(
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(
+                      theme.shape.radii(metrics.tier).focusRing,
+                    ),
+                    side: BorderSide(
+                      color: theme.focusRing.colorOf(colors),
+                      width: theme.focusRing.width,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            child: child!,
           ),
-        ],
+          child: grid,
+        ),
       ),
     );
   }

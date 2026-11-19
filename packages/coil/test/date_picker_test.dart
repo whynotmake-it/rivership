@@ -663,7 +663,7 @@ void monthViewSheetTests() {
       await tester.fling(years, const Offset(250, 0), 1000);
       await tester.pumpAndSettle();
     }
-    expect(find.text('November 2024'), findsOneWidget);
+    expect(find.text('2024'), findsOneWidget);
 
     // A slow drag down on the months takes the sheet with the finger.
     final sheet = find.byType(CoilSheetPanel);
@@ -679,7 +679,7 @@ void monthViewSheetTests() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tester.getRect(sheet).top, top);
-    expect(find.text('November 2024'), findsOneWidget);
+    expect(find.text('2024'), findsOneWidget);
 
     // The chip names the draft and goes back to its month.
     await tester.tap(

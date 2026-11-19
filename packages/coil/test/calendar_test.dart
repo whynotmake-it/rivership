@@ -536,17 +536,25 @@ Finder _years() => find.descendant(
   matching: find.byType(PageView),
 );
 
-/// The visible years' headings, as numbers.
+/// The years whose months are in view, as numbers.
 List<int> _visibleYears(WidgetTester tester) {
   final list = tester.getRect(_years());
+  final januaries = find.descendant(
+    of: _years(),
+    matching: find.bySemanticsLabel(RegExp(r'^January \d+$')),
+  );
   return [
-    for (final element
-        in find
-            .descendant(of: _years(), matching: find.byType(Text))
-            .evaluate())
-      if (int.tryParse((element.widget as Text).data ?? '') case final year?
-          when list.overlaps(tester.getRect(find.byWidget(element.widget))))
-        year,
+    for (final element in januaries.evaluate())
+      if (list.overlaps(
+        tester.getRect(find.byElementPredicate((e) => e == element)),
+      ))
+        int.parse(
+          tester
+              .getSemantics(find.byElementPredicate((e) => e == element))
+              .label
+              .split(' ')
+              .last,
+        ),
   ];
 }
 
@@ -669,7 +677,7 @@ void monthViewTests() {
     await tester.fling(_years(), const Offset(200, 0), 1000);
     await tester.pumpAndSettle();
     expect(_visibleYears(tester), [2025]);
-    expect(find.text('November 2025'), findsOneWidget);
+    expect(find.text('2025'), findsOneWidget);
     // The arrows turn a year at a time too.
     for (var i = 0; i < 5; i++) {
       await tester.tap(find.bySemanticsLabel('Next year'));
@@ -679,6 +687,36 @@ void monthViewTests() {
     await tester.tap(find.bySemanticsLabel('June 2030'));
     await tester.pumpAndSettle();
     expect(find.text('June 2030'), findsOneWidget);
+  });
+
+  testWidgets('the months title names only the year, and goes back to the '
+      'month the days left', (tester) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _MonthsDemo()),
+    );
+    await tester.tap(find.bySemanticsLabel('November 2026'));
+    await tester.pumpAndSettle();
+    // The year shows once, as the title, which says where it goes back to.
+    expect(find.text('2026'), findsOneWidget);
+    expect(find.text('November 2026'), findsNothing);
+    var title = tester.getSemantics(find.bySemanticsLabel('2026'));
+    expect(title.hint, contains('November 2026'));
+    expect(title.flagsCollection.isExpanded, Tristate.isTrue);
+    // Two years back, the title follows, and takes the days to November.
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.bySemanticsLabel('Previous year'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('2024'), findsOneWidget);
+    expect(find.text('2026'), findsNothing);
+    title = tester.getSemantics(find.bySemanticsLabel('2024'));
+    expect(title.hint, contains('November 2024'));
+    await tester.tap(find.bySemanticsLabel('2024'));
+    await tester.pumpAndSettle();
+    expect(_years(), findsNothing);
+    expect(find.text('November 2024'), findsOneWidget);
+    expect(find.text('2024'), findsNothing);
   });
 
   testWidgets('firstDate and lastDate bound the years and months', (
@@ -699,8 +737,8 @@ void monthViewTests() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     // Only the bounded years exist: 2026 and 2027.
-    expect(find.text('2025'), findsNothing);
-    expect(find.text('2028'), findsNothing);
+    expect(find.bySemanticsLabel('December 2025'), findsNothing);
+    expect(find.bySemanticsLabel('January 2028'), findsNothing);
     expect(_visibleYears(tester), isNotEmpty);
     expect(_visibleYears(tester).every((y) => y == 2026 || y == 2027), isTrue);
     expect(_enabledMonth(tester, 'October 2026'), isFalse);

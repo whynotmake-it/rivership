@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
@@ -7,6 +8,7 @@ import 'package:coil/primitives.dart';
 import 'package:coil/src/components/calendar/calendar_layout.dart';
 import 'package:coil/src/components/calendar/calendar_months.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -31,7 +33,9 @@ class CoilCalendarLabels {
     this.monthLabel = _monthLabel,
     this.monthName = _monthName,
     this.year = _year,
+    this.yearLabel = _yearLabel,
     this.chooseMonthLabel = 'Choose a month and year',
+    this.showDaysLabel = _showDaysLabel,
     this.confirm = const Text('Done'),
     this.selection = _selection,
     this.selectionLabel = _selectionLabel,
@@ -58,6 +62,12 @@ class CoilCalendarLabels {
 
   /// The month title, like "November 2026". Tapping it zooms out to the
   /// month view; [monthLabel] announces it.
+  ///
+  /// Zooming out, the title turns into the [year]: the box narrows to it,
+  /// holding the title's end in place, while this title blur-fades out
+  /// over it. A month title that ends in the year, as "November 2026"
+  /// does, keeps its year still and only the month leaves; one that leads
+  /// with the year overlaps [year] while the zoom runs.
   final Widget Function(DateTime month) monthTitle;
 
   /// [monthTitle] and a month in the month view for screen readers, like
@@ -67,12 +77,21 @@ class CoilCalendarLabels {
   /// A month's name in the month view, like "Nov", from 1 to 12.
   final Widget Function(int month) monthName;
 
-  /// A year's heading in the month view, like "2026".
+  /// The title in the month view, like "2026": the year in view. Tapping
+  /// it zooms back into the days; [yearLabel] announces it.
   final Widget Function(int year) year;
+
+  /// [year] for screen readers, like "2026".
+  final String Function(int year) yearLabel;
 
   /// What the month title does, for screen readers: a hint on the button
   /// that zooms out to the month view.
   final String chooseMonthLabel;
+
+  /// What the [year] title does, for screen readers: a hint on the button
+  /// that zooms back into the days of the month it's given, like "Back to
+  /// the days of November 2026".
+  final String Function(DateTime month) showDaysLabel;
 
   /// A date picker's confirming button, "Done": it sets the picked date
   /// and closes the sheet, or a popover that picks a time too.
@@ -116,6 +135,11 @@ class CoilCalendarLabels {
       Text(_months[month - 1].substring(0, 3));
 
   static Widget _year(int year) => Text('$year');
+
+  static String _yearLabel(int year) => '$year';
+
+  static String _showDaysLabel(DateTime month) =>
+      'Back to the days of ${_monthLabel(month)}';
 
   static Widget _selection(DateTime day) {
     final short = '${_months[day.month - 1].substring(0, 3)} ${day.day}';
@@ -814,7 +838,6 @@ class _CoilCalendarState extends State<CoilCalendar> {
                   null => null,
                 },
                 monthName: labels.monthName,
-                year: labels.year,
                 monthLabel: labels.monthLabel,
                 inset: inset,
                 focusNode: _monthsFocus,
@@ -1078,7 +1101,9 @@ class _SubmitIntent extends Intent {
 
 /// The month title: a button that zooms out to the month view, with a
 /// chevron that turns as it opens. A new month's name blur-fades in as the
-/// old one leaves, and the button springs to its width.
+/// old one leaves, and the button springs to its width. In the month view
+/// it shows only the year: zooming out, the month leaves and the button
+/// narrows to the year ([_ZoomTitle]).
 class _MonthTitle extends StatelessWidget {
   const _MonthTitle({
     required this.title,
@@ -1088,6 +1113,8 @@ class _MonthTitle extends StatelessWidget {
     required this.onPressed,
   });
 
+  /// The month the title names: the days' month, or in the month view the
+  /// keyboard's month, which it zooms back into.
   final DateTime title;
   final CoilCalendarLabels labels;
   final bool open;
@@ -1103,14 +1130,51 @@ class _MonthTitle extends StatelessWidget {
     final text = CoilTheme.textOf(context);
     final motion = CoilTheme.motionOf(context, override: this.motion);
     final radius = theme.shape.radii(metrics.tier).item;
+
+    // A new month or year swaps in with the blur-fade.
+    Widget switcher({required Object key, required Widget child}) =>
+        MotionSizeSwitcher(
+          motion: motion.fade,
+          exitMotion: motion.fadeExit,
+          sizeMotion: motion.standard,
+          // A shorter name takes its size at once; the old one fades out
+          // over it.
+          immediateResize: true,
+          alignment: AlignmentDirectional.centerStart,
+          clipBehavior: Clip.none,
+          debugLabel: 'CoilCalendar.title',
+          transitionBuilder: CoilBlurFade.transition(
+            blur: CoilBlurFade.defaultBlur / 2,
+            scale: 1,
+          ),
+          child: KeyedSubtree(
+            key: ValueKey(key),
+            child: DefaultTextStyle(
+              style: text.body.copyWith(
+                fontWeight: text.emphasis,
+                color: colors.foreground,
+              ),
+              maxLines: 1,
+              softWrap: false,
+              // Large text in a narrow calendar shrinks the title rather
+              // than cut off the year.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: child,
+              ),
+            ),
+          ),
+        );
+
     return Semantics(
       container: true,
       button: true,
       enabled: onPressed != null,
       expanded: open,
       liveRegion: true,
-      label: labels.monthLabel(title),
-      hint: labels.chooseMonthLabel,
+      label: open ? labels.yearLabel(title.year) : labels.monthLabel(title),
+      hint: open ? labels.showDaysLabel(title) : labels.chooseMonthLabel,
       excludeSemantics: true,
       onTap: onPressed,
       child: CoilInteraction(
@@ -1148,37 +1212,17 @@ class _MonthTitle extends StatelessWidget {
                     spacing: compact.gap,
                     children: [
                       Flexible(
-                        child: MotionSizeSwitcher(
-                          motion: motion.fade,
-                          exitMotion: motion.fadeExit,
-                          sizeMotion: motion.standard,
-                          // A shorter month takes its size at once; the
-                          // old name fades out over it.
-                          immediateResize: true,
-                          alignment: AlignmentDirectional.centerStart,
-                          clipBehavior: Clip.none,
-                          debugLabel: 'CoilCalendar.title',
-                          transitionBuilder: CoilBlurFade.transition(
-                            blur: CoilBlurFade.defaultBlur / 2,
-                            scale: 1,
+                        child: _ZoomTitle(
+                          open: open,
+                          motion: motion,
+                          edge: metrics.itemPaddingX,
+                          month: switcher(
+                            key: title,
+                            child: labels.monthTitle(title),
                           ),
-                          child: KeyedSubtree(
-                            key: ValueKey(title),
-                            child: DefaultTextStyle(
-                              style: text.body.copyWith(
-                                fontWeight: text.emphasis,
-                                color: colors.foreground,
-                              ),
-                              maxLines: 1,
-                              softWrap: false,
-                              // Large text in a narrow calendar shrinks
-                              // the title rather than cut off the year.
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: AlignmentDirectional.centerStart,
-                                child: labels.monthTitle(title),
-                              ),
-                            ),
+                          year: switcher(
+                            key: title.year,
+                            child: labels.year(title.year),
                           ),
                         ),
                       ),
@@ -1209,6 +1253,290 @@ class _MonthTitle extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// The title's zoom between the month title ("November 2026") and the
+/// year alone ("2026"). Its width springs from one to the other on
+/// `standard` while the month title blur-fades out on `fade` over the
+/// year, which shows at once; zooming in runs it back, the year staying
+/// until the month title is in. Both hold the box's end, so the year a
+/// month title ends with stays still while the month leaves past the
+/// start, fading out over the button's padding ([edge]).
+class _ZoomTitle extends StatelessWidget {
+  const _ZoomTitle({
+    required this.open,
+    required this.motion,
+    required this.edge,
+    required this.month,
+    required this.year,
+  });
+
+  final bool open;
+  final CoilMotion motion;
+  final double edge;
+  final Widget month;
+  final Widget year;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return SingleMotionBuilder(
+      value: open ? 1 : 0,
+      motion: open ? motion.standard : motion.standardExit,
+      debugLabel: 'CoilCalendar.title.zoom',
+      builder: (context, width, _) => SingleMotionBuilder(
+        value: open ? 1 : 0,
+        motion: open ? motion.fade : motion.fadeExit,
+        debugLabel: 'CoilCalendar.title.zoomFade',
+        builder: (context, fade, _) {
+          final gone = fade.clamp(0.0, 1.0);
+          final sigma = reduce ? 0.0 : CoilBlurFade.defaultBlur / 2 * gone;
+          // At rest, only the title in view is built.
+          final monthShown = !open || gone < 1 || width < 1;
+          final yearShown = open || gone > 0 || width > 0;
+          return _ZoomTitleBox(
+            progress: width,
+            edge: edge,
+            textDirection: Directionality.of(context),
+            children: [
+              if (yearShown) year else const SizedBox.shrink(),
+              // CoilBlurFade's blur-fade, drawn here so the title keeps one
+              // blur-fade, the switcher's, while it's at rest.
+              if (monthShown)
+                Opacity(
+                  opacity: 1 - gone,
+                  child: ImageFiltered(
+                    enabled: sigma > 0.01,
+                    imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                    child: month,
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Lays out the year and the month title at their own widths and takes a
+/// width [progress] of the way from the month title's (0) to the year's
+/// (1), both at its end. What reaches past its start fades out over
+/// [edge].
+class _ZoomTitleBox extends MultiChildRenderObjectWidget {
+  const _ZoomTitleBox({
+    required this.progress,
+    required this.edge,
+    required this.textDirection,
+    required super.children,
+  });
+
+  final double progress;
+  final double edge;
+  final TextDirection textDirection;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderZoomTitleBox(
+    progress: progress,
+    edge: edge,
+    textDirection: textDirection,
+  );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderZoomTitleBox renderObject,
+  ) {
+    renderObject
+      ..progress = progress
+      ..edge = edge
+      ..textDirection = textDirection;
+  }
+}
+
+class _ZoomTitleParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderZoomTitleBox extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ZoomTitleParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ZoomTitleParentData> {
+  _RenderZoomTitleBox({
+    required this._progress,
+    required this._edge,
+    required this._textDirection,
+  });
+
+  double _progress;
+  double get progress => _progress;
+  set progress(double value) {
+    if (value == _progress) return;
+    _progress = value;
+    markNeedsLayout();
+  }
+
+  double _edge;
+  double get edge => _edge;
+  set edge(double value) {
+    if (value == _edge) return;
+    _edge = value;
+    markNeedsPaint();
+  }
+
+  TextDirection _textDirection;
+  TextDirection get textDirection => _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  final _clip = LayerHandle<ClipRectLayer>();
+  final _mask = LayerHandle<ShaderMaskLayer>();
+
+  /// Whether a child reaches past the start, which then fades out.
+  bool _overflows = false;
+
+  @override
+  bool get alwaysNeedsCompositing => _overflows;
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ZoomTitleParentData) {
+      child.parentData = _ZoomTitleParentData();
+    }
+  }
+
+  RenderBox get _year => firstChild!;
+  RenderBox get _month => lastChild!;
+
+  double _width(double year, double month) =>
+      month + (year - month) * _progress;
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _width(
+    _year.getMinIntrinsicWidth(height),
+    _month.getMinIntrinsicWidth(height),
+  );
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _width(
+    _year.getMaxIntrinsicWidth(height),
+    _month.getMaxIntrinsicWidth(height),
+  );
+
+  @override
+  double computeMinIntrinsicHeight(double width) => math.max(
+    _year.getMinIntrinsicHeight(width),
+    _month.getMinIntrinsicHeight(width),
+  );
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => math.max(
+    _year.getMaxIntrinsicHeight(width),
+    _month.getMaxIntrinsicHeight(width),
+  );
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) =>
+      defaultComputeDistanceToHighestActualBaseline(baseline);
+
+  Size _sizeFor(BoxConstraints constraints, Size year, Size month) =>
+      constraints.constrain(
+        Size(
+          math.max(0, _width(year.width, month.width)),
+          math.max(year.height, month.height),
+        ),
+      );
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final loose = constraints.loosen();
+    return _sizeFor(
+      constraints,
+      _year.getDryLayout(loose),
+      _month.getDryLayout(loose),
+    );
+  }
+
+  @override
+  void performLayout() {
+    final loose = constraints.loosen();
+    _year.layout(loose, parentUsesSize: true);
+    _month.layout(loose, parentUsesSize: true);
+    size = _sizeFor(constraints, _year.size, _month.size);
+    for (final child in [_year, _month]) {
+      (child.parentData! as _ZoomTitleParentData).offset = Offset(
+        _textDirection == TextDirection.rtl ? 0 : size.width - child.size.width,
+        (size.height - child.size.height) / 2,
+      );
+    }
+    final overflows =
+        _year.size.width > size.width || _month.size.width > size.width;
+    if (overflows != _overflows) {
+      _overflows = overflows;
+      markNeedsCompositingBitsUpdate();
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (!_overflows) {
+      _clip.layer = null;
+      _mask.layer = null;
+      defaultPaint(context, offset);
+      return;
+    }
+    // Past the start, a gradient over the edge fades the leaving month
+    // out; nothing shows beyond it. The other sides leave room for the
+    // blur.
+    final rtl = _textDirection == TextDirection.rtl;
+    final spread = size.height;
+    final rect = rtl
+        ? Rect.fromLTRB(
+            -spread,
+            -spread,
+            size.width + edge,
+            size.height + spread,
+          )
+        : Rect.fromLTRB(
+            -edge,
+            -spread,
+            size.width + spread,
+            size.height + spread,
+          );
+    final fade = edge / rect.width;
+    _mask.layer = (_mask.layer ?? ShaderMaskLayer())
+      ..shader = LinearGradient(
+        begin: rtl ? Alignment.centerRight : Alignment.centerLeft,
+        end: rtl ? Alignment.centerLeft : Alignment.centerRight,
+        colors: const [Color(0x00000000), Color(0xFF000000)],
+        stops: [0, fade],
+      ).createShader(Offset.zero & rect.size)
+      ..maskRect = rect.shift(offset)
+      ..blendMode = BlendMode.dstIn;
+    // The mask only fades inside its rect; the clip drops the rest.
+    _clip.layer = context.pushClipRect(
+      needsCompositing,
+      offset,
+      rect,
+      (context, offset) =>
+          context.pushLayer(_mask.layer!, defaultPaint, offset),
+      oldLayer: _clip.layer,
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      false;
+
+  @override
+  void dispose() {
+    _clip.layer = null;
+    _mask.layer = null;
+    super.dispose();
   }
 }
 

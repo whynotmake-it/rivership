@@ -2,6 +2,15 @@
 
 Milestone M0, unreleased.
 
+- `CoilCalendar`'s month view shows the year once, in the title: zooming
+  out, the month leaves the title ("April 2020" to "2020") while its year
+  holds still, and paging the years changes it; zooming in brings the
+  month back. The pages lose their year heading, and the months take its
+  room, so the calendar keeps its size. The month the title goes back to
+  has a wash while it isn't the picked one. New
+  `CoilCalendarLabels.yearLabel` and `showDaysLabel` name the title there
+  for screen readers ("2020", "Back to the days of April 2020");
+  `CoilCalendarLabels.year` is now that title.
 - `CoilCalendar`'s month view pages sideways, one year per page, in the
   same space as the days (the zoom between them is unchanged). The title's
   year follows the page mid-swipe, the arrows turn a year there
