@@ -3,6 +3,7 @@ import 'package:coil/src/foundation/color_mix.dart';
 import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/focus_ring_theme.dart';
 import 'package:coil/src/foundation/haptics.dart';
+import 'package:coil/src/foundation/icons.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/plasticity.dart';
@@ -34,6 +35,7 @@ class CoilThemeData with Diagnosticable {
     this.haptics,
     this.controlCursor = SystemMouseCursors.basic,
     this.plasticity = CoilPlasticity.flat,
+    this.icons = const CoilIcons(),
     this.components = const {},
   });
 
@@ -86,6 +88,12 @@ class CoilThemeData with Diagnosticable {
   /// their style's `plasticity`, so one component type can differ with
   /// [withComponentStyle], and resolve it with [CoilTheme.reliefOf].
   final CoilPlasticity plasticity;
+
+  /// The icons components show, by role: an app's own icon set in place of
+  /// coil's drawn glyphs. Roles left null keep coil's; a component's own
+  /// slot wins over this. Add a partial set with
+  /// `theme.copyWith(icons: theme.icons.merge(mine))`. See [CoilIcons].
+  final CoilIcons icons;
 
   /// Per-component-type style overrides, keyed by style type:
   /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
@@ -169,6 +177,7 @@ class CoilThemeData with Diagnosticable {
     Object? haptics = _keep,
     MouseCursor? controlCursor,
     CoilPlasticity? plasticity,
+    CoilIcons? icons,
     Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
     colors: colors ?? this.colors,
@@ -181,12 +190,13 @@ class CoilThemeData with Diagnosticable {
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     controlCursor: controlCursor ?? this.controlCursor,
     plasticity: plasticity ?? this.plasticity,
+    icons: icons ?? this.icons,
     components: components ?? this.components,
   );
 
   /// Interpolates two themes, for animated theme changes. Colors, text
-  /// styles, motion and the focus ring blend; everything else switches at
-  /// the midpoint.
+  /// styles, motion and the focus ring blend; everything else (icons too)
+  /// switches at the midpoint.
   // A static lerp, like Color.lerp and TextStyle.lerp.
   // ignore: prefer_constructors_over_static_methods
   static CoilThemeData lerp(CoilThemeData a, CoilThemeData b, double t) =>
@@ -201,6 +211,7 @@ class CoilThemeData with Diagnosticable {
         haptics: t < 0.5 ? a.haptics : b.haptics,
         controlCursor: t < 0.5 ? a.controlCursor : b.controlCursor,
         plasticity: CoilPlasticity.lerp(a.plasticity, b.plasticity, t),
+        icons: t < 0.5 ? a.icons : b.icons,
         components: t < 0.5 ? a.components : b.components,
       );
 
@@ -217,6 +228,7 @@ class CoilThemeData with Diagnosticable {
       other.haptics == haptics &&
       other.controlCursor == controlCursor &&
       other.plasticity == plasticity &&
+      other.icons == icons &&
       mapEquals(other.components, components);
 
   @override
@@ -231,6 +243,7 @@ class CoilThemeData with Diagnosticable {
     haptics,
     controlCursor,
     plasticity,
+    icons,
     Object.hashAllUnordered(
       components.entries.map((e) => Object.hash(e.key, e.value)),
     ),
@@ -258,6 +271,9 @@ class CoilThemeData with Diagnosticable {
           plasticity,
           defaultValue: CoilPlasticity.flat,
         ),
+      )
+      ..add(
+        DiagnosticsProperty('icons', icons, defaultValue: const CoilIcons()),
       );
   }
 }

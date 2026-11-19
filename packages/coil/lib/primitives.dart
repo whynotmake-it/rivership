@@ -22,6 +22,7 @@ export 'src/primitives/field_scope.dart';
 export 'src/primitives/focus_ring.dart';
 export 'src/primitives/focus_within.dart' hide CoilFocusAlwaysVisible;
 export 'src/primitives/hover.dart';
+export 'src/primitives/icon_presence.dart';
 export 'src/primitives/input_slot.dart';
 export 'src/primitives/intents.dart';
 export 'src/primitives/interaction.dart';

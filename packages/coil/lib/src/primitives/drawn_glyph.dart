@@ -1,9 +1,47 @@
 import 'dart:ui' as ui;
 
+import 'package:coil/src/foundation/icons.dart';
+import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
+import 'package:coil/src/primitives/icon_presence.dart';
 import 'package:flutter/widgets.dart';
 
-/// The small glyphs coil draws itself (DESIGN.md §11).
+/// The icon for [role]: the theme's ([CoilThemeData.icons]) when it sets
+/// one, else coil's drawn glyph for it.
+///
+/// Components show their icons through it, after their own slot:
+/// `widget.dismissIcon ?? const CoilIcon(.close)`. Like a slot, it is
+/// styled by the ambient [IconTheme].
+class CoilIcon extends StatelessWidget {
+  /// Creates the icon for [role].
+  const CoilIcon(this.role, {super.key});
+
+  /// Which icon.
+  final CoilIconRole role;
+
+  /// The glyph coil draws for [role] when the theme sets no icon.
+  static CoilGlyph glyphFor(CoilIconRole role) => switch (role) {
+    CoilIconRole.check => CoilGlyph.check,
+    CoilIconRole.dash => CoilGlyph.dash,
+    CoilIconRole.copy => CoilGlyph.copy,
+    CoilIconRole.failed || CoilIconRole.close => CoilGlyph.cross,
+    CoilIconRole.alert => CoilGlyph.alert,
+    CoilIconRole.chevronStart => CoilGlyph.chevronStart,
+    CoilIconRole.chevronEnd => CoilGlyph.chevronEnd,
+    CoilIconRole.chevronDown => CoilGlyph.chevronDown,
+    CoilIconRole.chevronUp => CoilGlyph.chevronUp,
+    CoilIconRole.send => CoilGlyph.arrowUp,
+    CoilIconRole.stop => CoilGlyph.stop,
+  };
+
+  @override
+  Widget build(BuildContext context) =>
+      CoilTheme.of(context).icons[role] ?? CoilDrawnGlyph(glyphFor(role));
+}
+
+/// The small glyphs coil draws itself (DESIGN.md §11), by shape. Components
+/// show them by [CoilIconRole] through [CoilIcon], so an app's icon set
+/// replaces them.
 enum CoilGlyph {
   /// A tick: checked, copied.
   check,
@@ -46,16 +84,19 @@ enum CoilGlyph {
 /// [CoilIconWeight.rest] and 2 at [CoilIconWeight.emphasis]. Indicators
 /// (a checkbox tick, a select check, a field alert) draw at emphasis.
 /// [progress] draws the strokes in from 0 (nothing) to 1
-/// (complete), for a glyph that animates in.
+/// (complete), for a glyph that animates in. Without it, the glyph draws
+/// itself in and out with its [CoilIconPresence] when a component animates
+/// it (claiming it, so no fallback applies), and is complete otherwise.
 class CoilDrawnGlyph extends StatelessWidget {
   /// Creates a drawn glyph.
-  const CoilDrawnGlyph(this.glyph, {super.key, this.progress = 1, this.color});
+  const CoilDrawnGlyph(this.glyph, {super.key, this.progress, this.color});
 
   /// Which glyph.
   final CoilGlyph glyph;
 
-  /// How much of the strokes is drawn, 0 to 1.
-  final double progress;
+  /// How much of the strokes is drawn, 0 to 1. Null follows the icon's
+  /// [CoilIconPresence], or draws it all outside one.
+  final double? progress;
 
   /// The stroke color; the ambient [IconTheme]'s when null.
   final Color? color;
@@ -65,9 +106,9 @@ class CoilDrawnGlyph extends StatelessWidget {
     child: CustomPaint(
       size: Size.square(CoilIconSize.of(context)),
       painter: _GlyphPainter(
-        glyph,
-        progress.clamp(0, 1),
+        progress?.clamp(0.0, 1.0) ?? CoilIconPresence.maybeOf(context) ?? 1.0,
         color ?? IconTheme.of(context).color ?? const Color(0xFF000000),
+        glyph: glyph,
         // Like a stroke icon: 1.5 at rest, 2 at emphasis. IconTheme.of
         // always supplies a weight (400 when nothing sets one).
         stroke: 1.5 * IconTheme.of(context).weight! / CoilIconWeight.rest,
@@ -78,16 +119,18 @@ class CoilDrawnGlyph extends StatelessWidget {
 }
 
 class _GlyphPainter extends CustomPainter {
+  /// [drawn] is a fixed progress (a `double`) or an icon presence (an
+  /// `Animation<double>`), which repaints without a rebuild.
   _GlyphPainter(
-    this.glyph,
-    this.progress,
+    this.drawn,
     this.color, {
+    required this.glyph,
     required this.stroke,
     required this.rtl,
-  });
+  }) : super(repaint: drawn is Animation<double> ? drawn : null);
 
   final CoilGlyph glyph;
-  final double progress;
+  final Object drawn;
   final Color color;
   final double stroke;
   final bool rtl;
@@ -177,6 +220,11 @@ class _GlyphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final progress = switch (drawn) {
+      final Animation<double> presence => presence.value,
+      final double value => value,
+      _ => 1.0,
+    };
     if (progress <= 0) return;
     var path = _path();
     if (progress < 1) {
@@ -204,7 +252,7 @@ class _GlyphPainter extends CustomPainter {
   @override
   bool shouldRepaint(_GlyphPainter old) =>
       old.glyph != glyph ||
-      old.progress != progress ||
+      old.drawn != drawn ||
       old.color != color ||
       old.stroke != stroke ||
       old.rtl != rtl;
