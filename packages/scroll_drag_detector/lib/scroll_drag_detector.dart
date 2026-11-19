@@ -317,20 +317,23 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             final blockedAxes = blockedDirections.map(_axisFor).toSet();
 
             final parent = ScrollConfiguration.of(context);
-            final behavior = blockedDirections.isNotEmpty
-                ? ScrollDragBehavior._(
-                    parent: parent,
-                    axes: blockedAxes,
-                    blockedDirections: blockedDirections,
-                  )
-                : null;
+            // Always a ScrollDragBehavior, even with nothing blocked: a
+            // descendant that copies it (a text field's own scrollable)
+            // would otherwise swap between it and the parent's type as a
+            // drag starts and ends, and Flutter's wrapped behavior can't
+            // compare itself to a different type.
+            final behavior = ScrollDragBehavior._(
+              parent: parent,
+              axes: blockedAxes,
+              blockedDirections: blockedDirections,
+            );
             return _ScrollDragBehaviorScope(
               behaviors: [
-                if (behavior != null) behavior,
+                if (blockedDirections.isNotEmpty) behavior,
                 ..._ScrollDragBehaviorScope.of(context),
               ],
               child: ScrollConfiguration(
-                behavior: behavior ?? parent,
+                behavior: behavior,
                 child: child!,
               ),
             );
