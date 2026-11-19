@@ -1152,6 +1152,9 @@ class _MonthTitle extends StatelessWidget {
                           motion: motion.fade,
                           exitMotion: motion.fadeExit,
                           sizeMotion: motion.standard,
+                          // A shorter month takes its size at once; the
+                          // old name fades out over it.
+                          immediateResize: true,
                           alignment: AlignmentDirectional.centerStart,
                           clipBehavior: Clip.none,
                           debugLabel: 'CoilCalendar.title',
