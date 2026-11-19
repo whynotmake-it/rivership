@@ -14,6 +14,71 @@ void main() {
 
   tearDown(SnaptestSettings.resetGlobal);
 
+  for (final (glass, childOverride) in [
+    (false, false),
+    (true, false),
+    (false, true),
+    (true, true),
+  ]) {
+    testWidgets(
+      '${glass ? 'glass' : 'regular'} sheet drags beneath a '
+      'copied scroll behavior (child override=$childOverride)',
+      (tester) async {
+        final navigator = GlobalKey<NavigatorState>();
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorKey: navigator,
+            builder: (context, child) => ScrollConfiguration(
+              behavior: const ScrollBehavior().copyWith(scrollbars: false),
+              child: child!,
+            ),
+            home: const Scaffold(),
+          ),
+        );
+        const sheetKey = Key('copied-behavior-sheet');
+        final child = Scaffold(
+          key: sheetKey,
+          body: ListView.builder(
+            itemCount: 100,
+            itemBuilder: (context, index) =>
+                ListTile(title: Text('Item $index')),
+          ),
+        );
+        final content = childOverride
+            ? ScrollConfiguration(
+                behavior: const ScrollDragBehavior(
+                  parent: ScrollBehavior(),
+                ).copyWith(physics: const ClampingScrollPhysics()),
+                child: child,
+              )
+            : child;
+        navigator.currentState!
+            .push(
+              glass
+                  ? StupidSimpleGlassSheetRoute<void>(child: content)
+                  : StupidSimpleSheetRoute<void>(child: content),
+            )
+            .ignore();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        final sheet = find.byKey(sheetKey);
+        final initialTop = tester.getTopLeft(sheet).dy;
+        final gesture = await tester.startGesture(tester.getCenter(sheet));
+        for (var i = 0; i < 10; i++) {
+          await gesture.moveBy(const Offset(0, 15));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(tester.takeException(), isNull);
+        expect(tester.getTopLeft(sheet).dy, greaterThan(initialTop));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   group('StupidSimpleSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
@@ -1988,6 +2053,8 @@ void main() {
 
     Widget build({
       ShapeBorder? shape,
+      bool originateAboveBottomViewInset = false,
+      DismissalMode dismissalMode = DismissalMode.slide,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -2002,6 +2069,9 @@ void main() {
                     StupidSimpleGlassSheetRoute<void>(
                       motion: motion,
                       shape: shape ?? StupidSimpleGlassSheetRoute.glassShape,
+                      originateAboveBottomViewInset:
+                          originateAboveBottomViewInset,
+                      dismissalMode: dismissalMode,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -2021,6 +2091,62 @@ void main() {
         ),
       );
     }
+
+    group('originateAboveBottomViewInset', () {
+      for (final dismissalMode in DismissalMode.values) {
+        for (final originateAboveBottomViewInset in [false, true]) {
+          testWidgets(
+            '${dismissalMode.name} respects keyboard insets when '
+            '$originateAboveBottomViewInset',
+            (tester) async {
+              addTearDown(tester.view.reset);
+
+              await tester.pumpWidget(
+                build(
+                  originateAboveBottomViewInset: originateAboveBottomViewInset,
+                  dismissalMode: dismissalMode,
+                ),
+              );
+              final button = find.byKey(const ValueKey('button'));
+              final scaffold = find.byKey(const ValueKey('scaffold'));
+              await tester.tap(button);
+              await tester.pumpAndSettle();
+              final initialBottom = tester.getBottomLeft(scaffold).dy;
+
+              Future<void> checkKeyboardHeight(double height) async {
+                tester.view.viewInsets = FakeViewPadding(
+                  bottom: height * tester.view.devicePixelRatio,
+                );
+                await tester.pumpAndSettle();
+
+                expect(
+                  tester.getBottomLeft(scaffold).dy,
+                  initialBottom - (originateAboveBottomViewInset ? height : 0),
+                );
+                expect(
+                  MediaQuery.viewInsetsOf(tester.element(scaffold)).bottom,
+                  originateAboveBottomViewInset ? 0 : height,
+                );
+              }
+
+              await checkKeyboardHeight(300);
+              await checkKeyboardHeight(200);
+              await checkKeyboardHeight(0);
+
+              Navigator.of(tester.element(scaffold)).pop();
+              await tester.pumpAndSettle();
+              tester.view.viewInsets = FakeViewPadding(
+                bottom: 300 * tester.view.devicePixelRatio,
+              );
+              await tester.pump();
+              await tester.tap(button);
+              await tester.pumpAndSettle();
+              await checkKeyboardHeight(300);
+            },
+          );
+        }
+      }
+    });
 
     group('radius goldens', () {
       setUp(() {

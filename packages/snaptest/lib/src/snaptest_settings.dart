@@ -1,3 +1,4 @@
+/// @docImport 'package:flutter_test/flutter_test.dart';
 /// @docImport 'package:snaptest/snaptest.dart';
 /// @docImport 'package:snaptest/src/snap.dart';
 /// @docImport 'package:snaptest/src/test_devices_variant.dart';
@@ -158,7 +159,10 @@ class SnaptestSettings with EquatableMixin {
   /// )
   /// ```
   ///
-  /// The path should end with a forward slash.
+  /// Relative to the test file's directory, as resolved by
+  /// [LocalFileComparator]. Use `''` to save beside the test (e.g. for scripts
+  /// already inside `.snaptest/`), `../screenshots` for a sibling directory,
+  /// or an absolute filesystem path. No trailing slash is required.
   final String pathPrefix;
 
   @override
