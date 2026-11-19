@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/shell/preview_settings.dart';
@@ -109,13 +108,11 @@ class CatalogHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final router = context.router;
     final gutter = CatalogLayout.gutterOf(context);
     final padding = MediaQuery.paddingOf(context);
     // Ghost icon buttons have no visible edge, so the bar pulls them 8
     // toward the screen edge to line their glyphs up with the content.
     final inset = gutter - 8;
-    final touch = CoilTheme.tierOf(context) == CoilTier.touch;
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(
         inset + padding.left,
@@ -128,15 +125,6 @@ class CatalogHeader extends StatelessWidget {
           // The sidebar's trigger: folds the sidebar on a wide pane, opens
           // the drawer on a narrow one.
           const CoilSidebarTrigger(icon: CatalogIcon(Glyph.panelLeft)),
-          // Back on touch, where pages stack; the sidebar is the way
-          // around with a pointer.
-          if (touch && router.canPop())
-            CoilButton.icon(
-              variant: CoilButtonVariant.ghost,
-              semanticLabel: 'Back',
-              icon: const CatalogIcon(Glyph.back),
-              onPressed: router.maybePop,
-            ),
           const SizedBox(width: 4),
           Expanded(
             child: Semantics(

@@ -7,38 +7,16 @@ import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/widgets.dart';
 
-/// Opens [entry]'s page in the catalog's [router], or the home page when
+/// Shows [entry]'s page in the catalog's [router], or the home page when
 /// [entry] is null.
 ///
-/// The stack stays home → page, so Back (the button, the iOS swipe, the
-/// system back) always leads home: a page opened from another page replaces
-/// it instead of piling up.
+/// Pages don't stack: the sidebar is how to move around, so the page takes
+/// the place of whatever was shown and there is no Back to a previous one.
 Future<void> openCatalogPage(StackRouter router, CatalogEntry? entry) async {
   final name = entry == null ? catalogHomeRouteName : catalogRouteName(entry);
   final stack = router.stackData;
-  if (stack.isNotEmpty && stack.last.name == name) return;
-  final homeAtRoot =
-      stack.isNotEmpty && stack.first.name == catalogHomeRouteName;
-  if (entry == null) {
-    if (homeAtRoot) {
-      router.popUntilRoot();
-    } else {
-      // Deep-linked straight to a page: there is no home below it yet.
-      await router.replaceAll([const NamedRoute(catalogHomeRouteName)]);
-    }
-    return;
-  }
-  if (!homeAtRoot) {
-    await router.replaceAll([
-      const NamedRoute(catalogHomeRouteName),
-      NamedRoute(name),
-    ]);
-  } else if (stack.length > 1) {
-    router.popUntilRoot();
-    await router.push(NamedRoute(name));
-  } else {
-    await router.push(NamedRoute(name));
-  }
+  if (stack.length == 1 && stack.single.name == name) return;
+  await router.replaceAll([NamedRoute(name)]);
 }
 
 /// The catalog page [router] shows, or null on the home page (or any page
