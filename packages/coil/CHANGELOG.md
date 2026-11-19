@@ -2,6 +2,9 @@
 
 Milestone M0, unreleased.
 
+- `CoilDataTable`'s default count reads "1 row" for a single row, not
+  "1 rows". `CoilDataTableLabels.count` still replaces it, plural rules
+  included, for other languages.
 - A compact `CoilButton` in a compact `CoilInput`'s slot no longer grows
   the field to fit (a 28 field became 32, a 36 touch one 40): at the
   slot's size step the button takes the height that fits with
