@@ -80,7 +80,8 @@ class CoilAccordion<T> extends StatefulWidget {
   /// The look.
   final CoilAccordionVariant variant;
 
-  /// Replaces the chevron. It turns a quarter when its item opens.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]). It turns a quarter
+  /// when its item opens.
   final Widget? indicator;
 
   /// Pins the accordion to one size step. Null follows

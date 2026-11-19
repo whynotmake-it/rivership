@@ -605,7 +605,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
         semanticLabel: _monthsOpen
             ? labels.previousYearLabel
             : labels.previousMonthLabel,
-        icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
+        icon: const CoilIcon(CoilIconRole.chevronStart),
       ),
       CoilButton.icon(
         variant: CoilButtonVariant.ghost,
@@ -614,7 +614,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
         semanticLabel: _monthsOpen
             ? labels.nextYearLabel
             : labels.nextMonthLabel,
-        icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+        icon: const CoilIcon(CoilIconRole.chevronEnd),
       ),
     ];
     // The title's text starts where the days start, and the arrows'
@@ -640,9 +640,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
                   labels: labels,
                   open: _monthsOpen,
                   motion: widget.motion,
-                  onPressed: widget.onSelected == null
-                      ? null
-                      : _toggleMonths,
+                  onPressed: widget.onSelected == null ? null : _toggleMonths,
                 ),
               ),
             ),
@@ -1228,7 +1226,7 @@ class _MonthTitle extends StatelessWidget {
                           value: open ? 0.5 : 0,
                           motion: open ? motion.standard : motion.standardExit,
                           debugLabel: 'CoilCalendar.title.chevron',
-                          child: const CoilDrawnGlyph(CoilGlyph.chevronDown),
+                          child: const CoilIcon(CoilIconRole.chevronDown),
                           builder: (context, turns, child) => Transform.rotate(
                             angle: turns * 2 * math.pi,
                             child: child,

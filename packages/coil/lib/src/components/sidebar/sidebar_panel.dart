@@ -516,7 +516,7 @@ class _GroupToggle extends StatelessWidget {
                               applyTextScaling: true,
                               color: theme.colors.mutedForeground,
                             ),
-                            child: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+                            child: const CoilIcon(CoilIconRole.chevronEnd),
                           ),
                         ),
                       ),

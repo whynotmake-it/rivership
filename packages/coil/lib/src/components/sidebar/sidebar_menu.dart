@@ -676,7 +676,7 @@ class _Row extends StatelessWidget {
                             size: 16,
                             color: colors.mutedForeground,
                           ),
-                          child: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+                          child: const CoilIcon(CoilIconRole.chevronEnd),
                         ),
                       ),
                     ),

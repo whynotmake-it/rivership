@@ -222,10 +222,11 @@ class _HeaderCell extends StatelessWidget {
                     Flexible(child: column.label),
                     if (sort != null)
                       column.sortIndicator ??
-                          CoilDrawnGlyph(switch (sort) {
-                            CoilSortDirection.ascending => CoilGlyph.chevronUp,
+                          CoilIcon(switch (sort) {
+                            CoilSortDirection.ascending =>
+                              CoilIconRole.chevronUp,
                             CoilSortDirection.descending =>
-                              CoilGlyph.chevronDown,
+                              CoilIconRole.chevronDown,
                           }),
                   ],
                 ),

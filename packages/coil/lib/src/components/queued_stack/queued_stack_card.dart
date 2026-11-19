@@ -253,7 +253,7 @@ class _CardBodyState extends State<_CardBody> {
             style: actionCorner.style,
             semanticLabel: card.labels.removeLabel,
             onPressed: remove,
-            icon: card.removeIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
+            icon: card.removeIcon ?? const CoilIcon(CoilIconRole.close),
           ),
         ],
       ),

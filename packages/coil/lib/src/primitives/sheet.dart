@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/icons.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/shape.dart';
@@ -622,7 +623,8 @@ class CoilSheetCloseButton extends StatelessWidget {
   /// which a `PopScope` can block.
   final VoidCallback? onPressed;
 
-  /// The glyph; a drawn ✕ when null. Sized and colored by `IconTheme`.
+  /// The glyph; the theme's [CoilIcons.close], else a drawn ✕, when null.
+  /// Sized and colored by `IconTheme`.
   final Widget? icon;
 
   /// The button's name for screen readers.
@@ -690,7 +692,7 @@ class CoilSheetCloseButton extends StatelessWidget {
                             // content, and reads as a signifier at 16.
                             weight: CoilIconWeight.emphasis,
                           ),
-                          child: icon ?? const CoilDrawnGlyph(CoilGlyph.cross),
+                          child: icon ?? const CoilIcon(CoilIconRole.close),
                         ),
                       ),
                     ),

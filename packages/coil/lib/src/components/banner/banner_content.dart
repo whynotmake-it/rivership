@@ -40,7 +40,8 @@ class BannerContent extends StatelessWidget {
   /// Shows the dismiss button when not null.
   final VoidCallback? onDismissRequested;
 
-  /// Replaces the dismiss button's drawn ✕.
+  /// Replaces the dismiss button's ✕: the theme's [CoilIcons.close], or
+  /// coil's drawn one.
   final Widget? dismissIcon;
 
   /// The dismiss button's name for assistive technology.
@@ -105,7 +106,7 @@ class BannerContent extends StatelessWidget {
               variant: CoilButtonVariant.ghost,
               size: CoilSize.compact,
               semanticLabel: dismissLabel,
-              icon: dismissIcon ?? const CoilDrawnGlyph(CoilGlyph.cross),
+              icon: dismissIcon ?? const CoilIcon(CoilIconRole.close),
             ),
           ),
           null => null,

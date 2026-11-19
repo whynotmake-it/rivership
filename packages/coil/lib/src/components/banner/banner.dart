@@ -100,7 +100,8 @@ class CoilBanner extends StatefulWidget {
   /// swipe.
   final VoidCallback? onDismissRequested;
 
-  /// Replaces the dismiss button's drawn ✕.
+  /// Replaces the dismiss button's ✕: the theme's [CoilIcons.close], or
+  /// coil's drawn one.
   final Widget? dismissIcon;
 
   /// The dismiss button's name for assistive technology.

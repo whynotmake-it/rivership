@@ -150,7 +150,8 @@ class CoilThinkingSteps extends StatefulWidget {
   /// disables the trigger.
   final ValueChanged<bool>? onChanged;
 
-  /// Replaces the chevron. It turns a quarter when the steps open.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]). It turns a quarter
+  /// when the steps open.
   final Widget? indicator;
 
   /// The trigger's focus node.

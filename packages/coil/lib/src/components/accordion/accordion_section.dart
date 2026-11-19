@@ -38,7 +38,7 @@ class AccordionSection<T> extends StatelessWidget {
   /// Whether the accordion is the group variant.
   final bool group;
 
-  /// Replaces the chevron.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]).
   final Widget? indicator;
 
   /// The trigger's focus node.

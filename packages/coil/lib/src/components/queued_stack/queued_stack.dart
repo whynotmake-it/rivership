@@ -211,7 +211,8 @@ class CoilQueuedStack extends StatefulWidget {
   /// the keyboard still edit.
   final Widget? editIcon;
 
-  /// The remove button's glyph. Null draws an ×.
+  /// The remove button's glyph. Null shows the theme's [CoilIcons.close],
+  /// or coil's drawn ×.
   final Widget? removeIcon;
 
   /// The words screen readers hear.
@@ -407,7 +408,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
                 size: CoilSize.compact,
                 semanticLabel: widget.labels.collapseLabel,
                 onPressed: () => _stack.pinned = false,
-                icon: const CoilDrawnGlyph(CoilGlyph.chevronDown),
+                icon: const CoilIcon(CoilIconRole.chevronDown),
               ),
             )
           : Semantics(

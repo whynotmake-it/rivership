@@ -470,7 +470,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       onChanged: _onChanged,
       onSubmitted: (_) => _pickActive(),
       shortcuts: _shortcuts,
-      trailing: inSheet ? null : const CoilDrawnGlyph(CoilGlyph.chevronDown),
+      trailing: inSheet ? null : const CoilIcon(CoilIconRole.chevronDown),
     ),
   );
 
@@ -765,14 +765,16 @@ class _Chip extends StatelessWidget {
                 minHitTarget: metrics.tier == CoilTier.touch ? 44 : 0,
                 builder: (context, states, _) => SizedBox.square(
                   dimension: 20,
+                  // The icon fills the target: coil's × is drawn on its 24
+                  // grid, so it stays small, and an app's icon lines up.
                   child: IconTheme(
                     data: IconThemeData(
-                      size: 12,
+                      size: 20,
                       color: states.contains(WidgetState.hovered)
                           ? colors.foreground
                           : colors.mutedForeground,
                     ),
-                    child: const CoilDrawnGlyph(CoilGlyph.cross),
+                    child: const CoilIcon(CoilIconRole.close),
                   ),
                 ),
               ),

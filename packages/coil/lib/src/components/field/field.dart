@@ -67,7 +67,8 @@ class CoilField extends StatefulWidget {
   /// What to fix, under the control. The field is invalid while it's set.
   final Widget? error;
 
-  /// Replaces the alert glyph before the [error].
+  /// Replaces the alert before the [error]: the theme's [CoilIcons.alert],
+  /// or coil's drawn one.
   final Widget? errorIcon;
 
   /// Marks the field required: a muted `*` after the label, and "required"
@@ -342,7 +343,7 @@ class _FieldError extends StatelessWidget {
                   icon ??
                   IconTheme.merge(
                     data: const IconThemeData(weight: CoilIconWeight.emphasis),
-                    child: const CoilDrawnGlyph(CoilGlyph.alert),
+                    child: const CoilIcon(CoilIconRole.alert),
                   ),
             ),
           ),

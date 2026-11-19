@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/icons.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
@@ -105,7 +106,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// An optional glyph before the label.
   final Widget? leading;
 
-  /// Replaces the chevron.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]). It turns a quarter
+  /// toward the end when expanded, so a replacement points to the end
+  /// in its text direction, like coil's.
   final Widget? indicator;
 
   /// The trigger's focus node.
@@ -212,7 +215,7 @@ class CoilDisclosureTrigger extends StatelessWidget {
                           ),
                           child:
                               indicator ??
-                              const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+                              const CoilIcon(CoilIconRole.chevronEnd),
                         ),
                       ],
                     ),

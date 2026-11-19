@@ -149,9 +149,11 @@ class _RemoveButton extends StatelessWidget {
           ),
           child: SizedBox.square(
             dimension: 20,
+            // The icon fills the dot: coil's × is drawn on its 24 grid, so
+            // it stays small, and an app's icon lines up with it.
             child: IconTheme(
-              data: IconThemeData(size: 14, color: colors.background),
-              child: const CoilDrawnGlyph(CoilGlyph.cross),
+              data: IconThemeData(size: 20, color: colors.background),
+              child: const CoilIcon(CoilIconRole.close),
             ),
           ),
         ),

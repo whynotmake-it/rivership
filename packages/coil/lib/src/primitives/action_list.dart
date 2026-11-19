@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/icons.dart';
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
@@ -817,8 +818,8 @@ class _CoilActionListState extends State<CoilActionList>
                             i,
                             CoilAction(
                               label: _drilled!.label,
-                              leading: const CoilDrawnGlyph(
-                                CoilGlyph.chevronStart,
+                              leading: const CoilIcon(
+                                CoilIconRole.chevronStart,
                               ),
                               onPressed: _back,
                             ),
@@ -827,9 +828,7 @@ class _CoilActionListState extends State<CoilActionList>
                           final CoilSubmenu sub when _touch => row(
                             i,
                             _asAction(sub),
-                            trailing: const CoilDrawnGlyph(
-                              CoilGlyph.chevronEnd,
-                            ),
+                            trailing: const CoilIcon(CoilIconRole.chevronEnd),
                           ),
                           final CoilSubmenu sub => _subPopover(
                             i,
@@ -837,9 +836,7 @@ class _CoilActionListState extends State<CoilActionList>
                             row(
                               i,
                               _asAction(sub),
-                              trailing: const CoilDrawnGlyph(
-                                CoilGlyph.chevronEnd,
-                              ),
+                              trailing: const CoilIcon(CoilIconRole.chevronEnd),
                               expanded: _sub == i,
                             ),
                           ),
@@ -1088,7 +1085,7 @@ class _RowContent extends StatelessWidget {
       _ when !action.selected => SizedBox.square(dimension: metrics.iconSize),
       CoilActionMark.check => IconTheme.merge(
         data: const IconThemeData(weight: CoilIconWeight.emphasis),
-        child: const CoilDrawnGlyph(CoilGlyph.check),
+        child: const CoilIcon(CoilIconRole.check),
       ),
       CoilActionMark.radio => SizedBox.square(
         dimension: metrics.iconSize,

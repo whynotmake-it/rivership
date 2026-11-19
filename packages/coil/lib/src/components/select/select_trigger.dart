@@ -34,7 +34,7 @@ class CoilSelectTrigger extends StatelessWidget {
   /// A leading glyph.
   final Widget? icon;
 
-  /// Replaces the chevron.
+  /// Replaces the chevron ([CoilIcons.chevronDown]).
   final Widget? indicator;
 
   @override
@@ -115,7 +115,9 @@ class CoilSelectTrigger extends StatelessWidget {
                       ],
                       Flexible(fit: FlexFit.tight, child: label),
                       SizedBox(width: metrics.gap),
-                      indicator ?? const _Chevron(),
+                      indicator ??
+                          CoilTheme.of(context).icons.chevronDown ??
+                          const _Chevron(),
                     ],
                   ),
                 ),
@@ -128,7 +130,8 @@ class CoilSelectTrigger extends StatelessWidget {
   }
 }
 
-/// The default trigger glyph, drawn in the [IconTheme]'s size and color.
+/// coil's trigger chevron, drawn in the [IconTheme]'s size and color with a
+/// fixed 2 stroke; the theme's [CoilIcons.chevronDown] replaces it.
 class _Chevron extends StatelessWidget {
   const _Chevron();
 

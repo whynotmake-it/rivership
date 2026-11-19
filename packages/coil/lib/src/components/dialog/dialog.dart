@@ -269,7 +269,7 @@ class CoilDialogFrame extends StatelessWidget {
                         size: CoilSize.compact,
                         onPressed: onClose,
                         semanticLabel: closeLabel,
-                        icon: const CoilDrawnGlyph(CoilGlyph.cross),
+                        icon: const CoilIcon(CoilIconRole.close),
                       ),
                     ),
                 ],

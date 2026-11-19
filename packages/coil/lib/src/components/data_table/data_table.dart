@@ -262,7 +262,7 @@ class _CoilDataTableState<T> extends State<CoilDataTable<T>> {
                         ? () => controller.page--
                         : null,
                     semanticLabel: labels.previousPageLabel,
-                    icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
+                    icon: const CoilIcon(CoilIconRole.chevronStart),
                   ),
                   CoilButton.icon(
                     variant: CoilButtonVariant.ghost,
@@ -271,7 +271,7 @@ class _CoilDataTableState<T> extends State<CoilDataTable<T>> {
                         ? () => controller.page++
                         : null,
                     semanticLabel: labels.nextPageLabel,
-                    icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
+                    icon: const CoilIcon(CoilIconRole.chevronEnd),
                   ),
                 ],
               ],

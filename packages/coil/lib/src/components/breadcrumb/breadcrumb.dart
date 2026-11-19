@@ -110,7 +110,9 @@ class CoilBreadcrumb extends StatefulWidget {
   /// The trail, from the root to the current page.
   final List<CoilCrumb> crumbs;
 
-  /// Replaces the chevron after each link. It isn't mirrored in RTL.
+  /// Replaces the chevron after each link (the theme's
+  /// [CoilIcons.chevronEnd], or coil's drawn one, which points the other
+  /// way in RTL). A replacement isn't mirrored for you.
   final Widget? separator;
 
   /// Pins the crumbs to one size step. Null follows [CoilAdaptiveScope],
@@ -305,7 +307,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
         CoilTheme.tierOf(context) == CoilTier.touch &&
         MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth;
     final separator =
-        widget.separator ?? const CoilDrawnGlyph(CoilGlyph.chevronEnd);
+        widget.separator ?? const CoilIcon(CoilIconRole.chevronEnd);
     final last = widget.crumbs.length - 1;
 
     Widget slot(int index, Widget child) => Focus.withExternalFocusNode(

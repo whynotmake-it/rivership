@@ -273,7 +273,7 @@ class CardDismissButton extends StatelessWidget {
   /// Whether it shows.
   final bool visible;
 
-  /// Replaces the drawn ✕.
+  /// Replaces the ✕: the theme's [CoilIcons.close], or coil's drawn one.
   final Widget? icon;
 
   /// The name for assistive technology.
@@ -310,7 +310,7 @@ class CardDismissButton extends StatelessWidget {
           size: CoilSize.compact,
           style: radius == null ? null : CoilButtonStyle(radius: radius),
           semanticLabel: semanticLabel,
-          icon: icon ?? const CoilDrawnGlyph(CoilGlyph.cross),
+          icon: icon ?? const CoilIcon(CoilIconRole.close),
         ),
       ),
     );

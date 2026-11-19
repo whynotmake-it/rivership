@@ -62,8 +62,10 @@ class CoilTableColumn<T> {
   /// sort: sort `CoilTable.rows` and set [sort].
   final VoidCallback? onSort;
 
-  /// Replaces the chevron that shows [sort] in the header. It shows only
-  /// while [sort] is set, colored and sized by the header's `IconTheme`.
+  /// Replaces the chevron that shows [sort] in the header
+  /// (`CoilIcons.chevronUp` ascending, `CoilIcons.chevronDown`
+  /// descending). It shows only while [sort] is set, colored and sized by
+  /// the header's `IconTheme`.
   final Widget? sortIndicator;
 }
 
