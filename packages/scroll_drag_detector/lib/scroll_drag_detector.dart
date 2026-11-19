@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -317,20 +318,23 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
             final blockedAxes = blockedDirections.map(_axisFor).toSet();
 
             final parent = ScrollConfiguration.of(context);
-            final behavior = blockedDirections.isNotEmpty
-                ? ScrollDragBehavior._(
-                    parent: parent,
-                    axes: blockedAxes,
-                    blockedDirections: blockedDirections,
-                  )
-                : null;
+            // Always a ScrollDragBehavior, even with nothing blocked: a
+            // descendant that copies it (a text field's own scrollable)
+            // would otherwise swap between it and the parent's type as a
+            // drag starts and ends, and Flutter's wrapped behavior can't
+            // compare itself to a different type.
+            final behavior = ScrollDragBehavior._(
+              parent: parent,
+              axes: blockedAxes,
+              blockedDirections: blockedDirections,
+            );
             return _ScrollDragBehaviorScope(
               behaviors: [
-                if (behavior != null) behavior,
+                if (blockedDirections.isNotEmpty) behavior,
                 ..._ScrollDragBehaviorScope.of(context),
               ],
               child: ScrollConfiguration(
-                behavior: behavior ?? parent,
+                behavior: behavior,
                 child: child!,
               ),
             );
@@ -703,8 +707,8 @@ class ScrollDragBehavior extends ScrollBehavior {
       oldDelegate is! ScrollDragBehavior ||
       parent.runtimeType != oldDelegate.parent.runtimeType ||
       parent.shouldNotify(oldDelegate.parent) ||
-      oldDelegate._axes != _axes ||
-      oldDelegate._blockedDirections != _blockedDirections;
+      !setEquals(oldDelegate._axes, _axes) ||
+      !setEquals(oldDelegate._blockedDirections, _blockedDirections);
 }
 
 class _ScrollDragBehaviorScope extends InheritedWidget {

@@ -1022,6 +1022,77 @@ void main() {
     });
   });
 
+  testWidgets(
+      'a text field survives a drag handed to the detector and back, '
+      'and still takes input', (tester) async {
+    final text = TextEditingController();
+    final focus = FocusNode();
+    addTearDown(text.dispose);
+    addTearDown(focus.dispose);
+    var panel = 0.0;
+    var ended = false;
+    await tester.pumpWidget(
+      WidgetsApp(
+        color: const Color(0xFF000000),
+        builder: (context, _) => StatefulBuilder(
+          builder: (context, setState) => Transform.translate(
+            offset: Offset(0, panel),
+            child: ScrollDragDetector(
+              up: ScrollDragMode.none,
+              down: ScrollDragMode.boundaryStart,
+              left: ScrollDragMode.none,
+              right: ScrollDragMode.none,
+              onVerticalDragUpdate: (details, _) =>
+                  setState(() => panel += details.delta.dy),
+              onVerticalDragEnd: (_, __) => ended = true,
+              child: ListView(
+                children: [
+                  EditableText(
+                    controller: text,
+                    focusNode: focus,
+                    style: const TextStyle(fontSize: 14),
+                    cursorColor: const Color(0xFF000000),
+                    backgroundCursorColor: const Color(0xFF808080),
+                  ),
+                  for (var i = 0; i < 40; i++)
+                    SizedBox(height: 50, child: Text('Row $i')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Pull the list down past its top: the detector takes the drag and
+    // moves the panel. Then push back up past where it started, without
+    // lifting: the drag goes back to the list, which scrolls.
+    final gesture = await tester.startGesture(const Offset(200, 300));
+    for (var i = 0; i < 8; i++) {
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+    }
+    expect(panel, greaterThan(0));
+    for (var i = 0; i < 16; i++) {
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+    }
+    expect(ended, isTrue);
+    expect(find.text('Row 0').hitTestable(), findsNothing);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    // The field still works once it is scrolled back into view.
+    await tester.drag(find.byType(ListView), const Offset(0, 600));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(EditableText));
+    await tester.enterText(find.byType(EditableText), 'still here');
+    await tester.pump();
+    expect(text.text, 'still here');
+    expect(tester.takeException(), isNull);
+  });
+
   group('legacy constructor', () {
     for (final canMoveBack in [false, true]) {
       for (final onlyFromTop in [false, true]) {
