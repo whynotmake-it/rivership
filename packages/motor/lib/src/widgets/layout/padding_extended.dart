@@ -10,6 +10,8 @@ import 'package:meta/meta.dart';
 /// [padding].
 ///
 /// In that case, this widget will effectively expand the child's size.
+/// The child's minimum size grows by the outset too: under loose constraints,
+/// `EdgeInsets.all(-200)` makes a 100×100 child 400×400.
 /// However, the hitbox will remain the same size as the [PaddingExtended]
 /// widget due to how Flutter's hit testing works.
 class PaddingExtended extends SingleChildRenderObjectWidget {

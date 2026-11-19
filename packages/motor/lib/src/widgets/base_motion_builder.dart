@@ -1,7 +1,11 @@
+import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
+import 'package:motor/src/inspection/controller_registry.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/motion_converter.dart';
+import 'package:motor/src/motion_velocity_tracker.dart';
+import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// Base class for motion builders that provides shared functionality.
 abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
@@ -10,10 +14,13 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     required this.value,
     required Motion this.motion,
     required this.converter,
+    this.velocityTracking = const VelocityTracking.on(),
     this.active = true,
     this.onAnimationStatusChanged,
     this.from,
     this.child,
+    this.debugLabel,
+    this.tickerRate,
     super.key,
   }) : motionPerDimension = null;
 
@@ -22,10 +29,13 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
     required this.value,
     required List<Motion> this.motionPerDimension,
     required this.converter,
+    this.velocityTracking = const VelocityTracking.on(),
     this.active = true,
     this.onAnimationStatusChanged,
     this.from,
     this.child,
+    this.debugLabel,
+    this.tickerRate,
     super.key,
   }) : motion = null;
 
@@ -46,6 +56,18 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   /// during the lifecycle of this widget will be ignored.
   /// {@endtemplate}
   final T? from;
+
+  /// {@macro motor.debugLabel}
+  final String? debugLabel;
+
+  /// {@template motor.tickerRate}
+  /// How often this widget's animation ticks, for example
+  /// `tickerRate: .fps(30)`.
+  ///
+  /// Overrides the nearest [TickerRateScope]. Without either, it ticks every
+  /// frame.
+  /// {@endtemplate}
+  final TickerRate? tickerRate;
 
   /// {@template motor.MotionBuilder.motion}
   /// The motion to use for the animation.
@@ -68,6 +90,16 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   /// * ...
   /// {@endtemplate}
   final MotionConverter<T> converter;
+
+  /// {@template motor.velocityTracking}
+  /// Controls velocity tracking behavior for this motion builder.
+  ///
+  /// When enabled (the default), the controller tracks velocity when its value
+  /// is set manually, allowing animations to maintain momentum.
+  ///
+  /// Use [VelocityTracking.off] to disable velocity tracking.
+  /// {@endtemplate}
+  final VelocityTracking velocityTracking;
 
   /// {@template motor.simulate}
   /// Whether the motion is active.
@@ -93,27 +125,41 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
 
 /// Base state class that provides shared motion builder functionality.
 abstract class BaseMotionBuilderState<T extends Object>
-    extends State<BaseMotionBuilder<T>> with TickerProviderStateMixin {
+    extends State<BaseMotionBuilder<T>>
+    with TickerProviderStateMixin, TickerRateStateMixin {
   /// The motion controller that manages the animation.
   late MotionController<T> controller;
 
   @override
+  TickerRate? get widgetTickerRate => widget.tickerRate;
+
+  @override
+  void resyncTickers() => controller.resync(this);
+
+  @override
   void initState() {
     super.initState();
-    controller = switch (widget.motion) {
-      final motion? => MotionController(
-          motion: motion,
-          vsync: this,
-          initialValue: widget.from ?? widget.value,
-          converter: widget.converter,
-        ),
-      null => MotionController.motionPerDimension(
-          motionPerDimension: widget.motionPerDimension!,
-          vsync: this,
-          initialValue: widget.from ?? widget.value,
-          converter: widget.converter,
-        ),
-    };
+    controller = MotorInspectionRegistry.withCreator(
+      context,
+      () => switch (widget.motion) {
+        final motion? => MotionController(
+            motion: motion,
+            vsync: this,
+            initialValue: widget.from ?? widget.value,
+            converter: widget.converter,
+            velocityTracking: widget.velocityTracking,
+            debugLabel: widget.debugLabel,
+          ),
+        null => MotionController.motionPerDimension(
+            motionPerDimension: widget.motionPerDimension!,
+            vsync: this,
+            initialValue: widget.from ?? widget.value,
+            converter: widget.converter,
+            velocityTracking: widget.velocityTracking,
+            debugLabel: widget.debugLabel,
+          ),
+      },
+    );
 
     if (widget.onAnimationStatusChanged != null) {
       controller.addStatusListener(widget.onAnimationStatusChanged!);
@@ -128,6 +174,8 @@ abstract class BaseMotionBuilderState<T extends Object>
     if (widget.converter != oldWidget.converter) {
       controller.converter = widget.converter;
     }
+    controller.internalInnerController.velocityTracking =
+        widget.velocityTracking;
 
     if (widget.motion != oldWidget.motion ||
         !motionsEqual(
@@ -141,7 +189,7 @@ abstract class BaseMotionBuilderState<T extends Object>
           controller.motionPerDimension = widget.motionPerDimension!;
       }
     }
-    if (!widget.active) {
+    if (!widget.active && oldWidget.active) {
       controller
         ..stop()
         ..value = widget.value;
@@ -163,6 +211,8 @@ abstract class BaseMotionBuilderState<T extends Object>
         controller.addStatusListener(widget.onAnimationStatusChanged!);
       }
     }
+
+    if (widget.tickerRate != oldWidget.tickerRate) updateTickerRate();
 
     super.didUpdateWidget(oldWidget);
   }

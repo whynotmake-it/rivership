@@ -34,44 +34,10 @@ void main() {
           ),
         );
 
-    testWidgets('builds with child', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MotionDraggable<String>(
-            data: 'test',
-            motion: const CupertinoMotion.smooth(),
-            child: buildChild(),
-          ),
-        ),
-      );
-
-      spotKey(childKey).existsOnce();
-    });
-
-    testWidgets('shows feedback when dragging', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MotionDraggable<String>(
-            data: 'test',
-            motion: const CupertinoMotion(),
-            feedback: buildFeedback(),
-            child: buildChild(),
-          ),
-        ),
-      );
-
-      final child = spotKey(childKey)..existsOnce();
-
-      final gesture = await tester.startGesture(tester.getCenter(child.finder));
-
-      await gesture.moveBy(const Offset(40, 40));
-      await gesture.moveBy(const Offset(40, 40));
-      await tester.pump();
-
-      spotKey(feedbackKey).existsOnce();
-    });
-
-    testWidgets('shows childWhenDragging when dragging', (tester) async {
+    testWidgets('shows childWhenDragging and calls drag callbacks',
+        (tester) async {
+      var dragStarted = false;
+      var dragEnded = false;
       await tester.pumpWidget(
         MaterialApp(
           home: MotionDraggable<String>(
@@ -79,27 +45,8 @@ void main() {
             motion: const CupertinoMotion(),
             childWhenDragging: buildFeedback(),
             feedback: const SizedBox(),
-            child: buildChild(),
-          ),
-        ),
-      );
-
-      final gesture = await tester.startGesture(const Offset(50, 50));
-      await gesture.moveBy(const Offset(20, 20));
-      await tester.pump();
-
-      expect(find.byKey(childKey), findsNothing);
-      expect(find.byKey(feedbackKey), findsOneWidget);
-    });
-
-    testWidgets('calls onDragStarted when drag starts', (tester) async {
-      var dragStarted = false;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MotionDraggable<String>(
-            data: 'test',
-            motion: const CupertinoMotion(),
             onDragStarted: () => dragStarted = true,
+            onDragEnd: (_) => dragEnded = true,
             child: buildChild(),
           ),
         ),
@@ -110,28 +57,14 @@ void main() {
       await tester.pump();
 
       expect(dragStarted, isTrue);
-    });
+      expect(dragEnded, isFalse);
+      expect(find.byKey(childKey), findsNothing);
+      expect(find.byKey(feedbackKey), findsOneWidget);
 
-    testWidgets('calls onDragEnd when drag ends', (tester) async {
-      var dragEnded = false;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MotionDraggable<String>(
-            data: 'test',
-            motion: const CupertinoMotion(),
-            onDragEnd: (_) => dragEnded = true,
-            child: buildChild(),
-          ),
-        ),
-      );
-
-      final gesture = await tester.startGesture(const Offset(50, 50));
-      await gesture.moveBy(const Offset(20, 20));
-      await tester.pump();
       await gesture.up();
       await tester.pump();
-
       expect(dragEnded, isTrue);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('respects axis constraint', (tester) async {
@@ -210,6 +143,49 @@ void main() {
 
       await tester.pumpAndSettle();
       feedback.doesNotExist();
+    });
+
+    testWidgets('completes return when released without moving',
+        (tester) async {
+      var dragEnded = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: MotionDraggable<String>(
+              motion: const CupertinoMotion.smooth(),
+              data: 'test',
+              onDragEnd: (_) => dragEnded = true,
+              feedback: buildFeedback(),
+              child: buildChild(),
+            ),
+          ),
+        ),
+      );
+
+      final child = spotKey(childKey)..existsOnce();
+      final center = tester.getCenter(child.finder);
+
+      // Start a drag, move minimally to activate the recognizer, then
+      // move back to the original position and release. This simulates
+      // a tap-and-release where the feedback ends at the child's position.
+      final gesture = await tester.startGesture(center);
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+      await gesture.moveTo(center);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+
+      expect(dragEnded, isTrue);
+
+      // The return animation should complete since from ≈ target
+      await tester.pumpAndSettle();
+
+      // Feedback should be gone and child should be visible again
+      spotKey(feedbackKey).doesNotExist();
+      spotKey(childKey).existsOnce();
     });
 
     testWidgets('feedback does not animate if onlyReturnWhenCanceled is true',

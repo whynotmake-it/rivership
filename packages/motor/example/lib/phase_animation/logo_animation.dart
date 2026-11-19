@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -50,7 +52,6 @@ class LogoAnimation extends StatelessWidget {
                 axis: Axis.horizontal,
 
                 // TODO(tim): migrate to alignment on a future version of Flutter
-                // ignore: deprecated_member_use
                 axisAlignment: 1,
                 child: ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
@@ -116,7 +117,7 @@ class LogoState {
   int get hashCode => Object.hash(logoOpacity, textOpacity, textWidth);
 }
 
-class LogoStateConverter implements MotionConverter<LogoState> {
+class LogoStateConverter extends MotionConverter<LogoState> {
   const LogoStateConverter();
 
   @override
