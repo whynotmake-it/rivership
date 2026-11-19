@@ -1,3 +1,14 @@
+## 1.0.0-dev.7
+
+ - **FIX**(scroll_drag_detector): preserve handoff with custom scroll behaviors (#339).
+
+    * test(scroll_drag_detector): reproduce wrapped behavior crashes
+    
+    * fix(scroll_drag_detector): preserve handoff with child behavior overrides
+    
+    ---------
+
+
 ## 1.0.0-dev.6
 
  - Update a dependency to the latest release.
