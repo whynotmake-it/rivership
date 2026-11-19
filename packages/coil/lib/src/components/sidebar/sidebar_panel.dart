@@ -211,7 +211,6 @@ class CoilSidebarAction extends StatelessWidget {
           return CoilFocusRing(
             visible: states.contains(WidgetState.focused),
             borderRadius: radius,
-            offset: 1,
             child: SingleMotionBuilder(
               value: lit ? 1 : 0,
               motion: lit ? motion.fade : motion.fadeExit,

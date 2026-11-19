@@ -22,7 +22,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - The whole card is the target. Inside it the control drops its own hit-area padding.
   - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
   - Selected: border `foreground` 40 %.
-  - Keyboard focus rings the whole card (1 px, no offset). The control leaves out its own ring, told by `CoilFieldScope.framed`.
+  - Keyboard focus rings the whole card, 2 px outside like every ring (§13.4). The control leaves out its own ring, told by `CoilFieldScope.framed`.
   - Fill and border on `fade` / `fadeExit`. Pass the control's value as `selected`, as with a list tile.
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
 - **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.

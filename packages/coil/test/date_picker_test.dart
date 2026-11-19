@@ -226,7 +226,7 @@ void sizingTests() {
     // focus-ring room.
     expect(grid.width, lessThanOrEqualTo(44 * 1.3 * 7 + 8));
     expect(grid.center.dx, moreOrLessEquals(sheet.center.dx, epsilon: 0.5));
-    expect(time.width, moreOrLessEquals(grid.width - 4, epsilon: 0.5));
+    expect(time.width, moreOrLessEquals(grid.width - 6, epsilon: 0.5));
     expect(time.center.dx, moreOrLessEquals(sheet.center.dx, epsilon: 0.5));
     // Square rows: six of them as tall as the columns are wide.
     expect(grid.height, moreOrLessEquals((grid.width - 6) * 6 / 7, epsilon: 6));

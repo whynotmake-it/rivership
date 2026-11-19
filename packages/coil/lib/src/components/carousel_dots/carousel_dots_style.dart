@@ -39,7 +39,7 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
       radius: theme.shape == CoilShape.sharp
           ? theme.shape.radii(metrics.tier).item
           : target / 2,
-      ringOffset: 2,
+      ringOffset: theme.focusRing.offset,
     );
   }
 

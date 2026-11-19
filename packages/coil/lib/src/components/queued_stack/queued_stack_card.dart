@@ -270,7 +270,6 @@ class _CardBodyState extends State<_CardBody> {
         return CoilFocusRing(
           visible: states.contains(WidgetState.focused),
           borderRadius: BorderRadius.circular(radius),
-          offset: 2,
           child: CoilSurface(
             offset: 1,
             shadowLevel: look.shadowLevel,

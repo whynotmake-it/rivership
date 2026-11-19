@@ -407,7 +407,8 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
         onMetrics: _onScrollMetrics,
         physics: _RevealPhysics(request: _revealRequest),
         edgeFade: style.edgeFade!,
-        bleed: 1 + 2 * theme.focusRing.width,
+        // The ring and its antialiasing.
+        bleed: theme.focusRing.extent + 1,
         // Inside the scrollable, so the tabs are the tab bar's direct
         // semantic children.
         child: Semantics(
@@ -463,17 +464,10 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   exitMotion: focusMotion.exit,
                   exitTravelMotion: travel(focusMotion, motion.quick),
                   fade: fadeMotion,
-                  inflate: 1 + theme.focusRing.width,
-                  decoration: ShapeDecoration(
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(
-                        theme.shape.radii(sizes.tier).focusRing,
-                      ),
-                      side: BorderSide(
-                        color: theme.focusRing.colorOf(colors),
-                        width: theme.focusRing.width,
-                      ),
-                    ),
+                  inflate: theme.focusRing.extent,
+                  decoration: theme.focusRing.decorationAround(
+                    colors,
+                    radius: style.radius!,
                   ),
                 );
                 return CoilMotionLayer(

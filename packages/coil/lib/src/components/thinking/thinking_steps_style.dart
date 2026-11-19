@@ -100,7 +100,7 @@ class CoilThinkingStepsStyle
       sourcePadding: const EdgeInsets.symmetric(horizontal: 10),
       imageMaxWidth: 200,
       dotSize: 6,
-      focusRingOffset: 2,
+      focusRingOffset: theme.focusRing.offset,
     );
   }
 

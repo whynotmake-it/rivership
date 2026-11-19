@@ -504,7 +504,9 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.4 Focus ring
 
-1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the extra gap and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`. Inside clipping parents (ScrollArea, table cells) the ring is inset by 1 instead.
+1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2, so it's concentric with the element. Every control draws it the same way: single controls, choice cards, groups, rows, menus, tabs, calendar days and the switch alike. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the gap (`offset`, 2 by default) and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`, drawn with `CoilFocusRingTheme.decorationAround` on the row grown by `extent` (gap + width).
+
+**Room for the ring.** A parent that clips keeps `extent` (3 px, 4 in high contrast) clear around what it holds, or lets the ring paint past its edge: a popup's rows sit `popupInset` (4 / 6) in; the tabs strip and the calendar's pagers clip only their scrolling sides, so the ring shows above and below; the calendar keeps `extent` beside its edge days (`CoilCalendar.edgeInsetOf`); a sheet's pinned footer scrolls inside the gaps around it. Inside clipping parents that can't do that (ScrollArea, table cells, a card's stretched action) the ring is inset by 1 instead.
 
 **Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1); the text field core marks itself with `CoilFocusAlwaysVisible`, which a custom field can use too. A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
 
@@ -611,7 +613,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - thumb on `standard`, squish on `quick`, tint on `fade`;
   - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
   - release decides by `x + v · 0.1 s` and animates with the release velocity.
-- **Keyboard:** Space or Enter toggles. The focus ring hugs the track with a 2 px `background` gap.
+- **Keyboard:** Space or Enter toggles. The focus ring sits 2 px outside the track, as every ring does (§13.4).
 - **Semantics:** `toggled`, label.
 - **Haptic:** iOS `selectionClick` when the value flips mid-drag.
 - **Do:** use it for settings that apply immediately.
@@ -670,7 +672,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - The whole card is the target. Inside it the control drops its own hit-area padding.
   - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
   - Selected: border `foreground` 40 %.
-  - Keyboard focus rings the whole card (1 px, no offset). The control leaves out its own ring, told by `CoilFieldScope.framed`.
+  - Keyboard focus rings the whole card, 2 px outside like every ring (§13.4). The control leaves out its own ring, told by `CoilFieldScope.framed`.
   - Fill and border on `fade` / `fadeExit`. Pass the control's value as `selected`, as with a list tile.
 - **Separator:** 20 high with a hairline, optionally with a centered caption label.
 - **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.

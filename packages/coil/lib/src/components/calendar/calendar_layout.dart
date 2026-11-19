@@ -135,7 +135,7 @@ const calendarMaxCellScale = 1.3;
     metrics,
     CoilTheme.textOf(context).body,
   );
-  final inset = 1 + CoilTheme.of(context).focusRing.width;
+  final inset = CoilTheme.of(context).focusRing.extent;
   return (
     cell: cell,
     inset: inset,
@@ -387,4 +387,39 @@ class RenderCalendarWidthBox extends RenderShiftedBox {
       (size.height - child.size.height) / 2,
     );
   }
+}
+
+/// Clips a calendar's pager to its width, so the pages beside the shown
+/// one stay hidden, but lets the focus ring around the top and bottom rows
+/// paint [bleed] above and below it. Give the pager `Clip.none`.
+class CalendarPagerClip extends StatelessWidget {
+  /// Clips [child] sideways only, with [bleed] of room above and below.
+  const CalendarPagerClip({
+    required this.bleed,
+    required this.child,
+    super.key,
+  });
+
+  /// How far the focus ring reaches outside the rows.
+  final double bleed;
+
+  /// The pager.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      ClipRect(clipper: _PagerClipper(bleed), child: child);
+}
+
+class _PagerClipper extends CustomClipper<Rect> {
+  const _PagerClipper(this.bleed);
+
+  final double bleed;
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTRB(0, -bleed, size.width, size.height + bleed);
+
+  @override
+  bool shouldReclip(_PagerClipper oldClipper) => oldClipper.bleed != bleed;
 }

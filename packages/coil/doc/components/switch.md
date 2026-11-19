@@ -23,7 +23,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - thumb on `standard`, squish on `quick`, tint on `fade`;
   - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
   - release decides by `x + v · 0.1 s` and animates with the release velocity.
-- **Keyboard:** Space or Enter toggles. The focus ring hugs the track with a 2 px `background` gap.
+- **Keyboard:** Space or Enter toggles. The focus ring sits 2 px outside the track, as every ring does (§13.4).
 - **Semantics:** `toggled`, label.
 - **Haptic:** iOS `selectionClick` when the value flips mid-drag.
 - **Do:** use it for settings that apply immediately.

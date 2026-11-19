@@ -275,18 +275,22 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
             container: true,
             child: NotificationListener<ScrollNotification>(
               onNotification: _onScroll,
-              child: PageView.builder(
-                controller: _pages,
-                itemCount: switch (_lastYear) {
-                  final last? => last - _firstYear + 1,
-                  null => null,
-                },
-                pageSnapping: false,
-                // Hands drags off to a sheet it sits in: a vertical
-                // drag moves the sheet.
-                scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
-                physics: CalendarPagePhysics(motion: motion.standard),
-                itemBuilder: (context, page) => _year(_firstYear + page),
+              child: CalendarPagerClip(
+                bleed: widget.inset,
+                child: PageView.builder(
+                  controller: _pages,
+                  itemCount: switch (_lastYear) {
+                    final last? => last - _firstYear + 1,
+                    null => null,
+                  },
+                  pageSnapping: false,
+                  clipBehavior: Clip.none,
+                  // Hands drags off to a sheet it sits in: a vertical
+                  // drag moves the sheet.
+                  scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
+                  physics: CalendarPagePhysics(motion: motion.standard),
+                  itemBuilder: (context, page) => _year(_firstYear + page),
+                ),
               ),
             ),
           ),
@@ -389,17 +393,10 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
                 exitMotion: motion.fadeExit,
                 exitTravelMotion: motion.quick,
                 fade: motion.fade,
-                inflate: 1 + theme.focusRing.width,
-                decoration: ShapeDecoration(
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(
-                      theme.shape.radii(metrics.tier).focusRing,
-                    ),
-                    side: BorderSide(
-                      color: theme.focusRing.colorOf(colors),
-                      width: theme.focusRing.width,
-                    ),
-                  ),
+                inflate: theme.focusRing.extent,
+                decoration: theme.focusRing.decorationAround(
+                  colors,
+                  radius: radius,
                 ),
               ),
             ],

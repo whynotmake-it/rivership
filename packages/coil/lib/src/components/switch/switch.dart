@@ -366,7 +366,6 @@ class _CoilSwitchState extends State<CoilSwitch>
                     states.contains(WidgetState.focused) &&
                     !(field?.framed ?? false),
                 borderRadius: BorderRadius.circular(style.radius!),
-                offset: 2,
                 child: ListenableBuilder(
                   listenable: _controller,
                   builder: (context, _) => _SwitchTrack(

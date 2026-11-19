@@ -246,17 +246,10 @@ class _CoilAccordionState<T> extends State<CoilAccordion<T>>
         exitMotion: motion.quickExit,
         exitTravelMotion: motion.standard,
         fade: motion.fade,
-        inflate: 1 + theme.focusRing.width,
-        decoration: ShapeDecoration(
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(
-              theme.shape.radii(metrics.tier).focusRing,
-            ),
-            side: BorderSide(
-              color: theme.focusRing.colorOf(theme.colors),
-              width: theme.focusRing.width,
-            ),
-          ),
+        inflate: theme.focusRing.extent,
+        decoration: theme.focusRing.decorationAround(
+          theme.colors,
+          radius: style.radius!,
         ),
       );
       list = ConstrainedBox(

@@ -688,19 +688,23 @@ class _CoilCalendarState extends State<CoilCalendar> {
       child: CalendarGridBox(
         cell: cell,
         inset: inset,
-        child: PageView.builder(
-          controller: _pages,
-          itemCount: _pageCount,
-          pageSnapping: false,
-          // Hands drags off to a sheet it sits in.
-          scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
-          physics: CalendarPagePhysics(motion: motion.standard),
-          // A tap in the focus ring's inset picks the edge day.
-          itemBuilder: (context, page) => CalendarInsetHit(
-            inset: inset,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: inset),
-              child: _grid(_monthAt(page), cell: cell, motion: motion),
+        child: CalendarPagerClip(
+          bleed: inset,
+          child: PageView.builder(
+            controller: _pages,
+            itemCount: _pageCount,
+            pageSnapping: false,
+            clipBehavior: Clip.none,
+            // Hands drags off to a sheet it sits in.
+            scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
+            physics: CalendarPagePhysics(motion: motion.standard),
+            // A tap in the focus ring's inset picks the edge day.
+            itemBuilder: (context, page) => CalendarInsetHit(
+              inset: inset,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: inset),
+                child: _grid(_monthAt(page), cell: cell, motion: motion),
+              ),
             ),
           ),
         ),
@@ -921,17 +925,10 @@ class _CoilCalendarState extends State<CoilCalendar> {
               exitMotion: motion.fadeExit,
               exitTravelMotion: motion.quick,
               fade: motion.fade,
-              inflate: 1 + theme.focusRing.width,
-              decoration: ShapeDecoration(
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(
-                    theme.shape.radii(metrics.tier).focusRing,
-                  ),
-                  side: BorderSide(
-                    color: theme.focusRing.colorOf(colors),
-                    width: theme.focusRing.width,
-                  ),
-                ),
+              inflate: theme.focusRing.extent,
+              decoration: theme.focusRing.decorationAround(
+                colors,
+                radius: radius,
               ),
             ),
           ],

@@ -54,7 +54,7 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
       minHeight: metrics.controlHeight,
       paddingX: 6,
       separatorGap: 2,
-      focusRingOffset: 1,
+      focusRingOffset: theme.focusRing.offset,
       menuMaxHeight: metrics.tier == CoilTier.pointer ? 480 : double.infinity,
     );
   }

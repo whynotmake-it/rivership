@@ -2,6 +2,23 @@
 
 Milestone M0, unreleased.
 
+- Breaking: every focus ring sits 2 px outside its control, at the
+  control's radius + 2, as DESIGN.md says. `CoilFocusRingTheme.offset`
+  defaults to 2 (was 0, so single controls' rings hugged their edge),
+  and the rings that travel between rows (choice and toggle groups,
+  menus, selects, tabs, accordions, questions, sidebar menus, calendar
+  days and months) moved out from 1 px to the same 2, concentric with
+  the row. New `CoilFocusRingTheme.extent` (gap + width) and
+  `decorationAround` draw a travelling ring that way. A choice card's
+  ring, the time columns' and the breadcrumb's sit 2 px out too; the
+  accordion, thinking steps, breadcrumb and carousel dots styles take
+  their ring offset from the theme.
+- Fix: rings are no longer clipped at the calendar's top and bottom
+  rows (its pagers clip only their sides) or around a sheet footer's
+  buttons. The calendar's ring room beside its edge days is the
+  ring's `extent`, 3 (was 2), so a date picker's time band and footer
+  move in by 1.
+
 - An app can swap coil's icons for its own icon set app-wide:
   `CoilThemeData.icons` takes a `CoilIcons`, one widget per role coil draws
   (`check`, `dash`, `copy`, `failed`, `close`, `alert`, `chevronStart`,

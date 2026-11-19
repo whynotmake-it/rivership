@@ -995,7 +995,6 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
       CoilFocusRing(
         visible: ring != null,
         borderRadius: radius,
-        offset: 2,
         child: _gestures(
           DecoratedBox(
             decoration: CoilRelief.decorate(

@@ -67,7 +67,7 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
       panelPadding: EdgeInsetsDirectional.fromSTEB(padX, 0, padX, 12),
       radius: theme.shape.radii(metrics.tier).item,
       groupWidth: 288,
-      focusRingOffset: 2,
+      focusRingOffset: theme.focusRing.offset,
     );
   }
 

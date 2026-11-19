@@ -175,7 +175,6 @@ class SliderPill extends StatelessWidget {
                         child: CoilFocusRing(
                           visible: ring == i,
                           borderRadius: BorderRadius.circular(knob / 2),
-                          offset: 2,
                           child: DecoratedBox(
                             key: ValueKey((sliderKnobKey, i)),
                             decoration: knobDecoration,

@@ -194,7 +194,6 @@ class _ColumnState extends State<_Column> {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final metrics = CoilTheme.metricsOf(context);
-    final colors = theme.colors;
     final text = CoilTheme.textOf(context);
     final value = widget.text(widget.index);
     return Semantics(
@@ -220,24 +219,14 @@ class _ColumnState extends State<_Column> {
             canRequestFocus: widget.onChanged != null,
             child: ListenableBuilder(
               listenable: _focus,
-              builder: (context, child) => DecoratedBox(
-                decoration: ShapeDecoration(
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(
-                      theme.shape.radii(metrics.tier).focusRing,
-                    ),
-                    side:
-                        _focus.hasFocus &&
-                            CoilInputModality.instance.value ==
-                                CoilModality.keyboard
-                        ? BorderSide(
-                            color: theme.focusRing.colorOf(colors),
-                            width: theme.focusRing.width,
-                          )
-                        : BorderSide.none,
-                  ),
+              builder: (context, child) => CoilFocusRing(
+                visible:
+                    _focus.hasFocus &&
+                    CoilInputModality.instance.value == CoilModality.keyboard,
+                borderRadius: BorderRadius.circular(
+                  theme.shape.radii(metrics.tier).item,
                 ),
-                child: child,
+                child: child!,
               ),
               child: SizedBox(
                 width: widget.width,

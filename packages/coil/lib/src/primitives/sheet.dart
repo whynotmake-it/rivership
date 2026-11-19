@@ -475,6 +475,7 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
     );
     final footer = widget.footer;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final ringRoom = CoilTheme.of(context).focusRing.extent;
     return SafeArea(
       top: false,
       child: Column(
@@ -525,7 +526,17 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
                       MediaQuery.sizeOf(context).height *
                       CoilSheetPanel.footerMaxHeightFraction,
                 ),
-                child: SingleChildScrollView(primary: false, child: footer),
+                // The scroll view reaches into the gaps above and below by
+                // the focus ring's room, so the ring around a button at
+                // its edge isn't clipped; the buttons stay where they were.
+                child: PaddingExtended(
+                  padding: EdgeInsets.symmetric(vertical: -ringRoom),
+                  child: SingleChildScrollView(
+                    primary: false,
+                    padding: EdgeInsets.symmetric(vertical: ringRoom),
+                    child: footer,
+                  ),
+                ),
               ),
             ),
         ],
