@@ -130,16 +130,16 @@ void timeTests() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('20').first);
     await tester.pumpAndSettle();
-    // The day is a draft: the popup stays and the field keeps its value.
+    // The day applies at once; the popup stays for the time.
     expect(find.byType(CoilCalendar), findsOneWidget);
-    expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
+    expect(find.text('November 20, 2026, 09:30'), findsOneWidget);
 
     // A screen reader steps the hour column.
     tester.semantics.increase(find.semantics.byLabel('Hour'));
     await tester.pumpAndSettle();
-    expect(find.text('November 14, 2026, 09:30'), findsOneWidget);
+    expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
 
-    await tester.tap(find.text('Done'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     expect(find.byType(CoilCalendar), findsNothing);
     expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
@@ -584,51 +584,41 @@ void confirmTests() {
       expect(_changes(tester), [DateTime(2026, 11, 21)]);
     });
 
-    testWidgets('with time, Done confirms and a tap outside cancels', (
+    testWidgets('with time, each pick applies at once and closing keeps it', (
       tester,
     ) async {
       await _openConfirmDemo(tester, presentation: .popover, withTime: true);
+      // No Done: the field follows each pick while the popover stays open.
+      expect(find.text('Done'), findsNothing);
       await tester.tap(find.text('20').first);
       await tester.pumpAndSettle();
       expect(find.byType(CoilCalendar), findsOneWidget);
-      expect(_changes(tester), isEmpty);
+      expect(find.text('November 20, 2026, 09:30'), findsOneWidget);
+      // Tab from the grid to the hour column and step it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
+      expect(_changes(tester), [
+        DateTime(2026, 11, 20, 9, 30),
+        DateTime(2026, 11, 20, 10, 30),
+      ]);
+
+      // A tap outside closes it with what's picked; so does Escape.
       await tester.tapAt(const Offset(1, 790));
       await tester.pumpAndSettle();
       expect(find.byType(CoilCalendar), findsNothing);
-      expect(_changes(tester), isEmpty);
-
+      expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
       await tester.tap(find.byType(CoilDatePicker));
       await tester.pumpAndSettle();
-      expect(_isSelected(tester, '14'), isTrue);
-      await tester.tap(find.text('21').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
-      expect(find.byType(CoilCalendar), findsNothing);
-      expect(_changes(tester), [DateTime(2026, 11, 21, 9, 30)]);
-    });
-
-    testWidgets('with time, Escape cancels and Enter in a column confirms', (
-      tester,
-    ) async {
-      await _openConfirmDemo(tester, presentation: .popover, withTime: true);
-      await tester.tap(find.text('20').first);
+      expect(_isSelected(tester, '20'), isTrue);
+      await tester.tap(find.text('22').first);
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
       expect(find.byType(CoilCalendar), findsNothing);
-      expect(_changes(tester), isEmpty);
-
-      await tester.tap(find.byType(CoilDatePicker));
-      await tester.pumpAndSettle();
-      // Tab from the grid to the hour column, step it, and press Enter.
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pumpAndSettle();
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pumpAndSettle();
-      expect(find.byType(CoilCalendar), findsNothing);
-      expect(_changes(tester), [DateTime(2026, 11, 14, 10, 30)]);
+      expect(_changes(tester).last, DateTime(2026, 11, 22, 10, 30));
+      expect(find.text('November 22, 2026, 10:30'), findsOneWidget);
     });
   });
 

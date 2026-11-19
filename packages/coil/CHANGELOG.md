@@ -2,6 +2,11 @@
 
 Milestone M0, unreleased.
 
+- Breaking: `CoilDatePicker`'s popover applies each pick at once, with
+  time too: `onChanged` reports every day and every turn of a time column,
+  the field's label follows, and closing the popover (a tap outside,
+  Escape, Enter) is done. Its Done button and footer are gone, and nothing
+  cancels. The sheet keeps its draft, its footer and Done.
 - `CoilCalendar`'s month view shows the year once, in the title: zooming
   out, the month leaves the title ("April 2020" to "2020") while its year
   holds still, and paging the years changes it; zooming in brings the

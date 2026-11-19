@@ -14,31 +14,28 @@ import 'package:flutter/widgets.dart';
 /// [placeholder] when there is none. The arrow keys on the field open the
 /// calendar with the keyboard on the picked day.
 ///
-/// What's picked in the open calendar is a draft until it's confirmed;
-/// closing it any other way (the sheet's close button, the scrim, a drag
-/// down, back, Escape, a tap outside a popover) leaves [value] as it was:
-///
-/// - **Popover, date only:** a day is the whole answer, so picking one
-///   confirms it and closes the popover, as iOS's compact picker and the
-///   web's date pickers do.
-/// - **Popover with time, and every sheet:** a pinned **Done** button
-///   ([CoilCalendarLabels.confirm]) confirms. A day and a time are two
-///   answers, and a sheet takes a whole screen's attention, so there is no
-///   tap that could close it without cutting a choice short; Material's
-///   modal pickers confirm with OK for the same reason.
-///   The footer names what Done will confirm on its leading side
+/// - **Popover:** what's picked applies at once. The field's label
+///   follows every day and time picked, and closing the popover (a tap
+///   outside, Escape, Enter) is done; there is nothing to confirm or
+///   cancel, as in iOS's compact picker, macOS's and MUI's desktop
+///   pickers. Picking a day closes a date-only popover; with time it stays
+///   open for the time.
+/// - **Sheet:** what's picked is a draft until the pinned **Done**
+///   ([CoilCalendarLabels.confirm]) confirms it; every other way out (the
+///   close button, the scrim, a drag down, back, Escape) leaves [value] as
+///   it was. A sheet takes a whole screen and hides the field. The footer
+///   names what Done will confirm on its leading side
 ///   ([CoilCalendarLabels.summary]), so the draft stays readable however
-///   far the calendar has paged or zoomed; before a pick it shows
-///   [placeholder], muted.
-/// - **Keyboard:** Enter confirms the draft (on the grid, it picks the
-///   focused day first); Space only picks; Escape cancels.
+///   far the calendar has paged or zoomed.
+/// - **Keyboard:** Enter confirms (on the grid, it picks the focused day
+///   first); Space only picks; Escape closes.
 ///
 /// With [withTime], two columns under the calendar pick the time of day.
 /// In a short, wide window (a phone in landscape) they sit beside the
 /// calendar instead.
 ///
 /// The popover is as wide as the calendar's seven cells. A sheet's
-/// calendar fills the sheet up to days 20 % bigger than their natural
+/// calendar fills the sheet up to days 30 % bigger than their natural
 /// size, and centers in a wider one: days are always square. Either
 /// scrolls when the window is too short for it.
 class CoilDatePicker extends StatefulWidget {
@@ -134,10 +131,24 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
   CoilPopupController? _ownPopup;
   final _states = WidgetStatesController();
 
-  /// What the open calendar has picked, not yet confirmed. Each open
-  /// starts it from [CoilDatePicker.value]; the sheet's footer and the
-  /// panel both follow it.
+  /// What the open calendar has picked. Each open starts it from
+  /// [CoilDatePicker.value]. A popover reports it as it changes; a sheet
+  /// holds it until Done, its footer following it.
   final _draft = ValueNotifier<DateTime?>(null);
+
+  /// Whether the open calendar is a popover, which applies picks at once.
+  bool _live = false;
+
+  /// The value last reported through [CoilDatePicker.onChanged] during
+  /// this open (or the value it opened with), so each pick reports once
+  /// even before the parent rebuilds with it.
+  DateTime? _reported;
+
+  void _report(DateTime value) {
+    if (value == _reported) return;
+    _reported = value;
+    widget.onChanged?.call(value);
+  }
 
   /// The open popup that has confirmed, so a confirm reports once.
   CoilPopupHandle? _confirmed;
@@ -152,6 +163,14 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
   void initState() {
     super.initState();
     _popup.addListener(_onPopup);
+    _draft.addListener(_onDraft);
+  }
+
+  /// A popover applies each pick as it's made.
+  void _onDraft() {
+    final draft = _draft.value;
+    if (!_live || !_popup.isOpen || draft == null) return;
+    _report(draft);
   }
 
   @override
@@ -177,7 +196,10 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
   /// A fresh draft for each open.
   void _onPopup() {
     final open = _popup.isOpen;
-    if (open && !_wasOpen) _draft.value = widget.value;
+    if (open && !_wasOpen) {
+      _reported = widget.value;
+      _draft.value = widget.value;
+    }
     _wasOpen = open;
   }
 
@@ -190,7 +212,7 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
     final draft = _draft.value;
     if (draft == null || identical(_confirmed, popup)) return;
     _confirmed = popup;
-    if (draft != widget.value) widget.onChanged?.call(draft);
+    _report(draft);
     popup.close(CoilPopupCloseReason.selected);
   }
 
@@ -224,6 +246,7 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
 
   Widget _content(BuildContext context, CoilPopupHandle popup) {
     final sheet = popup.presentation == CoilPresentation.sheet;
+    _live = !sheet;
     // Only a popover picking a date alone has a tap that is the whole
     // answer.
     final confirmOnPick = !sheet && !widget.withTime;
@@ -265,27 +288,13 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
                 vertical: metrics.popupInset * 2,
               )
             : EdgeInsets.all(metrics.popupInset * 2),
-        child: sheet || !widget.withTime
-            ? panel
-            : CoilCalendarWidth(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: metrics.gap * 2,
-                  children: [
-                    panel,
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: edge),
-                      child: _footer(popup),
-                    ),
-                  ],
-                ),
-              ),
+        child: panel,
       ),
     );
     // Enter anywhere in the popup confirms; the grid picks its focused day
-    // first, and a focused button presses itself. Escape cancels, from a
-    // sheet too (the month view takes it first, to go back to the days).
+    // first, and a focused button presses itself. Escape closes: a sheet
+    // without its draft, a popover with what it already applied (the month
+    // view takes Escape first, to go back to the days).
     final content = Shortcuts(
       shortcuts: const {
         SingleActivator(LogicalKeyboardKey.enter): _ConfirmIntent(),
@@ -448,7 +457,7 @@ class _ConfirmIntent extends Intent {
   const _ConfirmIntent();
 }
 
-/// Closes the popup without confirming: Escape.
+/// Closes the popup without confirming anything further: Escape.
 class _CancelIntent extends Intent {
   const _CancelIntent();
 }
