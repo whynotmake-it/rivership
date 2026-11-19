@@ -2,6 +2,18 @@
 
 Milestone M0, unreleased.
 
+- `CoilCalendar`'s month view pages sideways, one year per page, in the
+  same space as the days (the zoom between them is unchanged). The title's
+  year follows the page mid-swipe, the arrows turn a year there
+  (`CoilCalendarLabels.previousYearLabel` / `nextYearLabel`), and the
+  title, like Escape, zooms back into the month it names. In a sheet, a
+  vertical drag on the months moves the sheet.
+- `CoilCalendar` (and so `CoilDatePicker`, with its draft) shows the
+  selected day in a small tinted chip beside the arrows while its month,
+  or in the month view its year, is out of view. Tapping it turns back to
+  that month, zooming in from the month view. `CoilCalendarLabels.selection`
+  ("Nov 14", with the year when it isn't this year's) and
+  `selectionLabel` name it.
 - Breaking: the phone drawer's page edge shadow (`CoilDrawerReveal.behind`)
   is lighter, most of all in light mode, where the white veil made the old
   one read heavy: step 7 at half strength in light and step 8 at 70 % in

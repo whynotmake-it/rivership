@@ -89,6 +89,7 @@ void main() {
   sizingTests();
   sheetGestureTests();
   confirmTests();
+  monthViewSheetTests();
 }
 
 class _TimeDemo extends StatefulWidget {
@@ -621,12 +622,14 @@ void confirmTests() {
 
     await tester.tap(find.bySemanticsLabel('November 2026'));
     await tester.pumpAndSettle();
-    // The list scrolls on through the years in the sheet, which stays.
+    // The years page on in the sheet, which stays.
     final years = find.descendant(
-      of: find.byType(CoilCalendar),
-      matching: find.byType(ListView),
+      of: find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == 'CalendarMonthView',
+      ),
+      matching: find.byType(PageView),
     );
-    await tester.drag(years, const Offset(0, -150));
+    await tester.fling(years, const Offset(-200, 0), 1000);
     await tester.pumpAndSettle();
     expect(find.byType(CoilSheetPanel), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('March 2027'));
@@ -638,5 +641,57 @@ void confirmTests() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(_changes(tester), [DateTime(2027, 3, 17)]);
+  });
+}
+
+void monthViewSheetTests() {
+  testWidgets('in a sheet, a drag down on the months moves the sheet, and '
+      'the chip goes back to the draft', (tester) async {
+    await _openConfirmDemo(tester, presentation: .sheet);
+    // A draft pick, then out to the months and two years back.
+    await tester.tap(find.text('20').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('November 2026'));
+    await tester.pumpAndSettle();
+    final years = find.descendant(
+      of: find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == 'CalendarMonthView',
+      ),
+      matching: find.byType(PageView),
+    );
+    for (var i = 0; i < 2; i++) {
+      await tester.fling(years, const Offset(250, 0), 1000);
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('November 2024'), findsOneWidget);
+
+    // A slow drag down on the months takes the sheet with the finger.
+    final sheet = find.byType(CoilSheetPanel);
+    final top = tester.getRect(sheet).top;
+    final gesture = await tester.startGesture(tester.getCenter(years));
+    for (var i = 0; i < 12; i++) {
+      await gesture.moveBy(const Offset(0, 8));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(tester.getRect(sheet).top, greaterThan(top));
+    // Let go after a pause: it springs back, on the same year.
+    await tester.pump(const Duration(milliseconds: 300));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(sheet).top, top);
+    expect(find.text('November 2024'), findsOneWidget);
+
+    // The chip names the draft and goes back to its month.
+    await tester.tap(
+      find.bySemanticsLabel(
+        'Go to the selected day, Friday, November 20, 2026',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('November 2026'), findsOneWidget);
+    expect(_isSelected(tester, '20'), isTrue);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(_changes(tester), [DateTime(2026, 11, 20)]);
   });
 }

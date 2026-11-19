@@ -214,7 +214,9 @@ void pagingTests() {
     expect(find.text('January 2027'), findsOneWidget);
     // One page in the tree once it settles.
     expect(_days(), findsNWidgets(42));
-    for (var i = 0; i < 4; i++) {
+    // Title, the selected day's chip (November is out of view), the
+    // arrows, then the grid.
+    for (var i = 0; i < 5; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     }
     await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
@@ -526,10 +528,12 @@ class _MonthsDemoState extends State<_MonthsDemo> {
   );
 }
 
-/// The month view's list of years.
+/// The month view's pages of years.
 Finder _years() => find.descendant(
-  of: find.byType(CoilCalendar),
-  matching: find.byType(ListView),
+  of: find.byWidgetPredicate(
+    (widget) => widget.runtimeType.toString() == 'CalendarMonthView',
+  ),
+  matching: find.byType(PageView),
 );
 
 /// The visible years' headings, as numbers.
@@ -548,7 +552,7 @@ List<int> _visibleYears(WidgetTester tester) {
 
 bool _enabledMonth(WidgetTester tester, String label) =>
     tester
-        .getSemantics(find.bySemanticsLabel(label))
+        .getSemantics(find.bySemanticsLabel(label).last)
         .flagsCollection
         .isEnabled ==
     Tristate.isTrue;
@@ -627,14 +631,10 @@ void monthViewTests() {
     await tester.tap(title);
     await tester.pumpAndSettle();
     expect(_years(), findsOneWidget);
-    // The shown month opens in the middle of the list, fully in view.
+    // The shown month's year opens, the month fully in view.
     final list = tester.getRect(_years());
     final month = tester.getRect(find.bySemanticsLabel('November 2026').last);
-    expect(
-      list.contains(month.topLeft) && list.contains(month.bottomRight),
-      isTrue,
-    );
-    expect((month.center.dy - list.center.dy).abs(), lessThan(month.height));
+    expect(list.intersect(month), month);
     // The picked month reads as selected.
     expect(
       tester
@@ -657,32 +657,25 @@ void monthViewTests() {
     );
   });
 
-  testWidgets('the month view scrolls through the years', (tester) async {
+  testWidgets('the month view pages through the years', (tester) async {
     useScreen(tester, TestScreen.desktop);
     await tester.pumpWidget(
       testApp(tier: CoilTier.pointer, home: const _MonthsDemo()),
     );
     await tester.tap(find.bySemanticsLabel('November 2026'));
     await tester.pumpAndSettle();
-    final sectionHeight =
-        tester.getRect(find.text('2027')).top -
-        tester.getRect(find.text('2026')).top;
-    // Up through the years with a mouse wheel, as a list scrolls.
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: tester.getCenter(_years()),
-        scrollDelta: Offset(0, -sectionHeight * 5),
-      ),
-    );
+    expect(_visibleYears(tester), [2026]);
+    // A swipe turns back a year, and the title's year follows.
+    await tester.fling(_years(), const Offset(200, 0), 1000);
     await tester.pumpAndSettle();
-    expect(_visibleYears(tester), contains(2022));
-    expect(_visibleYears(tester), isNot(contains(2026)));
-    // And down by dragging.
-    await tester.drag(_years(), Offset(0, -sectionHeight * 8));
-    await tester.pumpAndSettle();
-    expect(_visibleYears(tester), contains(2030));
-    await tester.ensureVisible(find.bySemanticsLabel('June 2030'));
-    await tester.pumpAndSettle();
+    expect(_visibleYears(tester), [2025]);
+    expect(find.text('November 2025'), findsOneWidget);
+    // The arrows turn a year at a time too.
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.bySemanticsLabel('Next year'));
+      await tester.pumpAndSettle();
+    }
+    expect(_visibleYears(tester), [2030]);
     await tester.tap(find.bySemanticsLabel('June 2030'));
     await tester.pumpAndSettle();
     expect(find.text('June 2030'), findsOneWidget);
@@ -712,12 +705,15 @@ void monthViewTests() {
     expect(_visibleYears(tester).every((y) => y == 2026 || y == 2027), isTrue);
     expect(_enabledMonth(tester, 'October 2026'), isFalse);
     expect(_enabledMonth(tester, 'December 2026'), isTrue);
-    expect(_enabledMonth(tester, 'February 2027'), isTrue);
-    expect(_enabledMonth(tester, 'March 2027'), isFalse);
     // A dimmed month takes no tap.
     await tester.tap(find.bySemanticsLabel('October 2026'));
     await tester.pumpAndSettle();
     expect(_years(), findsOneWidget);
+    // On to the last year's page.
+    await tester.tap(find.bySemanticsLabel('Next year'));
+    await tester.pumpAndSettle();
+    expect(_enabledMonth(tester, 'February 2027'), isTrue);
+    expect(_enabledMonth(tester, 'March 2027'), isFalse);
     // The keyboard stops at the ends.
     await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -831,6 +827,60 @@ void monthViewTests() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('the selection chip brings back the picked month from away', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _MonthsDemo()),
+    );
+    final chip = find.bySemanticsLabel(
+      'Go to the selected day, Saturday, November 14, 2026',
+    );
+    bool fourteenSelected() =>
+        tester
+            .getSemantics(
+              find.bySemanticsLabel('Saturday, November 14, 2026'),
+            )
+            .flagsCollection
+            .isSelected ==
+        Tristate.isTrue;
+    // The picked day is in view: nothing to go back to.
+    expect(chip, findsNothing);
+    // Months away in the days, the chip takes them back.
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.bySemanticsLabel('Previous month'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('August 2026'), findsOneWidget);
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    expect(find.text('November 2026'), findsOneWidget);
+    expect(fourteenSelected(), isTrue);
+    expect(chip, findsNothing);
+    // Zoomed out and years away, it zooms back into the picked month.
+    await tester.tap(find.bySemanticsLabel('November 2026'));
+    await tester.pumpAndSettle();
+    await tester.fling(_years(), const Offset(200, 0), 1000);
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.bySemanticsLabel('Previous year'));
+      await tester.pumpAndSettle();
+    }
+    expect(_visibleYears(tester), [2022]);
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    expect(_years(), findsNothing);
+    expect(find.text('November 2026'), findsOneWidget);
+    expect(fourteenSelected(), isTrue);
+    // Its day is still one tap away.
+    await tester.tap(find.text('20').first);
+    expect(
+      tester.state<_MonthsDemoState>(find.byType(_MonthsDemo)).picked,
+      DateTime(2026, 11, 20),
+    );
+  });
 
   testWidgets('reduced motion zooms with a fade only', (tester) async {
     useScreen(tester, TestScreen.desktop);

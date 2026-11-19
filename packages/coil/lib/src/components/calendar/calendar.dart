@@ -33,7 +33,28 @@ class CoilCalendarLabels {
     this.year = _year,
     this.chooseMonthLabel = 'Choose a month and year',
     this.confirm = const Text('Done'),
+    this.selection = _selection,
+    this.selectionLabel = _selectionLabel,
+    this.previousYearLabel = 'Previous year',
+    this.nextYearLabel = 'Next year',
   });
+
+  /// The picked day in the chip that shows it while its month is out of
+  /// view, like "Nov 14" (with the year when it isn't this year's).
+  /// Tapping the chip goes back to the day's month; [selectionLabel]
+  /// announces it.
+  final Widget Function(DateTime day) selection;
+
+  /// The [selection] chip for screen readers, like "Go to the selected
+  /// day, Saturday, November 14, 2026".
+  final String Function(DateTime day) selectionLabel;
+
+  /// The previous-year button's label in the month view, for screen
+  /// readers.
+  final String previousYearLabel;
+
+  /// The next-year button's label in the month view, for screen readers.
+  final String nextYearLabel;
 
   /// The month title, like "November 2026". Tapping it zooms out to the
   /// month view; [monthLabel] announces it.
@@ -96,6 +117,16 @@ class CoilCalendarLabels {
 
   static Widget _year(int year) => Text('$year');
 
+  static Widget _selection(DateTime day) {
+    final short = '${_months[day.month - 1].substring(0, 3)} ${day.day}';
+    return Text(
+      day.year == DateTime.now().year ? short : '$short, ${day.year}',
+    );
+  }
+
+  static String _selectionLabel(DateTime day) =>
+      'Go to the selected day, ${_dayLabel(day)}';
+
   static Widget _weekday(int weekday) =>
       Text(_weekdays[weekday - 1].substring(0, 2));
 
@@ -125,9 +156,14 @@ class CoilCalendarLabels {
 /// follows the pages as they move: it changes as soon as a page is more
 /// than half in view, mid-swipe, with a blur-fade.
 ///
-/// The title is a button: it zooms out to the month view, the twelve
-/// months of each year in a list that scrolls through the years, opening
-/// on the shown month's year. Picking a month zooms back into its days.
+/// The title is a button: it zooms out to the month view, a year's twelve
+/// months per page, paging sideways like the days, opening on the shown
+/// month's year. The arrows turn a year there, and the title follows the
+/// year in view. Picking a month zooms back into its days.
+///
+/// While the [selected] day is out of view (on another page of days, or in
+/// another year of months), a small chip beside the arrows shows it
+/// ([CoilCalendarLabels.selection]); tapping it goes back to its month.
 ///
 /// The grid is one focus stop: the arrows move a day or a week, Home and
 /// End go to the week's ends, PageUp and PageDown change the month (with
@@ -256,6 +292,14 @@ class _CoilCalendarState extends State<CoilCalendar> {
 
   /// Whether the month view is zoomed out to.
   bool _monthsOpen = false;
+
+  /// The month the title names in the month view: the keyboard's month in
+  /// the year more than half in view. Zooming back in shows it.
+  late DateTime _monthsTitle = _month;
+
+  /// The open month view, new for each zoom out so it opens on the days'
+  /// month.
+  var _monthsView = GlobalKey<CalendarMonthViewState>();
 
   late PageController _pages = PageController(initialPage: _pageOf(_month));
   final _active = CoilActiveItemController();
@@ -411,14 +455,22 @@ class _CoilCalendarState extends State<CoilCalendar> {
     return false;
   }
 
-  /// Zooms out to the month view, or back into the days.
-  void _toggleMonths() => _showMonths(open: !_monthsOpen);
+  /// Zooms out to the month view, or back into the days of the month the
+  /// title names.
+  void _toggleMonths() =>
+      _monthsOpen ? _pickMonth(_monthsTitle) : _showMonths(open: true);
 
   void _showMonths({required bool open}) {
     if (open == _monthsOpen) return;
     // Focus moves with the view when it was in the calendar.
     final hadFocus = _within.hasFocus;
-    setState(() => _monthsOpen = open);
+    setState(() {
+      _monthsOpen = open;
+      if (open) {
+        _monthsTitle = _month;
+        _monthsView = GlobalKey<CalendarMonthViewState>();
+      }
+    });
     if (!hadFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -438,6 +490,34 @@ class _CoilCalendarState extends State<CoilCalendar> {
   void _showMonth(int step) {
     final month = DateTime(_month.year, _month.month + step);
     if (!_canShow(month)) return;
+    setState(() => _month = month);
+    _active.clear();
+    _turnTo(month);
+  }
+
+  /// The selected day's month, when it can be shown.
+  DateTime? get _selectedMonth => switch (widget.selected) {
+    final day? when _canShow(_monthOf(day)) => _monthOf(day),
+    _ => null,
+  };
+
+  /// Whether the selected day is out of view: on another page of days, or
+  /// in another year of the month view.
+  bool get _selectionAway {
+    final month = _selectedMonth;
+    if (month == null) return false;
+    return _monthsOpen ? month.year != _monthsTitle.year : month != _title;
+  }
+
+  /// Goes back to the selected day's month: the days turn to it, and the
+  /// month view zooms into it.
+  void _showSelected() {
+    final month = _selectedMonth;
+    if (month == null) return;
+    if (_monthsOpen) {
+      _pickMonth(month);
+      return;
+    }
     setState(() => _month = month);
     _active.clear();
     _turnTo(month);
@@ -502,23 +582,34 @@ class _CoilCalendarState extends State<CoilCalendar> {
     final cell = widths.cell;
     final inset = widths.inset;
 
+    // The arrows turn a month of days, or a year of months.
+    VoidCallback? turn(int step) {
+      if (_monthsOpen) {
+        final year = _monthsTitle.year + step;
+        if (!_canShow(DateTime(year, step < 0 ? 12 : 1))) return null;
+        return () => _monthsView.currentState?.turn(step);
+      }
+      if (!_canShow(DateTime(_month.year, _month.month + step))) return null;
+      return () => _showMonth(step);
+    }
+
     final arrows = [
       CoilButton.icon(
         variant: CoilButtonVariant.ghost,
         size: CoilSize.compact,
-        onPressed: _canShow(DateTime(_month.year, _month.month - 1))
-            ? () => _showMonth(-1)
-            : null,
-        semanticLabel: labels.previousMonthLabel,
+        onPressed: turn(-1),
+        semanticLabel: _monthsOpen
+            ? labels.previousYearLabel
+            : labels.previousMonthLabel,
         icon: const CoilDrawnGlyph(CoilGlyph.chevronStart),
       ),
       CoilButton.icon(
         variant: CoilButtonVariant.ghost,
         size: CoilSize.compact,
-        onPressed: _canShow(DateTime(_month.year, _month.month + 1))
-            ? () => _showMonth(1)
-            : null,
-        semanticLabel: labels.nextMonthLabel,
+        onPressed: turn(1),
+        semanticLabel: _monthsOpen
+            ? labels.nextYearLabel
+            : labels.nextMonthLabel,
         icon: const CoilDrawnGlyph(CoilGlyph.chevronEnd),
       ),
     ];
@@ -530,7 +621,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
             child: Align(
               alignment: AlignmentDirectional.centerStart,
               child: _MonthTitle(
-                title: _title,
+                title: _monthsOpen ? _monthsTitle : _title,
                 labels: labels,
                 open: _monthsOpen,
                 motion: widget.motion,
@@ -538,27 +629,15 @@ class _CoilCalendarState extends State<CoilCalendar> {
               ),
             ),
           ),
-          // The arrows turn pages, which the month view doesn't have: they
-          // fade out while it shows.
-          SingleMotionBuilder(
-            value: _monthsOpen ? 0 : 1,
-            motion: _monthsOpen ? motion.fadeExit : motion.fade,
-            debugLabel: 'CoilCalendar.arrows',
-            child: Row(mainAxisSize: MainAxisSize.min, children: arrows),
-            builder: (context, shown, child) => IgnorePointer(
-              ignoring: _monthsOpen,
-              child: ExcludeFocus(
-                excluding: _monthsOpen,
-                child: ExcludeSemantics(
-                  excluding: _monthsOpen,
-                  child: Opacity(
-                    opacity: shown.clamp(0.0, 1.0),
-                    child: child,
-                  ),
-                ),
-              ),
-            ),
+          _SelectionChip(
+            day: _selectionAway ? widget.selected : null,
+            labels: labels,
+            motion: widget.motion,
+            onPressed: _showSelected,
           ),
+          // A month of days in the day view, a year of months in the month
+          // view.
+          Row(mainAxisSize: MainAxisSize.min, children: arrows),
         ],
       ),
     );
@@ -723,6 +802,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
               motion: widget.motion,
               days: days,
               months: (context) => CalendarMonthView(
+                key: _monthsView,
                 month: _month,
                 selected: widget.selected,
                 firstMonth: switch (widget.firstDate) {
@@ -740,7 +820,12 @@ class _CoilCalendarState extends State<CoilCalendar> {
                 focusNode: _monthsFocus,
                 motion: widget.motion,
                 onPicked: _pickMonth,
-                onClose: () => _showMonths(open: false),
+                onShown: (month) {
+                  if (month != _monthsTitle) {
+                    setState(() => _monthsTitle = month);
+                  }
+                },
+                onClose: () => _pickMonth(_monthsTitle),
               ),
             ),
           ],
@@ -1120,6 +1205,67 @@ class _MonthTitle extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// The selected [day] as a small tinted chip beside the arrows, while its
+/// month is out of view: tapping it goes back. It blur-fades in and out,
+/// and the room for it springs open and closed, on `fade` and `standard`.
+class _SelectionChip extends StatelessWidget {
+  const _SelectionChip({
+    required this.day,
+    required this.labels,
+    required this.motion,
+    required this.onPressed,
+  });
+
+  /// The selected day while it's out of view, else null.
+  final DateTime? day;
+  final CoilCalendarLabels labels;
+  final CoilMotion? motion;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CoilTheme.motionOf(context, override: this.motion);
+    final compact = CoilTheme.metricsOf(context, size: CoilSize.compact);
+    final text = CoilTheme.textOf(context);
+    final day = this.day;
+    return MotionSizeSwitcher(
+      motion: motion.fade,
+      exitMotion: motion.fadeExit,
+      sizeMotion: motion.standard,
+      // MotionSizeSwitcher takes a resolved Alignment.
+      alignment: AlignmentDirectional.centerEnd.resolve(
+        Directionality.of(context),
+      ),
+      clipBehavior: Clip.none,
+      debugLabel: 'CoilCalendar.selection',
+      transitionBuilder: CoilBlurFade.transition(
+        blur: CoilBlurFade.defaultBlur / 2,
+      ),
+      child: day == null
+          ? const SizedBox.shrink(key: ValueKey('none'))
+          : Padding(
+              key: ValueKey(day),
+              padding: EdgeInsetsDirectional.only(
+                start: compact.gap,
+                end: compact.gap,
+              ),
+              child: CoilButton(
+                variant: CoilButtonVariant.secondary,
+                size: CoilSize.compact,
+                semanticLabel: labels.selectionLabel(day),
+                style: CoilButtonStyle(
+                  textStyle: text.caption.tabular.copyWith(
+                    fontWeight: text.emphasis,
+                  ),
+                ),
+                onPressed: onPressed,
+                child: ExcludeSemantics(child: labels.selection(day)),
+              ),
+            ),
     );
   }
 }

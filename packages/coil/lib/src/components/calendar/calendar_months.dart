@@ -3,22 +3,27 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/calendar/calendar_layout.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// The month view a calendar zooms out to: each year's twelve months,
-/// three across and four down under the year, in a list that scrolls
-/// through the years.
+/// The month view a calendar zooms out to: a horizontal pager, one year
+/// per page, each year's twelve months three across and four down under
+/// the year.
 ///
-/// It opens with [month]'s year in the middle. Months outside [firstMonth]
-/// and [lastMonth] are dimmed and can't be picked; the list ends at their
-/// years. The month of [selected] is filled like a selected day, and this
-/// month is semibold, like today.
+/// It opens on [month]'s year. Months outside [firstMonth] and [lastMonth]
+/// are dimmed and can't be picked; the pages end at their years. The
+/// month of [selected] is filled like a selected day, and this month is
+/// semibold, like today.
+///
+/// The view keeps a month the keyboard acts on (it starts on [month]) and
+/// reports the month a calendar's title names with [onShown]: that month in
+/// the year more than half in view, so it changes mid-swipe.
 ///
 /// It's one focus stop: the arrows move a month (Up and Down a row of
 /// three), PageUp and PageDown a year, Enter or Space picks, and Escape
-/// calls [onClose].
+/// calls [onClose]. A keyboard move into another year turns the page.
 class CalendarMonthView extends StatefulWidget {
   /// Creates the month view.
   const CalendarMonthView({
@@ -32,13 +37,14 @@ class CalendarMonthView extends StatefulWidget {
     required this.inset,
     required this.focusNode,
     required this.onPicked,
+    required this.onShown,
     required this.onClose,
     super.key,
     this.motion,
   });
 
-  /// The month the day grid shows: its year opens in the middle, and the
-  /// keyboard starts on it.
+  /// The month the day grid shows: its year opens, and the keyboard starts
+  /// on it.
   final DateTime month;
 
   /// The picked day, if any.
@@ -68,33 +74,51 @@ class CalendarMonthView extends StatefulWidget {
   /// Called with the month the user picks.
   final ValueChanged<DateTime> onPicked;
 
+  /// Called with the month the title names when it changes: the
+  /// keyboard's month in the year more than half in view.
+  final ValueChanged<DateTime> onShown;
+
   /// Called on Escape.
   final VoidCallback onClose;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// The latest year the list reaches without a [lastMonth].
-  static const lastYear = 9999;
-
   @override
-  State<CalendarMonthView> createState() => _CalendarMonthViewState();
+  State<CalendarMonthView> createState() => CalendarMonthViewState();
 }
 
-class _CalendarMonthViewState extends State<CalendarMonthView> {
-  ScrollController? _scroll;
-  final _active = CoilActiveItemController();
+/// The state of a [CalendarMonthView]: a calendar's arrows turn its pages
+/// with [turn].
+class CalendarMonthViewState extends State<CalendarMonthView> {
+  /// The month the keyboard acts on.
   late DateTime _cursor = _clamp(widget.month);
 
-  /// The height of a row of months, and of a year's heading.
-  double _row = 0;
+  /// The year more than half in view.
+  late int _shownYear = _cursor.year;
+
+  late final _pages = PageController(initialPage: _pageOf(_cursor.year));
+  final _active = CoilActiveItemController();
 
   int get _firstYear => widget.firstMonth?.year ?? 1;
-  int get _lastYear => widget.lastMonth?.year ?? CalendarMonthView.lastYear;
+
+  /// The last year's page; the pages go on without a last month, as the
+  /// days do.
+  int? get _lastYear => widget.lastMonth?.year;
+
+  bool _hasYear(int year) => year == _clampYear(year);
+
+  int _clampYear(int year) {
+    if (year < _firstYear) return _firstYear;
+    if (_lastYear case final last? when year > last) return last;
+    return year;
+  }
+
+  int _pageOf(int year) => year - _firstYear;
 
   @override
   void dispose() {
-    _scroll?.dispose();
+    _pages.dispose();
     _active.dispose();
     super.dispose();
   }
@@ -119,51 +143,74 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
     return month;
   }
 
-  /// A year's heading and four rows of months.
-  double get _sectionExtent => _row * 5;
+  /// Turns the page by [years], taking the keyboard's month along: the
+  /// calendar's arrows.
+  void turn(int years) {
+    final year = _shownYear + years;
+    if (!_hasYear(year)) return;
+    _active.clear();
+    _setCursor(_clamp(DateTime(year, _cursor.month)));
+  }
 
   void _move(int months) {
     final next = _clamp(DateTime(_cursor.year, _cursor.month + months));
-    setState(() => _cursor = next);
+    _setCursor(next);
     _active.activate(next.month - 1, via: CoilModality.keyboard);
-    _reveal(next);
   }
 
-  /// Scrolls just enough to show [month]'s row, with its year's heading
-  /// when it's the first row, on the `standard` spring.
-  void _reveal(DateTime month) {
-    final scroll = _scroll;
-    if (scroll == null || !scroll.hasClients) return;
-    final position = scroll.position;
-    final section = (month.year - _firstYear) * _sectionExtent;
-    final rowTop = section + _row * (1 + (month.month - 1) ~/ 3);
-    final top = (month.month - 1) < 3 ? section : rowTop;
-    final bottom = rowTop + _row;
-    final double target;
-    if (top < position.pixels) {
-      target = top;
-    } else if (bottom > position.pixels + position.viewportDimension) {
-      target = bottom - position.viewportDimension;
-    } else {
+  /// Moves the keyboard's month to [month], turning to its year.
+  void _setCursor(DateTime month) {
+    setState(() => _cursor = month);
+    if (month.year != _shownYear) {
+      _shownYear = month.year;
+      _turnTo(month.year);
+    }
+    widget.onShown(month);
+  }
+
+  /// Turns the pager to [year]: on the `standard` spring to a neighbor,
+  /// in one step further away.
+  void _turnTo(int year) {
+    if (!_pages.hasClients) return;
+    final position = _pages.position;
+    final extent = position.viewportDimension;
+    final target = _pageOf(year) * extent;
+    if (position is! ScrollPositionWithSingleContext ||
+        (target - position.pixels).abs() > extent * 1.5) {
+      position.jumpTo(target);
       return;
     }
-    final end = target.clamp(
-      position.minScrollExtent,
-      position.maxScrollExtent,
-    );
     final motion = CoilTheme.motionOf(context, override: widget.motion);
-    if (position is! ScrollPositionWithSingleContext) {
-      position.jumpTo(end);
-      return;
-    }
     position.beginActivity(
       BallisticScrollActivity(
         position,
-        motion.standard.createSimulation(start: position.pixels, end: end),
+        motion.standard.createSimulation(start: position.pixels, end: target),
         position.context.vsync,
         false,
       ),
     );
+  }
+
+  /// The pager moved: the title follows the year more than half in view,
+  /// and once a swipe settles, the keyboard's month moves into it.
+  bool _onScroll(ScrollNotification notification) {
+    final metrics = notification.metrics;
+    if (notification.depth != 0 || metrics.axis != Axis.horizontal) {
+      return false;
+    }
+    final extent = metrics.viewportDimension;
+    if (extent <= 0) return false;
+    final page = (metrics.pixels / extent).round();
+    final year = _clampYear(_firstYear + page);
+    if (year != _shownYear) {
+      _shownYear = year;
+      widget.onShown(_clamp(DateTime(year, _cursor.month)));
+    }
+    if (notification is ScrollEndNotification && year != _cursor.year) {
+      setState(() => _cursor = _clamp(DateTime(year, _cursor.month)));
+      _active.clear();
+    }
+    return false;
   }
 
   void _pick(DateTime month, {required bool touch}) {
@@ -175,26 +222,12 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
   @override
   Widget build(BuildContext context) {
     final rtl = Directionality.of(context) == TextDirection.rtl;
+    final motion = CoilTheme.motionOf(context, override: widget.motion);
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Rows as tall as the day grid's, so the months fill the space the
-        // weeks did; whole pixels, so thousands of years add up exactly.
-        _row = (math.max(0, constraints.maxWidth - widget.inset * 2) / 7)
-            .roundToDouble();
-        final extent = _sectionExtent;
-        final count = _lastYear - _firstYear + 1;
-        final viewport = constraints.maxHeight;
-        // The month's own row in the middle (a year is about as tall as
-        // the view, so centering the year can leave the month off it).
-        final month = _clamp(widget.month);
-        final rowTop =
-            (month.year - _firstYear) * extent +
-            _row * (1 + (month.month - 1) ~/ 3);
-        _scroll ??= ScrollController(
-          initialScrollOffset: (rowTop + _row / 2 - viewport / 2)
-              .clamp(0, math.max(0, count * extent - viewport))
-              .toDouble(),
-        );
+        // The year's heading is as tall as a week's row, so the months sit
+        // where the weeks did.
+        final row = math.max(0, constraints.maxWidth - widget.inset * 2) / 7;
         return Shortcuts(
           shortcuts: {
             SingleActivator(
@@ -253,18 +286,21 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
               },
               child: Semantics(
                 container: true,
-                child: CoilScrollEdgeFade(
-                  extent: _row,
-                  // Hands drags off to a sheet it sits in.
-                  child: ScrollConfiguration(
-                    behavior: CoilSheetRoute.scrollBehaviorOf(context),
-                    child: ListView.builder(
-                      controller: _scroll,
-                      padding: EdgeInsets.zero,
-                      itemExtent: extent,
-                      itemCount: count,
-                      itemBuilder: (context, i) => _year(_firstYear + i),
-                    ),
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onScroll,
+                  child: PageView.builder(
+                    controller: _pages,
+                    itemCount: switch (_lastYear) {
+                      final last? => last - _firstYear + 1,
+                      null => null,
+                    },
+                    pageSnapping: false,
+                    // Hands drags off to a sheet it sits in: a vertical
+                    // drag moves the sheet.
+                    scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
+                    physics: CalendarPagePhysics(motion: motion.standard),
+                    itemBuilder: (context, page) =>
+                        _year(_firstYear + page, row: row),
                   ),
                 ),
               ),
@@ -276,7 +312,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
   }
 
   /// [year]'s heading and its twelve months.
-  Widget _year(int year) {
+  Widget _year(int year, {required double row}) {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context);
@@ -316,7 +352,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: _row,
+            height: row,
             child: Padding(
               padding: EdgeInsetsDirectional.only(start: metrics.itemPaddingX),
               child: Align(
