@@ -7,6 +7,7 @@ import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/presence.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -53,6 +54,7 @@ class CoilPresentSlot extends StatefulWidget {
     this.gap = 0,
     this.gapSide = CoilPresentSlotGap.before,
     this.appear = false,
+    this.onEnd,
     this.presenceMotion,
     this.presenceExitMotion,
     this.fadeMotion,
@@ -77,6 +79,10 @@ class CoilPresentSlot extends StatefulWidget {
   /// Whether a [child] that is there on the first build opens from
   /// closed instead of showing at once.
   final bool appear;
+
+  /// Called when the room and the fade have settled open or closed after
+  /// [child] came or went.
+  final VoidCallback? onEnd;
 
   /// The room's motion entering, and leaving too unless
   /// [presenceExitMotion] is set. Defaults to `standard`.
@@ -151,6 +157,7 @@ class _CoilPresentSlotState extends State<CoilPresentSlot>
   /// Heads for the current presence with the motions of its direction.
   void _retarget() {
     _started = true;
+    _changing = true;
     final target = _present ? 1.0 : 0.0;
     _room
       ..motion = _roomMotion(entering: _present)
@@ -176,12 +183,25 @@ class _CoilPresentSlotState extends State<CoilPresentSlot>
         : widget.fadeExitMotion ?? widget.fadeMotion ?? tokens.fadeExit;
   }
 
+  /// Whether [CoilPresentSlot.child] came or went and the room hasn't
+  /// settled since.
+  bool _changing = false;
+
   void _onStatus(AnimationStatus status) {
-    if (_present || _shown == null || !mounted) return;
-    // Gone once both the room and the fade have settled closed.
-    if (_room.isAnimating || _fade.isAnimating) return;
-    if (_room.value > 0 || _fade.value > 0) return;
-    setState(() => _shown = null);
+    if (!mounted || _room.isAnimating || _fade.isAnimating) return;
+    final settledOpen = _present && _room.value >= 1 && _fade.value >= 1;
+    final settledClosed = !_present && _room.value <= 0 && _fade.value <= 0;
+    if (settledClosed && _shown != null) {
+      // Gone once both the room and the fade have settled closed.
+      setState(() => _shown = null);
+    }
+    if (_changing && (settledOpen || settledClosed)) {
+      _changing = false;
+      // Not now: a jump settles inside the parent's build.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onEnd?.call();
+      });
+    }
   }
 
   @override
