@@ -24,6 +24,14 @@ final class CoilBannerTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilBanner.row',
   );
 
+  /// The room of the description and its size as it changes: the banner
+  /// grows and shrinks to fit it. Default motion: `standard` growing,
+  /// `standardExit` shrinking; the text fades on `fade` / `fadeExit`.
+  static final size = CoilBannerTrack<double>._(
+    .single,
+    debugLabel: 'CoilBanner.size',
+  );
+
   /// The banner's scale, 0.4 to 1, from its top edge. Default motion:
   /// `gentle` in, `gentleExit` out.
   static final scale = CoilBannerTrack<double>._(
@@ -57,6 +65,11 @@ final class CoilBannerTrack<T extends Object> extends Track<T> {
 /// [onDismissRequested] adds the dismiss button and, on touch, a
 /// horizontal swipe. Both only report the request: set [visible] to false
 /// in response.
+///
+/// A description that comes, goes or changes never makes the banner jump: it
+/// springs to its new size ([CoilBannerTrack.size]). The actions move under
+/// the text as soon as a description arrives, and back beside it once a
+/// leaving one has closed; that step is a change of layout, not a spring.
 ///
 /// The banner is a polite live region, so screen readers announce it when
 /// it appears.
@@ -159,9 +172,14 @@ class _CoilBannerState extends State<CoilBanner>
   final _scale = CoilBannerTrack.scale;
   final _opacity = CoilBannerTrack.opacity;
   final _swipe = CoilBannerTrack.swipe;
+  final _size = CoilBannerTrack.size;
 
   bool _dragging = false;
   double _width = 1;
+
+  /// Whether the actions are under the text: with a description, and until a
+  /// leaving one has closed.
+  bool _stacked = false;
 
   CoilMotion get _tokens =>
       CoilTheme.motionOf(context, override: widget.motion);
@@ -186,6 +204,7 @@ class _CoilBannerState extends State<CoilBanner>
   void initState() {
     super.initState();
     final shown = widget.visible ? 1.0 : 0.0;
+    _stacked = widget.description != null;
     _controller.set([
       _row.value(shown),
       _opacity.value(shown),
@@ -197,6 +216,7 @@ class _CoilBannerState extends State<CoilBanner>
   @override
   void didUpdateWidget(CoilBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.description != null) _stacked = true;
     if (oldWidget.visible == widget.visible) return;
     widget.visible ? _appear() : _dismiss();
   }
@@ -318,6 +338,15 @@ class _CoilBannerState extends State<CoilBanner>
       onDismissRequested: widget.onDismissRequested,
       dismissIcon: widget.dismissIcon,
       dismissLabel: widget.dismissLabel,
+      stacked: _stacked,
+      motion: widget.motion,
+      sizeMotion: _motionFor(_size, _tokens.standard),
+      sizeExitMotion: _motionFor(_size, _tokens.standardExit),
+      onDescriptionEnd: () {
+        if (widget.description == null && _stacked) {
+          setState(() => _stacked = false);
+        }
+      },
     );
 
     Widget surface = DecoratedBox(

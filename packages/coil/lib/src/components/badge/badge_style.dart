@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/badge/badge.dart' show CoilBadgeTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// How a `CoilBadge` is drawn.
 enum CoilBadgeVariant {
@@ -102,6 +104,7 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
     this.paddingX,
     this.gap,
     this.dotSize,
+    this.motions,
   });
 
   /// The defaults for [variant] and [color] from [theme]'s tokens.
@@ -174,6 +177,12 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
   /// The dot's diameter, before text scaling.
   final double? dotSize;
 
+  /// Springs for the badge's animated parts, keyed by [CoilBadgeTrack]s:
+  /// `{CoilBadgeTrack.size: const Motion.bouncySpring()}`. A badge's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilBadgeTrack<Object>, Motion>? motions;
+
   @override
   CoilBadgeStyle merge(CoilBadgeStyle? other) => other == null
       ? this
@@ -187,6 +196,9 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
           paddingX: other.paddingX ?? paddingX,
           gap: other.gap ?? gap,
           dotSize: other.dotSize ?? dotSize,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -200,5 +212,6 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
     paddingX,
     gap,
     dotSize,
+    motions,
   ];
 }

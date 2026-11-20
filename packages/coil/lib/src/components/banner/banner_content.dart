@@ -4,6 +4,7 @@ import 'package:coil/primitives.dart';
 import 'package:coil/src/components/banner/banner_layout.dart';
 import 'package:coil/src/components/banner/banner_style.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// A banner's parts: [icon] text [actions] [✕]. The actions follow the
 /// title when they fit beside it and move under the text when they don't,
@@ -19,6 +20,11 @@ class BannerContent extends StatelessWidget {
     required this.onDismissRequested,
     required this.dismissIcon,
     required this.dismissLabel,
+    required this.stacked,
+    required this.motion,
+    required this.sizeMotion,
+    required this.sizeExitMotion,
+    required this.onDescriptionEnd,
     super.key,
   });
 
@@ -47,6 +53,22 @@ class BannerContent extends StatelessWidget {
   /// The dismiss button's name for assistive technology.
   final String dismissLabel;
 
+  /// Whether the actions go under the text: while there is a description,
+  /// and until a leaving one has closed.
+  final bool stacked;
+
+  /// The motion tokens the description's fade follows.
+  final CoilMotion? motion;
+
+  /// The room's and the size's motion growing.
+  final Motion sizeMotion;
+
+  /// The room's motion shrinking.
+  final Motion sizeExitMotion;
+
+  /// Called when a description that came or went has settled.
+  final VoidCallback onDescriptionEnd;
+
   @override
   Widget build(BuildContext context) {
     final spacing = style.actionSpacing!;
@@ -56,8 +78,26 @@ class BannerContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         DefaultTextStyle(style: style.titleStyle!, child: title),
-        if (description case final description?)
-          DefaultTextStyle(style: style.descriptionStyle!, child: description),
+        // Always there, so the text keeps its place in the tree.
+        CoilPresentSlot(
+          motion: motion,
+          presenceMotion: sizeMotion,
+          presenceExitMotion: sizeExitMotion,
+          onEnd: onDescriptionEnd,
+          child: switch (description) {
+            final description? => CoilSizeSwitcher(
+              sizeMotion: sizeMotion,
+              motion: motion,
+              contentKey: CoilSizeSwitcher.contentKeyOf(description),
+              debugLabel: 'CoilBanner.description',
+              child: DefaultTextStyle(
+                style: style.descriptionStyle!,
+                child: description,
+              ),
+            ),
+            null => null,
+          },
+        ),
       ],
     );
     final buttons = actions.isEmpty
@@ -78,7 +118,7 @@ class BannerContent extends StatelessWidget {
         gap: style.gap!,
         actionSpacing: spacing,
         // A description makes the banner a block: the actions go under it.
-        flow: description != null ? BannerFlow.stacked : BannerFlow.auto,
+        flow: stacked ? BannerFlow.stacked : BannerFlow.auto,
         icon: switch (icon) {
           final icon? => CoilLineBox(
             style: line,
