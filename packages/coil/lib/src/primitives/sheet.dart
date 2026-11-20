@@ -252,7 +252,9 @@ enum CoilSheetHeaderLayout {
 /// A hairline under the header shows only while [child]'s scrollable has
 /// content scrolled beneath it (read from its scroll notifications), and
 /// one over the [footer] only while content continues below it; both fade
-/// on the theme's `fade` / `fadeExit`.
+/// on the theme's `fade` / `fadeExit`. Without a header there is no top
+/// hairline: content that brings its own top line, like the command menu's
+/// search, draws its own.
 class CoilSheetPanel extends StatefulWidget {
   /// Creates a sheet panel.
   const CoilSheetPanel({
@@ -467,6 +469,7 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
   Widget build(BuildContext context) {
     final title = widget.title;
     final close = _close();
+    final hasHeader = title != null || close != null;
     // A sheet is a touch surface whatever the tier, like its rows.
     final metrics = CoilTheme.metricsOf(
       context,
@@ -482,7 +485,7 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (title == null && close == null)
+          if (!hasHeader)
             // Room above the content, so it clears the corners.
             const SizedBox(height: CoilSheetPanel.topGap)
           else
@@ -491,7 +494,7 @@ class _CoilSheetPanelState extends State<CoilSheetPanel> {
           // content, so showing them never shifts layout.
           Flexible(
             child: _hairline(
-              visible: _scrolledUnder,
+              visible: _scrolledUnder && hasHeader,
               top: true,
               debugLabel: 'CoilSheetPanel.hairline',
               child: _hairline(
