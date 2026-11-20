@@ -1,5 +1,7 @@
 import 'package:coil/foundation.dart';
+import 'package:coil/src/components/field/field.dart' show CoilFieldTrack;
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Overrides for how fields look: `CoilField`, `CoilFieldSet`,
 /// `CoilFieldGroup` and `CoilFieldSeparator`. Unset fields come from
@@ -28,6 +30,7 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
     this.besideGap,
     this.fieldGap,
     this.responsiveBreakpoint,
+    this.motions,
   });
 
   /// The defaults from the theme's tokens.
@@ -135,6 +138,12 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
   /// The width from which a responsive field lays out horizontally.
   final double? responsiveBreakpoint;
 
+  /// Springs for the field's animated parts, keyed by [CoilFieldTrack]s:
+  /// `{CoilFieldTrack.message: const Motion.bouncySpring()}`. A field's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilFieldTrack<Object>, Motion>? motions;
+
   @override
   CoilFieldStyle merge(CoilFieldStyle? other) => other == null
       ? this
@@ -165,6 +174,9 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
           fieldGap: other.fieldGap ?? fieldGap,
           responsiveBreakpoint:
               other.responsiveBreakpoint ?? responsiveBreakpoint,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
         );
 
   @override
@@ -189,5 +201,6 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
     besideGap,
     fieldGap,
     responsiveBreakpoint,
+    motions,
   ];
 }
