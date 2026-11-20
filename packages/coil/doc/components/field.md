@@ -6,7 +6,7 @@
 import 'package:coil/field.dart';
 ```
 
-Exports `CoilChoiceCard`, `CoilChoiceCardStyle`, `CoilChoiceCardTrack`, `CoilField`, `CoilFieldGroup`, `CoilFieldOrientation`, `CoilFieldSeparator`, `CoilFieldSet`, `CoilFieldStyle`.
+Exports `CoilChoiceCard`, `CoilChoiceCardStyle`, `CoilChoiceCardTrack`, `CoilField`, `CoilFieldGroup`, `CoilFieldOrientation`, `CoilFieldSeparator`, `CoilFieldSet`, `CoilFieldStyle`, `CoilFieldTrack`.
 
 To change its look or composition, eject a copy into your app with `dart run coil_cli:eject field` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
@@ -32,3 +32,4 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Toggle rows are one target.** In a horizontal field or a setting row, a tap anywhere in the row (padding, gap, description) toggles a checkbox, switch or radio, as in a native settings list. The control shows hover and press while the row has them, and keeps its own focus ring. Other controls (text fields, selects, sliders, buttons) and rows with several controls respond only on the control; the label still focuses a text field. `CoilFieldRow` does this for any row; a control opts in with `CoilFieldControl.tapArea`.
 - **One control per Field.** A group of controls goes in a FieldSet, a container with a header legend.
 - **Invalid:** the label turns `destructive`, and the control gets its invalid look.
+- **Messages own their gap.** The description and the error are slots (`CoilPresentSlot`) that contribute their height *plus the message gap* above them, scaled by a presence, so a field gets taller by one smooth spring when an error arrives and what follows glides (`CoilFieldTrack.message`: `standard` growing, `standardExit` shrinking; the text blur-fades on `fade` / `fadeExit`). A different message cross-fades and the slot springs to its new height. Everything that shows messages through a field inherits this: inputs, selects, group fields and setting rows. A resize of the field's width relayouts at once, wrapping included. Reduced motion: the field jumps and the message fades.

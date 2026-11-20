@@ -15,7 +15,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
 - **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
 - **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
-- **Motion:** merge/split `standard`, highlight `quick`.
+- **Motion:** merge/split `standard`, highlight `quick`. A segment whose label changes cross-fades it and springs to its new width on `standard` (`CoilToggleGroupTrack.size`); the selection follows.
 - **Keyboard:** roving; Left and Right move; Space toggles.
 - **Semantics:** toggle buttons with `selected`.
 - **Use:** multi-select formatting (Bold / Italic). For single choice use Tabs or a RadioGroup.

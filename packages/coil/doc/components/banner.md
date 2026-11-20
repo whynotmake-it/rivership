@@ -20,5 +20,6 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - Dismiss: reverse on the exit tokens.
   - Touch: swipe horizontally to dismiss (with velocity).
   - Reduced motion: fade only.
+  - A description that comes, goes or changes springs the banner's height on `standard` (`CoilBannerTrack.size`), the text fading on `fade`. The actions move under the text as soon as a description arrives, and back beside it once a leaving one has closed; that step is a change of layout, not a spring.
 - **Semantics:** a live region (polite; assertive for destructive); the ✕ is labeled "Dismiss".
 - **Don't:** stack more than 2; use it for transient confirmations (use inline feedback).
