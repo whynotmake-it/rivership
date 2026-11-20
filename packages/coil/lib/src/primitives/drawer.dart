@@ -207,8 +207,8 @@ class CoilDrawerLook {
   final Color scrimColor;
 
   /// The content's shadow while it is aside ([CoilDrawerReveal.behind]),
-  /// faded in with the slide. A hairline in the theme's border color fades
-  /// in with it.
+  /// faded in over the first tenth of the slide. A hairline in the theme's
+  /// border color fades in with it.
   final List<BoxShadow> shadows;
 
   /// The content's fill while it slides ([CoilDrawerReveal.behind]), so
@@ -977,6 +977,10 @@ class _CoilDrawerState extends State<CoilDrawer>
     },
   );
 
+  /// How much of the slide the content's edge takes to fade in: its shadow
+  /// and hairline are at full strength once it has moved a tenth of the way.
+  static const _edgeFadeSpan = 0.1;
+
   /// [color] at [strength] (0 to 1) of its alpha.
   static Color _faded(Color color, double strength) =>
       color.withValues(alpha: color.a * strength.clamp(0, 1));
@@ -1012,13 +1016,14 @@ class _CoilDrawerState extends State<CoilDrawer>
               CoilScreenRadius.value ??
               look.fallbackCornerRadius;
     final shape = RoundedSuperellipseBorder(borderRadius: radius);
-    // The edge fades in with the reveal: a raised surface's shadow and a
-    // hairline in the border color.
+    // The edge fades in at the start of the reveal: a raised surface's
+    // shadow and a hairline in the border color.
+    final edge = strength / _edgeFadeSpan;
     final shadows = atRest
         ? const <BoxShadow>[]
         : [
             for (final shadow in look.shadows)
-              shadow.copyWith(color: _faded(shadow.color, strength)),
+              shadow.copyWith(color: _faded(shadow.color, edge)),
           ];
     return Transform.translate(
       offset: Offset(dx, 0),
@@ -1042,7 +1047,7 @@ class _CoilDrawerState extends State<CoilDrawer>
                 side: atRest
                     ? BorderSide.none
                     : BorderSide(
-                        color: _faded(theme.colors.border, strength),
+                        color: _faded(theme.colors.border, edge),
                       ),
               ),
             ),

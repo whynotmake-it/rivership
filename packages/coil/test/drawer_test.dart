@@ -270,6 +270,24 @@ void main() {
       expect(_open(tester), isNull, reason: 'a short, slow drag settles back');
     });
 
+    testWidgets('the edge fades in within the first tenth of the slide', (
+      tester,
+    ) async {
+      await _pump(tester, const _Host());
+      final colors = CoilTheme.of(tester.element(find.byType(_Host))).colors;
+      final gesture = await tester.startGesture(const Offset(100, 500));
+      // Past the drag slop, then until the content has moved 16 of the 320:
+      // 5 %, half of the way to full strength.
+      while (_contentLeft(tester) < 16) {
+        await gesture.moveBy(const Offset(2, 0));
+        await tester.pump();
+      }
+      expect(_contentLeft(tester), lessThan(20));
+      expect(_hairline(tester).color.a, closeTo(colors.border.a * 0.5, 0.05));
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('a lightening veil, the panel fading in and a lifted edge '
         'follow the drag', (tester) async {
       await _pump(tester, const _Host());
@@ -284,7 +302,7 @@ void main() {
       // From 0.4, not 0: halfway is 0.7. It grows from 0.95 the same way.
       expect(_panelOpacity(tester), closeTo(0.7, 0.01));
       expect(_panelScale(tester), closeTo(0.975, 0.001));
-      // Step 7's blurs at half strength in light, centered so they show
+      // Step 7's blurs at half their alpha in light, centered so they show
       // at the side.
       final shadow = [
         for (final s in colors.shadow(7))
@@ -296,14 +314,10 @@ void main() {
             ),
       ];
       expect(shadow, isNotEmpty);
-      expect(_edge(tester).shadows, [
-        for (final s in shadow)
-          s.copyWith(color: s.color.withValues(alpha: s.color.a * 0.5)),
-      ]);
-      expect(
-        _hairline(tester).color,
-        colors.border.withValues(alpha: colors.border.a * 0.5),
-      );
+      // The edge is at full strength by a tenth of the slide, so already
+      // here, at a half.
+      expect(_edge(tester).shadows, shadow);
+      expect(_hairline(tester).color, colors.border);
       // White, at half of 35 %: the page lightens as it recedes.
       final veil = colors.surfaces.last;
       expect(veil, const Color(0xFFFFFFFF));
