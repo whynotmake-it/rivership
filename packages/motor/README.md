@@ -805,25 +805,10 @@ class MyComparableConverter extends MotionConverter<MyComparableType>
 }
 ```
 
-### Motion Draggable
+### Dragging
 
-Motor includes a `MotionDraggable` widget that demonstrates the power of the unified motion system. You can drag widgets around the screen and watch them return with **any motion type** - from bouncy springs to smooth curves.
-
-It works just like Flutter's `Draggable` widget and supports native `DragTarget`s, but with motion-driven return animations and enhanced physics simulation.
-
-![Spring Draggable example gif](./doc/spring_draggable.gif)
-
-```dart
-MotionDraggable(
-  motion: .bouncySpring(),
-  child: Container(
-    width: 100,
-    height: 100,
-    color: Colors.blue,
-  ),
-  data: 'my-draggable-data',
-)
-```
+`MotionDraggable`, a `Draggable` whose feedback lands with a spring, lives in
+[`motor_widgets`](../motor_widgets).
 
 ### Low-level Motion Control
 
@@ -945,7 +930,7 @@ TickerRateScope(
 )
 ```
 
-`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder` and `MotionDraggable`, and on the widgets in [`motor_widgets`](../motor_widgets). `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame, exactly as before. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
+`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, and `SequenceMotionBuilder`, and on the widgets in [`motor_widgets`](../motor_widgets). `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame, exactly as before. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
 
 Controllers use the `TickerProvider` you pass them. For a fixed rate, pass a state that mixes in `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin`:
 
