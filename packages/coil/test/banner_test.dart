@@ -7,7 +7,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_matrix.dart';
 import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';
 import 'src/test_icons.dart';
@@ -83,113 +82,7 @@ final _banner = find.byKey(const ValueKey('banner'));
 _HostState _host(WidgetTester tester) => tester.state(find.byType(_Host));
 double _height(WidgetTester tester) => tester.getSize(_banner).height;
 
-Widget _gallery() => Column(
-  mainAxisSize: MainAxisSize.min,
-  crossAxisAlignment: CrossAxisAlignment.start,
-  spacing: 12,
-  children: [
-    CoilBanner(
-      title: const Text('Your trial ends in 3 days'),
-      icon: const TestIcon(TestGlyph.heart),
-      onDismissRequested: () {},
-    ),
-    CoilBanner(
-      status: CoilBannerStatus.warning,
-      variant: CoilBannerVariant.tinted,
-      icon: const TestIcon(TestGlyph.settings),
-      title: const Text('Storage almost full'),
-      description: const Text('Free up space to keep syncing your files.'),
-      actions: [
-        CoilButton(onPressed: () {}, child: const Text('Manage')),
-        CoilButton(
-          onPressed: () {},
-          variant: CoilButtonVariant.ghost,
-          child: const Text('Later'),
-        ),
-      ],
-      onDismissRequested: () {},
-    ),
-    CoilBanner(
-      status: CoilBannerStatus.destructive,
-      variant: CoilBannerVariant.tinted,
-      icon: const TestIcon(TestGlyph.x),
-      title: const Text('Sync failed'),
-      actions: [
-        CoilButton(
-          onPressed: () {},
-          variant: CoilButtonVariant.secondary,
-          child: const Text('Retry'),
-        ),
-      ],
-    ),
-  ],
-);
-
 void main() {
-  matrixGoldenTest(
-    'banner',
-    (context) => SizedBox(width: 360, child: _gallery()),
-    surface: const Size(2200, 3000),
-  );
-
-  testWidgets('banner sheet: statuses, variants, placements', (tester) async {
-    Widget column(CoilBannerVariant variant) => SizedBox(
-      width: 320,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 8,
-        children: [
-          for (final status in CoilBannerStatus.values)
-            CoilBanner(
-              status: status,
-              variant: variant,
-              icon: const TestIcon(TestGlyph.heart),
-              title: Text('${status.name} · ${variant.name}'),
-            ),
-        ],
-      ),
-    );
-    Widget panel(String name, CoilThemeData theme) => SheetPanel(
-      title: name,
-      theme: theme.copyWith(tier: CoilTier.pointer),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 16,
-        children: [
-          column(CoilBannerVariant.plain),
-          column(CoilBannerVariant.tinted),
-          SizedBox(
-            width: 320,
-            child: MediaQuery(
-              data: const MediaQueryData(padding: EdgeInsets.only(top: 20)),
-              child: CoilBanner(
-                placement: CoilBannerPlacement.fixed,
-                status: CoilBannerStatus.info,
-                variant: CoilBannerVariant.tinted,
-                icon: const TestIcon(TestGlyph.heart),
-                title: const Text('fixed, 20 px safe area'),
-                onDismissRequested: () {},
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    final sheet = await pumpSheet(
-      tester,
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          panel('light', CoilThemeData.light),
-          panel('dark', CoilThemeData.dark),
-        ],
-      ),
-      surface: const Size(1100, 900),
-    );
-    await expectSheetGolden(tester, sheet, 'goldens/banner.png');
-  });
-
   group('ink centering', () {
     inkCenteringTests({
       'banner/title': (ink) =>

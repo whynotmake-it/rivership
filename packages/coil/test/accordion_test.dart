@@ -9,8 +9,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart' show CupertinoMotion;
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';
 import 'src/test_icons.dart';
 
@@ -155,37 +153,7 @@ Set<WidgetState> _states(WidgetTester tester, String label) => tester
     .states
     .value;
 
-Widget _story(BuildContext context, CoilAccordionVariant variant) => SizedBox(
-  width: 260,
-  child: CoilAccordion<String>.single(
-    items: _items(disableLast: true),
-    value: 'shipping',
-    variant: variant,
-    onChanged: (_) {},
-  ),
-);
-
 void main() {
-  matrixGoldenTest(
-    'accordion',
-    (context) => _story(context, CoilAccordionVariant.plain),
-    surface: const Size(2400, 2000),
-  );
-  matrixGoldenTest(
-    'accordion_group',
-    (context) => _story(context, CoilAccordionVariant.group),
-    surface: const Size(2400, 2000),
-  );
-
-  for (final variant in CoilAccordionVariant.values) {
-    final name = variant == CoilAccordionVariant.plain
-        ? 'accordion_states'
-        : 'accordion_group_states';
-    testWidgets('$name sheet', (tester) async {
-      await _stateSheet(tester, variant, 'goldens/$name.png');
-    });
-  }
-
   inkCenteringTests({
     'accordion/trigger': (ink) => SizedBox(
       width: 200,
@@ -582,71 +550,3 @@ void main() {
 /// One accordion per state, side by side: rest, hover (mouse), focus
 /// (keyboard), pressed (a held touch) and disabled. "Shipping" is open in
 /// each; the state is on "Returns".
-Future<void> _stateSheet(
-  WidgetTester tester,
-  CoilAccordionVariant variant,
-  String path,
-) async {
-  final keys = [for (final s in SheetState.values) ValueKey(s)];
-  final sheet = await pumpSheet(
-    tester,
-    SheetPanel(
-      title: 'CoilAccordion · ${variant.name}',
-      theme: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
-      child: StateTable(
-        rows: [
-          SheetRow(
-            variant.name,
-            (state) => SizedBox(
-              key: keys[state.index],
-              width: 220,
-              child: CoilAccordion<String>.single(
-                items: _items(),
-                value: 'shipping',
-                variant: variant,
-                onChanged: state.isDisabled ? null : (_) {},
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-    surface: const Size(1400, 400),
-  );
-  Finder returns(SheetState state) => find.descendant(
-    of: find.byKey(keys[state.index]),
-    matching: find.text('Returns'),
-  );
-
-  // Press first: a pointer down makes the pointer the last input.
-  final touch = await tester.startGesture(
-    tester.getCenter(returns(SheetState.pressed).first),
-    pointer: 7,
-  );
-  final mouse = await tester.createGesture(
-    kind: PointerDeviceKind.mouse,
-  );
-  await mouse.addPointer(
-    location: tester.getCenter(returns(SheetState.hover).first),
-  );
-  await mouse.moveBy(const Offset(1, 0));
-  // Keyboard focus on "Returns" in the focus column. The sheet has no
-  // Navigator for Tab traversal, so focus it directly; a key press then
-  // makes the keyboard the last input.
-  Focus.of(
-    tester.element(
-      find.descendant(
-        of: find.ancestor(
-          of: returns(SheetState.focus).first,
-          matching: find.byType(CoilInteraction),
-        ),
-        matching: find.byType(CoilInteractionDetector),
-      ),
-    ),
-  ).requestFocus();
-  await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
-  await settle(tester);
-  await expectSheetGolden(tester, sheet, path);
-  await touch.cancel();
-  await mouse.removePointer();
-}

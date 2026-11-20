@@ -1,6 +1,6 @@
 // Behavior of the leaf controls and selection groups: Button loading, Badge,
 // Skeleton, RadioGroup, CheckboxGroup and ToggleGroup (keyboard, touch vs
-// mouse, reduced motion). Looks are covered by the golden matrix.
+// mouse, reduced motion).
 import 'dart:ui' show CheckedState, SemanticsAction, Tristate;
 
 import 'package:coil/coil.dart';

@@ -401,7 +401,7 @@ coil's keys are Flutter shortcuts: each widget maps keys to an `Intent` in `Shor
 
 Every component ships with all of these. They're required to call it done.
 
-- **Text scaling** up to 2×, with goldens at 1, 1.5 and 2. Rows and controls grow, and icons scale through `IconThemeData.applyTextScaling`. Gaps and paddings don't scale.
+- **Text scaling** up to 2×, checked at 1, 1.5 and 2. Rows and controls grow, and icons scale through `IconThemeData.applyTextScaling`. Gaps and paddings don't scale.
 - **High contrast** (§2.4) and **bold text** (`MediaQuery.boldTextOf`: normal → semibold).
 - **Contrast:**
   - body text ≥ 4.5 : 1;
@@ -1217,7 +1217,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 A component is done when:
 
 1. Its labels pass the ink-centering test (±0.5) at every tier and text scale.
-2. Its goldens exist for pointer and touch, light and dark, text scales 1 / 1.5 / 2, RTL and high contrast.
+2. It is checked for pointer and touch, light and dark, text scales 1 / 1.5 / 2, RTL and high contrast.
 3. `expectCoilPattern` passes for semantics, keyboard and focus.
 4. All of its motion goes through tokens, and reduced motion is honored.
 5. No sticky hover after a tap, and no ring after a click (`touch_vs_mouse` test).

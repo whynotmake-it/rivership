@@ -1,5 +1,4 @@
 import 'package:coil/coil.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -220,17 +219,3 @@ Future<void> settle(WidgetTester tester) async {
 Widget withOverlay(Widget child) => Overlay(
   initialEntries: [OverlayEntry(builder: (_) => child)],
 );
-
-/// Compares the [RepaintBoundary] found by [finder] against the golden at
-/// [path], rendered at 2x like the web references (`matchesGoldenFile` on a
-/// finder captures at 1x).
-Future<void> expectSheetGolden(
-  WidgetTester tester,
-  Finder finder,
-  String path,
-) async {
-  final boundary = tester.renderObject<RenderRepaintBoundary>(finder);
-  final image = await tester.runAsync(() => boundary.toImage(pixelRatio: 2));
-  addTearDown(() => image?.dispose());
-  await expectLater(image, matchesGoldenFile(path));
-}

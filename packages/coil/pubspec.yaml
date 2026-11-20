@@ -2,9 +2,13 @@ name: coil
 description: >-
   A Flutter design system built on Motor springs, inspired by Fluid
   Functionalism. Works under any WidgetsApp.
-version: 0.0.1-dev.0
-publish_to: none
+version: 0.1.0-dev.0
 resolution: workspace
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/coil
+issue_tracker: https://github.com/whynotmake-it/rivership/issues
+homepage: https://whynotmake.it
+
+topics: [design-system, ui, animation, spring, accessibility]
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -16,14 +20,10 @@ dependencies:
   flutter:
     sdk: flutter
   material_ui: ^1.11.0
-  motor:
-    path: ../motor
-  motor_widgets:
-    path: ../motor_widgets
-  scroll_drag_detector:
-    path: ../scroll_drag_detector
-  stupid_simple_sheet:
-    path: ../stupid_simple_sheet
+  motor: ^1.1.0
+  motor_widgets: ^0.1.0-dev.0
+  scroll_drag_detector: ^1.0.0-dev.3
+  stupid_simple_sheet: ^1.0.0-dev.7
 
 dev_dependencies:
   coil_cli:

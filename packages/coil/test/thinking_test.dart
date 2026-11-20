@@ -2,13 +2,9 @@ import 'dart:ui' show Tristate;
 
 import 'package:coil/coil.dart';
 import 'package:coil_cli/testing.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';
 import 'src/test_icons.dart';
 
@@ -127,86 +123,10 @@ Set<WidgetState> _states(WidgetTester tester) => tester
     .states
     .value;
 
-Widget _stepsStory(BuildContext context) => const SizedBox(
-  width: 280,
-  child: CoilThinkingSteps(
-    label: Text('Thought for 12s'),
-    steps: _steps,
-    expanded: true,
-    onChanged: _ignore,
-  ),
-);
-
 void _ignore(bool _) {}
 
 void main() {
   group('CoilThinkingSteps', () {
-    matrixGoldenTest(
-      'thinking_steps',
-      _stepsStory,
-      surface: const Size(2600, 3400),
-    );
-
-    testWidgets('thinking_steps_states sheet', (tester) async {
-      final keys = [for (final s in SheetState.values) ValueKey(s)];
-      final sheet = await pumpSheet(
-        tester,
-        SheetPanel(
-          title: 'CoilThinkingSteps trigger',
-          theme: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
-          child: StateTable(
-            rows: [
-              SheetRow(
-                'collapsed',
-                (state) => CoilThinkingSteps(
-                  key: keys[state.index],
-                  label: const Text('Thought for 12s'),
-                  steps: _steps,
-                  expanded: false,
-                  onChanged: state.isDisabled ? null : (_) {},
-                ),
-              ),
-            ],
-          ),
-        ),
-        surface: const Size(1400, 200),
-      );
-      Finder cell(SheetState state) => find
-          .descendant(
-            of: find.byKey(keys[state.index]),
-            matching: find.byType(CoilInteraction),
-          )
-          .first;
-      final touch = await tester.startGesture(
-        tester.getCenter(cell(SheetState.pressed)),
-        pointer: 7,
-      );
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await mouse.addPointer(
-        location: tester.getCenter(cell(SheetState.hover)),
-      );
-      await mouse.moveBy(const Offset(1, 0));
-      // The sheet has no Navigator for Tab, so focus directly, then make
-      // the keyboard the last input.
-      Focus.of(
-        tester.element(
-          find.descendant(
-            of: cell(SheetState.focus),
-            matching: find.byType(CoilInteractionDetector),
-          ),
-        ),
-      ).requestFocus();
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
-      await settle(tester);
-      await expectSheetGolden(
-        tester,
-        sheet,
-        'goldens/thinking_steps_states.png',
-      );
-      await touch.cancel();
-      await mouse.removePointer();
-    });
-
     for (final direction in TextDirection.values) {
       testWidgets('${direction.name}: the trigger is a disclosure', (
         tester,
@@ -501,15 +421,6 @@ void main() {
   });
 
   group('CoilThinkingIndicator', () {
-    matrixGoldenTest(
-      'thinking_indicator',
-      (context) => const CoilThinkingIndicator(
-        words: _words,
-        leading: TestIcon(TestGlyph.settings),
-      ),
-      surface: const Size(1800, 900),
-    );
-
     final word = find.byType(CoilThinkingIndicator);
     String announced(WidgetTester tester) =>
         tester.getSemantics(word).getSemanticsData().label;

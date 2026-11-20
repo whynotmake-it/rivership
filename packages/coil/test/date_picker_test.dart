@@ -346,7 +346,6 @@ void sheetGestureTests() {
           '${short ? ', short window' : ''})',
           (tester) async {
             debugDefaultTargetPlatformOverride = platform;
-            addTearDown(() => debugDefaultTargetPlatformOverride = null);
             if (short) {
               _useWindow(tester, const Size(390, 520));
             } else {
@@ -401,6 +400,8 @@ void sheetGestureTests() {
             await drag(content.first, const Offset(0, -150));
             await drag(content.first, const Offset(0, 40));
             expect(tester.takeException(), isNull);
+            // The binding checks this before tear-downs run.
+            debugDefaultTargetPlatformOverride = null;
           },
         );
       }

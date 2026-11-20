@@ -4,9 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
-
 Widget _rows(int count) => Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
@@ -36,61 +33,6 @@ double _offsetOf(WidgetTester tester) =>
 
 void main() {
   // A short area scrolled a little, so both edge fades show.
-  matrixGoldenTest(
-    'scroll_area',
-    (context) => SizedBox(
-      width: 160,
-      height: 120,
-      child: CoilScrollArea(
-        controller: ScrollController(initialScrollOffset: 48),
-        child: _rows(12),
-      ),
-    ),
-  );
-
-  testWidgets('scrollbar sheet: rest, hovered', (tester) async {
-    Widget area() => SizedBox(
-      width: 160,
-      height: 120,
-      child: CoilScrollArea(child: _rows(12)),
-    );
-    final sheet = await pumpSheet(
-      tester,
-      CoilTheme(
-        data: goldenLight.copyWith(tier: CoilTier.pointer),
-        child: ColoredBox(
-          color: CoilThemeData.light.colors.background,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 24,
-              children: [area(), area()],
-            ),
-          ),
-        ),
-      ),
-      surface: const Size(440, 200),
-    );
-    final areas = find.byType(CoilScrollArea);
-    // Scroll each so its bar shows.
-    for (var i = 0; i < 2; i++) {
-      await tester.drag(
-        areas.at(i),
-        const Offset(0, -40),
-        kind: PointerDeviceKind.trackpad,
-      );
-    }
-    await tester.pump();
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    final second = tester.getRect(areas.at(1));
-    await mouse.addPointer(location: second.center);
-    await mouse.moveTo(second.centerRight - const Offset(4, 0));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await expectSheetGolden(tester, sheet, 'goldens/scroll_area.png');
-  });
 
   testWidgets('a scrolling viewport is a tab stop; keys spring it', (
     tester,

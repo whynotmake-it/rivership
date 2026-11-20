@@ -299,54 +299,6 @@ void main() {
       expect(focus.hasFocus, isTrue);
     });
   });
-
-  testWidgets('field sheet', (tester) async {
-    Widget fields(BuildContext context) => SizedBox(
-      width: 320,
-      child: CoilFieldSet(
-        legend: const Text('Account'),
-        description: const Text('Used to sign in.'),
-        children: [
-          const CoilField(
-            label: Text('Name'),
-            isRequired: true,
-            child: CoilInput(placeholder: Text('Ada Lovelace')),
-          ),
-          CoilField(
-            label: const Text('Email'),
-            description: const Text('Only for receipts.'),
-            error: const Text('Enter an email address like ada@example.com'),
-            child: CoilInput(
-              controller: TextEditingController(text: 'ada@'),
-            ),
-          ),
-          const CoilFieldSeparator(label: Text('or')),
-          CoilField(
-            label: const Text('Notifications'),
-            description: const Text('Sent when a build finishes.'),
-            orientation: CoilFieldOrientation.horizontal,
-            child: CoilSwitch(value: true, onChanged: (_) {}),
-          ),
-        ],
-      ),
-    );
-    final finder = await pumpSheet(
-      tester,
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final tier in CoilTier.values)
-            ThemedPair(
-              title: 'Field · ${tier.name}',
-              tier: tier,
-              builder: fields,
-            ),
-        ],
-      ),
-    );
-    await expectSheetGolden(tester, finder, 'goldens/field.png');
-  });
 }
 
 /// Keeps one field mounted while its control is swapped.

@@ -5,8 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';
 import 'src/test_icons.dart';
 
@@ -117,88 +115,6 @@ double _metaOpacity(WidgetTester tester) => tester
     .opacity;
 
 void main() {
-  matrixGoldenTest(
-    'chat_message',
-    (context) => SizedBox(width: 320, child: _transcript()),
-    surface: const Size(2000, 2900),
-  );
-
-  testWidgets('state sheet: rest, hover, keyboard focus, compact', (
-    tester,
-  ) async {
-    Widget cell(String label, Widget child) => Builder(
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          Text(
-            label,
-            style: goldenTypography.pointer.caption.copyWith(
-              color: CoilTheme.of(context).colors.mutedForeground,
-            ),
-          ),
-          SizedBox(width: 260, child: child),
-        ],
-      ),
-    );
-    Widget user({Key? key, CoilSize? size}) => CoilChatMessage(
-      key: key,
-      sender: CoilChatSender.user,
-      entrance: .none,
-      size: size,
-      time: const Text('10:42'),
-      timeLabel: '10:42',
-      actions: _actions(_Calls()),
-      child: const Text('Ship it on Friday?'),
-    );
-    final sheet = await pumpSheet(
-      tester,
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final tier in CoilTier.values)
-            ThemedPair(
-              title: 'CoilChatMessage · ${tier.name}',
-              tier: tier,
-              builder: (context) {
-                final light =
-                    CoilTheme.of(context).brightness == Brightness.light;
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 24,
-                  children: [
-                    cell('rest', user()),
-                    cell(
-                      'hover',
-                      user(
-                        key: light && tier == CoilTier.pointer
-                            ? const ValueKey('hover')
-                            : null,
-                      ),
-                    ),
-                    cell(
-                      'compact',
-                      user(size: CoilSize.compact),
-                    ),
-                  ],
-                );
-              },
-            ),
-        ],
-      ),
-      surface: const Size(1800, 760),
-    );
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(tester.getCenter(find.byKey(const ValueKey('hover'))));
-    await settle(tester);
-    await expectSheetGolden(tester, sheet, 'goldens/chat_message.png');
-  });
-
   inkCenteringTests({
     'chat_message/user': (ink) => CoilChatMessage(
       sender: CoilChatSender.user,

@@ -5,7 +5,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'src/golden_sheet.dart';
-import 'src/test_icons.dart';
 
 Widget _app(Widget child) => WidgetsApp(
   color: const Color(0xFF000000),
@@ -19,53 +18,6 @@ Widget _app(Widget child) => WidgetsApp(
 
 void main() {
   group('CoilInput', () {
-    testWidgets('overview sheet', (tester) async {
-      Widget input(
-        SheetState s, {
-        String text = '',
-        bool invalid = false,
-        bool slots = false,
-        CoilSize? density,
-      }) => SizedBox(
-        width: 220,
-        child: CoilInput(
-          controller: TextEditingController(text: text),
-          placeholder: const Text('you@example.com'),
-          enabled: !s.isDisabled,
-          invalid: invalid,
-          size: density,
-          statesController: s.controller(),
-          leading: slots ? const TestIcon(TestGlyph.search) : null,
-          trailing: slots ? const TestIcon(TestGlyph.x) : null,
-        ),
-      );
-      const columns = [
-        SheetState.rest,
-        SheetState.hover,
-        SheetState.focus,
-        SheetState.disabled,
-      ];
-      final sheet = ThemedPair(
-        title: 'Input',
-        direction: Axis.vertical,
-        builder: (context) => StateTable(
-          columns: columns,
-          rows: [
-            SheetRow('placeholder', input),
-            SheetRow('filled', (s) => input(s, text: 'Ada Lovelace')),
-            SheetRow('invalid', (s) => input(s, text: 'ada@', invalid: true)),
-            SheetRow('slots', (s) => input(s, slots: true)),
-            SheetRow(
-              'compact',
-              (s) => input(s, text: 'Compact', density: CoilSize.compact),
-            ),
-          ],
-        ),
-      );
-      final finder = await pumpSheet(tester, sheet);
-      await expectSheetGolden(tester, finder, 'goldens/input.png');
-    });
-
     testWidgets('types, keeps IME composing, and submits', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);

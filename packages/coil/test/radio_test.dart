@@ -7,8 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/golden_matrix.dart';
-
 Widget _app(
   Widget child, {
   CoilTier tier = CoilTier.pointer,
@@ -97,11 +95,6 @@ bool _anyRadioRing(WidgetTester tester) => tester
 
 void main() {
   setUp(CoilInputModality.debugReset);
-
-  matrixGoldenTest(
-    'choice_card_radio',
-    (context) => const SizedBox(width: 320, child: _Plans()),
-  );
 
   testWidgets('follows the radio group pattern', (tester) async {
     for (final direction in TextDirection.values) {

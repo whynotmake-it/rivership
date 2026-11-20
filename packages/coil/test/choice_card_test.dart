@@ -8,9 +8,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
-
 Widget _app(
   Widget child, {
   CoilTier tier = CoilTier.pointer,
@@ -130,99 +127,6 @@ const _cards = Column(
 
 void main() {
   setUp(CoilInputModality.debugReset);
-
-  matrixGoldenTest(
-    'choice_card',
-    (context) => SizedBox(
-      width: 320,
-      child: CoilFieldGroup(
-        children: [
-          CoilChoiceCard(
-            selected: true,
-            title: const Text('Kubernetes'),
-            description: const Text('Run GPU workloads on a K8s cluster.'),
-            control: CoilCheckbox(value: true, onChanged: (_) {}),
-          ),
-          CoilChoiceCard(
-            title: const Text('Virtual machine'),
-            description: const Text('Access a cluster to run GPU workloads.'),
-            control: CoilCheckbox(value: false, onChanged: (_) {}),
-          ),
-          CoilChoiceCard(
-            selected: true,
-            title: const Text('Email digests'),
-            control: CoilSwitch(value: true, onChanged: (_) {}),
-          ),
-          const CoilChoiceCard(
-            enabled: false,
-            title: Text('Bare metal'),
-            description: Text('Not available in your region.'),
-            control: CoilCheckbox(value: false, onChanged: null),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  testWidgets('states sheet: rest, hover, keyboard focus, touch press', (
-    tester,
-  ) async {
-    Widget column(BuildContext context) => const SizedBox(
-      width: 320,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
-        children: [
-          _Checkable(title: 'Rest'),
-          _Checkable(title: 'Hovered'),
-          _Checkable(title: 'Keyboard focus'),
-          _Checkable(title: 'Selected', initial: true),
-        ],
-      ),
-    );
-    final sheet = await pumpSheet(
-      tester,
-      FocusScope(
-        autofocus: true,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final tier in CoilTier.values)
-              ThemedPair(
-                title: 'ChoiceCard · ${tier.name}',
-                tier: tier,
-                builder: column,
-              ),
-          ],
-        ),
-      ),
-    );
-    // Focus the "Keyboard focus" card's checkbox in the first panel, then
-    // press a key that does nothing so the keyboard is the last input.
-    final keyboardCard = find
-        .ancestor(
-          of: find.text('Keyboard focus').first,
-          matching: find.byType(CoilChoiceCard),
-        )
-        .first;
-    Focus.of(
-      tester.element(
-        find.descendant(
-          of: keyboardCard,
-          matching: find.byType(CoilCheckboxIndicator),
-        ),
-      ),
-    ).requestFocus();
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await mouse.addPointer(location: Offset.zero);
-    // The first panel (pointer, light): touch never hovers.
-    await mouse.moveTo(tester.getCenter(find.text('Hovered').first));
-    await settle(tester);
-    await expectSheetGolden(tester, sheet, 'goldens/choice_card_states.png');
-  });
 
   testWidgets('a tap anywhere on the card toggles its control', (
     tester,

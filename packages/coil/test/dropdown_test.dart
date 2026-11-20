@@ -175,27 +175,6 @@ void main() {
     expect(lines, [border.withValues(alpha: border.a * 0.6)]);
   });
 
-  for (final (name, colors) in [
-    ('light', CoilColors.light),
-    ('dark', CoilColors.dark),
-  ]) {
-    testWidgets('open menu, $name', (tester) async {
-      useScreen(tester, TestScreen.desktop);
-      await tester.pumpWidget(
-        testApp(
-          colors: colors,
-          tier: CoilTier.pointer,
-          home: const _Menu(log: []),
-        ),
-      );
-      await open(tester);
-      await expectLater(
-        find.byKey(appBoundary),
-        matchesGoldenFile('goldens/dropdown_open_$name.png'),
-      );
-    });
-  }
-
   testWidgets('shortcuts show for a pointer, not for touch', (tester) async {
     useScreen(tester, TestScreen.desktop);
     await tester.pumpWidget(

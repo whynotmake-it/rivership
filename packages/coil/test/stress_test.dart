@@ -1,6 +1,6 @@
 // A robustness sweep: every component under hostile content and hostile
 // screens. It asserts only that nothing throws (no overflow, no layout or
-// build errors); goldens cover how things look.
+// build errors). How things look is not tested.
 import 'package:coil/coil.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';

@@ -1,11 +1,9 @@
 import 'package:coil/coil.dart';
-// The eased ramp is internal; the golden compares it with a linear one.
+// The eased ramp is internal.
 // ignore: implementation_imports
-import 'package:coil/src/primitives/eased_gradient.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'src/golden_sheet.dart';
 import 'src/paint_probe.dart';
 
 const _red = Color(0xFFFF0000);
@@ -128,44 +126,5 @@ void main() {
     expect(find.byType(ShaderMask), findsNothing);
     expect(_faded(edges.start), isFalse);
     expect(isNear(edges.end, _white), isTrue);
-  });
-
-  testWidgets('eased ramp against a linear one', (tester) async {
-    Widget bar(Gradient gradient) => Container(
-      width: 320,
-      height: 48,
-      margin: const EdgeInsets.all(8),
-      decoration: BoxDecoration(gradient: gradient),
-    );
-    const black = Color(0xFF000000);
-    final sheet = await pumpSheet(
-      tester,
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: ColoredBox(
-          color: _white,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              bar(
-                easedGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  from: black,
-                  to: black.withValues(alpha: 0),
-                ),
-              ),
-              bar(
-                LinearGradient(
-                  colors: [black, black.withValues(alpha: 0)],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      surface: const Size(400, 160),
-    );
-    await expectSheetGolden(tester, sheet, 'goldens/eased_gradient.png');
   });
 }

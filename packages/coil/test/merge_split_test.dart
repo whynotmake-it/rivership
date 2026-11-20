@@ -5,85 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_sheet.dart';
 import 'src/paint_probe.dart';
-
-const _rows = [
-  'Inbox',
-  'Drafts',
-  'Sent',
-  'Archive',
-  'Spam',
-  'Trash',
-  'Notes',
-  'Tasks',
-];
-const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'All'];
-
-/// Runs of 1, 2 and 3 with gaps between them.
-const _runs123 = {0, 2, 3, 5, 6, 7};
-
-/// One panel: a checkbox group and a toggle row bound to [selection].
-class _Panel extends StatelessWidget {
-  const _Panel({
-    required this.title,
-    required this.theme,
-    required this.selection,
-  });
-
-  final String title;
-  final CoilThemeData theme;
-  final ValueNotifier<Set<int>> selection;
-
-  @override
-  Widget build(BuildContext context) => SheetPanel(
-    title: title,
-    theme: theme,
-    child: ValueListenableBuilder(
-      valueListenable: selection,
-      builder: (context, selected, _) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 20,
-        children: [
-          SizedBox(
-            width: 220,
-            child: CoilCheckboxGroup(
-              values: selected,
-              onChanged: (v) => selection.value = v,
-              options: [
-                for (final (i, r) in _rows.indexed)
-                  CoilOption(value: i, label: Text(r), searchText: r),
-              ],
-            ),
-          ),
-          CoilToggleGroup(
-            values: selected,
-            onChanged: (v) => selection.value = v,
-            options: [
-              for (final (i, d) in _days.indexed)
-                CoilOption(value: i, label: Text(d), searchText: d),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-Widget _sheet(ValueNotifier<Set<int>> selection) => Row(
-  mainAxisSize: MainAxisSize.min,
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    for (final tier in CoilTier.values)
-      for (final theme in [CoilThemeData.light, CoilThemeData.dark])
-        _Panel(
-          title: '${tier.name} · ${theme.brightness.name}',
-          theme: theme.copyWith(tier: tier),
-          selection: selection,
-        ),
-  ],
-);
 
 const _red = Color(0xFFFF0000);
 final _boundary = find.byKey(const ValueKey('boundary'));
@@ -207,51 +129,6 @@ void main() {
       await tester.pump();
       expect(await _redAt(tester, 80), isFalse);
       expect(await _redAt(tester, 60), isTrue);
-    });
-
-    testWidgets('goldens: rest runs of 1, 2, 3; mid-merge; mid-split', (
-      tester,
-    ) async {
-      final selection = ValueNotifier<Set<int>>(_runs123);
-      addTearDown(selection.dispose);
-      final sheet = await pumpSheet(tester, _sheet(selection));
-      await expectSheetGolden(tester, sheet, 'goldens/merge_split_rest.png');
-
-      // Merge: {0..1, 3..4} + 2.
-      selection.value = {0, 1, 3, 4};
-      await settle(tester);
-      selection.value = {0, 1, 2, 3, 4};
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 40));
-      await expectSheetGolden(
-        tester,
-        sheet,
-        'goldens/merge_split_merging_40ms.png',
-      );
-      await tester.pump(const Duration(milliseconds: 50));
-      await expectSheetGolden(
-        tester,
-        sheet,
-        'goldens/merge_split_merging_90ms.png',
-      );
-      await settle(tester);
-      await expectSheetGolden(
-        tester,
-        sheet,
-        'goldens/merge_split_merged.png',
-      );
-
-      // Split: {0..4} - 2.
-      selection.value = {0, 1, 3, 4};
-      // The halves start at the seam and diverge from the first frame.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 40));
-      await expectSheetGolden(
-        tester,
-        sheet,
-        'goldens/merge_split_splitting_40ms.png',
-      );
-      await settle(tester);
     });
   });
 }

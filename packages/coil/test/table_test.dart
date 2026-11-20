@@ -9,8 +9,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';
 
 typedef _Person = ({String name, String role, int commits});
@@ -110,71 +108,6 @@ CoilHoverState? _hover(WidgetTester tester) =>
     CoilHoverRegion.maybeOf(tester.element(find.text('Ada')));
 
 void main() {
-  matrixGoldenTest(
-    'table',
-    (context) => SizedBox(
-      width: 340,
-      child: CoilTable<_Person>(
-        columns: _columns(sort: CoilSortDirection.ascending, onSort: () {}),
-        rows: _people.take(3).toList(),
-        values: {_people[1]},
-        onChanged: (_) {},
-      ),
-    ),
-  );
-
-  testWidgets('table states sheet', (tester) async {
-    final scrolled = ScrollController(initialScrollOffset: 40);
-    addTearDown(scrolled.dispose);
-    final sheet = await pumpSheet(
-      tester,
-      ThemedPair(
-        title: 'table: hovered + merged selection, scrolled, empty',
-        direction: Axis.vertical,
-        builder: (context) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 24,
-          children: [
-            SizedBox(
-              width: 340,
-              child: CoilTable<_Person>(
-                columns: _columns(),
-                rows: _people,
-                values: {_people[0], _people[1]},
-                onChanged: (_) {},
-              ),
-            ),
-            SizedBox(
-              width: 220,
-              child: CoilTable<_Person>(
-                columns: _columns(minWidth: 120),
-                rows: _people.take(3).toList(),
-                controller: CoilTheme.of(context).brightness == Brightness.light
-                    ? scrolled
-                    : null,
-              ),
-            ),
-            SizedBox(
-              width: 260,
-              child: CoilTable<_Person>(
-                columns: _columns(),
-                rows: const [],
-                empty: const Text('No people yet'),
-              ),
-            ),
-          ],
-        ),
-      ),
-      surface: const Size(1000, 760),
-    );
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(tester.getCenter(find.text('Linus').first));
-    await settle(tester);
-    await expectSheetGolden(tester, sheet, 'goldens/table.png');
-  });
-
   inkCenteringTests({
     'table/header': (ink) => CoilTable<int>(
       columns: [

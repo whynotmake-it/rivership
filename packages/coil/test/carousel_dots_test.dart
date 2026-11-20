@@ -7,9 +7,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
-
 /// Applies `onChanged`, with a button after the dots so Tab can leave them.
 class _Host extends StatefulWidget {
   const _Host({
@@ -104,113 +101,6 @@ int? _lit(WidgetTester tester) => CoilHoverRegion.maybeOf(
 )?.activeIndex;
 
 void main() {
-  matrixGoldenTest(
-    'carousel_dots',
-    (context) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 8,
-      children: [
-        CoilCarouselDots(count: 6, value: 1, onChanged: (_) {}),
-        CoilCarouselDots(
-          count: 6,
-          value: 3,
-          progress: 0.5,
-          onChanged: (_) {},
-        ),
-      ],
-    ),
-    surface: const Size(1600, 900),
-  );
-
-  testWidgets('state sheet: rest, hover, focus, progress, disabled', (
-    tester,
-  ) async {
-    final focus = FocusNode();
-    addTearDown(focus.dispose);
-    Widget cell(String label, Widget dots) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 8,
-      children: [
-        Builder(
-          builder: (context) => Text(
-            label,
-            style: goldenTypography.pointer.caption.copyWith(
-              color: CoilTheme.of(context).colors.mutedForeground,
-            ),
-          ),
-        ),
-        dots,
-      ],
-    );
-    final sheet = await pumpSheet(
-      tester,
-      ThemedPair(
-        title: 'CoilCarouselDots',
-        direction: Axis.vertical,
-        builder: (context) => Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 32,
-          children: [
-            cell(
-              'rest',
-              CoilCarouselDots(count: 6, value: 1, onChanged: (_) {}),
-            ),
-            cell(
-              'hover',
-              KeyedSubtree(
-                key: ValueKey('hover-${CoilTheme.of(context).brightness}'),
-                child: CoilCarouselDots(count: 6, value: 1, onChanged: (_) {}),
-              ),
-            ),
-            cell(
-              'focus',
-              CoilCarouselDots(
-                count: 6,
-                value: 1,
-                onChanged: (_) {},
-                focusNode: CoilTheme.of(context).brightness == Brightness.light
-                    ? focus
-                    : null,
-              ),
-            ),
-            cell(
-              'progress 0.3',
-              CoilCarouselDots(
-                count: 6,
-                value: 2,
-                progress: 0.3,
-                onChanged: (_) {},
-              ),
-            ),
-            cell(
-              'disabled',
-              const CoilCarouselDots(count: 6, value: 1, onChanged: null),
-            ),
-          ],
-        ),
-      ),
-      surface: const Size(820, 360),
-    );
-    // Keyboard focus on the light focus cell.
-    await tester.sendKeyEvent(LogicalKeyboardKey.shift);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
-    focus.requestFocus();
-    // A mouse over the fourth dot of the light hover cell (tests have one
-    // mouse, so the dark cell rests).
-    final dots = find.descendant(
-      of: find.byKey(ValueKey('hover-${Brightness.light}')),
-      matching: find.byType(ClipRSuperellipse),
-    );
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(tester.getCenter(dots.at(3)));
-    await settle(tester);
-    await expectSheetGolden(tester, sheet, 'goldens/carousel_dots.png');
-  });
-
   for (final direction in TextDirection.values) {
     for (final tier in CoilTier.values) {
       testWidgets('is adjustable (${tier.name}, ${direction.name})', (

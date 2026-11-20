@@ -7,8 +7,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
 import 'src/ink_centering.dart';
 import 'src/test_icons.dart';
 
@@ -71,122 +69,8 @@ Finder _inMenu(String text) => find.descendant(
 );
 
 void main() {
-  matrixGoldenTest(
-    'breadcrumb',
-    (context) => SizedBox(
-      width: 320,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          CoilBreadcrumb(crumbs: _crumbs(['Home', 'Docs', 'Breadcrumb'])),
-          CoilBreadcrumb(crumbs: _crumbs()),
-        ],
-      ),
-    ),
-    surface: const Size(2000, 1300),
-  );
-
-  testWidgets('breadcrumb sheet: hover, collapse, separator, menu', (
-    tester,
-  ) async {
-    Widget panel(String name, CoilThemeData theme) => SheetPanel(
-      title: name,
-      theme: theme.copyWith(tier: CoilTier.pointer),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 12,
-        children: [
-          CoilBreadcrumb(crumbs: _crumbs()),
-          SizedBox(width: 260, child: CoilBreadcrumb(crumbs: _crumbs())),
-          CoilBreadcrumb(
-            crumbs: _crumbs(['Home', 'Docs', 'Breadcrumb']),
-            separator: const Text('/'),
-          ),
-          CoilBreadcrumb(
-            size: CoilSize.regular,
-            crumbs: [
-              ..._crumbs(['Home', 'Docs']),
-              const CoilCrumb(label: Text('Archived')),
-              const CoilCrumb(label: Text('Breadcrumb')),
-            ],
-          ),
-        ],
-      ),
-    );
-    final sheet = await pumpSheet(
-      tester,
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          panel('light', CoilThemeData.light),
-          panel('dark', CoilThemeData.dark),
-        ],
-      ),
-      surface: const Size(1000, 340),
-    );
-    // A mouse over "Projects" in the light panel's first trail.
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(tester.getCenter(find.text('Projects').at(0)));
-    await tester.pump();
-    await settle(tester);
-    await expectSheetGolden(tester, sheet, 'goldens/breadcrumb.png');
-  });
-
   // The select goldens cover the popover and both themes; this one shows
   // a long list scrolling in a sheet.
-  for (final (name, theme, tier, width) in [
-    ('sheet_light', goldenLight, CoilTier.touch, 390.0),
-  ]) {
-    testWidgets('breadcrumb menu golden: $name', (tester) async {
-      tester.view
-        ..devicePixelRatio = 2
-        ..physicalSize = Size(width, 520) * 2;
-      addTearDown(tester.view.reset);
-      final names = [
-        'Home',
-        for (var i = 1; i <= (tier == CoilTier.touch ? 10 : 3); i++)
-          'Folder with a long name $i',
-        'Breadcrumb',
-      ];
-      await tester.pumpWidget(
-        WidgetsApp(
-          color: const Color(0xFF000000),
-          debugShowCheckedModeBanner: false,
-          builder: (context, navigator) => CoilTheme(
-            data: theme.copyWith(tier: tier),
-            child: Builder(
-              builder: (context) => ColoredBox(
-                color: CoilTheme.of(context).colors.background,
-                child: navigator,
-              ),
-            ),
-          ),
-          onGenerateRoute: (_) => PageRouteBuilder<void>(
-            pageBuilder: (context, _, _) => Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: width - 32,
-                  child: CoilBreadcrumb(crumbs: _crumbs(names)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.tap(_more);
-      await tester.pumpAndSettle();
-      await expectLater(
-        find.byType(WidgetsApp),
-        matchesGoldenFile('goldens/breadcrumb_menu_$name.png'),
-      );
-    });
-  }
 
   group('ink centering', () {
     // Hiding the label by color keeps the layout identical.

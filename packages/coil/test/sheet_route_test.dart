@@ -93,8 +93,7 @@ void main() {
         title: const Text('Fruit'),
         child: ListView(
           children: [
-            for (var i = 0; i < 60; i++)
-              SizedBox(key: ValueKey(i), height: 44),
+            for (var i = 0; i < 60; i++) SizedBox(key: ValueKey(i), height: 44),
           ],
         ),
       ),
@@ -403,13 +402,14 @@ void main() {
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets('back closes it on ${platform.name}', (tester) async {
       debugDefaultTargetPlatformOverride = platform;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       useScreen(tester, TestScreen.phone);
       await tester.pumpWidget(_app());
       await _push(tester);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.byKey(_content), findsNothing);
+      // The binding checks this before tear-downs run.
+      debugDefaultTargetPlatformOverride = null;
     });
   }
 }

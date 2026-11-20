@@ -16,44 +16,6 @@ Widget _app(Widget child) => WidgetsApp(
 
 void main() {
   group('CoilSwitch', () {
-    testWidgets('overview sheet', (tester) async {
-      Widget sw(SheetState s, {required bool on, CoilSize? size}) => CoilSwitch(
-        value: on,
-        onChanged: s.isDisabled ? null : (_) {},
-        size: size,
-        statesController: s.controller(),
-        label: Text(on ? 'Notifications on' : 'Notifications off'),
-      );
-      final sheet = ThemedPair(
-        title: 'Switch',
-        builder: (context) => StateTable(
-          rows: [
-            SheetRow('off', (s) => sw(s, on: false)),
-            SheetRow('on', (s) => sw(s, on: true)),
-            SheetRow(
-              'off · compact',
-              (s) => sw(s, on: false, size: CoilSize.compact),
-            ),
-            SheetRow(
-              'on · compact',
-              (s) => sw(s, on: true, size: CoilSize.compact),
-            ),
-            SheetRow(
-              'no label',
-              (s) => CoilSwitch(
-                value: true,
-                onChanged: s.isDisabled ? null : (_) {},
-                statesController: s.controller(),
-                semanticLabel: 'Wi-Fi',
-              ),
-            ),
-          ],
-        ),
-      );
-      final finder = await pumpSheet(tester, sheet);
-      await expectSheetGolden(tester, finder, 'goldens/switch.png');
-    });
-
     testWidgets('toggles on tap, Space, and drag past the midpoint', (
       tester,
     ) async {
@@ -191,47 +153,6 @@ void main() {
   });
 
   group('CoilCheckbox', () {
-    testWidgets('overview sheet', (tester) async {
-      Widget cb(
-        SheetState s, {
-        bool? value = false,
-        bool invalid = false,
-        CoilSize? size,
-      }) => CoilCheckbox(
-        value: value,
-        tristate: true,
-        invalid: invalid,
-        size: size,
-        onChanged: s.isDisabled ? null : (_) {},
-        statesController: s.controller(),
-      );
-      final sheet = ThemedPair(
-        title: 'Checkbox',
-        builder: (context) => StateTable(
-          rows: [
-            SheetRow('unchecked', cb),
-            SheetRow('checked', (s) => cb(s, value: true)),
-            SheetRow('indeterminate', (s) => cb(s, value: null)),
-            SheetRow('invalid', (s) => cb(s, invalid: true)),
-            SheetRow(
-              'compact',
-              (s) => Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 8,
-                children: [
-                  cb(s, size: CoilSize.compact),
-                  cb(s, value: true, size: CoilSize.compact),
-                  cb(s, value: null, size: CoilSize.compact),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-      final finder = await pumpSheet(tester, sheet);
-      await expectSheetGolden(tester, finder, 'goldens/checkbox.png');
-    });
-
     testWidgets('a tristate box cycles false → true → null → false', (
       tester,
     ) async {

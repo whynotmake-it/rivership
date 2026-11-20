@@ -1,0 +1,5 @@
+# Not part of the package: the catalog's build output and the tests'.
+build/
+coverage/
+test/
+tool/

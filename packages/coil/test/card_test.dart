@@ -6,8 +6,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor/motor.dart';
 
-import 'src/golden_matrix.dart';
-import 'src/golden_sheet.dart';
 import 'src/test_icons.dart';
 
 Widget _app(
@@ -86,112 +84,6 @@ double _dismissOpacity(WidgetTester tester) {
 }
 
 void main() {
-  matrixGoldenTest(
-    'card',
-    (context) => SizedBox(
-      width: 520,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 16,
-        children: [
-          Expanded(
-            child: CoilCard(
-              icon: const TestIcon(TestGlyph.settings),
-              title: const Text('Deploy preview'),
-              description: const Text('Built 2 minutes ago'),
-              actions: [
-                CoilButton(
-                  onPressed: () {},
-                  variant: CoilButtonVariant.ghost,
-                  child: const Text('Open'),
-                ),
-              ],
-              onPressed: () {},
-              onDismissed: () {},
-              child: const Text('main · 3 files'),
-            ),
-          ),
-          Expanded(
-            child: CoilCardGroup(
-              children: [
-                CoilCard(
-                  variant: CoilCardVariant.inline,
-                  icon: const TestIcon(TestGlyph.home),
-                  title: const Text('Home'),
-                  description: const Text('Your workspace'),
-                  onPressed: () {},
-                ),
-                CoilCard(
-                  variant: CoilCardVariant.inline,
-                  icon: const TestIcon(TestGlyph.heart),
-                  title: const Text('Saved'),
-                  description: const Text('12 items'),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-    surface: const Size(3400, 2200),
-  );
-
-  testWidgets('card states sheet', (tester) async {
-    Widget grid() => SizedBox(
-      width: 420,
-      child: CoilCardGroup(
-        layout: CoilCardGroupLayout.separated,
-        columns: 2,
-        children: [
-          for (final (i, name) in ['Alpha', 'Beta', 'Gamma', 'Delta'].indexed)
-            CoilCard(
-              key: ValueKey(name),
-              title: Text(name),
-              description: Text('Card ${i + 1}'),
-              onPressed: () {},
-            ),
-        ],
-      ),
-    );
-    Widget divided() => SizedBox(
-      width: 260,
-      child: CoilCardGroup(
-        children: [
-          for (final name in ['One', 'Two', 'Three'])
-            CoilCard(
-              key: ValueKey(name),
-              title: Text(name),
-              description: const Text('Divided group'),
-              onPressed: () {},
-            ),
-        ],
-      ),
-    );
-    final sheet = await pumpSheet(
-      tester,
-      ThemedPair(
-        title: 'card: separated grid, divided group',
-        direction: Axis.vertical,
-        builder: (context) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 24,
-          children: [grid(), divided()],
-        ),
-      ),
-      surface: const Size(760, 760),
-    );
-    // The mouse rests on Beta in the light panel; dark stays at rest.
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    addTearDown(mouse.removePointer);
-    await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(
-      tester.getCenter(find.byKey(const ValueKey('Beta')).first),
-    );
-    await settle(tester);
-    await expectSheetGolden(tester, sheet, 'goldens/card.png');
-  });
-
   testWidgets('a card with an action is one tab stop (LTR and RTL)', (
     tester,
   ) async {

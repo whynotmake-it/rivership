@@ -75,7 +75,7 @@ void main() {
   testWidgets('touch leaves no hover, highlight or focus ring; mouse hovers', (
     tester,
   ) async {
-    final finder = await pump(tester);
+    await pump(tester);
 
     // Touch: tap the button, the switch and a tab, then let motion finish.
     await tester.tap(
@@ -117,8 +117,6 @@ void main() {
     await settle(tester);
     expect(tabsState(tester, mouseKey)!.activeIndex, 2);
     expect(mouseButton.value, isNot(contains(WidgetState.hovered)));
-
-    await expectSheetGolden(tester, finder, 'goldens/touch_vs_mouse.png');
   });
 
   testWidgets('a touch that turns into a scroll drops the pressed state', (

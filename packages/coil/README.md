@@ -1,11 +1,11 @@
 # coil
 
-A Flutter design system built on [Motor](../motor) springs. It works under
+A Flutter design system built on [Motor](https://pub.dev/packages/motor) springs. It works under
 any `WidgetsApp` (no Material or Cupertino app shell) and adapts to pointer
 and touch, keyboard and screen readers on every platform.
 
-> Pre-release. coil depends on unreleased Motor 2.0 and is not published.
-> It needs Flutter 3.47 or later.
+> Pre-release. coil builds on Motor 2.0 pre-releases, and its API may change
+> before 1.0. It needs Flutter 3.47 or later.
 
 ## Credits
 
@@ -169,22 +169,21 @@ Run with Flutter 3.47: `flutter test` in this package.
 
 Each component's file runs the shared checks from `test/src/`:
 
-- `matrixGoldenTest` (goldens in `test/goldens/matrix/`): light/dark ×
-  pointer/touch, each at text scale 1, 1.5 and 2, in RTL and high contrast,
-  with real Allo at 2x; overlays open as popover and sheet.
 - `expectCoilPattern` (public in `package:coil_cli/testing.dart`): semantics,
   keyboard and focus-visible, in LTR and RTL.
 - `inkCenteringTests`: label ink centered within 1 px at every tier, size
   and text scale.
 
-The M0 components still run these from the shared
-`golden_matrix_test.dart`, `patterns_test.dart` and
+The M0 components still run these from the shared `patterns_test.dart` and
 `label_alignment_test.dart`.
+
+coil has no golden tests for now: the reference renderings differ between
+macOS and the Linux CI, so a pass on one machine failed on the other.
 - `test/text_field_core_ime_test.dart`: IME composition guards, the iOS
   system menu, toolbars under a bare `WidgetsApp`.
 - `test/motion_theme_test.dart`: motion tokens changed at runtime.
 - `test/goldens/web_reference/`: Fluid Functionalism screenshots, for
-  reference only.
+  reference only. They are not test goldens.
 
 ## Known gaps
 

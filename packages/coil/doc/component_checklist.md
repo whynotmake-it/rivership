@@ -115,11 +115,6 @@ Each component's tests live in its own `test/<name>_test.dart`, which
 calls the shared helpers in `test/src/`. Shared test files stay untouched,
 so wave branches don't conflict.
 
-- **Goldens across the matrix:** call `matrixGoldenTest(name, story)`
-  (`test/src/golden_matrix.dart`). That covers light/dark × pointer/touch ×
-  text scale 1/1.5/2, RTL and high contrast. Overlays also get open-state
-  goldens for popover and sheet, light and dark. Look at every golden
-  before committing it.
 - **Ink centering:** call `inkCenteringTests` (`test/src/ink_centering.dart`)
   with each label-bearing variant (±1 px at every tier, size and text
   scale).
