@@ -19,7 +19,7 @@ jobs:
   flutter-check:
     name: Build Check
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       pull-requests: write
       contents: write
