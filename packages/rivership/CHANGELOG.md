@@ -1,6 +1,6 @@
-## 0.4.0-dev.0+11
+## 1.0.0-dev.0
 
- - Update a dependency to the latest release.
+ - **BREAKING**: requires `motor` 2.0 and `heroine` 1.0. See the [motor changelog](../motor/CHANGELOG.md).
 
 ## 0.4.0+10
 

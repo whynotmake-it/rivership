@@ -1,6 +1,6 @@
-## 0.7.2-dev.0+3
+## 1.0.0-dev.0
 
- - Update a dependency to the latest release.
+ - **BREAKING**: requires `motor` 2.0, which changes controller `status` and default spring behavior. See the [motor changelog](../motor/CHANGELOG.md).
 
 ## 0.7.2+2
 
