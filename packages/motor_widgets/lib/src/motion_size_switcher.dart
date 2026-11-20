@@ -77,8 +77,7 @@ class MotionSizeSwitcher extends StatefulWidget {
   /// their layout as long as those don't change. They sit by [alignment],
   /// overflowing the new size and clipped by [clipBehavior].
   ///
-  /// Changing this value changes the shape of the tree below, so the current
-  /// child loses its state unless it has a [GlobalKey].
+  /// A child that starts leaving keeps its state in both modes.
   final bool immediateResize;
 
   /// {@macro motor_widgets.tickerRate}
@@ -139,68 +138,52 @@ class _MotionSizeSwitcherState extends State<MotionSizeSwitcher> {
       :child,
     ) = widget;
     final label = widget.debugLabel ?? 'MotionSizeSwitcher';
-    if (!immediateResize) {
-      return RawMotionSize(
-        motion: sizeMotion ?? motion,
-        alignment: alignment,
-        clipBehavior: clipBehavior,
-        tickerRate: tickerRate,
-        debugLabel: '$label size',
-        widthGrowth: _growth,
-        child: MotionSwitcher(
-          motion: motion,
-          exitMotion: exitMotion,
-          transitionBuilder: _transition,
-          tickerRate: tickerRate,
-          debugLabel: label,
-          // An empty Stack would take the biggest size it is allowed, not
-          // the smallest.
-          layoutBuilder: (currentChild, previousChildren) =>
-              currentChild == null && previousChildren.isEmpty
-              ? const SizedBox.shrink()
-              : Stack(
-                  clipBehavior: clipBehavior,
-                  alignment: alignment,
-                  children: [
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                ),
-          child: child,
-        ),
-      );
-    }
-    return MotionSwitcher(
-      motion: motion,
-      exitMotion: exitMotion,
-      transitionBuilder: _transition,
+    return RawMotionSize(
+      motion: sizeMotion ?? motion,
+      alignment: alignment,
+      clipBehavior: clipBehavior,
       tickerRate: tickerRate,
-      debugLabel: label,
-      layoutBuilder: (currentChild, previousChildren) => _ImmediateResizeLayout(
-        alignment: alignment,
-        clipBehavior: clipBehavior,
-        children: [
-          ...previousChildren,
-          RawMotionSize(
-            motion: sizeMotion ?? motion,
-            alignment: alignment,
-            clipBehavior: clipBehavior,
-            tickerRate: tickerRate,
-            debugLabel: '$label size',
-            widthGrowth: _growth,
-            child: currentChild,
-          ),
-        ],
+      debugLabel: '$label size',
+      widthGrowth: _growth,
+      child: MotionSwitcher(
+        motion: motion,
+        exitMotion: exitMotion,
+        transitionBuilder: _transition,
+        tickerRate: tickerRate,
+        debugLabel: label,
+        layoutBuilder: immediateResize
+            ? (currentChild, previousChildren) => _ImmediateResizeLayout(
+                alignment: alignment,
+                clipBehavior: clipBehavior,
+                children: [
+                  ...previousChildren,
+                  currentChild ?? const SizedBox.shrink(),
+                ],
+              )
+            // An empty Stack would take the biggest size it is allowed, not
+            // the smallest.
+            : (currentChild, previousChildren) =>
+                  currentChild == null && previousChildren.isEmpty
+                  ? const SizedBox.shrink()
+                  : Stack(
+                      clipBehavior: clipBehavior,
+                      alignment: alignment,
+                      children: [
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    ),
+        child: child,
       ),
-      child: child,
     );
   }
 }
 
-/// Lays out the last child, the `MotionSize` around the current child, and
-/// takes its size. The leaving children before it keep the constraints this
-/// box gets, so a wrapping one doesn't reflow while it leaves. They sit by
-/// [alignment], overflowing and clipped by [clipBehavior].
+/// Lays out the last child, the current one, and takes its size. The leaving
+/// children before it keep the constraints this box gets, so a wrapping one
+/// doesn't reflow while it leaves. They sit by [alignment], overflowing and
+/// clipped by [clipBehavior]. The size then springs in the `MotionSize`
+/// around this box.
 class _ImmediateResizeLayout extends MultiChildRenderObjectWidget {
   const _ImmediateResizeLayout({
     required this.alignment,
@@ -286,7 +269,7 @@ class _RenderImmediateResize extends RenderBox
     super.dispose();
   }
 
-  /// The child that sizes this box: the `MotionSize`, always last.
+  /// The child that sizes this box: the current one, always last.
   RenderBox get _sizing => lastChild!;
 
   @override

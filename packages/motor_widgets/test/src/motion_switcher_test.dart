@@ -576,9 +576,11 @@ void main() {
           immediate(const SizedBox(key: ValueKey(2), width: 100, height: 20)),
         );
         await tester.pump(frame * 3);
-        final size = tester.getSize(find.byType(MotionSizeSwitcher));
+        // The layout that holds the children clips them to the size of the
+        // current one.
+        final size = tester.getSize(find.byType(MotionSwitcher));
         expect(
-          tester.renderObject(find.byType(MotionSizeSwitcher)),
+          tester.renderObject(find.byType(MotionSwitcher)),
           paints..clipRect(rect: Offset.zero & size),
         );
       });
@@ -678,5 +680,37 @@ void main() {
     await tester.pump();
     expect(taps(a), 2);
     expect(focusA.hasFocus, isTrue);
+  });
+
+  testWidgets('MotionSizeSwitcher keeps the state of a leaving child while it '
+      'leaves, in both modes', (tester) async {
+    for (final immediateResize in [false, true]) {
+      _Child.created.clear();
+      Widget build(Widget child) => Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: MotionSizeSwitcher(
+            motion: _spring,
+            immediateResize: immediateResize,
+            child: child,
+          ),
+        ),
+      );
+      await tester.pumpWidget(build(_child('a')));
+      final state = tester.state(find.byKey(const ValueKey('a')));
+      await tester.pumpWidget(build(_child('b')));
+      await tester.pump(frame);
+      await tester.pump(frame);
+      expect(find.byKey(const ValueKey('a')), findsOneWidget);
+      expect(
+        tester.state(find.byKey(const ValueKey('a'))),
+        same(state),
+        reason: 'immediateResize: $immediateResize',
+      );
+      expect(_Child.created['a'], 1);
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+    }
   });
 }
