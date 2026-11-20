@@ -1249,12 +1249,11 @@ class _FrictionSimulation extends FrictionSimulation with SettlingSimulation {
     double position,
     this._velocity, {
     required super.tolerance,
-    required double constantDeceleration,
+    required super.constantDeceleration,
   }) : super(
           _drag,
           position,
           _velocity,
-          constantDeceleration: constantDeceleration,
         );
 
   final double _drag;

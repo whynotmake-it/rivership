@@ -407,13 +407,14 @@ class RenderInputSlotLayout extends RenderBox
         _isInset(trailingPlacement, trailingSize.height, lineHeight);
 
     // How far the text starts in from an edge, for a field [height] tall.
-    double edge(Size? slot, bool inset, double height) => slot == null
+    double edge(Size? slot, double height, {required bool inset}) =>
+        slot == null
         ? paddingX
         : (inset ? _insetOf(slot.height, height) : paddingX) + slot.width + gap;
 
     BoxConstraints fieldConstraints(double height) {
-      final start = edge(leadingSize, leadingInset, height);
-      final end = edge(trailingSize, trailingInset, height);
+      final start = edge(leadingSize, height, inset: leadingInset);
+      final end = edge(trailingSize, height, inset: trailingInset);
       final maxHeight = constraints.hasBoundedHeight
           ? math.max(0, constraints.maxHeight - 2 * paddingY).toDouble()
           : double.infinity;
@@ -466,13 +467,13 @@ class RenderInputSlotLayout extends RenderBox
     final width = bounded
         ? constraints.maxWidth
         : constraints.constrainWidth(
-            edge(leadingSize, leadingInset, insetHeight) +
+            edge(leadingSize, insetHeight, inset: leadingInset) +
                 fieldSize.width +
-                edge(trailingSize, trailingInset, insetHeight),
+                edge(trailingSize, insetHeight, inset: trailingInset),
           );
     final size = Size(width, height);
 
-    double slotY(Size slot, bool inset) {
+    double slotY(Size slot, {required bool inset}) {
       if (!multi) return (height - slot.height) / 2;
       if (inset) {
         return height - _insetOf(slot.height, insetHeight) - slot.height;
@@ -480,14 +481,14 @@ class RenderInputSlotLayout extends RenderBox
       return paddingY + math.max(0, (lineHeight - slot.height) / 2);
     }
 
-    _Placed? place(Size? slot, bool inset, {required bool start}) {
+    _Placed? place(Size? slot, {required bool inset, required bool start}) {
       if (slot == null) return null;
       final side = inset ? _insetOf(slot.height, insetHeight) : paddingX;
       return (
         size: slot,
         inset: inset,
         x: start ? side : width - side - slot.width,
-        y: slotY(slot, inset),
+        y: slotY(slot, inset: inset),
       );
     }
 
@@ -495,11 +496,11 @@ class RenderInputSlotLayout extends RenderBox
       size: size,
       fieldConstraints: fieldBox,
       fieldOffset: Offset(
-        edge(leadingSize, leadingInset, insetHeight),
+        edge(leadingSize, insetHeight, inset: leadingInset),
         multi ? paddingY : (height - fieldSize.height) / 2,
       ),
-      leading: place(leadingSize, leadingInset, start: true),
-      trailing: place(trailingSize, trailingInset, start: false),
+      leading: place(leadingSize, inset: leadingInset, start: true),
+      trailing: place(trailingSize, inset: trailingInset, start: false),
     );
   }
 

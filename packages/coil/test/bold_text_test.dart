@@ -6,22 +6,23 @@ void main() {
   testWidgets('bold text makes regular roles semibold', (tester) async {
     late CoilTextTheme plain;
     late CoilTextTheme bold;
-    Widget probe(bool boldText, void Function(CoilTextTheme) out) => MediaQuery(
-      data: MediaQueryData(boldText: boldText),
-      child: Builder(
-        builder: (context) {
-          out(CoilTheme.of(context).typography.pointer);
-          return const SizedBox();
-        },
-      ),
-    );
+    Widget probe(void Function(CoilTextTheme) out, {required bool boldText}) =>
+        MediaQuery(
+          data: MediaQueryData(boldText: boldText),
+          child: Builder(
+            builder: (context) {
+              out(CoilTheme.of(context).typography.pointer);
+              return const SizedBox();
+            },
+          ),
+        );
     await tester.pumpWidget(
       CoilTheme(
         data: CoilThemeData.light,
         child: Column(
           children: [
-            probe(false, (t) => plain = t),
-            probe(true, (t) => bold = t),
+            probe((t) => plain = t, boldText: false),
+            probe((t) => bold = t, boldText: true),
           ],
         ),
       ),

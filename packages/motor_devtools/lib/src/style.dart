@@ -401,22 +401,14 @@ class _GlyphPainter extends CustomPainter {
             stroke..strokeWidth = radius / 2,
           );
       case Glyph.play:
-        canvas.drawPath(
-          Path()
-            ..moveTo(8, 5.5)
-            ..lineTo(18.5, 12)
-            ..lineTo(8, 18.5)
-            ..close(),
-          fill..strokeJoin = StrokeJoin.round,
-        );
-        canvas.drawPath(
-          Path()
-            ..moveTo(8, 5.5)
-            ..lineTo(18.5, 12)
-            ..lineTo(8, 18.5)
-            ..close(),
-          stroke..strokeWidth = 1.5,
-        );
+        final triangle = Path()
+          ..moveTo(8, 5.5)
+          ..lineTo(18.5, 12)
+          ..lineTo(8, 18.5)
+          ..close();
+        canvas
+          ..drawPath(triangle, fill..strokeJoin = StrokeJoin.round)
+          ..drawPath(triangle, stroke..strokeWidth = 1.5);
       case Glyph.pause:
         for (final x in const [7.5, 14.5]) {
           canvas.drawRRect(
