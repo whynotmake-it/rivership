@@ -461,13 +461,17 @@ class _CoilSidebarMenuState extends State<CoilSidebarMenu> {
             final active =
                 CoilHoverItem.isActive(context, i) ||
                 states.contains(WidgetState.focused);
-            return _Row(
-              item: item,
-              nested: entry.nested,
-              active: active,
-              lit: item._selected || active,
-              style: widget.style,
+            return _PressedFill(
+              pressed: states.contains(WidgetState.pressed),
               motion: widget.motion,
+              child: _Row(
+                item: item,
+                nested: entry.nested,
+                active: active,
+                lit: item._selected || active,
+                style: widget.style,
+                motion: widget.motion,
+              ),
             );
           },
         ),
@@ -709,6 +713,43 @@ class _Row extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The wash under a row while it is pressed, which touch has no hover to
+/// show: it fades in as the finger lands and out as it lifts.
+class _PressedFill extends StatelessWidget {
+  const _PressedFill({
+    required this.pressed,
+    required this.motion,
+    required this.child,
+  });
+
+  final bool pressed;
+  final CoilMotion? motion;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = CoilTheme.of(context);
+    final radii = theme.shape.radii(CoilTheme.metricsOf(context).tier);
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    return SingleMotionBuilder(
+      value: pressed ? 1 : 0,
+      motion: pressed ? tokens.quick : tokens.fadeExit,
+      builder: (context, amount, child) => DecoratedBox(
+        decoration: ShapeDecoration(
+          color: theme.colors.active.withValues(
+            alpha: theme.colors.active.a * amount.clamp(0.0, 1.0),
+          ),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(radii.item),
+          ),
+        ),
+        child: child,
+      ),
+      child: child,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/slider/slider_layout.dart';
 import 'package:coil/src/components/slider/slider_painters.dart';
+import 'package:coil/src/components/slider/slider_scale.dart';
 import 'package:coil/src/components/slider/slider_style.dart';
 import 'package:coil/src/components/slider/slider_text.dart';
 import 'package:flutter/widgets.dart';
@@ -99,6 +100,8 @@ class SliderRow extends StatelessWidget {
 class SliderPill extends StatelessWidget {
   const SliderPill({
     required this.painter,
+    required this.reach,
+    required this.rtl,
     required this.style,
     required this.metrics,
     required this.label,
@@ -117,6 +120,10 @@ class SliderPill extends StatelessWidget {
 
   /// The knob's lighting under a plastic theme.
   final CoilRelief? knobRelief;
+
+  /// Where the knobs travel, and whether the track runs right to left.
+  final SliderReach reach;
+  final bool rtl;
   final CoilSliderStyle style;
   final CoilMetrics metrics;
   final Widget? label;
@@ -164,10 +171,12 @@ class SliderPill extends StatelessWidget {
             builder: (context, _) => Stack(
               children: [
                 for (final (i, f) in fractions().indexed)
-                  Align(
-                    alignment: AlignmentDirectional(
-                      f.clamp(0.0, 1.0) * 2 - 1,
-                      0,
+                  CustomSingleChildLayout(
+                    delegate: SliderThumbLayout(
+                      fraction: f.clamp(0.0, 1.0),
+                      reach: reach,
+                      rtl: rtl,
+                      width: box,
                     ),
                     child: SizedBox.square(
                       dimension: box,

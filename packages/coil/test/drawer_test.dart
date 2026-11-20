@@ -601,7 +601,6 @@ void main() {
         (TargetPlatform.macOS, 0.0),
       ]) {
         debugDefaultTargetPlatformOverride = platform;
-        addTearDown(() => debugDefaultTargetPlatformOverride = null);
         // The query fails here: no plugin is registered in tests.
         CoilScreenRadius.debugReset();
         await tester.pumpWidget(const SizedBox());
@@ -614,6 +613,8 @@ void main() {
         );
         expect(_radius(tester), radius, reason: '$platform');
       }
+      // The binding checks this before tear-downs run.
+      debugDefaultTargetPlatformOverride = null;
     });
 
     testWidgets('a square screen stays square', (tester) async {
@@ -662,7 +663,6 @@ void main() {
 
     testWidgets('on iOS, a pushed route keeps its back swipe', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       useScreen(tester, TestScreen.phone);
       final navigator = GlobalKey<NavigatorState>();
       await tester.pumpWidget(
@@ -692,6 +692,72 @@ void main() {
       expect(_open(tester), CoilDrawerEdge.end);
       await _drag(tester, const Offset(200, 500), 220);
       expect(_open(tester), isNull, reason: 'closing still drags');
+      // The binding checks this before tear-downs run.
+      debugDefaultTargetPlatformOverride = null;
+    });
+  });
+
+  group('haptics', () {
+    /// The haptic feedback the platform is asked for, on iOS.
+    List<Object?> record(WidgetTester tester) {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final played = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            played.add(call.arguments);
+          }
+          return null;
+        },
+      );
+      return played;
+    }
+
+    void stopRecording(WidgetTester tester) {
+      // The binding checks this before tear-downs run.
+      debugDefaultTargetPlatformOverride = null;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    }
+
+    testWidgets('a drag taps once as it crosses halfway, each way', (
+      tester,
+    ) async {
+      final played = record(tester);
+      await _pump(tester, const _Host());
+      await _drag(tester, const Offset(200, 500), -220);
+      expect(_open(tester), CoilDrawerEdge.end);
+      expect(played, ['HapticFeedbackType.selectionClick']);
+      played.clear();
+      await _drag(tester, const Offset(200, 500), 220);
+      expect(_open(tester), isNull);
+      expect(played, ['HapticFeedbackType.selectionClick']);
+      stopRecording(tester);
+    });
+
+    testWidgets('a drag that stops short of halfway makes no tap', (
+      tester,
+    ) async {
+      final played = record(tester);
+      await _pump(tester, const _Host());
+      await _drag(tester, const Offset(200, 500), -60);
+      expect(_open(tester), isNull);
+      expect(played, isEmpty);
+      stopRecording(tester);
+    });
+
+    testWidgets('opening without a drag taps at once', (tester) async {
+      final played = record(tester);
+      await _pump(tester, const _Host());
+      await tester.tap(find.text('Open start'));
+      await tester.pump();
+      expect(played, ['HapticFeedbackType.selectionClick']);
+      await tester.pumpAndSettle();
+      expect(played, hasLength(1));
+      stopRecording(tester);
     });
   });
 

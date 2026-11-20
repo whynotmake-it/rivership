@@ -209,6 +209,35 @@ void main() {
     expect(find.text('More'), findsOneWidget);
   });
 
+  testWidgets('a row washes while a finger holds it, and clears on lift', (
+    tester,
+  ) async {
+    await _pump(tester, tier: CoilTier.touch);
+    Color? wash() {
+      final row = find.ancestor(
+        of: find.text('Agents'),
+        matching: find.byType(DecoratedBox),
+      );
+      for (final box in row.evaluate().map((e) => e.widget as DecoratedBox)) {
+        final decoration = box.decoration;
+        if (decoration is ShapeDecoration && decoration.color != null) {
+          return decoration.color;
+        }
+      }
+      return null;
+    }
+
+    expect(wash()?.a ?? 0, 0, reason: 'at rest');
+    final finger = await tester.startGesture(
+      tester.getCenter(find.text('Agents')),
+    );
+    await tester.pumpAndSettle(const Duration(milliseconds: 50));
+    expect(wash()?.a, greaterThan(0), reason: 'pressed');
+    await finger.up();
+    await tester.pumpAndSettle();
+    expect(wash()?.a ?? 0, 0, reason: 'lifted');
+  });
+
   testWidgets('in a drawer at 2x text, the label still fits beside the '
       'action', (tester) async {
     tester.platformDispatcher.textScaleFactorTestValue = 2;

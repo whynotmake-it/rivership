@@ -1190,7 +1190,7 @@ void main() {
         textScale: 2,
         onChanged: (v) => got = v,
       );
-      await tester.tapAt(Offset(r.track.right - 23, r.track.center.dy));
+      await tester.tapAt(Offset(r.track.right - 10, r.track.center.dy));
       await tester.pump();
       expect(got?.end, closeTo(100, 1));
     });
@@ -1215,11 +1215,11 @@ void main() {
           return true;
         }),
       );
-      // The knob box is 20 on the pointer tier; centers stop 10 in.
+      // The knob is 16 wide on the pointer tier; centers stop 8 in.
       return [
         for (final r in marks)
           if (r.width <= 6)
-            (at: (r.center.dx - 10) / (box.width - 20), size: r.width),
+            (at: (r.center.dx - 8) / (box.width - 16), size: r.width),
       ];
     }
 

@@ -93,13 +93,13 @@ _HostState _host(WidgetTester tester) =>
 CoilRangeValues _values(WidgetTester tester) => _host(tester).values;
 
 /// The point at [fraction] of the range on the pill track: the knob centers
-/// stop half a knob box short of each end.
+/// stop half a knob short of each end.
 Offset _at(WidgetTester tester, double fraction) {
   final track = tester.getRect(
     find.descendant(of: _slider, matching: find.byType(CoilPainterLayer)),
   );
   final tier = CoilTheme.tierOf(tester.element(_slider));
-  final inset = tier == CoilTier.touch ? 22.0 : 10.0;
+  final inset = tier == CoilTier.touch ? 11.0 : 8.0;
   final x = track.left + inset + (track.width - inset * 2) * fraction;
   return Offset(
     Directionality.of(tester.element(_slider)) == TextDirection.rtl

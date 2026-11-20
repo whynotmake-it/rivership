@@ -564,9 +564,10 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   ).merge(CoilTheme.styleOf<CoilSliderStyle>(context)).merge(widget.style);
 
   /// The row's range spans its full width; the pill's stops half a knob
-  /// short of each end, so the knob stays inside the track.
+  /// short of each end, so the knob's edge meets the end of the track. The
+  /// knob's box, which is its hit area, may reach past the track.
   SliderReach _reach(CoilSliderStyle style) =>
-      SliderReach(_compactTrack ? style.knobBox! / 2 : 0);
+      SliderReach(_compactTrack ? style.knobSize! / 2 : 0);
 
   void _dragStart(DragStartDetails d, double width, SliderReach reach) {
     _dragging = true;
@@ -979,6 +980,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
           relief: relief(CoilReliefRole.track),
         ),
         knobRelief: relief(CoilReliefRole.raised),
+        reach: reach,
+        rtl: _rtl,
         style: style,
         metrics: metrics,
         label: widget.label,

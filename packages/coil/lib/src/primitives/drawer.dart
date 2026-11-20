@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/colors.dart';
+import 'package:coil/src/foundation/haptics.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
@@ -539,7 +540,11 @@ class _CoilDrawerState extends State<CoilDrawer>
     if (widget.open == oldWidget.open) return;
     // A drag that decided this already springs there with its velocity.
     final target = _targetOf(widget.open);
-    if (!_dragging && target != _target) _animateTo(target);
+    if (!_dragging && target != _target) {
+      // Not decided by a drag, which tapped when it crossed halfway.
+      unawaited(CoilHaptics.play(context, CoilHapticEvent.drawer));
+      _animateTo(target);
+    }
     if (oldWidget.open != null) _closed();
     if (widget.open != null) _schedule(_opened);
   }
@@ -826,6 +831,10 @@ class _CoilDrawerState extends State<CoilDrawer>
     final edge = _dragSide > 0 ? CoilDrawerEdge.start : CoilDrawerEdge.end;
     if (_panel(edge) == null) return;
     next = _dragSide > 0 ? next.clamp(0.0, 1.0) : next.clamp(-1.0, 0.0);
+    // A tap each time the drag crosses halfway, either way.
+    if ((_position.value.abs() >= 0.5) != (next.abs() >= 0.5)) {
+      unawaited(CoilHaptics.play(context, CoilHapticEvent.drawer));
+    }
     _position.value = next;
   }
 

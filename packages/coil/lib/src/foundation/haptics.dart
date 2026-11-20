@@ -19,6 +19,10 @@ enum CoilHapticEvent {
 
   /// A sheet snaps to a detent.
   detent,
+
+  /// A drawer is dragged past its halfway point, or opens or closes
+  /// without a drag.
+  drawer,
 }
 
 /// A haptic the platform can play.
@@ -55,6 +59,7 @@ class CoilHaptics with Diagnosticable {
     this.longPress,
     this.copy,
     this.detent,
+    this.drawer,
   });
 
   /// The conventions of [platform]:
@@ -65,6 +70,7 @@ class CoilHaptics with Diagnosticable {
   /// | longPress | mediumImpact | longPress | none |
   /// | copy | selectionClick | selectionClick | none |
   /// | detent | lightImpact | none | none |
+  /// | drawer | selectionClick | none | none |
   factory CoilHaptics.platform(TargetPlatform platform) => switch (platform) {
     TargetPlatform.iOS => const CoilHaptics(
       toggle: CoilHaptic.selectionClick,
@@ -72,6 +78,7 @@ class CoilHaptics with Diagnosticable {
       longPress: CoilHaptic.mediumImpact,
       copy: CoilHaptic.selectionClick,
       detent: CoilHaptic.lightImpact,
+      drawer: CoilHaptic.selectionClick,
     ),
     TargetPlatform.android => const CoilHaptics(
       longPress: CoilHaptic.longPress,
@@ -98,6 +105,10 @@ class CoilHaptics with Diagnosticable {
   /// For a sheet snapping to a detent.
   final CoilHaptic? detent;
 
+  /// For a drawer crossing its halfway point while dragged, and for one
+  /// that opens or closes without a drag.
+  final CoilHaptic? drawer;
+
   /// The haptic for [event].
   CoilHaptic? operator [](CoilHapticEvent event) => switch (event) {
     CoilHapticEvent.toggle => toggle,
@@ -105,6 +116,7 @@ class CoilHaptics with Diagnosticable {
     CoilHapticEvent.longPress => longPress,
     CoilHapticEvent.copy => copy,
     CoilHapticEvent.detent => detent,
+    CoilHapticEvent.drawer => drawer,
   };
 
   /// The mapping at [context]: the theme's, else the platform's. None on
@@ -134,12 +146,14 @@ class CoilHaptics with Diagnosticable {
     CoilHaptic? longPress,
     CoilHaptic? copy,
     CoilHaptic? detent,
+    CoilHaptic? drawer,
   }) => CoilHaptics(
     toggle: toggle ?? this.toggle,
     pick: pick ?? this.pick,
     longPress: longPress ?? this.longPress,
     copy: copy ?? this.copy,
     detent: detent ?? this.detent,
+    drawer: drawer ?? this.drawer,
   );
 
   @override
@@ -149,10 +163,12 @@ class CoilHaptics with Diagnosticable {
       other.pick == pick &&
       other.longPress == longPress &&
       other.copy == copy &&
-      other.detent == detent;
+      other.detent == detent &&
+      other.drawer == drawer;
 
   @override
-  int get hashCode => Object.hash(toggle, pick, longPress, copy, detent);
+  int get hashCode =>
+      Object.hash(toggle, pick, longPress, copy, detent, drawer);
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
