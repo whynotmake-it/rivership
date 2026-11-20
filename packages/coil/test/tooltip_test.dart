@@ -354,7 +354,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));
     // Mid-glide the bubble is between the buttons, not reopening.
-    final mid = tester.getCenter(find.byType(MotionSize)).dx;
+    final mid = tester.getCenter(find.byType(MotionSizeSwitcher).last).dx;
     expect(mid, greaterThan(tester.getCenter(find.text('[Bold]')).dx));
     expect(mid, lessThan(tester.getCenter(find.text('[Italic]')).dx));
     // Fully present, so not sliding: the glide itself moves a resampled
