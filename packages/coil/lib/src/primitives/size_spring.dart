@@ -19,10 +19,12 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// gets longer, a message that wraps to another line, a count that gains a
 /// digit. The box springs from the size it shows to the child's new natural
 /// size, and keeps its velocity if the child changes again on the way. But
-/// when the *constraints* change (the window resizes, a parent's width
-/// moves, the text scale changes), the box snaps to the new natural size and
-/// drops any spring in flight: a window being dragged must never lag behind
-/// the cursor.
+/// when a change in the *constraints* changes the child's size (the window
+/// resizes and rewraps or ellipsizes it, the text scale changes), the box
+/// snaps to the new natural size and drops any spring in flight: a window
+/// being dragged must never lag behind the cursor. A change in constraints
+/// that leaves the child's size alone (a sibling taking more room in a Row)
+/// keeps the spring.
 ///
 /// While the box is smaller than its child, the child sits by [alignment]
 /// and is clipped. Under reduced motion (a [Motion.instant] [motion]) the
@@ -329,7 +331,8 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
     _hasVisualOverflow = false;
     final constraints = this.constraints;
     final child = this.child;
-    final changed = _lastConstraints != constraints || _snapNext;
+    final roomChanged = _lastConstraints != constraints;
+    final reset = _snapNext;
     _lastConstraints = constraints;
     _snapNext = false;
     if (child == null || constraints.isTight) {
@@ -347,10 +350,16 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
     child.layout(constraints, parentUsesSize: true);
     final childSize = child.size;
     final target = _target;
-    if (target == null || changed || !_animates) {
-      // The parent changed the room, or the first size: take the child's
-      // natural size at once and drop any spring in flight. A stop changes
-      // no value, so it doesn't notify mid-layout.
+    if (target == null ||
+        reset ||
+        !_animates ||
+        (roomChanged && childSize != target)) {
+      // The first size, a reset, or a change in the room that changed the
+      // child's size (a window resize that rewraps or ellipsizes it): take
+      // the child's natural size at once and drop any spring in flight. A
+      // change in the room that leaves the child's size alone (a sibling
+      // taking more room in a Row) falls through and keeps the spring. A
+      // stop changes no value, so it doesn't notify mid-layout.
       if (_following || _controller.isAnimating) {
         _controller.stop(canceled: true);
       }

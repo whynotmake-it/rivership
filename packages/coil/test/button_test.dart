@@ -233,5 +233,20 @@ void main() {
       expect(long, greaterThan(short));
       expect(mid, inExclusiveRange(short, long));
     });
+
+    testWidgets('a longer label that starts loading in the same rebuild '
+        'springs wider instead of jumping', (tester) async {
+      await tester.pumpWidget(loadingButton(loading: false));
+      final start = tester.getSize(find.byType(CoilButton)).width;
+      await tester.pumpWidget(
+        loadingButton(loading: true, label: 'Saving your changes'),
+      );
+      await tester.pump(const Duration(milliseconds: 32));
+      final mid = tester.getSize(find.byType(CoilButton)).width;
+      await tester.pumpAndSettle();
+      final settled = tester.getSize(find.byType(CoilButton)).width;
+      expect(mid, greaterThan(start));
+      expect(mid, lessThan(settled));
+    });
   });
 }
