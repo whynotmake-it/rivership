@@ -17,39 +17,13 @@ This example keeps platform folders for **iOS, Android, macOS and web only**, be
 
 ## What's in it
 
-- **Home** lists every component in DESIGN.md §14, grouped the same way. Components that aren't built yet are listed as planned.
+- **Home** lists the components, grouped as in DESIGN.md §14.
 - **Foundations:** colors in both themes, the type scale, spacing and sizes per tier, shapes, and a motion page that plays `quick`, `standard`, `gentle` and `fade` side by side.
 - **One page per component**, with its variants and states as live examples.
 
 The settings button in every page header opens a sheet with preview controls: theme, size tier, text scale, right to left, high contrast, reduced motion and slow motion. Each control sets the real input a component reads (`MediaQuery`, `Directionality`, `CoilTheme`, `CoilAdaptiveScope`), so a page looks exactly as it would on a device set up that way. Slow motion sets Flutter's `timeDilation` to 5.
 
 The app runs under a bare `WidgetsApp` and is wrapped in `MotorDevTools`, so you can inspect every coil animation from the floating bubble.
-
-## Add a page
-
-A new page is one file plus one registry line.
-
-1. Write `lib/src/pages/components/<name>_page.dart` with the page widget and its entry:
-
-   ```dart
-   const badgeEntry = CatalogEntry(
-     slug: 'badge',
-     title: 'Badge', // the name DESIGN.md §14 uses
-     group: CatalogGroup.leafControls,
-     summary: 'Status and categories.',
-     page: BadgePage.new,
-   );
-   ```
-
-   Build the page from `CatalogPage` and `DemoSection` in `lib/src/widgets/catalog_page.dart`.
-
-2. Add `badgeEntry` to `catalogEntries` in `lib/src/registry.dart`.
-
-The home screen matches entries to DESIGN.md's list by `title`, so the planned row turns into a link. The route and the smoke tests pick up the page automatically.
-
-## Tests
-
-`flutter test` opens every page in light and dark, at the pointer and touch tiers, and fails on any overflow or exception. It also checks navigation and that the settings apply live. Component goldens live in coil's own tests, not here.
 
 ## Mounting it in another app
 
