@@ -259,6 +259,11 @@ Named holds that aren't tokens:
   - a switch decides by the projected position `x + v · 0.1 s`;
   - sliders don't fling: the value never coasts.
 - **Snap on reflow.** A highlight, selected pill or active background springs when its *target* changes, and snaps when the target only moved because of layout.
+- **A component resizes itself on content, and follows its room at once.** When a component's own content or state changes, the component springs to its new size inside itself (`standard` growing, `standardExit` shrinking, content fading on `fade` / `fadeExit`): a label gets longer, a message arrives, a count gains a digit. When the incoming constraints change (a window resize, the text scale, a parent's width) it relayouts on that frame, with no animation, so a dragged window never lags. Two primitives do it:
+  - `CoilPresentSlot` is an optional part (an error, a description, a spinner, a trailing icon) with a 0 to 1 presence. Its layout contribution is its extent *plus the gap attached to it*, scaled by the presence, so a gap a `Column`'s `spacing` couldn't animate goes with the part. The content blur-fades on the same presence, stays mounted with its last child while it leaves (out of focus and semantics), and is never stretched.
+  - `CoilSizeSpring` (and `CoilSizeSwitcher`, which cross-fades keyed content inside it) springs a box from its old size to the child's new one, keeping velocity when retargeted, and snaps, dropping any spring, when its constraints (or the text scale) change.
+
+  Under reduced motion the room and the size jump and the content only fades. `Motion.instant` on the component's track turns either off.
 - **Height collapses** (Accordion, groups, ThinkingSteps, Banner rows) animate a 0..1 height factor on `standard`. Opacity leads on `fade`, so content dissolves instead of being sliced. A child resizing inside an open region is instant.
 - **No idle tickers.** Nothing animates at rest. The loops are spinners, the Skeleton pulse and the ThinkingIndicator's word cycle. Reduced motion stops the first two and turns the word cycle into a crossfade.
 
@@ -554,10 +559,10 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   | destructive | red 15 % (dark 20 %) | 25 % (30 %) | 15 % | `redLabel` |
 
 - **States:**
-  - `loading`: a spinner replaces the leading slot (or the icon) with the width locked, at full strength, `Semantics(value: 'Loading')`.
+  - `loading`: at full strength, `Semantics(value: 'Loading')`. A spinner replaces the leading widget (or an icon-only button's icon) in place, at the same size. Without a leading widget the spinner enters as a leading slot: the button grows by the spinner plus `buttonGap` and the label stays visible ("spinner Save").
   - `selected`: held pressed colors, for a menu trigger while its menu shows.
   - Disabled: 50 %.
-- **Motion:** fill and label colors on `fade`; press collapse on `quick` (release on `standard`); icon weight on `fade`; leading/loading swap with the blur-fade on `quick`.
+- **Motion:** fill and label colors on `fade`; press collapse on `quick` (release on `standard`); icon weight on `fade`; leading/loading swap with the blur-fade on `quick`. The width springs on `standard` (`standardExit` shrinking) when the label changes (cross-fading on `fade`) or a leading part, a trailing part or the loading spinner comes or goes, each with its gap and the padding it changes (`CoilButtonTrack.size`). A change of the room around the button relayouts at once.
 - **Keyboard:** Enter or Space activates.
 - **Do:** one primary per view; destructive actions as `destructive` with a confirm.
 - **Don't:** scale on press; ripple; a solid red button; two primaries side by side.
@@ -572,7 +577,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - `ghost`: no outline, no padding, inherits text color. It keeps the badge's height (24, compact 20), so it lines up with the others in a row.
   - Colors: gray (default), brand, and the Tailwind-500 hues (red … rose).
 - **Shape** (`shape: CoilBadgeShape`): `item` (the default) takes the theme's item radius, which `CoilShape.pill` already makes full; `pill` is full (half the height) under any shape family.
-- **Motion:** none. When a host adds one (ThinkingSteps sources), scale 0.85 → 1 + fade on `standard`.
+- **Motion:** a label that changes (a count going 9 → 10) cross-fades while the badge springs to its new width on `standard` (`CoilBadgeTrack.size`); a change of the room around it relayouts at once. When a host adds an entrance (ThinkingSteps sources), scale 0.85 → 1 + fade on `standard`.
 - **Semantics:** plain text; the dot is excluded.
 - **Do:** status and categories.
 - **Don't:** make it tappable; use a Chip-like Button instead.
@@ -683,6 +688,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Toggle rows are one target.** In a horizontal field or a setting row, a tap anywhere in the row (padding, gap, description) toggles a checkbox, switch or radio, as in a native settings list. The control shows hover and press while the row has them, and keeps its own focus ring. Other controls (text fields, selects, sliders, buttons) and rows with several controls respond only on the control; the label still focuses a text field. `CoilFieldRow` does this for any row; a control opts in with `CoilFieldControl.tapArea`.
 - **One control per Field.** A group of controls goes in a FieldSet, a container with a header legend.
 - **Invalid:** the label turns `destructive`, and the control gets its invalid look.
+- **Messages own their gap.** The description and the error are slots (`CoilPresentSlot`) that contribute their height *plus the message gap* above them, scaled by a presence, so a field gets taller by one smooth spring when an error arrives and what follows glides (`CoilFieldTrack.message`: `standard` growing, `standardExit` shrinking; the text blur-fades on `fade` / `fadeExit`). A different message cross-fades and the slot springs to its new height. Everything that shows messages through a field inherits this: inputs, selects, group fields and setting rows. A resize of the field's width relayouts at once, wrapping included. Reduced motion: the field jumps and the message fades.
 
 #### CheckboxGroup (built)
 
@@ -719,7 +725,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
 - **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
 - **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
-- **Motion:** merge/split `standard`, highlight `quick`.
+- **Motion:** merge/split `standard`, highlight `quick`. A segment whose label changes cross-fades it and springs to its new width on `standard` (`CoilToggleGroupTrack.size`); the selection follows.
 - **Keyboard:** roving; Left and Right move; Space toggles.
 - **Semantics:** toggle buttons with `selected`.
 - **Use:** multi-select formatting (Bold / Italic). For single choice use Tabs or a RadioGroup.
@@ -784,9 +790,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - hover (pointer): the value gets a `brand` 20 % mark and the action turns foreground;
   - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s after the last copy, then idle. Any failure to set the clipboard counts as `failed`, not only a platform error.
   - Copying again while the result shows animates nothing and only restarts the 2 s. Copying while the result leaves turns it around from where it is (no restart, the check stays drawn). This is `CoilCopyController` plus `CoilCopySwitcher`, the one state machine every copy affordance uses.
-  - The button label width is reserved by a "Copied" ghost.
+  - The button label is not reserved: the row springs between the labels' real widths as "Copy" becomes "Copied" and back.
 - **Feedback:** **inline on every platform.** The icon swaps to a check (the theme's `check`, or a drawn one; `failed` for an ×) and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
-- **Motion:** icon swap: two icon presences crossing (§11), in on `quick`, out on `quickExit`; coil's glyphs blur-fade at scale 0.8 with them and its check and × also draw in on `fade`, once per appearance; an app's icons animate themselves or fade and scale. The icon stays in place while the button's label cross-fades beside it, start-aligned (`CoilCopySwitcher`), so nothing shifts when the longer label leaves. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`; the swap and draw run in the shared `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`. Reduced motion makes the swap instant; coil's check still draws in on `fade`.
+- **Motion:** icon swap: two icon presences crossing (§11), in on `quick`, out on `quickExit`; coil's glyphs blur-fade at scale 0.8 with them and its check and × also draw in on `fade`, once per appearance; an app's icons animate themselves or fade and scale. The icon stays in place while the button's label cross-fades beside it, start-aligned, on the same `swap` track, and the action springs to the new label's width on `standard` (`CoilInputCopyTrack.size`). Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.size`, `.draw`; the swap and draw run in the shared `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`. Reduced motion makes the swap instant; coil's check still draws in on `fade`.
 - **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
 - **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed" when the result appears (not again for a copy that only extends it).
 - **Keyboard:** Enter or Space copies.
@@ -936,6 +942,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Dismiss: reverse on the exit tokens.
   - Touch: swipe horizontally to dismiss (with velocity).
   - Reduced motion: fade only.
+  - A description that comes, goes or changes springs the banner's height on `standard` (`CoilBannerTrack.size`), the text fading on `fade`. The actions move under the text as soon as a description arrives, and back beside it once a leaving one has closed; that step is a change of layout, not a spring.
 - **Semantics:** a live region (polite; assertive for destructive); the ✕ is labeled "Dismiss".
 - **Don't:** stack more than 2; use it for transient confirmations (use inline feedback).
 

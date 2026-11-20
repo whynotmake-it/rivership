@@ -29,6 +29,14 @@ final class CoilToggleGroupTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilToggleGroup.label',
   );
 
+  /// A segment's width as its label changes: the segment springs and the
+  /// selection follows it. Default motion: `standard`; the label
+  /// cross-fades on `fade` / `fadeExit`.
+  static final size = CoilToggleGroupTrack<double>._(
+    .single,
+    debugLabel: 'CoilToggleGroup.size',
+  );
+
   /// The touch press fill. Default motion: `fade`.
   static final press = CoilToggleGroupTrack<double>._(
     .single,
@@ -38,6 +46,10 @@ final class CoilToggleGroupTrack<T extends Object> extends Track<T> {
 
 /// A horizontal row of toggles whose selected items merge into one block: a
 /// multi-select segmented control.
+///
+/// A segment whose label changes cross-fades it and springs to the new
+/// width ([CoilToggleGroupTrack.size]); the selection follows. A change of
+/// the room around the group relayouts at once.
 ///
 /// Left and Right (following the text direction) move focus, Home and End
 /// jump, and Space or Enter toggles. The segments are one tab stop.
@@ -192,7 +204,16 @@ class CoilToggleGroup<T> extends StatelessWidget {
                           child: child!,
                         ),
                       ),
-                      child: option.label,
+                      child: CoilSizeSwitcher(
+                        alignment: AlignmentDirectional.centerStart,
+                        sizeMotion: motionFor(
+                          CoilToggleGroupTrack.size,
+                          tokens.standard,
+                        ),
+                        motion: motion,
+                        debugLabel: 'CoilToggleGroup.label',
+                        child: option.label,
+                      ),
                     ),
                   ),
                 ),

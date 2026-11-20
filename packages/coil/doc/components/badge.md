@@ -6,7 +6,7 @@
 import 'package:coil/badge.dart';
 ```
 
-Exports `CoilBadge`, `CoilBadgeColor`, `CoilBadgeShape`, `CoilBadgeStyle`, `CoilBadgeVariant`.
+Exports `CoilBadge`, `CoilBadgeColor`, `CoilBadgeShape`, `CoilBadgeStyle`, `CoilBadgeTrack`, `CoilBadgeVariant`.
 
 To change its look or composition, eject a copy into your app with `dart run coil_cli:eject badge` (see [SKILL.md](../../SKILL.md)). The full spec, including the tokens and rules these sections cite, is in [DESIGN.md](../../DESIGN.md).
 
@@ -20,7 +20,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
   - `ghost`: no outline, no padding, inherits text color. It keeps the badge's height (24, compact 20), so it lines up with the others in a row.
   - Colors: gray (default), brand, and the Tailwind-500 hues (red … rose).
 - **Shape** (`shape: CoilBadgeShape`): `item` (the default) takes the theme's item radius, which `CoilShape.pill` already makes full; `pill` is full (half the height) under any shape family.
-- **Motion:** none. When a host adds one (ThinkingSteps sources), scale 0.85 → 1 + fade on `standard`.
+- **Motion:** a label that changes (a count going 9 → 10) cross-fades while the badge springs to its new width on `standard` (`CoilBadgeTrack.size`); a change of the room around it relayouts at once. When a host adds an entrance (ThinkingSteps sources), scale 0.85 → 1 + fade on `standard`.
 - **Semantics:** plain text; the dot is excluded.
 - **Do:** status and categories.
 - **Don't:** make it tappable; use a Chip-like Button instead.

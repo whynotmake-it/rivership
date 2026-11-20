@@ -2,7 +2,6 @@ import 'package:coil/coil.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:motor_widgets/motor_widgets.dart';
 
 import 'src/golden_sheet.dart';
 import 'src/test_icons.dart';
@@ -128,60 +127,126 @@ void main() {
       handle.dispose();
     });
 
-    for (final withLeading in [false, true]) {
-      testWidgets(
-        'loading blur-fades both ways '
-        '(${withLeading ? 'leading slot' : 'text only'})',
-        (tester) async {
-          Widget build({required bool loading}) => Directionality(
-            textDirection: TextDirection.ltr,
-            child: CoilTheme(
-              data: goldenLight,
-              child: Center(
-                child: CoilButton(
-                  onPressed: () {},
-                  loading: loading,
-                  loadingIndicator: const SizedBox(key: Key('custom-spinner')),
-                  leading: withLeading
-                      ? const TestIcon(TestGlyph.plus, key: Key('icon'))
-                      : null,
-                  child: const Text('Save', key: Key('label')),
-                ),
-              ),
+    Widget loadingButton({
+      required bool loading,
+      Widget? leading,
+      String label = 'Save',
+    }) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: CoilTheme(
+        data: goldenLight,
+        child: Center(
+          child: CoilButton(
+            onPressed: () {},
+            loading: loading,
+            loadingIndicator: const SizedBox.square(
+              dimension: 16,
+              key: Key('custom-spinner'),
             ),
-          );
-          final idle = withLeading
-              ? find.byKey(const Key('icon'))
-              : find.byKey(const Key('label'));
-          final spinner = find.byKey(const Key('custom-spinner'));
+            leading: leading,
+            child: Text(label, key: const Key('label')),
+          ),
+        ),
+      ),
+    );
 
-          await tester.pumpWidget(build(loading: false));
-          final switcher = tester.state(find.byType(MotionSwitcher));
-          await tester.pumpWidget(build(loading: true));
-          // The switcher keeps its state when the hidden label joins the
-          // stack in front of it, so the swap animates instead of snapping.
-          expect(tester.state(find.byType(MotionSwitcher)), same(switcher));
-          await tester.pump(const Duration(milliseconds: 16));
-          // Mid-swap: the idle content is still leaving and the spinner
-          // arriving, both drawn by the switcher, not snapped.
-          expect(spinner, findsOneWidget);
-          expect(
-            find.ancestor(of: idle, matching: find.byType(MotionSwitcher)),
-            findsWidgets,
-          );
-          await tester.pumpAndSettle();
-          expect(
-            find.ancestor(of: idle, matching: find.byType(MotionSwitcher)),
-            findsNothing,
-          );
+    testWidgets('loading with a leading widget swaps it for the spinner '
+        'in place, at the same size', (tester) async {
+      const icon = TestIcon(TestGlyph.plus, key: Key('icon'));
+      const spinner = Key('custom-spinner');
+      await tester.pumpWidget(loadingButton(loading: false, leading: icon));
+      final width = tester.getSize(find.byType(CoilButton)).width;
 
-          await tester.pumpWidget(build(loading: false));
-          await tester.pump(const Duration(milliseconds: 16));
-          expect(spinner, findsOneWidget, reason: 'the spinner fades out');
-          await tester.pumpAndSettle();
-          expect(spinner, findsNothing);
-        },
+      await tester.pumpWidget(loadingButton(loading: true, leading: icon));
+      await tester.pump(const Duration(milliseconds: 16));
+      // Mid-swap: the icon is still leaving and the spinner arriving.
+      expect(find.byKey(spinner), findsOneWidget);
+      expect(find.byKey(const Key('icon')), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('icon')), findsNothing);
+      expect(tester.getSize(find.byType(CoilButton)).width, width);
+
+      await tester.pumpWidget(loadingButton(loading: false, leading: icon));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.byKey(spinner), findsOneWidget, reason: 'it fades out');
+      await tester.pumpAndSettle();
+      expect(find.byKey(spinner), findsNothing);
+      expect(tester.getSize(find.byType(CoilButton)).width, width);
+    });
+
+    testWidgets('loading without a leading widget grows the button by a '
+        'spinner beside its still-visible label, and shrinks back', (
+      tester,
+    ) async {
+      await tester.pumpWidget(loadingButton(loading: false));
+      final idle = tester.getSize(find.byType(CoilButton)).width;
+      final labelLeft = tester.getTopLeft(find.byKey(const Key('label'))).dx;
+
+      await tester.pumpWidget(loadingButton(loading: true));
+      await tester.pump(const Duration(milliseconds: 40));
+      final mid = tester.getSize(find.byType(CoilButton)).width;
+      expect(mid, greaterThan(idle), reason: 'it is growing');
+      await tester.pumpAndSettle();
+      final loading = tester.getSize(find.byType(CoilButton)).width;
+      expect(loading, greaterThan(mid), reason: 'it was still growing');
+      expect(find.byKey(const Key('custom-spinner')), findsOneWidget);
+      expect(find.byKey(const Key('label')), findsOneWidget);
+      expect(
+        tester
+            .widget<Opacity>(
+              find
+                  .ancestor(
+                    of: find.byKey(const Key('label')),
+                    matching: find.byType(Opacity),
+                  )
+                  .first,
+            )
+            .opacity,
+        1,
+        reason: 'the label stays visible',
       );
-    }
+      // The spinner sits before the label, which moved over to make room.
+      expect(
+        tester.getTopLeft(find.byKey(const Key('label'))).dx,
+        greaterThan(labelLeft),
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('custom-spinner'))).right,
+        lessThanOrEqualTo(tester.getTopLeft(find.byKey(const Key('label'))).dx),
+      );
+
+      await tester.pumpWidget(loadingButton(loading: false));
+      await tester.pumpAndSettle();
+      expect(tester.getSize(find.byType(CoilButton)).width, idle);
+      expect(find.byKey(const Key('custom-spinner')), findsNothing);
+    });
+
+    testWidgets('a longer label springs the button wider instead of '
+        'jumping', (tester) async {
+      await tester.pumpWidget(loadingButton(loading: false));
+      final short = tester.getSize(find.byType(CoilButton)).width;
+      await tester.pumpWidget(loadingButton(loading: false, label: 'Saving…'));
+      await tester.pump(const Duration(milliseconds: 40));
+      final mid = tester.getSize(find.byType(CoilButton)).width;
+      await tester.pumpAndSettle();
+      final long = tester.getSize(find.byType(CoilButton)).width;
+      expect(long, greaterThan(short));
+      expect(mid, inExclusiveRange(short, long));
+    });
+
+    testWidgets('a longer label that starts loading in the same rebuild '
+        'springs wider instead of jumping', (tester) async {
+      await tester.pumpWidget(loadingButton(loading: false));
+      final start = tester.getSize(find.byType(CoilButton)).width;
+      await tester.pumpWidget(
+        loadingButton(loading: true, label: 'Saving your changes'),
+      );
+      await tester.pump(const Duration(milliseconds: 32));
+      final mid = tester.getSize(find.byType(CoilButton)).width;
+      await tester.pumpAndSettle();
+      final settled = tester.getSize(find.byType(CoilButton)).width;
+      expect(mid, greaterThan(start));
+      expect(mid, lessThan(settled));
+    });
   });
 }

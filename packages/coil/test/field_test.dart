@@ -299,6 +299,130 @@ void main() {
       expect(focus.hasFocus, isTrue);
     });
   });
+
+  group('CoilField layout motion', () {
+    const message = 'Enter an address we can send receipts to.';
+
+    Widget app({
+      required ValueNotifier<String?> error,
+      ValueNotifier<double>? width,
+      bool reduceMotion = false,
+    }) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+        child: withOverlay(
+          CoilTheme(
+            data: goldenLight,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: ListenableBuilder(
+                listenable: Listenable.merge([error, ?width]),
+                builder: (context, _) => SizedBox(
+                  width: width?.value ?? 320,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CoilField(
+                        label: const Text('Email'),
+                        error: error.value == null ? null : Text(error.value!),
+                        child: const CoilInput(),
+                      ),
+                      const SizedBox(key: Key('below'), height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    double fieldHeight(WidgetTester tester) =>
+        tester.getSize(find.byType(CoilField)).height;
+
+    double belowTop(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(const Key('below'))).dy;
+
+    testWidgets('an error glides in and out, taking the gap with it', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final error = ValueNotifier<String?>(null);
+      await tester.pumpWidget(app(error: error));
+      await tester.pumpAndSettle();
+      final restHeight = fieldHeight(tester);
+      final restBelow = belowTop(tester);
+
+      error.value = message;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      final growingHeight = fieldHeight(tester);
+      final growingBelow = belowTop(tester);
+      await tester.pumpAndSettle();
+      final shownHeight = fieldHeight(tester);
+      final shownBelow = belowTop(tester);
+      expect(growingHeight, inExclusiveRange(restHeight, shownHeight));
+      expect(growingBelow, inExclusiveRange(restBelow, shownBelow));
+      // What follows moved by exactly what the field grew by.
+      expect(shownBelow - restBelow, shownHeight - restHeight);
+      final node = _fieldNode(tester).getSemanticsData();
+      expect(node.label, contains(message));
+      expect(node.flagsCollection.isLiveRegion, isTrue);
+
+      error.value = null;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(fieldHeight(tester), inExclusiveRange(restHeight, shownHeight));
+      expect(find.text(message), findsOneWidget, reason: 'it fades out');
+      expect(
+        _fieldNode(tester).getSemanticsData().label,
+        isNot(contains(message)),
+        reason: 'a leaving error is not read',
+      );
+      await tester.pumpAndSettle();
+      expect(fieldHeight(tester), restHeight);
+      expect(belowTop(tester), restBelow);
+      expect(find.text(message), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('under reduced motion the field jumps to the new layout', (
+      tester,
+    ) async {
+      final error = ValueNotifier<String?>(null);
+      await tester.pumpWidget(app(error: error, reduceMotion: true));
+      await tester.pumpAndSettle();
+      final restHeight = fieldHeight(tester);
+
+      error.value = message;
+      await tester.pump();
+      final firstFrame = fieldHeight(tester);
+      await tester.pumpAndSettle();
+      expect(firstFrame, greaterThan(restHeight));
+      expect(firstFrame, fieldHeight(tester));
+    });
+
+    testWidgets('a change of the available width relayouts at once', (
+      tester,
+    ) async {
+      final error = ValueNotifier<String?>(message);
+      final width = ValueNotifier<double>(400);
+      await tester.pumpWidget(app(error: error, width: width));
+      await tester.pumpAndSettle();
+      final wide = fieldHeight(tester);
+
+      // Narrower, so the message wraps onto more lines.
+      width.value = 160;
+      await tester.pump();
+      final firstFrame = fieldHeight(tester);
+      await tester.pumpAndSettle();
+      expect(firstFrame, greaterThan(wide));
+      expect(firstFrame, fieldHeight(tester), reason: 'nothing animated');
+    });
+  });
 }
 
 /// Keeps one field mounted while its control is swapped.

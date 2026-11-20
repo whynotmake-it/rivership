@@ -34,6 +34,7 @@ export 'src/primitives/motion_layer.dart'
 export 'src/primitives/popover_surface.dart';
 export 'src/primitives/popup_controller.dart';
 export 'src/primitives/presence.dart';
+export 'src/primitives/present_slot.dart';
 export 'src/primitives/roving_focus.dart';
 export 'src/primitives/screen_radius.dart';
 export 'src/primitives/scroll_spring.dart';
@@ -41,6 +42,7 @@ export 'src/primitives/scrollbar.dart';
 export 'src/primitives/selection_blocks.dart'
     hide CoilSelectionPainter, CoilSelectionRun, CoilSelectionRuns;
 export 'src/primitives/sheet.dart';
+export 'src/primitives/size_spring.dart';
 export 'src/primitives/surface.dart';
 export 'src/primitives/text_field_core.dart';
 export 'src/primitives/tooltip_anchor.dart';
