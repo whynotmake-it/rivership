@@ -2,9 +2,13 @@ name: coil_cli
 description: >-
   Ejects coil components into a Flutter app, merges coil's later changes
   into the copies, and checks their interaction patterns in tests.
-version: 0.0.1-dev.0
-publish_to: none
+version: 0.1.0-dev.0
 resolution: workspace
+repository: https://github.com/whynotmake-it/rivership/tree/main/packages/coil_cli
+issue_tracker: https://github.com/whynotmake-it/rivership/issues
+homepage: https://whynotmake.it
+
+topics: [cli, design-system, codegen]
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -17,8 +21,7 @@ executables:
 dependencies:
   analyzer: ^13.3.0
   args: ^2.7.0
-  coil:
-    path: ../coil
+  coil: ^0.1.0-dev.0
   flutter:
     sdk: flutter
   flutter_test:

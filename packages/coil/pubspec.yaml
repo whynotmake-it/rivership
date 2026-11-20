@@ -26,10 +26,8 @@ dependencies:
   stupid_simple_sheet: ^1.0.0-dev.7
 
 dev_dependencies:
-  coil_cli:
-    path: ../coil_cli
+  coil_cli: ^0.1.0-dev.0
   flutter_test:
     sdk: flutter
   lintervention: ^0.3.1
-  snaptest:
-    path: ../snaptest
+  snaptest: ^1.0.0-dev.6

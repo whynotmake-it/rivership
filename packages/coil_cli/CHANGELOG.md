@@ -1,17 +1,9 @@
-## 0.0.1-dev.0
+## 0.1.0-dev.0
 
-Unreleased.
+First preview of the tools for apps that use [coil](https://pub.dev/packages/coil). Add it as a dev dependency. It needs Flutter 3.47 or later and a coil 0.1 pre-release.
 
-- `dart run coil_cli:eject` and `dart run coil_cli:update`, moved out of
-  coil so its dependencies stay runtime-only. Eject takes components or
-  `--all`, plus `--prefix`, `--rename` and `--library`; update merges
-  coil's changes into the copies with `git merge-file`.
-- `expectCoilPattern` and `CoilPattern` in `package:coil_cli/testing.dart`,
-  moved from `package:coil/testing.dart`.
-- `package:coil_cli/coil_cli.dart` reads a coil package's components and
-  their exports, for tools such as coil's docs generator.
-- `coil_cli:update` gives a name new upstream the app's prefix in every
-  ejected component, not only in the one that declares it.
-- Eject and update re-read only coil, the ejected copies, their bases and
-  the app library, and follow no links, instead of every Dart file under
-  the app (`.fvm`, `build/`, `Pods`, plugin symlinks).
+ - `dart run coil_cli:eject` copies coil components into your app so you can change their look. It takes component names or `--all`, plus `--prefix`, `--rename` and `--library` to give the copies your names. It writes an app library that exports coil minus the ejected names, plus the copies.
+ - `dart run coil_cli:update` merges coil's later changes into the copies with `git merge-file`, against the pristine base in `.coil/base/`. A new name upstream gets your prefix in every ejected component. Conflicts get standard markers.
+ - `package:coil_cli/testing.dart` has `expectCoilPattern` and `CoilPattern`, which check an ejected copy's semantics, keyboard and focus behavior in tests.
+ - `package:coil_cli/coil_cli.dart` reads a coil package's components and their exports, for tools such as coil's docs generator.
+ - Eject and update read only coil, the ejected copies, their bases and the app library. They follow no links, so `.fvm`, `build/`, `Pods` and plugin symlinks are skipped.

@@ -1,6 +1,6 @@
 # coil_cli
 
-Tools for apps that use [coil](../coil): eject a component into the app to change its look, merge coil's later changes into the copy, and check the copy's interaction patterns in tests. Add it as a dev dependency, so none of it ships with the app:
+Tools for apps that use [coil](https://pub.dev/packages/coil): eject a component into the app to change its look, merge coil's later changes into the copy, and check the copy's interaction patterns in tests. Add it as a dev dependency, so none of it ships with the app:
 
 ```sh
 flutter pub add dev:coil_cli
@@ -21,7 +21,7 @@ dart run coil_cli:update                       # three-way merge into every copy
 - **Update** runs `git merge-file` per file against the pristine base in `.coil/base/`, after renaming coil's new version the same way. Conflicts get standard markers and keep their old base. It needs `git` on your PATH.
 - **The manifest** `.coil/ejected.yaml` records the version, names and paths. Commit it with `.coil/base/`.
 
-The CLI finds coil through your app's package config, so it works with whichever coil version the app resolved. coil's [`SKILL.md`](../coil/SKILL.md) covers the whole flow.
+The CLI finds coil through your app's package config, so it works with whichever coil version the app resolved. coil's [`SKILL.md`](https://github.com/whynotmake-it/rivership/blob/main/packages/coil/SKILL.md) covers the whole flow.
 
 ## Check an ejected copy
 
