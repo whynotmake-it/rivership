@@ -1,6 +1,8 @@
 // Internal to CoilSlider and CoilRangeSlider; not exported.
 // ignore_for_file: public_member_api_docs
 
+import 'dart:async';
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/slider/slider.dart';
@@ -587,8 +589,21 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     if (value != _pressValue) setState(() => _pressValue = value);
     if (value != widget.values[_active]) {
       _asked = _with(_active, value);
+      _tick();
       widget.onChanged?.call(_asked);
     }
+  }
+
+  /// Whether a step haptic already played this frame.
+  bool _ticked = false;
+
+  /// Ticks as a pointer moves a stepped slider to another step, at most
+  /// once a frame so a fast drag across steps doesn't buzz in a burst.
+  void _tick() {
+    if (_scale.continuous || _ticked) return;
+    _ticked = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ticked = false);
+    unawaited(CoilHaptics.play(context, CoilHapticEvent.step));
   }
 
   void _endPress() {
