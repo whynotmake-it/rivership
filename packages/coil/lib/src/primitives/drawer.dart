@@ -808,8 +808,13 @@ class _CoilDrawerState extends State<CoilDrawer>
     owner?._end(velocity);
   }
 
+  /// Whether the drag has tapped for an open drawer last: past halfway, or
+  /// flung open. A drag taps whenever its outcome moves to the other side.
+  bool _feltOpen = false;
+
   void _begin({required bool fromScroll}) {
     _dragging = true;
+    _feltOpen = _position.value.abs() >= 0.5;
     _holdingScroll = fromScroll;
     final position = _position.value;
     _dragSide = position.abs() * _panelWidth > _restSlop
@@ -832,7 +837,9 @@ class _CoilDrawerState extends State<CoilDrawer>
     if (_panel(edge) == null) return;
     next = _dragSide > 0 ? next.clamp(0.0, 1.0) : next.clamp(-1.0, 0.0);
     // A tap each time the drag crosses halfway, either way.
-    if ((_position.value.abs() >= 0.5) != (next.abs() >= 0.5)) {
+    final pastHalf = next.abs() >= 0.5;
+    if (pastHalf != _feltOpen) {
+      _feltOpen = pastHalf;
       unawaited(CoilHaptics.play(context, CoilHapticEvent.drawer));
     }
     _position.value = next;
@@ -856,6 +863,10 @@ class _CoilDrawerState extends State<CoilDrawer>
         : position.abs() >= 0.5;
     final edge = side > 0 ? CoilDrawerEdge.start : CoilDrawerEdge.end;
     final result = open ? edge : null;
+    // A fling can decide against where the drag left off: tap for that too.
+    if (open != _feltOpen) {
+      unawaited(CoilHaptics.play(context, CoilHapticEvent.drawer));
+    }
     _animateTo(
       _targetOf(result),
       velocity: velocity / _panelWidth * (_startIsLeft ? 1 : -1),

@@ -749,6 +749,22 @@ void main() {
       stopRecording(tester);
     });
 
+    testWidgets('a fling that opens it from short of halfway taps once', (
+      tester,
+    ) async {
+      final played = record(tester);
+      await _pump(tester, const _Host());
+      await tester.flingFrom(
+        const Offset(200, 500),
+        const Offset(-60, 0),
+        3000,
+      );
+      await tester.pumpAndSettle();
+      expect(_open(tester), CoilDrawerEdge.end);
+      expect(played, ['HapticFeedbackType.selectionClick']);
+      stopRecording(tester);
+    });
+
     testWidgets('opening without a drag taps at once', (tester) async {
       final played = record(tester);
       await _pump(tester, const _Host());
