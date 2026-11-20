@@ -5,11 +5,12 @@ import 'package:motor_example/chapters.dart';
 import 'package:motor_example/font_licenses.dart';
 import 'package:motor_example/home.dart';
 
-/// Whether the motor devtools overlay is shown. The home screen toggles it;
-/// the tools keep tracking while hidden, so nothing is lost.
+/// Whether the motor devtools overlay is shown. It starts off, and only the
+/// home screen's DevTools switch turns it on. The tools keep tracking while
+/// hidden, so nothing is lost.
 ///
 /// Build with `--dart-define=MOTOR_DEVTOOLS=false` to remove the tools.
-final devtoolsVisible = ValueNotifier(true);
+final devtoolsVisible = ValueNotifier(false);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

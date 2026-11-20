@@ -30,12 +30,12 @@ void main() {
   testWidgets('home toggles the devtools, next replaces, cards open chapters', (
     tester,
   ) async {
-    addTearDown(() => example.devtoolsVisible.value = true);
+    addTearDown(() => example.devtoolsVisible.value = false);
     final router = await _pumpApp(tester);
-    expect(example.devtoolsVisible.value, isTrue);
+    expect(example.devtoolsVisible.value, isFalse);
     await tester.tap(find.text('DevTools'));
     await tester.pumpAndSettle();
-    expect(example.devtoolsVisible.value, isFalse);
+    expect(example.devtoolsVisible.value, isTrue);
 
     unawaited(router.navigate(const NamedRoute('Toggle')));
     await tester.pumpAndSettle();

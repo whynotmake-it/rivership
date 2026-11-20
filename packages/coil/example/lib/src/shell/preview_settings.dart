@@ -17,7 +17,7 @@ class SettingsButton extends StatelessWidget {
 }
 
 /// The sections of the preview settings.
-enum PreviewSection { appearance, type, shape, motion, accessibility, device }
+enum PreviewSection { appearance, type, behavior, accessibility }
 
 /// Opens the preview settings in a [CoilSettingsDialog].
 ///
@@ -37,8 +37,8 @@ Future<void> showPreviewSettings(
       label: const Text('Appearance'),
       icon: const CatalogIcon(Glyph.palette),
       description: const Text(
-        'The palette comes from CoilColors.fromSeed: a brand color and a '
-        'neutral tone.',
+        'Theme, the palette from CoilColors.fromSeed, corner radii and '
+        'spacing.',
       ),
       builder: (context) => const _Appearance(),
     ),
@@ -53,18 +53,14 @@ Future<void> showPreviewSettings(
       builder: (context) => const _Type(),
     ),
     CoilSettingsSection(
-      value: PreviewSection.shape,
-      label: const Text('Shape and spacing'),
-      icon: const CatalogIcon(Glyph.sliders),
-      description: const Text('Corner radii and control sizes.'),
-      builder: (context) => const _ShapeAndSpacing(),
-    ),
-    CoilSettingsSection(
-      value: PreviewSection.motion,
-      label: const Text('Motion'),
+      value: PreviewSection.behavior,
+      label: const Text('Behavior'),
       icon: const CatalogIcon(Glyph.play),
-      description: const Text('The springs every component moves on.'),
-      builder: (context) => const _Motion(),
+      description: const Text(
+        'The springs components move on, and input and feedback on this '
+        'device.',
+      ),
+      builder: (context) => const _Behavior(),
     ),
     CoilSettingsSection(
       value: PreviewSection.accessibility,
@@ -74,13 +70,6 @@ Future<void> showPreviewSettings(
         'What the platform tells the app about the person using it.',
       ),
       builder: (context) => const _Accessibility(),
-    ),
-    CoilSettingsSection(
-      value: PreviewSection.device,
-      label: const Text('Device'),
-      icon: const CatalogIcon(Glyph.monitor),
-      description: const Text('Input and feedback on this device.'),
-      builder: (context) => const _Device(),
     ),
   ],
 );
@@ -205,6 +194,7 @@ class _SliderRow extends StatelessWidget {
   );
 }
 
+/// Colors, shape and spacing: how the components look.
 class _Appearance extends StatelessWidget {
   const _Appearance();
 
@@ -212,55 +202,70 @@ class _Appearance extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = CatalogSettingsScope.of(context);
     return CoilSettingsList(
-      children: [
-        _SelectRow<CatalogThemeMode>(
-          label: const Text('Theme'),
-          value: settings.themeMode,
-          values: CatalogThemeMode.values,
-          text: (mode) => switch (mode) {
-            CatalogThemeMode.system => 'System',
-            CatalogThemeMode.light => 'Light',
-            CatalogThemeMode.dark => 'Dark',
-          },
-          icon: (mode) => CatalogIcon(switch (mode) {
-            CatalogThemeMode.system => Glyph.monitor,
-            CatalogThemeMode.light => Glyph.sun,
-            CatalogThemeMode.dark => Glyph.moon,
-          }),
-          onChanged: (value) => settings.themeMode = value,
-        ),
-        _SelectRow<CatalogBrand>(
-          label: const Text('Brand color'),
-          description: const Text('Also the focus ring.'),
-          value: settings.brand,
-          values: CatalogBrand.values,
-          text: (brand) => brand.label,
-          icon: (brand) => _Swatch(brand.color),
-          onChanged: (value) => settings.brand = value,
-        ),
-        _SliderRow(
-          label: 'Neutral hue',
-          leading: _Swatch(
-            CoilColorMix.oklch(0.7, 0.12, settings.neutralHue),
-          ),
-          max: 355,
-          divisions: 71,
-          value: settings.neutralHue,
-          valueText: (v) => '${v.round()}°',
-          onChanged: (value) => settings.neutralHue = value,
-        ),
-        _SliderRow(
-          label: 'Neutral tint',
-          max: 0.05,
-          divisions: 50,
-          value: settings.neutralChroma,
-          valueText: (v) => v == 0 ? 'Grey' : v.toStringAsFixed(3),
-          onChanged: (value) => settings.neutralChroma = value,
-        ),
-      ],
+      children: [..._colorRows(settings), ..._shapeRows(settings)],
     );
   }
 }
+
+/// How the components move, and the device they run on.
+class _Behavior extends StatelessWidget {
+  const _Behavior();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = CatalogSettingsScope.of(context);
+    return CoilSettingsList(
+      children: [..._motionRows(settings), ..._deviceRows(settings)],
+    );
+  }
+}
+
+List<Widget> _colorRows(CatalogSettings settings) => [
+  _SelectRow<CatalogThemeMode>(
+    label: const Text('Theme'),
+    value: settings.themeMode,
+    values: CatalogThemeMode.values,
+    text: (mode) => switch (mode) {
+      CatalogThemeMode.system => 'System',
+      CatalogThemeMode.light => 'Light',
+      CatalogThemeMode.dark => 'Dark',
+    },
+    icon: (mode) => CatalogIcon(switch (mode) {
+      CatalogThemeMode.system => Glyph.monitor,
+      CatalogThemeMode.light => Glyph.sun,
+      CatalogThemeMode.dark => Glyph.moon,
+    }),
+    onChanged: (value) => settings.themeMode = value,
+  ),
+  _SelectRow<CatalogBrand>(
+    label: const Text('Brand color'),
+    description: const Text('Also the focus ring.'),
+    value: settings.brand,
+    values: CatalogBrand.values,
+    text: (brand) => brand.label,
+    icon: (brand) => _Swatch(brand.color),
+    onChanged: (value) => settings.brand = value,
+  ),
+  _SliderRow(
+    label: 'Neutral hue',
+    leading: _Swatch(
+      CoilColorMix.oklch(0.7, 0.12, settings.neutralHue),
+    ),
+    max: 355,
+    divisions: 71,
+    value: settings.neutralHue,
+    valueText: (v) => '${v.round()}°',
+    onChanged: (value) => settings.neutralHue = value,
+  ),
+  _SliderRow(
+    label: 'Neutral tint',
+    max: 0.05,
+    divisions: 50,
+    value: settings.neutralChroma,
+    valueText: (v) => v == 0 ? 'Grey' : v.toStringAsFixed(3),
+    onChanged: (value) => settings.neutralChroma = value,
+  ),
+];
 
 class _Type extends StatelessWidget {
   const _Type();
@@ -336,88 +341,68 @@ String _plasticityText(double amount) => switch (amount) {
   _ => 'Strong',
 };
 
-class _ShapeAndSpacing extends StatelessWidget {
-  const _ShapeAndSpacing();
+List<Widget> _shapeRows(CatalogSettings settings) => [
+  _SelectRow<CatalogShape>(
+    label: const Text('Shape'),
+    value: settings.shape,
+    values: CatalogShape.values,
+    text: (shape) => shape.label,
+    onChanged: (value) => settings.shape = value,
+  ),
+  CoilSettingRow(
+    label: const Text('Plasticity'),
+    description: const Text(
+      'Subtle vertical light on the controls you press.',
+    ),
+    trailing: _Control(
+      child: CoilSlider(
+        steps: const [0, 0.5, 1],
+        value: settings.plasticity,
+        valueBuilder: (_, v) => Text(_plasticityText(v)),
+        semanticFormatter: _plasticityText,
+        onChanged: (value) => settings.plasticity = value,
+      ),
+    ),
+  ),
+  if (settings.shape == CatalogShape.custom)
+    _SliderRow(
+      label: 'Corner radius',
+      max: 20,
+      divisions: 20,
+      value: settings.customRadius,
+      valueText: (v) => '${v.round()} px',
+      onChanged: (value) => settings.customRadius = value,
+    ),
+  _SelectRow<CatalogSpacing>(
+    label: const Text('Spacing'),
+    description: const Text(
+      'Roomy makes every control 4 px taller and wider.',
+    ),
+    value: settings.spacing,
+    values: CatalogSpacing.values,
+    text: (spacing) => spacing.label,
+    onChanged: (value) => settings.spacing = value,
+  ),
+];
 
-  @override
-  Widget build(BuildContext context) {
-    final settings = CatalogSettingsScope.of(context);
-    return CoilSettingsList(
-      children: [
-        _SelectRow<CatalogShape>(
-          label: const Text('Shape'),
-          value: settings.shape,
-          values: CatalogShape.values,
-          text: (shape) => shape.label,
-          onChanged: (value) => settings.shape = value,
-        ),
-        CoilSettingRow(
-          label: const Text('Plasticity'),
-          description: const Text(
-            'Subtle vertical light on the controls you press.',
-          ),
-          trailing: _Control(
-            child: CoilSlider(
-              steps: const [0, 0.5, 1],
-              value: settings.plasticity,
-              valueBuilder: (_, v) => Text(_plasticityText(v)),
-              semanticFormatter: _plasticityText,
-              onChanged: (value) => settings.plasticity = value,
-            ),
-          ),
-        ),
-        if (settings.shape == CatalogShape.custom)
-          _SliderRow(
-            label: 'Corner radius',
-            max: 20,
-            divisions: 20,
-            value: settings.customRadius,
-            valueText: (v) => '${v.round()} px',
-            onChanged: (value) => settings.customRadius = value,
-          ),
-        _SelectRow<CatalogSpacing>(
-          label: const Text('Spacing'),
-          description: const Text(
-            'Roomy makes every control 4 px taller and wider.',
-          ),
-          value: settings.spacing,
-          values: CatalogSpacing.values,
-          text: (spacing) => spacing.label,
-          onChanged: (value) => settings.spacing = value,
-        ),
-      ],
-    );
-  }
-}
-
-class _Motion extends StatelessWidget {
-  const _Motion();
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = CatalogSettingsScope.of(context);
-    return CoilSettingsList(
-      children: [
-        _SelectRow<CatalogMotion>(
-          label: const Text('Springs'),
-          value: settings.motion,
-          values: CatalogMotion.values,
-          text: (motion) => motion.label,
-          onChanged: (value) => settings.motion = value,
-        ),
-        _SwitchRow(
-          label: 'Slow motion',
-          description: Text(
-            'Everything runs '
-            '${settings.slowMoFactor.toStringAsFixed(0)}× slower.',
-          ),
-          value: settings.slowMo,
-          onChanged: (value) => settings.slowMo = value,
-        ),
-      ],
-    );
-  }
-}
+List<Widget> _motionRows(CatalogSettings settings) => [
+  _SelectRow<CatalogMotion>(
+    label: const Text('Springs'),
+    value: settings.motion,
+    values: CatalogMotion.values,
+    text: (motion) => motion.label,
+    onChanged: (value) => settings.motion = value,
+  ),
+  _SwitchRow(
+    label: 'Slow motion',
+    description: Text(
+      'Everything runs '
+      '${settings.slowMoFactor.toStringAsFixed(0)}× slower.',
+    ),
+    value: settings.slowMo,
+    onChanged: (value) => settings.slowMo = value,
+  ),
+];
 
 class _Accessibility extends StatelessWidget {
   const _Accessibility();
@@ -462,40 +447,30 @@ class _Accessibility extends StatelessWidget {
   }
 }
 
-class _Device extends StatelessWidget {
-  const _Device();
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = CatalogSettingsScope.of(context);
-    return CoilSettingsList(
-      children: [
-        _SelectRow<CatalogTier>(
-          label: const Text('Size tier'),
-          description: const Text(
-            'Auto follows the desktop and mobile toggle, and phones.',
-          ),
-          value: settings.tier,
-          values: CatalogTier.values,
-          text: (tier) => tier.label,
-          onChanged: (value) => settings.tier = value,
-        ),
-        _SwitchRow(
-          label: 'Haptics',
-          description: const Text("Off turns coil's haptics off."),
-          value: !settings.hapticsOff,
-          onChanged: (value) => settings.hapticsOff = !value,
-        ),
-        _SwitchRow(
-          label: 'Pointing-hand cursor',
-          description: const Text('Off shows the arrow over controls.'),
-          value: settings.pointingCursor,
-          onChanged: (value) => settings.pointingCursor = value,
-        ),
-      ],
-    );
-  }
-}
+List<Widget> _deviceRows(CatalogSettings settings) => [
+  _SelectRow<CatalogTier>(
+    label: const Text('Size tier'),
+    description: const Text(
+      'Auto follows the desktop and mobile toggle, and phones.',
+    ),
+    value: settings.tier,
+    values: CatalogTier.values,
+    text: (tier) => tier.label,
+    onChanged: (value) => settings.tier = value,
+  ),
+  _SwitchRow(
+    label: 'Haptics',
+    description: const Text("Off turns coil's haptics off."),
+    value: !settings.hapticsOff,
+    onChanged: (value) => settings.hapticsOff = !value,
+  ),
+  _SwitchRow(
+    label: 'Pointing-hand cursor',
+    description: const Text('Off shows the arrow over controls.'),
+    value: settings.pointingCursor,
+    onChanged: (value) => settings.pointingCursor = value,
+  ),
+];
 
 /// A color dot, for the brand options and the neutral hue.
 class _Swatch extends StatelessWidget {
