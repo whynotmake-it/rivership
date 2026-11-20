@@ -107,16 +107,6 @@ Future<TestGesture> _grabRail(WidgetTester tester, double dx) async {
 bool _rowShown(String label) =>
     find.text(label).hitTestable().evaluate().isNotEmpty;
 
-/// The focus node of the control around [element]: the nearest one that can
-/// take focus, past the inert ones a switcher puts around its content.
-FocusNode _controlNode(Element element) {
-  var node = Focus.of(element);
-  while (!node.canRequestFocus && node.parent != null) {
-    node = node.parent!;
-  }
-  return node;
-}
-
 void main() {
   group('rail', () {
     testWidgets('a drag resizes the sidebar between 160 and 360', (
@@ -374,7 +364,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       // Focus the button inside the inner scaffold.
-      _controlNode(tester.element(find.text('Go'))).requestFocus();
+      Focus.of(tester.element(find.text('Go'))).requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
       await tester.pumpAndSettle();

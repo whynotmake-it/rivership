@@ -44,15 +44,21 @@ class _Button extends StatefulWidget {
 class _ButtonState extends State<_Button> {
   int taps = 0;
 
+  /// The focus node the button finds above itself.
+  FocusNode? above;
+
   @override
-  Widget build(BuildContext context) => Focus(
-    focusNode: widget.focusNode,
-    child: GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => taps++,
-      child: const SizedBox(width: 40, height: 40),
-    ),
-  );
+  Widget build(BuildContext context) {
+    above = Focus.of(context);
+    return Focus(
+      focusNode: widget.focusNode,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => taps++,
+        child: const SizedBox(width: 40, height: 40),
+      ),
+    );
+  }
 }
 
 Widget _child(String label) => _Child(label, key: ValueKey(label));
@@ -645,16 +651,22 @@ void main() {
       'with its state', (tester) async {
     final focusA = FocusNode();
     final focusB = FocusNode();
+    final control = FocusNode();
+    addTearDown(control.dispose);
     addTearDown(focusA.dispose);
     addTearDown(focusB.dispose);
     const a = ValueKey('a');
     const b = ValueKey('b');
-    Widget build(Key key) => _switcher(
-      _Button(key: key, focusNode: key == a ? focusA : focusB),
-      // Side by side, so each can be tapped on its own.
-      layoutBuilder: (current, previous) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [...previous, ?current],
+    // The control the switcher sits in.
+    Widget build(Key key) => Focus(
+      focusNode: control,
+      child: _switcher(
+        _Button(key: key, focusNode: key == a ? focusA : focusB),
+        // Side by side, so each can be tapped on its own.
+        layoutBuilder: (current, previous) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [...previous, ?current],
+        ),
       ),
     );
     int taps(Key key) => tester.state<_ButtonState>(find.byKey(key)).taps;
@@ -662,10 +674,20 @@ void main() {
     await tester.pumpWidget(build(a));
     await tester.tap(find.byKey(a));
     expect(taps(a), 1);
+    expect(
+      tester.state<_ButtonState>(find.byKey(a)).above,
+      same(control),
+      reason: 'Focus.of inside a current child finds the control around it',
+    );
+    // Focused when it starts to leave: the focus goes.
+    focusA.requestFocus();
+    await tester.pump();
+    expect(focusA.hasPrimaryFocus, isTrue);
 
     await tester.pumpWidget(build(b));
     await tester.pump(frame);
     expect(find.byKey(a), findsOneWidget, reason: 'still leaving');
+    expect(focusA.hasFocus, isFalse, reason: 'a focused child loses focus');
     await tester.tap(find.byKey(a), warnIfMissed: false);
     focusA.requestFocus();
     await tester.pump();
