@@ -242,7 +242,7 @@ void pagingTests() {
   });
 
   testWidgets(
-    'paging plays a selection click on iOS',
+    'paging months plays no haptic, a tapped day plays one on iOS',
     (tester) async {
       final played = <Object?>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -265,6 +265,10 @@ void pagingTests() {
         testApp(tier: CoilTier.touch, home: const _Demo()),
       );
       await tester.fling(find.byType(PageView), const Offset(-200, 0), 1000);
+      await tester.pumpAndSettle();
+      expect(find.text('December 2026'), findsOneWidget);
+      expect(played, isEmpty);
+      await tester.tap(find.text('15').first);
       await tester.pumpAndSettle();
       expect(played, ['HapticFeedbackType.selectionClick']);
     },

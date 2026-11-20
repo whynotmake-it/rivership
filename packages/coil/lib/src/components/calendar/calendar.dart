@@ -480,7 +480,6 @@ class _CoilCalendarState extends State<CoilCalendar> {
       if (month != _month) {
         setState(() => _month = _title = month);
         _active.clear();
-        unawaited(CoilHaptics.play(context, CoilHapticEvent.toggle));
       } else if (month != _title) {
         setState(() => _title = month);
       }
