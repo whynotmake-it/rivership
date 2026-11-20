@@ -502,7 +502,7 @@ class _CoilButtonState extends State<CoilButton> {
     // The padding is the one a slotted button has; a missing slot hands
     // back the difference as a spacer, so it grows with the slot.
     final extraX = sizes.buttonPaddingX - sizes.buttonIconPaddingX;
-    Widget spacer(bool present) => _slot(
+    Widget spacer({required bool present}) => _slot(
       present ? SizedBox(width: extraX) : null,
       gap: 0,
       gapSide: CoilPresentSlotGap.before,
@@ -535,7 +535,7 @@ class _CoilButtonState extends State<CoilButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              spacer(leading == null),
+              spacer(present: leadingContent == null),
               _slot(
                 leadingContent,
                 gap: sizes.buttonGap,
@@ -547,7 +547,7 @@ class _CoilButtonState extends State<CoilButton> {
                 gap: sizes.buttonGap,
                 gapSide: CoilPresentSlotGap.before,
               ),
-              spacer(trailing == null),
+              spacer(present: trailing == null),
             ],
           ),
         ),
