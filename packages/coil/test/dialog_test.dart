@@ -76,6 +76,16 @@ CoilButton _action(
 Finder _button(String label) =>
     find.ancestor(of: find.text(label), matching: find.byType(CoilButton));
 
+/// The focus node of the control around [element]: the nearest one that can
+/// take focus, past the inert ones a switcher puts around its content.
+FocusNode _controlNode(Element element) {
+  var node = Focus.of(element);
+  while (!node.canRequestFocus && node.parent != null) {
+    node = node.parent!;
+  }
+  return node;
+}
+
 void main() {
   Future<void> open(WidgetTester tester) async {
     await tester.tap(find.text('Open'));
@@ -102,7 +112,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Delete file?'), findsNothing);
     expect(results, [null]);
-    final trigger = Focus.of(tester.element(find.text('Open')));
+    final trigger = _controlNode(tester.element(find.text('Open')));
     expect(trigger.hasFocus, isTrue);
   });
 

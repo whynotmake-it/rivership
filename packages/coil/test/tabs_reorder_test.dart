@@ -35,12 +35,22 @@ String? _focusedLabel() {
   return label;
 }
 
+/// The focus node of the control around [element]: the nearest one that can
+/// take focus, past the inert ones a switcher puts around its content.
+FocusNode _controlNode(Element element) {
+  var node = Focus.of(element);
+  while (!node.canRequestFocus && node.parent != null) {
+    node = node.parent!;
+  }
+  return node;
+}
+
 void main() {
   testWidgets('a focused tab keeps focus when a tab is inserted before it', (
     tester,
   ) async {
     await tester.pumpWidget(_tabs(['a', 'b', 'c']));
-    Focus.of(tester.element(find.text('b').first)).requestFocus();
+    _controlNode(tester.element(find.text('b').first)).requestFocus();
     await tester.pumpAndSettle();
     expect(_focusedLabel(), 'b');
 
