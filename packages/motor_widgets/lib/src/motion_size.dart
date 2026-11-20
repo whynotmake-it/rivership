@@ -16,6 +16,20 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 /// The first layout takes the child's size at once. While the size is
 /// smaller than the child, the child is aligned by [alignment] and clipped
 /// by [clipBehavior].
+///
+/// ## Content springs, room snaps
+///
+/// Unlike [AnimatedSize], this tells *why* the child's size changed. When the
+/// child's own content changes (a label gets longer, a message wraps to
+/// another line), the size springs to the new one. When a change in the
+/// incoming constraints changes the child's size (the window is resized and
+/// rewraps or ellipsizes the child), the size snaps to the child's new size
+/// at once and drops any spring in flight, so a window being dragged never
+/// lags behind the cursor. A change in the constraints that leaves the
+/// child's size alone (a sibling taking more room in a [Row]) keeps the
+/// spring running.
+///
+/// A change of the ambient text scale snaps too.
 class MotionSize extends StatefulWidget {
   /// Creates a [MotionSize].
   const MotionSize({
@@ -104,6 +118,7 @@ class _MotionSizeState extends State<MotionSize>
   Widget build(BuildContext context) {
     return _MotionSizeLayout(
       controller: _controller,
+      textScaler: MediaQuery.maybeTextScalerOf(context),
       alignment: widget.alignment,
       clipBehavior: widget.clipBehavior,
       child: widget.child,
@@ -114,12 +129,14 @@ class _MotionSizeState extends State<MotionSize>
 class _MotionSizeLayout extends SingleChildRenderObjectWidget {
   const _MotionSizeLayout({
     required this.controller,
+    required this.textScaler,
     required this.alignment,
     required this.clipBehavior,
     super.child,
   });
 
   final MotionController<Size> controller;
+  final TextScaler? textScaler;
   final AlignmentGeometry alignment;
   final Clip clipBehavior;
 
@@ -127,6 +144,7 @@ class _MotionSizeLayout extends SingleChildRenderObjectWidget {
   _RenderMotionSize createRenderObject(BuildContext context) {
     return _RenderMotionSize(
       controller: controller,
+      textScaler: textScaler,
       alignment: alignment,
       clipBehavior: clipBehavior,
       textDirection: Directionality.maybeOf(context),
@@ -140,6 +158,7 @@ class _MotionSizeLayout extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..controller = controller
+      ..textScaler = textScaler
       ..alignment = alignment
       ..clipBehavior = clipBehavior
       ..textDirection = Directionality.maybeOf(context);
@@ -151,16 +170,36 @@ class _MotionSizeLayout extends SingleChildRenderObjectWidget {
 ///
 /// Each layout compares the child's size with the size the controller is
 /// heading for. When they differ, the controller is retargeted, which keeps
-/// the velocity it has.
+/// the velocity it has, unless the constraints changed since the last layout
+/// (or the text scale did): then the size snaps to the child's.
 class _RenderMotionSize extends RenderAligningShiftedBox {
   /// Creates a [_RenderMotionSize] driven by [controller].
   _RenderMotionSize({
     required MotionController<Size> controller,
     super.alignment,
     super.textDirection,
+    TextScaler? textScaler,
     Clip clipBehavior = Clip.hardEdge,
   }) : _controller = controller,
+       _textScaler = textScaler,
        _clipBehavior = clipBehavior;
+
+  /// The ambient text scale. A change is not a content change, so the next
+  /// layout snaps.
+  TextScaler? get textScaler => _textScaler;
+  TextScaler? _textScaler;
+  set textScaler(TextScaler? value) {
+    if (value == _textScaler) return;
+    _textScaler = value;
+    _snapNext = true;
+    markNeedsLayout();
+  }
+
+  /// The constraints of the last layout. A different set means the parent,
+  /// not the content, may have changed the child's size.
+  BoxConstraints? _lastConstraints;
+
+  bool _snapNext = false;
 
   /// The controller that animates this render object's size.
   MotionController<Size> get controller => _controller;
@@ -221,6 +260,10 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
     _hasVisualOverflow = false;
     final constraints = this.constraints;
     final child = this.child;
+    final roomChanged = _lastConstraints != constraints;
+    final reset = _snapNext;
+    _lastConstraints = constraints;
+    _snapNext = false;
     if (child == null || constraints.isTight) {
       // Nothing to animate toward: settle on the smallest size, as
       // AnimatedSize does.
@@ -241,8 +284,17 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
     child.layout(constraints, parentUsesSize: true);
     final childSize = child.size;
     final target = _target;
-    if (target == null) {
-      // The first size is the child's, without animating.
+    if (target == null || reset || (roomChanged && childSize != target)) {
+      // The first size, a reset, or a change in the room that changed the
+      // child's size (a window resize that rewraps or ellipsizes it): take
+      // the child's size at once and drop any spring in flight. A change in
+      // the room that leaves the child's size alone (a sibling taking more
+      // room in a Row) falls through and keeps the spring. A stop changes
+      // no value, so it doesn't notify mid-layout.
+      if (_following || _controller.isAnimating) {
+        _controller.stop(canceled: true);
+      }
+      _following = false;
       _target = childSize;
       size = constraints.constrain(childSize);
     } else {
@@ -269,7 +321,9 @@ class _RenderMotionSize extends RenderAligningShiftedBox {
     final childSize = child.getDryLayout(constraints);
     // At rest on the child's size, the size is the child's; otherwise it is
     // wherever the animation is.
-    if (!_following || (!_controller.isAnimating && childSize == _target)) {
+    if (!_following ||
+        _lastConstraints != constraints ||
+        (!_controller.isAnimating && childSize == _target)) {
       return constraints.constrain(childSize);
     }
     return constraints.constrain(_controller.value);
