@@ -7,7 +7,7 @@ description: Build Flutter UI with the coil design system, theme it, and eject c
 
 coil is a Flutter design system on Motor springs. Use components as they are and change them through the theme first. Eject a component only when the theme can't express the change.
 
-Every file this skill points to ships with the installed coil version, under the package root (find it in `.dart_tool/package_config.json`). Start at `doc/llms.txt`.
+The files this skill points to ship with the installed coil version, under the package root (find it in `.dart_tool/package_config.json`). `DESIGN.md` describes the design language and every component, and the library's dartdoc has each API.
 
 ## Use
 
@@ -19,7 +19,7 @@ CoilButton(onPressed: save, child: const Text('Save'))
 
 - Works under any `WidgetsApp`. No Material or Cupertino app is needed.
 - Visible text and icons are `Widget` slots (`child`, `leading`, `label`). Pass `Text`, not `String`.
-- Each component's API, sizes and states are in `doc/components/<name>.md`.
+- Each component's anatomy, sizes and states are in `DESIGN.md` §14. Its import is `package:coil/<name>.dart`, such as `package:coil/button.dart`.
 
 ## Theme
 

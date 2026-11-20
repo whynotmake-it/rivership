@@ -6,8 +6,7 @@ of them for its own icon set in one place: `CoilThemeData.icons`. This page
 shows how, with complete sets for Lucide and Material Symbols, and how an
 icon can bring its own animation.
 
-The design is in DESIGN.md §11 and the API rules in
-[api_guide.md](api_guide.md) §5.
+The design is in [DESIGN.md](../DESIGN.md) §11.
 
 ## The role map
 
