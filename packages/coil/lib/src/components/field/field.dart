@@ -229,6 +229,7 @@ class _FieldBody extends StatelessWidget {
           : CoilSizeSwitcher(
               sizeMotion: track(tokens.standard),
               motion: motion,
+              fadeWithGrowth: false,
               contentKey: key ?? CoilSizeSwitcher.contentKeyOf(child),
               child: child,
             ),

@@ -204,7 +204,16 @@ class CoilToggleGroup<T> extends StatelessWidget {
                           child: child!,
                         ),
                       ),
-                      child: option.label,
+                      child: CoilSizeSwitcher(
+                        alignment: AlignmentDirectional.centerStart,
+                        sizeMotion: motionFor(
+                          CoilToggleGroupTrack.size,
+                          tokens.standard,
+                        ),
+                        motion: motion,
+                        debugLabel: 'CoilToggleGroup.label',
+                        child: option.label,
+                      ),
                     ),
                   ),
                 ),

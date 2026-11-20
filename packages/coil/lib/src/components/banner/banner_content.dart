@@ -88,6 +88,7 @@ class BannerContent extends StatelessWidget {
             final description? => CoilSizeSwitcher(
               sizeMotion: sizeMotion,
               motion: motion,
+              fadeWithGrowth: false,
               contentKey: CoilSizeSwitcher.contentKeyOf(description),
               debugLabel: 'CoilBanner.description',
               child: DefaultTextStyle(

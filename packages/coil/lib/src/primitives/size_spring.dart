@@ -7,6 +7,7 @@ import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/presence.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
@@ -38,6 +39,7 @@ class CoilSizeSpring extends StatefulWidget {
     this.alignment = AlignmentDirectional.topStart,
     this.clipBehavior = Clip.hardEdge,
     this.resetKey,
+    this.growth,
     this.debugLabel,
   });
 
@@ -58,6 +60,12 @@ class CoilSizeSpring extends StatefulWidget {
   /// change: when this value changes (compared with `==`), the size snaps
   /// instead of springing. The text scale is always one.
   final Object? resetKey;
+
+  /// Receives how far the size has come while it grows: 0 when a growth
+  /// starts to 1 when it has arrived, eased so it stays low early. It is 1
+  /// at rest, while shrinking and after a snap. Content that fades in on it
+  /// stays nearly transparent while it is still mostly clipped.
+  final ValueNotifier<double>? growth;
 
   /// A name for motor_devtools.
   final String? debugLabel;
@@ -105,6 +113,7 @@ class _CoilSizeSpringState extends State<CoilSizeSpring>
     textDirection: Directionality.maybeOf(context),
     animates: widget.motion != const Motion.instant(),
     resetKey: (MediaQuery.maybeTextScalerOf(context), widget.resetKey),
+    growth: widget.growth,
     child: widget.child,
   );
 }
@@ -117,6 +126,7 @@ class _SizeSpringLayout extends SingleChildRenderObjectWidget {
     required this.textDirection,
     required this.animates,
     required this.resetKey,
+    required this.growth,
     required super.child,
   });
 
@@ -126,6 +136,7 @@ class _SizeSpringLayout extends SingleChildRenderObjectWidget {
   final TextDirection? textDirection;
   final bool animates;
   final Object? resetKey;
+  final ValueNotifier<double>? growth;
 
   @override
   _RenderSizeSpring createRenderObject(BuildContext context) =>
@@ -136,6 +147,7 @@ class _SizeSpringLayout extends SingleChildRenderObjectWidget {
         textDirection: textDirection,
         animates: animates,
         resetKey: resetKey,
+        growth: growth,
       );
 
   @override
@@ -149,7 +161,8 @@ class _SizeSpringLayout extends SingleChildRenderObjectWidget {
       ..clipBehavior = clipBehavior
       ..textDirection = textDirection
       ..animates = animates
-      ..resetKey = resetKey;
+      ..resetKey = resetKey
+      ..growth = growth;
   }
 }
 
@@ -160,12 +173,14 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
     required MotionController<Size> controller,
     required bool animates,
     required Object? resetKey,
+    required ValueNotifier<double>? growth,
     super.alignment,
     super.textDirection,
     Clip clipBehavior = Clip.hardEdge,
   }) : _controller = controller,
        _animates = animates,
        _resetKey = resetKey,
+       _growth = growth,
        _clipBehavior = clipBehavior;
 
   MotionController<Size> _controller;
@@ -185,6 +200,37 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
     if (value == _animates) return;
     _animates = value;
     markNeedsLayout();
+  }
+
+  ValueNotifier<double>? _growth;
+  // ignore: avoid_setters_without_getters
+  set growth(ValueNotifier<double>? value) => _growth = value;
+
+  /// The size the running spring started from.
+  Size _from = Size.zero;
+
+  /// Reports the eased progress of a growing spring (from the controller's
+  /// ticks, never from layout, which can't rebuild listeners).
+  void _reportGrowth() {
+    final growth = _growth;
+    if (growth == null) return;
+    var value = 1.0;
+    final target = _target;
+    if (_following && _controller.isAnimating && target != null) {
+      final now = _controller.value;
+      final dw = target.width - _from.width;
+      final dh = target.height - _from.height;
+      // Progress along the axis that grows the most; shrinking is 1.
+      final d = dw.abs() >= dh.abs() ? dw : dh;
+      if (d > 0) {
+        final done = dw.abs() >= dh.abs()
+            ? now.width - _from.width
+            : now.height - _from.height;
+        final t = (done / d).clamp(0.0, 1.0);
+        value = t * t;
+      }
+    }
+    if (growth.value != value) growth.value = value;
   }
 
   Object? _resetKey;
@@ -225,14 +271,19 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
     _following = false;
   }
 
-  void _onControllerChanged() => markNeedsLayout();
+  void _onControllerChanged() {
+    _reportGrowth();
+    markNeedsLayout();
+  }
 
   /// Whether [performLayout] is running: starting a spring there reports
   /// its status at once, and the layout in progress already reads it.
   bool _laying = false;
 
   void _onStatus(AnimationStatus _) {
-    if (!_laying) markNeedsLayout();
+    if (_laying) return;
+    _reportGrowth();
+    markNeedsLayout();
   }
 
   void _attachController() => _controller
@@ -306,11 +357,18 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
       _following = false;
       _target = childSize;
       size = constraints.constrain(childSize);
+      if (_growth case final growth? when growth.value != 1) {
+        // Layout can't notify; whatever was growing has arrived.
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (attached) growth.value = 1;
+        });
+      }
     } else {
       if (childSize != target) {
         _target = childSize;
         // A controller that hasn't animated yet starts from the size shown,
         // the previous target.
+        _from = _following ? _controller.value : target;
         _controller.animateTo(childSize, from: _following ? null : target);
         _following = true;
       }
@@ -394,7 +452,7 @@ class _RenderSizeSpring extends RenderAligningShiftedBox {
 /// A [child] that changes without a new key (a `Text` whose string changed)
 /// is the same content: the box springs to its size, with no cross-fade.
 /// Key it by what it shows to cross-fade.
-class CoilSizeSwitcher extends StatelessWidget {
+class CoilSizeSwitcher extends StatefulWidget {
   /// Creates a size switcher.
   const CoilSizeSwitcher({
     required this.child,
@@ -407,6 +465,7 @@ class CoilSizeSwitcher extends StatelessWidget {
     this.motion,
     this.blur = CoilBlurFade.defaultBlur / 2,
     this.contentKey,
+    this.fadeWithGrowth = true,
     this.debugLabel,
   });
 
@@ -449,21 +508,67 @@ class CoilSizeSwitcher extends StatelessWidget {
   /// The blur at presence 0.
   final double blur;
 
+  /// Whether new content stays nearly transparent while the box is still
+  /// growing toward it and is clipped (it follows the growth, eased), so no
+  /// half-drawn glyph shows. Turn it off for content that grows along the
+  /// cross axis, where nothing is cut mid-glyph.
+  final bool fadeWithGrowth;
+
   /// A name for motor_devtools.
   final String? debugLabel;
 
   @override
+  State<CoilSizeSwitcher> createState() => _CoilSizeSwitcherState();
+}
+
+class _CoilSizeSwitcherState extends State<CoilSizeSwitcher> {
+  final _growth = ValueNotifier<double>(1);
+
+  @override
+  void dispose() {
+    _growth.dispose();
+    super.dispose();
+  }
+
+  Widget _transition(Widget child, Animation<double> presence) {
+    final fade = CoilBlurFade(
+      presence: presence,
+      scale: 1,
+      blur: widget.blur,
+      child: child,
+    );
+    if (!widget.fadeWithGrowth) return fade;
+    return ListenableBuilder(
+      listenable: Listenable.merge([_growth, presence]),
+      child: fade,
+      builder: (context, child) => Opacity(
+        // Only content on its way in follows the growth.
+        opacity: presence.status == AnimationStatus.reverse ? 1 : _growth.value,
+        child: child,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final tokens = CoilTheme.motionOf(context, override: motion);
+    final CoilSizeSwitcher(
+      :child,
+      :contentKey,
+      :alignment,
+      :clipBehavior,
+      :debugLabel,
+    ) = widget;
+    final tokens = CoilTheme.motionOf(context, override: widget.motion);
     return CoilSizeSpring(
-      motion: sizeMotion ?? tokens.standard,
+      growth: widget.fadeWithGrowth ? _growth : null,
+      motion: widget.sizeMotion ?? tokens.standard,
       alignment: alignment,
       clipBehavior: clipBehavior,
       debugLabel: debugLabel,
       child: MotionSwitcher(
-        motion: fadeMotion ?? tokens.fade,
-        exitMotion: fadeExitMotion ?? tokens.fadeExit,
-        transitionBuilder: CoilBlurFade.transition(blur: blur, scale: 1),
+        motion: widget.fadeMotion ?? tokens.fade,
+        exitMotion: widget.fadeExitMotion ?? tokens.fadeExit,
+        transitionBuilder: _transition,
         debugLabel: debugLabel ?? 'CoilSizeSwitcher',
         layoutBuilder: (current, previous) => _SwapLayout(
           alignment: alignment,
@@ -477,7 +582,10 @@ class CoilSizeSwitcher extends StatelessWidget {
             current ?? const SizedBox.shrink(),
           ],
         ),
-        child: switch ((child, contentKey ?? contentKeyOf(child))) {
+        child: switch ((
+          child,
+          contentKey ?? CoilSizeSwitcher.contentKeyOf(child),
+        )) {
           (final child?, final name?) => KeyedSubtree(
             key: ValueKey<Object>(name),
             child: child,

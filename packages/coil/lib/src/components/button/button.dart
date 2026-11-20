@@ -508,7 +508,9 @@ class _CoilButtonState extends State<CoilButton> {
       gapSide: CoilPresentSlotGap.before,
     );
     final label = CoilSizeSwitcher(
-      alignment: Alignment.center,
+      // Start-pinned, so only the trailing edge can be clipped; the row
+      // around it stays centered in the button.
+      alignment: AlignmentDirectional.centerStart,
       sizeMotion: _motionFor(CoilButtonTrack.size, _motion.standard),
       motion: widget.motion,
       debugLabel: 'CoilButton.label',
