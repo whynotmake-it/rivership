@@ -55,6 +55,16 @@ class CoilPopoverController {
   /// Closes the popover: it springs out, then leaves the overlay.
   void hide() => _state?._hide();
 
+  /// Hands the page back while the popover stays to show a pick land, until
+  /// [hide] closes it.
+  ///
+  /// From now on it captures nothing outside itself, as if it were already
+  /// closing: taps, drags and right-clicks outside reach the page and don't
+  /// ask to close, focus goes back to what had it when the popover opened,
+  /// and Escape and back act on the page. The popover itself takes no input.
+  /// [isOpen] stays true. Does nothing when it's closed.
+  void release() => _state?._release();
+
   @override
   String toString() => 'CoilPopoverController(${debugLabel ?? ''})';
 }
@@ -77,7 +87,9 @@ class CoilPopoverController {
 ///   with [CoilPopupCloseReason.dismissed] instead of popping the page.
 ///
 /// Those ask [onClose] to close; the owner decides and calls
-/// [CoilPopoverController.hide].
+/// [CoilPopoverController.hide]. An owner that holds the popover open to
+/// acknowledge a pick calls [CoilPopoverController.release] first, and the
+/// popover lets go of all of it while it still shows.
 ///
 /// Like `MenuAnchor`, it blocks pointer input only. Screen readers reach
 /// its content right after the anchor, and the rest of the page stays
@@ -164,6 +176,13 @@ class _CoilPopoverState extends State<CoilPopover>
 
   bool _open = false;
 
+  /// Whether the owner handed the page back: see
+  /// [CoilPopoverController.release].
+  bool _released = false;
+
+  /// Whether it captures input: open and not released.
+  bool get _capturing => _open && !_released;
+
   /// The point it opened at, in the anchor's coordinates, if any.
   Offset? _at;
 
@@ -201,6 +220,7 @@ class _CoilPopoverState extends State<CoilPopover>
     _portal.show();
     setState(() {
       _open = true;
+      _released = false;
       _at = at;
     });
     _presence
@@ -225,8 +245,19 @@ class _CoilPopoverState extends State<CoilPopover>
               CoilTier.touch => motion.standardExit,
             }
       ..animateTo(0);
-    // Focus goes back where it came from, unless that node has since left
-    // the tree or can't take focus any more.
+    _giveFocusBack();
+  }
+
+  void _release() {
+    if (!_capturing) return;
+    setState(() => _released = true);
+    _downOutside.clear();
+    _giveFocusBack();
+  }
+
+  /// Focus goes back where it came from, unless that node has since left
+  /// the tree or can't take focus any more.
+  void _giveFocusBack() {
     final back = _returnFocus;
     if (_scope.hasFocus &&
         back != null &&
@@ -260,10 +291,11 @@ class _CoilPopoverState extends State<CoilPopover>
 
   Widget _buildPopover(BuildContext context, OverlayChildLayoutInfo info) {
     final open = _open;
+    final capturing = _capturing;
     final media = MediaQuery.of(context);
     final reduce = _reduceMotion;
     void close(CoilPopupCloseReason reason) {
-      if (_open) widget.onClose(reason);
+      if (_capturing) widget.onClose(reason);
     }
 
     // A popover opened from inside another, like a submenu, counts as
@@ -271,7 +303,7 @@ class _CoilPopoverState extends State<CoilPopover>
     final outer = _CoilPopoverGroup.maybeOf(context);
     final popover = PopScope<Object?>(
       // While open, back closes the popover instead of popping the page.
-      canPop: !open,
+      canPop: !capturing,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) close(.dismissed);
       },
@@ -291,49 +323,57 @@ class _CoilPopoverState extends State<CoilPopover>
         minWidth: widget.minWidth ?? (_at == null ? info.childSize.width : 0),
         maxHeight: widget.maxHeight,
         textDirection: Directionality.of(context),
-        // Closing: it can't be used while it springs out.
+        // Closing: it can't be used while it springs out, and what's
+        // below it can be.
         child: IgnorePointer(
           ignoring: !open,
-          // Like MenuAnchor: a tap outside closes it on tap-up and
-          // doesn't reach what's below. No ModalBarrier: its
-          // BlockSemantics would hide the popover too, whose semantics
-          // hang under the anchor's node.
-          child: TapRegion(
-            groupId: this,
-            consumeOutsideTaps: open,
-            onTapOutside: (event) => _downOutside.add(event.pointer),
-            onTapUpOutside: (event) {
-              if (_downOutside.remove(event.pointer)) close(.outsideTap);
-            },
-            // Tab can't reach into a popover springing out.
-            child: ExcludeFocus(
-              excluding: !open,
-              child: FocusScope(
-                node: _scope,
-                autofocus: widget.takeFocus,
-                child: Shortcuts(
-                  shortcuts: const {
-                    SingleActivator(LogicalKeyboardKey.escape):
-                        CoilDismissIntent(),
-                  },
-                  child: Actions(
-                    actions: {
-                      CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
-                        context: context,
-                        onInvoke: (_) => close(.escape),
-                      ),
+          // Released: it can't be used, but a pointer on it doesn't fall
+          // through to what's below.
+          child: AbsorbPointer(
+            absorbing: !capturing,
+            // Like MenuAnchor: a tap outside closes it on tap-up and
+            // doesn't reach what's below. No ModalBarrier: its
+            // BlockSemantics would hide the popover too, whose semantics
+            // hang under the anchor's node.
+            child: TapRegion(
+              groupId: this,
+              consumeOutsideTaps: capturing,
+              onTapOutside: (event) {
+                if (_capturing) _downOutside.add(event.pointer);
+              },
+              onTapUpOutside: (event) {
+                if (_downOutside.remove(event.pointer)) close(.outsideTap);
+              },
+              // Tab can't reach into a popover springing out or released.
+              child: ExcludeFocus(
+                excluding: !capturing,
+                child: FocusScope(
+                  node: _scope,
+                  autofocus: widget.takeFocus,
+                  child: Shortcuts(
+                    shortcuts: const {
+                      SingleActivator(LogicalKeyboardKey.escape):
+                          CoilDismissIntent(),
                     },
-                    child: Semantics(
-                      scopesRoute: true,
-                      explicitChildNodes: true,
-                      child: CoilBlurFade(
-                        presence: _presence,
-                        // The grow from the anchor's edge is the placement's:
-                        // only it knows which side that is.
-                        scale: 1,
-                        child: _CoilPopoverGroup(
-                          group: this,
-                          child: Builder(builder: widget.popover),
+                    child: Actions(
+                      actions: {
+                        CoilDismissIntent: CoilDefaultAction<CoilDismissIntent>(
+                          context: context,
+                          onInvoke: (_) => close(.escape),
+                        ),
+                      },
+                      child: Semantics(
+                        scopesRoute: true,
+                        explicitChildNodes: true,
+                        child: CoilBlurFade(
+                          presence: _presence,
+                          // The grow from the anchor's edge is the placement's:
+                          // only it knows which side that is.
+                          scale: 1,
+                          child: _CoilPopoverGroup(
+                            group: this,
+                            child: Builder(builder: widget.popover),
+                          ),
                         ),
                       ),
                     ),
