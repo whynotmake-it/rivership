@@ -209,7 +209,7 @@ void main() {
       expect(presses, 0, reason: 'a loading button blocks presses');
     });
 
-    testWidgets('without a leading slot the spinner replaces the content', (
+    testWidgets('without a leading slot the spinner joins the label', (
       tester,
     ) async {
       Widget button({required bool loading}) => CoilButton(
@@ -221,7 +221,11 @@ void main() {
       final idle = tester.getSize(find.byType(CoilButton));
       await _pump(tester, button(loading: true), reduceMotion: true);
       await tester.pumpAndSettle();
-      expect(tester.getSize(find.byType(CoilButton)), idle);
+      expect(
+        tester.getSize(find.byType(CoilButton)).width,
+        greaterThan(idle.width),
+      );
+      expect(find.text('Continue'), findsOneWidget);
     });
 
     testWidgets('ignores Enter and Space while loading', (tester) async {
