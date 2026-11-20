@@ -1,6 +1,6 @@
 name: rivership
 description: An opinionated infrastructure package for use with hooks_riverpod.
-version: 0.4.0+10
+version: 0.4.0-dev.0+11
 resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/rivership
 homepage: https://whynotmake.it
@@ -13,7 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_hooks: ">=0.21.2 <0.22.0"
-  heroine: ^0.7.2+2
+  heroine: ^0.7.2-dev.0+3
   hooks_riverpod: ">=3.0.0 <3.2.0"
 
   # the exact version pin will come from the SDK
@@ -21,7 +21,7 @@ dependencies:
   # the exact version pin will come from the SDK
   material_color_utilities: ">=0.8.0"
   
-  motor: ^1.1.0
+  motor: ^2.0.0-dev.0
 
 dev_dependencies:
   flutter_test:

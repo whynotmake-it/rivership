@@ -1,3 +1,7 @@
+## 0.7.2-dev.0+3
+
+ - Update a dependency to the latest release.
+
 ## 0.7.2+2
 
  - **FIX**(heroine): hide incoming page until the first flight frame (#348).
