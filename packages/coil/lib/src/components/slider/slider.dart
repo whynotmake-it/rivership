@@ -106,7 +106,9 @@ enum CoilSliderValueDisplay {
 /// A pointer that hovers previews the value under it. A touch shows the
 /// value above the thumb.
 ///
-/// Values snap to [divisions] equal steps, or to the values in [steps].
+/// Values snap to [divisions] equal steps, or to the values in [steps]. A
+/// stepped slider ticks a `step` haptic as a drag or tap moves it to another
+/// step ([CoilHapticEvent.step]); keys and screen readers don't.
 ///
 /// Arrows step by one step, or 1 % when continuous. Shift+arrow, Page Up
 /// and Page Down move 10 %. Home and End go to [min] and [max]. Left and

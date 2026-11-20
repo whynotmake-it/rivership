@@ -344,6 +344,7 @@ Lists keep an **active item** separate from focus and hover (like `aria-activede
 | Long-press menu opens | `mediumImpact` | `Feedback.forLongPress` | — |
 | Sheet snaps to a detent | `lightImpact` | none | — |
 | Copy succeeds (InputCopy) | `selectionClick` | `selectionClick` | none |
+| Stepped slider moves to another step | `selectionClick` | `selectionClick` | none |
 
 The table is `CoilHaptics.platform`. Set `CoilThemeData.haptics` to remap events, or to `CoilHaptics.none` to turn them off. Components play them with `CoilHaptics.play(context, event)`.
 
@@ -749,6 +750,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Range input:** a tap or drag moves the nearest thumb, by touch and by mouse. On two stacked thumbs, the side of the press picks one, and on them the drag's direction does. The thumbs can't cross but may meet.
 - **Motion:** thumbs and fill settle on `standard` after a jump, a key or a typed value; follow the finger 1:1 while dragging a continuous slider; with steps they spring to each step and retarget as the pointer crosses steps, while the value bubble follows the finger 1:1. Pointer positions are mapped into the track as it is laid out at that moment, so a track that shifts mid-drag (the pill's text turning semibold) doesn't put the thumb or bubble off the pointer. Handle and color on `fade`; pip growth `standard`. `CoilSliderTrack.thumb` moves both thumbs of a range.
 - **Keyboard:** arrows ±step (a step list walks the list); PageUp/PageDown and Shift+arrow ±10 %, at least one step; Home and End go to min and max, or to the other thumb in a range. A range is two tab stops.
+- **Haptic:** a stepped slider ticks a `step` haptic as a drag or tap moves it to another step, once per move however many steps it crosses. Keys, screen-reader actions, typed values and the parent's changes stay silent, and so does a continuous slider.
 - **Semantics:** `slider` / adjustable, a formatted `value`, increase and decrease actions. A range is a group (the label) with one slider node per thumb, named `startSemanticLabel` and `endSemanticLabel` ("Minimum" and "Maximum" by default). An open value field is its own text-field node.
 - **Bubbles:** every value bubble (hover, press and tooltip mode) is a `CoilTooltipAnchor.controlled` with the `CoilTooltipBubble` look, faded in and out on `CoilSliderTrack.bubble`. Its anchor is a knob-wide box as tall as the track, at the bubble's fraction, so the bubble sits 8 above the track and follows the thumb in layout. Bubbles live in the overlay and stay out of semantics; the slider's nodes carry the value.
 
