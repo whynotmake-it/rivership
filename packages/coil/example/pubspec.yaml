@@ -40,7 +40,7 @@ flutter:
   fonts:
     - family: Allo
       fonts:
-        - asset: fonts/allo/AlloVariable.ttf
+        - asset: lib/fonts/allo/AlloVariable.ttf
     - family: Inter
       fonts:
-        - asset: fonts/inter/InterVariable.ttf
+        - asset: lib/fonts/inter/InterVariable.ttf

@@ -17,8 +17,8 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // Inert unless a test records a video with `snap.recordVideo()`.
   SnaptestWidgetsFlutterBinding.ensureInitialized();
   await loadFonts();
-  await _load('Allo', 'example/fonts/allo/AlloVariable.ttf');
-  await _load('Inter', 'example/fonts/inter/InterVariable.ttf');
+  await _load('Allo', 'example/lib/fonts/allo/AlloVariable.ttf');
+  await _load('Inter', 'example/lib/fonts/inter/InterVariable.ttf');
   CoilTypography.debugCheckFonts = false;
   // Fresh input-modality tracking (keyboard vs pointer) for every test.
   setUp(CoilInputModality.debugReset);

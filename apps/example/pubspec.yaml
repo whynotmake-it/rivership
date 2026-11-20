@@ -50,7 +50,7 @@ flutter:
     # the aggregate app declares the same families from coil_example's assets.
     - family: Allo
       fonts:
-        - asset: ../../packages/coil/example/fonts/allo/AlloVariable.ttf
+        - asset: packages/coil_example/fonts/allo/AlloVariable.ttf
     - family: Inter
       fonts:
-        - asset: ../../packages/coil/example/fonts/inter/InterVariable.ttf
+        - asset: packages/coil_example/fonts/inter/InterVariable.ttf
