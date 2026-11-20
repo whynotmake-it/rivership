@@ -31,6 +31,30 @@ class _ChildState extends State<_Child> {
   Widget build(BuildContext context) => const SizedBox(width: 20, height: 20);
 }
 
+/// A button that counts how often it was tapped, in its state.
+class _Button extends StatefulWidget {
+  const _Button({required this.focusNode, super.key});
+
+  final FocusNode focusNode;
+
+  @override
+  State<_Button> createState() => _ButtonState();
+}
+
+class _ButtonState extends State<_Button> {
+  int taps = 0;
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    focusNode: widget.focusNode,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => taps++,
+      child: const SizedBox(width: 40, height: 40),
+    ),
+  );
+}
+
 Widget _child(String label) => _Child(label, key: ValueKey(label));
 
 Widget _switcher(
@@ -613,5 +637,46 @@ void main() {
       await tester.pumpAndSettle(frame);
       expect(tester.getSize(find.byType(MotionSizeSwitcher)), Size.zero);
     });
+  });
+
+  testWidgets('a leaving child is inert, and interactive again if it returns '
+      'with its state', (tester) async {
+    final focusA = FocusNode();
+    final focusB = FocusNode();
+    addTearDown(focusA.dispose);
+    addTearDown(focusB.dispose);
+    const a = ValueKey('a');
+    const b = ValueKey('b');
+    Widget build(Key key) => _switcher(
+      _Button(key: key, focusNode: key == a ? focusA : focusB),
+      // Side by side, so each can be tapped on its own.
+      layoutBuilder: (current, previous) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [...previous, ?current],
+      ),
+    );
+    int taps(Key key) => tester.state<_ButtonState>(find.byKey(key)).taps;
+
+    await tester.pumpWidget(build(a));
+    await tester.tap(find.byKey(a));
+    expect(taps(a), 1);
+
+    await tester.pumpWidget(build(b));
+    await tester.pump(frame);
+    expect(find.byKey(a), findsOneWidget, reason: 'still leaving');
+    await tester.tap(find.byKey(a), warnIfMissed: false);
+    focusA.requestFocus();
+    await tester.pump();
+    expect(taps(a), 1, reason: 'a leaving button can not be tapped');
+    expect(focusA.hasFocus, isFalse, reason: 'or focused');
+
+    // Back before it has gone: interactive again, and still the same State.
+    await tester.pumpWidget(build(a));
+    await tester.pump(frame);
+    await tester.tap(find.byKey(a));
+    focusA.requestFocus();
+    await tester.pump();
+    expect(taps(a), 2);
+    expect(focusA.hasFocus, isTrue);
   });
 }

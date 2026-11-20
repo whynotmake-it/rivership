@@ -30,6 +30,16 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 /// The animation's status is [AnimationStatus.forward] while a child enters
 /// and [AnimationStatus.reverse] while it leaves.
 ///
+/// ## Leaving children are inert
+///
+/// A leaving child can't be tapped, focused or read by a screen reader, so a
+/// button that is fading out can't be pressed by mistake. This is done before
+/// [layoutBuilder] sees the children, so every layout builder gets it. The
+/// wrappers that do it are there for every child all the time and only flip
+/// their flags, so a child that starts leaving keeps its state. A child that
+/// comes back while it is leaving is interactive again. Flutter's
+/// [AnimatedSwitcher] doesn't do this.
+///
 /// The first child is shown without a transition.
 ///
 /// ```dart
@@ -248,9 +258,21 @@ class _MotionSwitcherState extends State<MotionSwitcher>
   Widget _build(_Entry entry) {
     return KeyedSubtree(
       key: entry.key,
-      child: entry.transition ??= widget.transitionBuilder(
-        entry.widget,
-        entry.controller,
+      // The same wrappers for every child at every moment, flipping only
+      // their flags: a child that starts leaving keeps its place in the
+      // tree, and so its state.
+      child: IgnorePointer(
+        ignoring: entry.leaving,
+        child: ExcludeFocus(
+          excluding: entry.leaving,
+          child: ExcludeSemantics(
+            excluding: entry.leaving,
+            child: entry.transition ??= widget.transitionBuilder(
+              entry.widget,
+              entry.controller,
+            ),
+          ),
+        ),
       ),
     );
   }
