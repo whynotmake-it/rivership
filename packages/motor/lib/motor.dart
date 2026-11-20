@@ -29,7 +29,6 @@ export 'src/track.dart';
 export 'src/track_phase_timeline.dart';
 export 'src/track_step.dart' hide PhaseBoundary;
 export 'src/track_timeline.dart';
-export 'src/widgets/motion/motion_padding.dart';
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/motion_draggable.dart';
 export 'src/widgets/phase_track_builder.dart';

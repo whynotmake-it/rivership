@@ -14,6 +14,7 @@ workspace:
   - packages/heroine/example
   - packages/motor
   - packages/motor_devtools
+  - packages/motor_widgets
   - packages/motor/benchmark
   - packages/motor/example
   - packages/rivership

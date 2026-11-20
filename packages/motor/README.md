@@ -516,6 +516,11 @@ cover what tweens and curves do there:
 A `Tween` still works on `animationOf` if you really want one value to drive
 several properties.
 
+Looking for `AnimatedContainer`, `AnimatedSwitcher`, `AnimatedSize` or
+`AnimatedPadding`? Their spring-driven versions (`MotionContainer`,
+`MotionSwitcher`, `MotionSize`, `MotionPadding` and more) live in
+[`motor_widgets`](../motor_widgets).
+
 `animationOf` returns the same instance for a track, listens only while it
 has listeners, notifies only when that track changes, and reports the
 track's own status: `dismissed` until it moves, `forward`/`reverse` while it
@@ -940,7 +945,7 @@ TickerRateScope(
 )
 ```
 
-`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder`, `MotionDraggable` and `MotionPadding`. `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame, exactly as before. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
+`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder` and `MotionDraggable`, and on the widgets in [`motor_widgets`](../motor_widgets). `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame, exactly as before. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
 
 Controllers use the `TickerProvider` you pass them. For a fixed rate, pass a state that mixes in `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin`:
 
