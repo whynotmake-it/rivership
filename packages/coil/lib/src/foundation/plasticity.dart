@@ -42,12 +42,12 @@ enum CoilReliefRole {
 /// How lit coil's controls are: one [amount] from 0 (flat, the default)
 /// to 1. A token group on `CoilThemeData.plasticity`.
 ///
-/// The light has one character, opencode's desktop elevation recipe kept
-/// to what you press: a hairline edge lit at the top and darker at the
-/// bottom, a faint top highlight, a 1 px drop shadow and a light sheen on
-/// buttons, thumbs and the select trigger; a hairline of shade in wells
-/// (checkbox, radio, the off switch), barely any on fields; slider tracks,
-/// quiet buttons and containers stay flat. [amount] sets how much of it:
+/// The light has one character, kept to what you press: a hairline edge lit
+/// at the top and darker at the bottom, a faint top highlight, a 1 px drop
+/// shadow and a light sheen on buttons, thumbs and the select trigger; a
+/// hairline of shade in wells (checkbox, radio, the off switch), barely any
+/// on fields; slider tracks, quiet buttons and containers stay flat.
+/// [amount] sets how much of it:
 ///
 /// - 0 ([flat]) paints nothing, and components keep their flat look
 ///   untouched.
@@ -169,7 +169,7 @@ class CoilPlasticity with Diagnosticable {
 }
 
 /// coil's lighting recipe at one amount: an intensity per ingredient, 0
-/// for none and 1 for opencode's reference, and a multiplier per role.
+/// for none and 1 for the full recipe, and a multiplier per role.
 /// Private: the amount is the only public knob.
 @immutable
 class _Recipe {
@@ -208,7 +208,7 @@ class _Recipe {
     );
   }
 
-  /// The recipe at 0.5, `CoilPlasticity.subtle`: opencode's recipe with
+  /// The recipe at 0.5, `CoilPlasticity.subtle`: the full recipe with
   /// raised controls at 0.78 and filled ones at 0.8 of its strength, wells
   /// at 0.35 and fields at 0.2.
   static const _subtle = _Recipe(
@@ -304,18 +304,15 @@ class _Recipe {
     Color w(double a) => Color.fromRGBO(255, 255, 255, a.clamp(0.0, 1.0));
     Color b(double a) => Color.fromRGBO(0, 0, 0, a.clamp(0.0, 1.0));
 
-    // The reference recipe at intensity 1, per role and brightness. Alphas
-    // follow opencode's v2 elevation tokens (packages/ui/src/theme/v2/
-    // mapping.ts): `--v2-elevation-button-neutral`, `-button-contrast`,
-    // `-input`, `-switch-off`/`-on`, `-raised`, and the
-    // `linear-gradient(180deg, alpha-light-20, alpha-light-0)` sheen of
-    // contrast buttons.
+    // The reference recipe at intensity 1, per role and brightness: edge,
+    // rims, drops and, on contrast buttons, a 180° sheen from 20 % light to
+    // none.
     final CoilRelief rest;
     switch (role) {
       // Balanced so a primary (black or white fill), a secondary (gray
       // tint) and a destructive (red tint) button read equally lit: the
       // tints' dark bottom edge, top rim and bright dark-mode edge sit a
-      // little under opencode's, the primary's top rim and sheen a little
+      // little under the reference, the primary's top rim and sheen a little
       // over, and its dark-mode bottom edge under.
       case CoilReliefRole.raised || CoilReliefRole.quiet:
         rest = CoilRelief(
@@ -360,7 +357,7 @@ class _Recipe {
     return relief;
   }
 
-  /// The drop shadows at [lift]: opencode's `0 1px 1.5px` at intensity 1,
+  /// The drop shadows at [lift]: `0 1px 1.5px` at intensity 1,
   /// plus a wider soft one that grows past it.
   List<BoxShadow> _drop(double near, double far) {
     if (lift <= 0) return const [];

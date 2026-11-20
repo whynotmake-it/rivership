@@ -176,7 +176,7 @@ class _CoilSidebarRailState extends State<CoilSidebarRail> {
         ),
       ),
     );
-    // As FF: two lines beside the strip, the key after the second, and the
+    // Two lines beside the strip, the key after the second, and the
     // bubble following the pointer along the strip. A press hides it, so it
     // stays away while dragging.
     final resize = widget.resizeHint ?? hint('Drag', ' to resize');
