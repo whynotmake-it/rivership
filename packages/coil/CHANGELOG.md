@@ -8,7 +8,7 @@ First preview of coil, a Flutter design system built on [Motor](https://pub.dev/
  - **Theming:** `CoilThemeData` holds `CoilColors` (including `CoilColors.fromSeed`), `CoilTypography`, `CoilShape`, `CoilPlasticity`, `CoilHaptics` and the glyph map `CoilThemeData.icons`. Every rounded shape is a superellipse.
  - **Typography:** coil bundles no font. `CoilTypography.allo()` and `CoilTypography.inter()` are tuned for those fonts, and `CoilTypography.from` puts coil's type scale on any other.
  - **Haptics:** `CoilHapticEvent` covers toggles, picks, long presses, copies, sheet detents and drawers. A drawer taps when a drag crosses halfway, when a fling decides it, and when it opens or closes without a drag.
- - **Calendar haptics:** paging to another month plays no haptic. The tick used to arrive after the page had settled, detached from the swipe. Picking a day by touch still ticks.
+ - **Slider haptics:** a stepped `CoilSlider` or `CoilRangeSlider` ticks a subtle `CoilHapticEvent.step` (`selectionClick` on iOS and Android) as a drag or tap moves it to another step. Keys, screen readers, typed values and continuous sliders stay silent.
  - **Accessibility:** text scaling up to 2x, high contrast, bold text, reduced motion, right-to-left layouts, semantics and keyboard navigation.
  - **Ejecting:** `coil_cli` copies a component into your app so you can change its look, and later merges coil's changes into the copy. See `SKILL.md`.
  - **Catalog:** the app in `example/` shows every component, and bundles Allo and Inter.
