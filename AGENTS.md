@@ -29,6 +29,9 @@
 - Test how it should work, not how it works today.
 - Otherwise, don't add tests and don't touch tests.
 
+## Changelogs
+- Never edit a `CHANGELOG.md` by hand. Melos writes them from the conventional-commit messages at release, so put the user-facing summary in the commit message instead.
+
 ## Architecture
 - Melos monorepo with packages in `packages/` directory
 - Flutter/Dart project using hooks_riverpod for state management
