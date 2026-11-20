@@ -350,8 +350,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
     switch (notification) {
       case ScrollStartNotification(:final dragDetails, :final metrics):
-        final state = _axisStates[metrics.axis]!;
-        state
+        _axisStates[metrics.axis]!
           ..scrollStartedAtLeadingEdge = metrics.extentBefore <= kTouchSlop
           ..scrollStartedAtTrailingEdge = metrics.extentAfter <= kTouchSlop
           ..dragStartDetails = dragDetails;

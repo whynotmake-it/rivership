@@ -1,0 +1,562 @@
+import 'package:coil/coil.dart';
+import 'package:coil_cli/testing.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
+
+import 'src/golden_sheet.dart';
+import 'src/ink_centering.dart';
+import 'src/test_icons.dart';
+
+/// A host that owns the banner's [CoilBanner.visible] and hides it when the
+/// banner asks, with buttons around it for focus checks.
+class _Host extends StatefulWidget {
+  const _Host({
+    this.tier = CoilTier.pointer,
+    this.reduceMotion = false,
+    this.initiallyVisible = true,
+    this.motions,
+    this.hideOnDismiss = true,
+  });
+
+  final CoilTier tier;
+  final bool reduceMotion;
+  final bool initiallyVisible;
+  final bool hideOnDismiss;
+  final Map<CoilBannerTrack<Object>, Motion>? motions;
+
+  @override
+  State<_Host> createState() => _HostState();
+}
+
+class _HostState extends State<_Host> {
+  late bool visible = widget.initiallyVisible;
+  int dismissed = 0;
+
+  void show({required bool value}) => setState(() => visible = value);
+
+  @override
+  Widget build(BuildContext context) => WidgetsApp(
+    color: const Color(0xFF000000),
+    builder: (context, navigator) => MediaQuery(
+      data: MediaQuery.of(
+        context,
+      ).copyWith(disableAnimations: widget.reduceMotion),
+      child: CoilTheme(
+        data: CoilThemeData.light.copyWith(tier: widget.tier),
+        child: navigator!,
+      ),
+    ),
+    onGenerateRoute: (_) => PageRouteBuilder<void>(
+      pageBuilder: (context, _, _) => Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CoilButton(onPressed: () {}, child: const Text('Before')),
+              CoilBanner(
+                key: const ValueKey('banner'),
+                visible: visible,
+                motions: widget.motions,
+                title: const Text('Update available'),
+                onDismissRequested: () => setState(() {
+                  dismissed++;
+                  if (widget.hideOnDismiss) visible = false;
+                }),
+              ),
+              CoilButton(onPressed: () {}, child: const Text('After')),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+final _banner = find.byKey(const ValueKey('banner'));
+_HostState _host(WidgetTester tester) => tester.state(find.byType(_Host));
+double _height(WidgetTester tester) => tester.getSize(_banner).height;
+
+void main() {
+  group('ink centering', () {
+    inkCenteringTests({
+      'banner/title': (ink) =>
+          CoilBanner(title: InkLabel(ink, const Text('HEH'))),
+      'banner/title+dismiss': (ink) => CoilBanner(
+        title: InkLabel(ink, const Text('HEH')),
+        onDismissRequested: () {},
+      ),
+    });
+  });
+
+  testWidgets('is a polite live region that is not a tab stop', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const _Host());
+    await expectCoilPattern(tester, _banner, CoilPattern.liveRegion);
+    final semantics = tester.ensureSemantics();
+    expect(
+      tester.getSemantics(find.text('Update available')),
+      matchesSemantics(
+        label: 'Update available',
+        isLiveRegion: true,
+        children: [
+          matchesSemantics(
+            label: 'Dismiss',
+            isButton: true,
+            isFocusable: true,
+            hasEnabledState: true,
+            isEnabled: true,
+            hasTapAction: true,
+            hasFocusAction: true,
+          ),
+        ],
+      ),
+    );
+    semantics.dispose();
+  });
+
+  group('dismiss', () {
+    testWidgets('the ✕ reports; the owner hiding it collapses the row', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const _Host());
+      final open = _height(tester);
+      expect(open, greaterThan(0));
+      await tester.tap(find.bySemanticsLabel('Dismiss'));
+      await tester.pump();
+      expect(_host(tester).dismissed, 1);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_height(tester), inExclusiveRange(0, open), reason: 'closing');
+      await tester.pumpAndSettle();
+      expect(_height(tester), 0);
+
+      final semantics = tester.ensureSemantics();
+      expect(find.semantics.byLabel('Update available'), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('focus on the ✕ moves on to what follows the banner', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const _Host());
+      for (var i = 0; i < 2; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+      }
+      expect(
+        FocusManager.instance.primaryFocus?.context?.widget,
+        isNot(isA<CoilButton>()),
+      );
+      expect(
+        find.ancestor(
+          of: find.byWidget(
+            FocusManager.instance.primaryFocus!.context!.widget,
+          ),
+          matching: _banner,
+        ),
+        findsOneWidget,
+        reason: 'the ✕ has focus',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(
+        find.ancestor(
+          of: find.byWidget(
+            FocusManager.instance.primaryFocus!.context!.widget,
+          ),
+          matching: find.widgetWithText(CoilButton, 'After'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a hidden banner animates in when shown: row, then fade', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const _Host(initiallyVisible: false));
+      expect(_height(tester), 0);
+      _host(tester).show(value: true);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(_height(tester), greaterThan(0), reason: 'the row opens first');
+      final opacity = tester.widget<Opacity>(
+        find.descendant(of: _banner, matching: find.byType(Opacity)).first,
+      );
+      expect(opacity.opacity, 0, reason: 'the banner fades in 80 ms later');
+      await tester.pumpAndSettle();
+      expect(_height(tester), greaterThan(0));
+    });
+
+    testWidgets('reduced motion snaps the row and keeps the fade', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const _Host(reduceMotion: true));
+      final open = _height(tester);
+      _host(tester).show(value: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 30));
+      final opacity = tester.widget<Opacity>(
+        find.descendant(of: _banner, matching: find.byType(Opacity)).first,
+      );
+      expect(opacity.opacity, inExclusiveRange(0, 1), reason: 'still fading');
+      expect(_height(tester), open, reason: 'the row waits for the fade');
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_height(tester), 0, reason: 'then closes at once');
+    });
+
+    testWidgets('per-track motions apply at runtime', (tester) async {
+      await tester.pumpWidget(
+        _Host(motions: {CoilBannerTrack.row: const Motion.instant()}),
+      );
+      _host(tester).show(value: false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_height(tester), 0);
+    });
+  });
+
+  group('swipe', () {
+    testWidgets('a touch fling dismisses', (tester) async {
+      await tester.pumpWidget(const _Host(tier: CoilTier.touch));
+      await tester.fling(
+        find.text('Update available'),
+        const Offset(200, 0),
+        1200,
+      );
+      expect(_host(tester).dismissed, 1);
+      await tester.pumpAndSettle();
+      expect(_height(tester), 0);
+    });
+
+    testWidgets('a short swipe springs back', (tester) async {
+      await tester.pumpWidget(const _Host(tier: CoilTier.touch));
+      final before = tester.getTopLeft(find.text('Update available'));
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Update available')),
+      );
+      for (var i = 0; i < 4; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(
+        tester.getTopLeft(find.text('Update available')).dx,
+        greaterThan(before.dx),
+      );
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(_host(tester).dismissed, 0);
+      expect(tester.getTopLeft(find.text('Update available')), before);
+    });
+
+    testWidgets('a kept banner swings back after the fling', (tester) async {
+      await tester.pumpWidget(
+        const _Host(tier: CoilTier.touch, hideOnDismiss: false),
+      );
+      final before = tester.getTopLeft(find.text('Update available'));
+      await tester.fling(
+        find.text('Update available'),
+        const Offset(200, 0),
+        1200,
+      );
+      await tester.pumpAndSettle();
+      expect(_host(tester).dismissed, 1);
+      expect(tester.getTopLeft(find.text('Update available')), before);
+    });
+
+    testWidgets('a mouse drag does not swipe', (tester) async {
+      await tester.pumpWidget(const _Host());
+      await tester.fling(
+        find.text('Update available'),
+        const Offset(200, 0),
+        1200,
+        deviceKind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(_host(tester).dismissed, 0);
+    });
+  });
+
+  testWidgets('the ✕ is a 44 px target on touch', (tester) async {
+    await tester.pumpWidget(const _Host(tier: CoilTier.touch));
+    final size = tester.getSize(
+      find
+          .ancestor(
+            of: find.byType(CustomPaint).last,
+            matching: find.byType(CoilInteractionDetector),
+          )
+          .first,
+    );
+    expect(size.width, greaterThanOrEqualTo(44));
+    expect(size.height, greaterThanOrEqualTo(44));
+  });
+
+  group('reflow', () {
+    Future<void> pump(
+      WidgetTester tester,
+      String title, {
+      double width = 360,
+      double scale = 1,
+      TextDirection direction = TextDirection.ltr,
+      VoidCallback? onDismissRequested,
+      Widget Function(Widget banner) around = _itself,
+      Widget? titleWidget,
+    }) => tester.pumpWidget(
+      MediaQuery(
+        data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+        child: Directionality(
+          textDirection: direction,
+          child: CoilTheme(
+            data: goldenLight.copyWith(tier: CoilTier.touch),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: width,
+                child: around(
+                  CoilBanner(
+                    key: const ValueKey('banner'),
+                    icon: const TestIcon(TestGlyph.heart),
+                    title: titleWidget ?? Text(title),
+                    onDismissRequested: onDismissRequested ?? () {},
+                    actions: [
+                      CoilButton(onPressed: () {}, child: const Text('Retry')),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Rect rect(WidgetTester tester, String text) =>
+        tester.getRect(find.text(text));
+
+    testWidgets('a short title keeps the actions beside it, centered', (
+      tester,
+    ) async {
+      await pump(tester, 'Offline');
+      final title = rect(tester, 'Offline');
+      final retry = rect(tester, 'Retry');
+      expect(retry.left, greaterThan(title.right));
+      expect(retry.center.dy, moreOrLessEquals(title.center.dy, epsilon: 1));
+    });
+
+    testWidgets('a long title moves the actions under it', (tester) async {
+      const long =
+          'Your workspace storage is almost full, so new uploads may fail';
+      await pump(tester, long);
+      expect(tester.takeException(), isNull);
+      final title = rect(tester, long);
+      final retry = rect(tester, 'Retry');
+      expect(retry.top, greaterThan(title.bottom));
+      expect(retry.left, moreOrLessEquals(title.left, epsilon: 16));
+    });
+
+    testWidgets('stacked, the close button centers on the first line and '
+        'takes taps above the text', (tester) async {
+      const long = 'A title long enough to push the action under it';
+      var dismissed = 0;
+      await pump(tester, long, onDismissRequested: () => dismissed++);
+      final title = rect(tester, long);
+      final cross = tester.getRect(find.byType(CoilButton).last);
+      final line = tester
+          .renderObject<RenderParagraph>(find.text(long))
+          .getFullHeightForCaret(const TextPosition(offset: 0));
+      expect(
+        cross.center.dy,
+        moreOrLessEquals(title.top + line / 2, epsilon: 1),
+      );
+      // Above the title's top, still inside the 44 px target.
+      expect(cross.top, lessThan(title.top));
+      await tester.tapAt(Offset(cross.center.dx, cross.top + 2));
+      expect(dismissed, 1);
+    });
+
+    for (final title in [
+      'Offline',
+      'Your workspace storage is almost full, so new uploads may fail',
+    ]) {
+      testWidgets("answers intrinsic height from its parts' intrinsics: "
+          '${title.length} chars', (tester) async {
+        // A title that answers intrinsics but can't lay out dry, under an
+        // IntrinsicHeight.
+        await pump(
+          tester,
+          title,
+          around: (banner) => IntrinsicHeight(child: banner),
+          titleWidget: _NoDryLayout(width: title.length * 8.0),
+        );
+        expect(tester.takeException(), isNull);
+        final layout = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == 'BannerLayout',
+        );
+        final box = tester.renderObject<RenderBox>(layout);
+        expect(box.getMinIntrinsicHeight(box.size.width), box.size.height);
+        expect(box.getMaxIntrinsicHeight(box.size.width), box.size.height);
+      });
+
+      testWidgets('reports its dry baseline: ${title.length} chars', (
+        tester,
+      ) async {
+        // A baseline-aligned row asks for it in its dry layout.
+        await pump(
+          tester,
+          title,
+          around: (banner) => Row(
+            key: const ValueKey('row'),
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const Text('#'),
+              Expanded(child: banner),
+            ],
+          ),
+        );
+        final row = tester.renderObject<RenderBox>(
+          find.byKey(const ValueKey('row')),
+        );
+        expect(row.getDryLayout(row.constraints), row.size);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final direction in TextDirection.values) {
+      testWidgets('never overflows: 240 px, 2x text, an unbroken title, '
+          '${direction.name}', (tester) async {
+        await pump(
+          tester,
+          'https://example.com/${'w' * 200}',
+          width: 240,
+          scale: 2,
+          direction: direction,
+        );
+        expect(tester.takeException(), isNull);
+        final banner = tester.getRect(_banner);
+        for (final part in [find.text('Retry'), find.byType(TestIcon)]) {
+          final r = tester.getRect(part);
+          expect(banner.left <= r.left && r.right <= banner.right, isTrue);
+        }
+      });
+    }
+  });
+
+  testWidgets('fixed banners pad below the top safe area', (tester) async {
+    Future<double> titleTop(CoilBannerPlacement placement) async {
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, _) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(padding: const EdgeInsets.only(top: 40)),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: CoilBanner(
+                placement: placement,
+                title: const Text('Offline'),
+              ),
+            ),
+          ),
+        ),
+      );
+      return tester.getTopLeft(find.text('Offline')).dy;
+    }
+
+    final inline = await titleTop(CoilBannerPlacement.inline);
+    expect(await titleTop(CoilBannerPlacement.fixed), inline + 40);
+  });
+
+  testWidgets('style: fallback < theme < instance', (tester) async {
+    const themed = Color(0xFF00FF00);
+    const own = Color(0xFF0000FF);
+    Color fill() =>
+        (tester
+                    .widget<DecoratedBox>(
+                      find
+                          .descendant(
+                            of: find.byType(CoilBanner),
+                            matching: find.byType(DecoratedBox),
+                          )
+                          .first,
+                    )
+                    .decoration
+                as ShapeDecoration)
+            .color!;
+    Widget app(CoilThemeData theme, {CoilBannerStyle? style}) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => CoilTheme(
+        data: theme,
+        child: CoilBanner(title: const Text('Hi'), style: style),
+      ),
+    );
+    await tester.pumpWidget(app(CoilThemeData.light));
+    expect(fill(), CoilThemeData.light.colors.hover);
+    final theme = CoilThemeData.light.withComponentStyle(
+      const CoilBannerStyle(background: themed),
+    );
+    await tester.pumpWidget(app(theme));
+    expect(fill(), themed);
+    await tester.pumpWidget(
+      app(theme, style: const CoilBannerStyle(background: own)),
+    );
+    expect(fill(), own);
+  });
+}
+
+Widget _itself(Widget banner) => banner;
+
+/// A line [width] wide (wrapping at the constraints, 20 per line) that
+/// answers intrinsic sizes but can't lay out dry.
+class _NoDryLayout extends LeafRenderObjectWidget {
+  const _NoDryLayout({required this.width});
+
+  final double width;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderNoDryLayout(width);
+}
+
+class _RenderNoDryLayout extends RenderBox {
+  _RenderNoDryLayout(this.width);
+
+  final double width;
+
+  double _height(double maxWidth) => 20.0 * (width / maxWidth).ceil();
+
+  @override
+  double computeMinIntrinsicWidth(double height) => 40;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => width;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _height(width);
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _height(width);
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    assert(
+      debugCannotComputeDryLayout(reason: 'a test box'),
+      'no dry layout',
+    );
+    return Size.zero;
+  }
+
+  @override
+  void performLayout() {
+    final w = constraints.constrainWidth(width);
+    size = constraints.constrain(Size(w, _height(w)));
+  }
+}

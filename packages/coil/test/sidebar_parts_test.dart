@@ -1,0 +1,724 @@
+import 'package:coil/coil.dart';
+import 'package:coil_cli/testing.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
+
+import 'src/select_harness.dart';
+import 'src/test_icons.dart';
+
+void main() {
+  group('CoilKbd', () {
+    test('splits a combination into keys', () {
+      expect(CoilKbd.split('⇧⌘O'), ['⇧', '⌘', 'O']);
+      expect(CoilKbd.split('Ctrl+K'), ['Ctrl', 'K']);
+      expect(CoilKbd.split('['), ['[']);
+      expect(CoilKbd.split('Ctrl++'), ['Ctrl', '+']);
+    });
+
+    testWidgets('reads as one label', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(testApp(home: Center(child: CoilKbd('⌘K'))));
+      expect(find.bySemanticsLabel('⌘ K'), findsOneWidget);
+      semantics.dispose();
+    });
+  });
+
+  testWidgets('a tooltip with a key shortcut stays 24 tall', (tester) async {
+    Future<double> bubbleHeight({Widget? shortcut}) async {
+      await tester.pumpWidget(
+        KeyedSubtree(
+          key: UniqueKey(),
+          child: testApp(
+            tier: CoilTier.pointer,
+            home: Center(
+              child: CoilTooltip(
+                message: const Text('Search'),
+                shortcut: shortcut,
+                child: const SizedBox.square(dimension: 40),
+              ),
+            ),
+          ),
+        ),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.byType(SizedBox).last));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      final bubble = find
+          .ancestor(
+            of: find.text('Search'),
+            matching: find.byWidgetPredicate(
+              (w) => w is DecoratedBox && w.decoration is ShapeDecoration,
+            ),
+          )
+          .first;
+      final height = tester.getSize(bubble).height;
+      await mouse.removePointer();
+      return height;
+    }
+
+    expect(await bubbleHeight(shortcut: CoilKbd('⌘K')), 24);
+    expect(await bubbleHeight(), 24);
+  });
+
+  group('callout stack', () {
+    Widget card(String title, ValueChanged<String> dismissed) => CoilCard(
+      key: ValueKey(title),
+      variant: CoilCardVariant.inline,
+      title: Text(title),
+      icon: const TestIcon(TestGlyph.heart),
+      onDismissed: () => dismissed(title),
+    );
+
+    Future<void> pump(
+      WidgetTester tester,
+      CoilSidebarCalloutExpand expand,
+    ) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(600, 800);
+      addTearDown(tester.view.reset);
+      final cards = ['One', 'Two', 'Three'];
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.pointer,
+          home: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 240,
+              child: StatefulBuilder(
+                builder: (context, setState) => CoilSidebarCalloutStack(
+                  expand: expand,
+                  children: [
+                    for (final title in cards)
+                      card(title, (t) => setState(() => cards.remove(t))),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    double pileHeight(WidgetTester tester) =>
+        tester.getSize(find.byType(CoilSidebarCalloutStack)).height;
+
+    testWidgets('at rest the front card shows with two peeking behind', (
+      tester,
+    ) async {
+      await pump(tester, CoilSidebarCalloutExpand.onHover);
+      final front = tester.getRect(find.text('One'));
+      final card = tester.getSize(find.byType(CoilCard).first).height;
+      expect(pileHeight(tester), card + 24);
+      // The cards behind sit higher, under the front one.
+      expect(tester.getRect(find.text('Two')).top, lessThan(front.top));
+    });
+
+    testWidgets('a hovering mouse fans it out, and leaving folds it', (
+      tester,
+    ) async {
+      await pump(tester, CoilSidebarCalloutExpand.onHover);
+      final rest = pileHeight(tester);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+      final card = tester.getSize(find.byType(CoilCard).first).height;
+      // Fanned out, the cards are spaced by the theme's gap.
+      final gap = CoilTheme.metricsOf(
+        tester.element(find.byType(CoilSidebarCalloutStack)),
+      ).gap;
+      expect(pileHeight(tester), 3 * card + 2 * gap);
+      await mouse.moveTo(Offset.zero);
+      await tester.pumpAndSettle();
+      expect(pileHeight(tester), rest);
+    });
+
+    testWidgets('banners never fan out', (tester) async {
+      await pump(tester, CoilSidebarCalloutExpand.never);
+      final rest = pileHeight(tester);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+      expect(pileHeight(tester), rest);
+    });
+
+    testWidgets('dismissing the front card brings the next forward', (
+      tester,
+    ) async {
+      await pump(tester, CoilSidebarCalloutExpand.onHover);
+      final front = tester.getRect(find.text('One'));
+      // The dismiss button shows under a hovering mouse.
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+      final dismiss = tester.getCenter(find.bySemanticsLabel('Dismiss').first);
+      await mouse.moveTo(dismiss);
+      await tester.pumpAndSettle();
+      await tester.tapAt(dismiss, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+      // Leaving folds the pile again.
+      await mouse.moveTo(Offset.zero);
+      await tester.pumpAndSettle();
+      expect(find.text('One'), findsNothing);
+      expect(tester.getRect(find.text('Two')).top, front.top);
+    });
+  });
+
+  testWidgets('callout stack: a card without a key is an error', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: const SizedBox(
+          width: 240,
+          child: CoilSidebarCalloutStack(
+            children: [SizedBox(height: 40), SizedBox(height: 40)],
+          ),
+        ),
+      ),
+    );
+    expect(
+      '${tester.takeException()}',
+      contains('needs its own key'),
+    );
+  });
+
+  testWidgets('callout stack: reduced motion makes a custom spring instant', (
+    tester,
+  ) async {
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(600, 800);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.pointer,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(600, 800),
+            disableAnimations: true,
+          ),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 240,
+              child: CoilSidebarCalloutStack(
+                motions: {
+                  CoilSidebarTrack.callouts: const CupertinoMotion(
+                    duration: Duration(seconds: 3),
+                  ),
+                },
+                children: [
+                  for (final title in ['One', 'Two'])
+                    SizedBox(
+                      key: ValueKey(title),
+                      height: 40,
+                      child: Text(title),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final rest = tester.getSize(find.byType(CoilSidebarCalloutStack)).height;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(find.text('One')));
+    await tester.pump();
+    await tester.pump();
+    expect(
+      tester.getSize(find.byType(CoilSidebarCalloutStack)).height,
+      greaterThan(rest + 30),
+      reason: 'fanned out at once, not on the 3 s spring',
+    );
+  });
+
+  group('callout stack reaches the cards behind', () {
+    late List<String> cards;
+    late List<String> pressed;
+    late TextEditingController field;
+
+    Widget card(String title, StateSetter setState) => CoilCard(
+      key: ValueKey(title),
+      variant: CoilCardVariant.inline,
+      title: Text(title),
+      icon: const TestIcon(TestGlyph.heart),
+      actions: [
+        CoilButton(
+          size: CoilSize.compact,
+          onPressed: () => pressed.add(title),
+          child: Text('Open $title'),
+        ),
+      ],
+      onDismissed: () => setState(() => cards.remove(title)),
+      child: title == 'Three'
+          ? CoilInput(controller: field, semanticLabel: 'Note')
+          : null,
+    );
+
+    Future<void> pump(WidgetTester tester, CoilTier tier) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(600, 800);
+      addTearDown(tester.view.reset);
+      cards = ['One', 'Two', 'Three'];
+      pressed = [];
+      field = TextEditingController();
+      addTearDown(field.dispose);
+      await tester.pumpWidget(
+        testApp(
+          tier: tier,
+          home: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 280,
+              child: StatefulBuilder(
+                builder: (context, setState) => CoilSidebarCalloutStack(
+                  children: [for (final title in cards) card(title, setState)],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Finder cardOf(String title) => find.ancestor(
+      of: find.text(title),
+      matching: find.byType(CoilCard),
+    );
+
+    Finder inCard(String title, Finder finder) =>
+        find.descendant(of: cardOf(title), matching: finder);
+
+    Rect pile(WidgetTester tester) =>
+        tester.getRect(find.byType(CoilSidebarCalloutStack));
+
+    testWidgets('a hovering mouse reaches every card: hover, buttons, '
+        'dismiss and text', (tester) async {
+      await pump(tester, CoilTier.pointer);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+
+      for (final title in ['Three', 'Two', 'One']) {
+        final open = inCard(title, find.text('Open $title'));
+        await mouse.moveTo(tester.getCenter(open));
+        await tester.pumpAndSettle();
+        // Its own dismiss button shows under the mouse: the card hears it.
+        expect(
+          inCard(title, find.bySemanticsLabel('Dismiss')),
+          findsOneWidget,
+          reason: '$title shows its dismiss button on hover',
+        );
+        await tester.tapAt(
+          tester.getCenter(open),
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(pressed, ['Three', 'Two', 'One']);
+
+      await mouse.moveTo(
+        tester.getCenter(inCard('Three', find.byType(CoilInput))),
+      );
+      await tester.tapAt(
+        tester.getCenter(inCard('Three', find.byType(CoilInput))),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(inCard('Three', find.byType(EditableText)), 'hi');
+      expect(field.text, 'hi');
+
+      final dismiss = inCard('Two', find.bySemanticsLabel('Dismiss'));
+      await mouse.moveTo(tester.getCenter(dismiss));
+      await tester.pumpAndSettle();
+      await tester.tapAt(
+        tester.getCenter(dismiss),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(cards, ['One', 'Three']);
+    });
+
+    testWidgets('text typed into a card behind keeps the pile fanned out', (
+      tester,
+    ) async {
+      await pump(tester, CoilTier.pointer);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: tester.getCenter(find.text('One')));
+      await tester.pumpAndSettle();
+      final input = inCard('Three', find.byType(CoilInput));
+      await mouse.moveTo(tester.getCenter(input));
+      await tester.tapAt(
+        tester.getCenter(input),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      final fanned = pile(tester).height;
+      await mouse.moveTo(Offset.zero);
+      await tester.pumpAndSettle();
+      expect(
+        pile(tester).height,
+        fanned,
+        reason: 'the field being typed in stays in view',
+      );
+      await tester.enterText(inCard('Three', find.byType(EditableText)), 'ok');
+      expect(field.text, 'ok');
+    });
+
+    testWidgets('touch: a tap on a peeking card fans the pile out, never '
+        'pressing what is under the peek', (tester) async {
+      await pump(tester, CoilTier.touch);
+      final rest = pile(tester).height;
+      final front = tester.getRect(cardOf('One'));
+      // The strip of Two peeking above the front card, at its dismiss
+      // button's column.
+      final dismissTwo = tester.getCenter(
+        inCard('Two', find.bySemanticsLabel('Dismiss')),
+      );
+      await tester.tapAt(Offset(dismissTwo.dx, front.top - 4));
+      await tester.pumpAndSettle();
+      expect(cards, ['One', 'Two', 'Three'], reason: 'nothing dismissed');
+      expect(pressed, isEmpty);
+      expect(pile(tester).height, greaterThan(rest + 40), reason: 'fanned');
+
+      for (final title in ['Three', 'Two', 'One']) {
+        await tester.tap(inCard(title, find.text('Open $title')));
+        await tester.pumpAndSettle();
+      }
+      expect(pressed, ['Three', 'Two', 'One']);
+      await tester.tap(inCard('Three', find.byType(CoilInput)));
+      await tester.pumpAndSettle();
+      await tester.enterText(inCard('Three', find.byType(EditableText)), 'yo');
+      expect(field.text, 'yo');
+      FocusManager.instance.primaryFocus?.unfocus();
+
+      await tester.tap(inCard('Two', find.bySemanticsLabel('Dismiss')));
+      await tester.pumpAndSettle();
+      expect(cards, ['One', 'Three']);
+      expect(pile(tester).height, greaterThan(rest), reason: 'still open');
+
+      final open = pile(tester).height;
+      await tester.tapAt(const Offset(300, 20));
+      await tester.pumpAndSettle();
+      expect(
+        pile(tester).height,
+        lessThan(open - 40),
+        reason: 'a tap outside folds it',
+      );
+    });
+
+    testWidgets('touch: the folded front card keeps its own controls', (
+      tester,
+    ) async {
+      await pump(tester, CoilTier.touch);
+      await tester.tap(inCard('One', find.text('Open One')));
+      await tester.pumpAndSettle();
+      expect(pressed, ['One']);
+      await tester.tap(inCard('One', find.bySemanticsLabel('Dismiss')));
+      await tester.pumpAndSettle();
+      expect(cards, ['Two', 'Three']);
+    });
+
+    testWidgets('Tab reaches the controls of every card and fans it out', (
+      tester,
+    ) async {
+      await pump(tester, CoilTier.pointer);
+      final rest = pile(tester).height;
+      // An ordered set: the order Tab reaches the cards in.
+      final focused = <String>{};
+      for (var i = 0; i < 12; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+        final context = FocusManager.instance.primaryFocus?.context;
+        if (context == null) continue;
+        for (final title in ['One', 'Two', 'Three']) {
+          if (find
+              .descendant(
+                of: cardOf(title),
+                matching: find.byWidget(context.widget),
+              )
+              .evaluate()
+              .isNotEmpty) {
+            focused.add(title);
+            if (title != 'One') {
+              expect(pile(tester).height, greaterThan(rest + 40));
+            }
+          }
+        }
+      }
+      expect(focused.toList(), ['One', 'Two', 'Three']);
+    });
+  });
+
+  group('settings dialog', () {
+    final sections = [
+      for (final name in ['General', 'Members'])
+        CoilSettingsSection(
+          value: name,
+          label: Text(name),
+          description: Text('$name settings.'),
+          builder: (context) => CoilSettingsList(
+            children: [
+              CoilSettingRow(
+                label: Text('$name row'),
+                trailing: const SizedBox(width: 20, height: 20),
+              ),
+            ],
+          ),
+        ),
+    ];
+
+    Widget opener() => Builder(
+      builder: (context) => Center(
+        child: CoilButton(
+          onPressed: () => showCoilSettingsDialog<String>(
+            context: context,
+            title: const Text('Settings'),
+            sections: sections,
+          ),
+          child: const Text('Open'),
+        ),
+      ),
+    );
+
+    testWidgets('wide, a sidebar picks the section', (tester) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(1200, 900);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(testApp(tier: CoilTier.pointer, home: opener()));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('General row'), findsOneWidget);
+      await tester.tap(find.text('Members'));
+      await tester.pumpAndSettle();
+      expect(find.text('Members row'), findsOneWidget);
+      expect(find.text('Members settings.'), findsOneWidget);
+      expect(find.byType(CoilSelect<String>), findsNothing);
+
+      await tester.tap(find.bySemanticsLabel('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Members row'), findsNothing);
+    });
+
+    testWidgets('on a phone, a select picks the section in a sheet', (
+      tester,
+    ) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(testApp(tier: CoilTier.touch, home: opener()));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilSidebar), findsNothing);
+      expect(find.byType(CoilSelect<String>), findsOneWidget);
+      expect(find.text('General row'), findsOneWidget);
+    });
+  });
+
+  testWidgets('a group label shows its chevron at rest on touch', (
+    tester,
+  ) async {
+    Future<int> chevrons(CoilTier tier) async {
+      await tester.pumpWidget(
+        testApp(
+          tier: tier,
+          home: CoilSidebarGroup(
+            label: const Text('Mail'),
+            onExpandedChanged: (_) {},
+            child: const Text('Inbox'),
+          ),
+        ),
+      );
+      return find.byType(CoilDrawnGlyph).evaluate().length;
+    }
+
+    expect(await chevrons(CoilTier.pointer), 0);
+    expect(await chevrons(CoilTier.touch), 1);
+  });
+
+  group('pattern', () {
+    for (final direction in TextDirection.values) {
+      testWidgets('a collapsible group label is a disclosure '
+          '(${direction.name})', (tester) async {
+        var open = true;
+        await tester.pumpWidget(
+          testApp(
+            tier: CoilTier.pointer,
+            home: Directionality(
+              textDirection: direction,
+              child: StatefulBuilder(
+                builder: (context, setState) => CoilSidebarGroup(
+                  key: const ValueKey('target'),
+                  label: const Text('Mail'),
+                  expanded: open,
+                  onExpandedChanged: (v) => setState(() => open = v),
+                  child: const Text('Inbox'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await expectCoilPattern(
+          tester,
+          find.descendant(
+            of: find.byKey(const ValueKey('target')),
+            matching: find.byType(CoilInteraction),
+          ),
+          CoilPattern.disclosure,
+        );
+      });
+
+      testWidgets('an action is a button (${direction.name})', (tester) async {
+        await tester.pumpWidget(
+          testApp(
+            tier: CoilTier.pointer,
+            home: Directionality(
+              textDirection: direction,
+              child: Center(
+                child: CoilSidebarAction(
+                  key: const ValueKey('target'),
+                  icon: const TestIcon(TestGlyph.plus),
+                  semanticLabel: 'New thread',
+                  onPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        );
+        await expectCoilPattern(
+          tester,
+          find.byKey(const ValueKey('target')),
+          CoilPattern.button,
+        );
+      });
+    }
+  });
+
+  group('motion', () {
+    Future<CoilSidebarController> pump(
+      WidgetTester tester, {
+      bool reduced = false,
+      Map<CoilSidebarTrack<Object>, Motion>? motions,
+    }) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(1200, 800);
+      addTearDown(tester.view.reset);
+      final controller = CoilSidebarController();
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.pointer,
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: const Size(1200, 800),
+              disableAnimations: reduced,
+            ),
+            child: CoilSidebarScaffold(
+              controller: controller,
+              motions: motions,
+              sidebar: const CoilSidebar(children: [Text('Nav')]),
+              body: const SizedBox.expand(key: ValueKey('page')),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return controller;
+    }
+
+    double pageLeft(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(const ValueKey('page'))).dx;
+
+    testWidgets('folding glides, and reduced motion makes it instant', (
+      tester,
+    ) async {
+      (await pump(tester)).open = false;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(pageLeft(tester), inExclusiveRange(0, 256));
+
+      (await pump(tester, reduced: true)).open = false;
+      await tester.pump();
+      await tester.pump();
+      expect(pageLeft(tester), 0);
+    });
+
+    testWidgets('motions override the fold track', (tester) async {
+      final controller = await pump(
+        tester,
+        motions: {CoilSidebarTrack.fold: const Motion.instant()},
+      );
+      controller.open = false;
+      await tester.pump();
+      await tester.pump();
+      expect(pageLeft(tester), 0);
+    });
+  });
+
+  testWidgets('style: the instance wins over the theme over the fallback', (
+    tester,
+  ) async {
+    Widget group({CoilSidebarStyle? style}) => CoilSidebarGroup(
+      label: const Text('Mail'),
+      style: style,
+      child: const Text('x'),
+    );
+
+    const themed = Color(0xFF00FF00);
+    const own = Color(0xFFFF0000);
+    await tester.pumpWidget(
+      testApp(
+        home: Builder(
+          builder: (context) => Column(
+            children: [
+              group(),
+              CoilTheme(
+                data: CoilTheme.of(context).withComponentStyle(
+                  const CoilSidebarStyle(
+                    labelColor: WidgetStatePropertyAll(themed),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    group(),
+                    group(
+                      style: const CoilSidebarStyle(
+                        labelColor: WidgetStatePropertyAll(own),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final colors = tester
+        .renderObjectList<RenderParagraph>(find.text('Mail'))
+        .map((p) => p.text.style!.color)
+        .toList();
+    expect(colors, [CoilColors.light.mutedForeground, themed, own]);
+  });
+}

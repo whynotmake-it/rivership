@@ -1,0 +1,1235 @@
+# coil design system
+
+This document is the source of truth for how coil looks, moves and behaves, for people and for agents. It describes the **target** system: every component in scope, including those not built yet. Implementation sessions build against it. Where the Flutter package and this document disagree, one of them is a bug: fix the code, or update this document in the same change.
+
+Values are logical pixels (pt/dp). Token names are the Dart names in `lib/src/foundation/`. The user's decisions on former open questions are recorded in [§17 Decisions](#17-decisions).
+
+Contents: [1 Principles](#1-principles) · [2 Color](#2-color) · [3 Type](#3-type) · [4 Spacing and sizing](#4-spacing-and-sizing) · [5 Shape](#5-shape) · [6 Elevation and borders](#6-elevation-and-borders) · [7 Motion](#7-motion) · [8 Interaction](#8-interaction) · [9 Adaptivity](#9-adaptivity) · [10 Accessibility floor](#10-accessibility-floor) · [11 Iconography](#11-iconography) · [12 Writing](#12-writing) · [13 Shared anatomy](#13-shared-anatomy) · [14 Components](#14-components) · [15 Out of scope](#15-out-of-scope) · [16 Review checklist](#16-review-checklist) · [17 Decisions](#17-decisions)
+
+---
+
+## 1. Principles
+
+- **Coil is a Flutter design system on Motor springs.** You use it like `material_ui` or `cupertino_ui`: import it under any `WidgetsApp`. It has no app shell and no Material dependency.
+- **It's inspired by [Fluid Functionalism](https://www.fluidfunctionalism.com)** (MIT, credited in the README). From FF it takes:
+  - the spacing rhythm and the type scale;
+  - color restraint;
+  - the gliding hover highlight;
+  - merged selections;
+  - the 1 px press collapse.
+
+  These are a starting point, not a parity target. Where coil prefers something else, it changes it.
+- **It's platform-idiomatic in behavior and one design in look.** Coil follows each OS where users have learned a convention: context-menu trigger, scroll physics, text selection, haptics, back gesture, modifier glyphs and hit-target size. Visuals, motion and component shapes are the same everywhere. Coil is never a Cupertino or Material skin: no ripple, no elevation tint, no 3D wheels.
+- **Restraint.**
+  - State is shown with neutral tints. Color is spent only on meaning (brand focus, switch on, destructive, status).
+  - One highlight per list.
+  - Hierarchy comes from spacing and weight, never from more boxes or lines.
+- **A state lasts only as long as the input that caused it.** Hover lasts while a hovering pointer is over the element. Press lasts while something is down. The focus ring shows while the keyboard is the last input. Selection is the only persistent state, and it never looks like hover or press.
+- **Everything retargetable is a spring.** Interrupting a transition keeps its velocity; nothing restarts.
+- **Text scales and everything grows with it.** Heights are minimums (`pad + line box + pad`), never fixed.
+
+## 2. Color
+
+### 2.1 Neutrals and surfaces
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `background` = `surface(1)` | `#FAFAFA` | `#171717` | page |
+| `surface(2)` | `#FCFCFC` | `#1E1E1E` | inset panels, sidebar `inset` card |
+| `surface(3)` | `#FFFFFF` | `#252525` | popovers, sheets, cards |
+| `surface(4)` | `#FFFFFF` | `#2C2C2C` | nested surfaces, such as a card on a popover |
+| `surface(5)` | `#FFFFFF` | `#333333` | dialogs |
+| `surface(6..8)` | `#FFFFFF` | `#3A3A3A` · `#414141` · `#484848` | rare stacking |
+| `foreground` | `#171717` | `#F5F5F5` | text, primary button fill |
+| `mutedForeground` | `#737373` | `#A3A3A3` | secondary text, resting pointer rows |
+| `muted` | `#F4F4F5` | `#1E1E1E` | quiet fills |
+| `accent` | `#E5E5E5` | `#525252` | neutral accent (switch-off track, gray badge) |
+| `selected` | `#D4D4D4` | `#525252` | strong selection (slider fill base) |
+| `input` | `#E5E5E5` | `#404040` | field chrome where a fill is needed |
+| `border` | `foreground` @ 12 % | same | hairlines |
+
+A surface opened from another surface sits **level + 2** for popovers and sheets, and **level + 4** for dialogs, capped at 8. Children read the level they sit on, so a popover inside a dialog is level 7.
+
+### 2.2 State tints (separate tokens, never derived from accent)
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `hover` | black 4 % | white 6 % | hover fill (pointer only) |
+| `active` | black 7 % | white 10 % | pressed fill, selected fill, merged selection, tab pill |
+| `tint` | black 8 % | white 25 % | secondary button |
+| `tintHover` | black 6.5 % | white 20 % | secondary button hover |
+
+**Hover is never colored.** The 4 / 7 % ladder is the whole state vocabulary.
+
+### 2.3 Brand and status
+
+| Token | Light | Dark | Use: the only places these appear |
+|---|---|---|---|
+| `brand` | `#6B97FF` | `#6B97FF` | focus ring, switch-on track, text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar |
+| `red` / `redLabel` | `#FB2C36` / `#C10007` | `#FB2C36` / `#FF6467` | destructive: 15 % fill (dark 20 %) under `redLabel` text. Never a solid red button |
+| `destructive` | `#EF4444` | `#FCA5A5` | invalid borders (50 %), error text and icons |
+| `info` / `success` / `warning` | `#3B82F6` / `#22C55E` / `#F59E0B` | `#93C5FD` / `#86EFAC` / `#FCD34D` | Banner icons and badges only |
+
+Color mixes use **Oklab** (`CoilColorMix.oklab`). For example, primary hover is `foreground` 90 % into `background` and pressed is 80 %. sRGB lerps look visibly different, so don't use them.
+
+### 2.4 High contrast
+
+High contrast is driven by `MediaQuery.highContrastOf` and applied last (`CoilThemeData.highContrast()`):
+
+- `borderAlpha` 12 % → **40 %**, so every hairline and field border is visible;
+- `accent` is mixed 70 % toward `foreground`, which makes the selected and tab pills visible;
+- the focus ring is darkened until it's ≥ 3 : 1 against the background, and it's 2 px wide;
+- the checkbox draws a 1.5 px box around the checked tick, so all three states read in a 1-bit screenshot;
+- pointer rows rest at `foreground`, not muted.
+
+## 3. Type
+
+**Font:** coil bundles none. `CoilThemeData.typography` is a `CoilTypography`: the roles below, as plain `TextStyle`s, for every tier and size step. Read them with `CoilTheme.textOf(context)`.
+
+- **The default** is the platform's UI font: San Francisco on Apple platforms, Roboto on Android.
+- **Tuned presets:** `CoilTypography.allo()` (the catalog's look) and `CoilTypography.inter()`. The app bundles the font itself, under the family the preset names. In debug builds coil reports a family that the app's font manifest doesn't declare, since Flutter would silently fall back to the platform font.
+- **Any other font:** `CoilTypography.from(TextStyle(fontFamily: 'Brand'))` puts the scale on top of a base style. The base carries the family, axes and features; each role adds its size, line height and weight.
+
+**Optical size follows the font size.** Every role sets `opsz` to its font size, as CSS `font-optical-sizing: auto` does, unless the base style sets `opsz`. Fonts without the axis ignore it. **Allo is the exception:** its axis runs 9–32 and its headline design tightens faster than Inter's, so `CoilTypography.allo` follows the size up to 14 and rises half as fast above (display 28 uses 21), and adds a little letter spacing (+0.005em at 13, +0.006em at 14–18, tapering to +0.002em at display). Every role then sets within about ±0.5% of Inter's width, which the scale was tuned on.
+
+**Weights are plain `FontWeight`s.** A `FontWeight(550)` sets a variable font's `wght` axis, and `TextStyle.lerp` animates it. `CoilTextTheme.emphasis`, the title's weight, marks titles, selected items and buttons:
+
+| Weight | Value | Use |
+|---|---|---|
+| normal | 400 | body, resting labels |
+| emphasis | 550 | titles, selected items, buttons |
+| bold | 700 | display only |
+
+**Leading** is CSS half-leading (`TextLeadingDistribution.even`). For Allo and Inter, whose vertical metrics are identical, this centers the cap height in the line box exactly, so labels are optically centered with no nudging. A label that looks off-center is a layout bug, and the ink-measurement test catches it.
+
+**Color:** `CoilTheme.textOf` returns the roles in the foreground color. `text.muted`, `text.brand` and `text.destructive` are the same roles in those colors: `Text('Synced', style: text.muted.caption)`.
+
+### 3.1 Roles
+
+| Role | Pointer | Pointer compact | Touch | Touch compact | Weight | Use |
+|---|---|---|---|---|---|---|
+| display | 28/34 | 24/30 | 28/34 | 28/34 | bold | page titles (DataTable title) |
+| title | 16/22 | 14/20 | **17/22** | 16/22 | semibold | dialog, sheet and card titles |
+| subtitle | 14/20 | 13/18 | 16/22 | 15/20 | normal | chat bubbles, legends, command input |
+| body | 13/20 | 12/18 | **16/22** | 14/20 | normal | controls, rows, paragraphs |
+| field | 13/20 | 12/18 | **16/22** | 16/20 | normal | editable text (16 is iOS's no-zoom floor) |
+| caption | 12/16 | 11/14 | 13/18 | 12/16 | normal | descriptions, group labels, tooltips, badges |
+| micro | 11/14 | 11/14 | 11/14 | 11/14 | normal | counters, compact badges, key caps |
+
+- **Why touch body is 16/22:** it keeps the pointer's text-to-height ratio (13 in 36 = 16 in 44 = 0.36), and Inter 16 reads like SF 17 (research 08).
+- Numbers that line up (calendar cells, times, table numbers, counters) use tabular figures: `style.tabular`.
+- **Weight changes never reflow.** A label that turns semibold when selected reserves the semibold width with an invisible copy (the "ghost span").
+- **Rows truncate with an ellipsis and never wrap**, except where a component says it wraps (Field labels, CheckboxGroup labels, Banner text).
+
+## 4. Spacing and sizing
+
+### 4.1 Tiers and steps
+
+- **Tier** (`CoilTier`) is the size set.
+  - It latches by platform: desktop OS → `pointer`, phone or tablet → `touch`.
+  - `CoilAdaptiveScope(tier:)` or the theme can pin it. `CoilAdaptiveScope(platform:)` pins the platform itself for a subtree (a phone preview in a desktop window): the tier latches from it, and every per-platform convention in §9.2 follows it.
+  - It never flips live. Whether something hovers or presses is decided by the kind of each pointer event, so a mouse on an iPad still hovers and a finger on a laptop presses.
+- **Size step** (`CoilSize`) is `regular` or `compact`. Compact is one step denser, for toolbars, filter bars, sidebars and tables. `CoilAdaptiveScope(size:)` sets it for a subtree.
+
+### 4.2 The ladder (`CoilMetrics`)
+
+| Token | Pointer | Pointer compact | Touch | Touch compact |
+|---|---|---|---|---|
+| `controlHeight` (min) | 36 | 28 | 44 | 36 |
+| `minHitTarget` | 0 | 0 | 44 | 44 |
+| vertical pad = (h − line) / 2 | 8 | 5 | 11 | 8 |
+| `controlPaddingX` (fields, triggers, tabs) | 12 | 10 | 16 | 12 |
+| `itemPaddingX` (rows in a popup) | 8 | 6 | 10 | 6 |
+| `popupInset` (popup edge → rows) | 4 | 4 | 6 | 6 |
+| `gap` (glyph ↔ label, neighbors) | 8 | 4 | 12 | 8 |
+| `iconSize` | 16 | 14 | 20 | 16 |
+| `buttonPaddingX` / next to icon | 16 / 12 | 12 / 8 | 20 / 16 | 16 / 12 |
+| `buttonGap` | 6 | 4 | 8 | 6 |
+| `checkboxSize` / radius / glyph | 16 / 5 / 18 | 14 / 4 / 16 | 20 / 6 / 22 | 18 / 5 / 20 |
+| switch track / thumb | 34×20 / 16 | 28×16 / 12 | 44×26 / 22 | 36×22 / 18 |
+| `segmentPadding` | 4 | 2 | 4 | 2 |
+| `triggerMinWidth` | 160 | 160 | 160 | 160 |
+
+**The alignment rule:** `controlPaddingX = popupInset + itemPaddingX` (12 = 4 + 8, 10 = 4 + 6, 16 = 6 + 10, 12 = 6 + 6). A popover's row text therefore starts exactly where its trigger's text starts.
+
+### 4.3 Layout spacing
+
+| | Pointer | Touch |
+|---|---|---|
+| Page gutter (phone) | — | 16 |
+| Page gutter (desktop content) | 24 | 24 |
+| Label → control | 6 | 6 |
+| Control → description / error | 4 | 6 |
+| Field → field | 12 | 16 |
+| Section → section | 24 | 32 |
+| Dialog / card padding | 24 / 16 | 20 / 16 |
+| Sheet edges | — | flush with the bottom and sides; content clears the safe area |
+
+Spacing values come from {2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48}. If a value isn't in that set, it needs a reason in the code.
+
+## 5. Shape
+
+**Superellipses only.** Every rounded shape is a `RoundedSuperellipseBorder` / `ClipRSuperellipse` / `drawRSuperellipse`: pills (radius = height / 2), focus rings and merged runs included. An architecture test fails on `RRect`, `ClipRRect`, `RoundedRectangleBorder`, `StadiumBorder` and rounded `BoxDecoration`.
+
+**Shape family** (`CoilShape`, theme-wide):
+
+`CoilShape` resolves per tier (`CoilShape.radii(tier)`, `CoilTheme.radiiOf(context)`): touch controls are taller, so their corners grow to keep the same proportions. Pointer values are unchanged.
+
+| | item (controls, rows, fills) | container (popovers, sheets, cards, groups) | focus ring |
+|---|---|---|---|
+| `rounded` (default), pointer | 8 | 12 | 10 |
+| `rounded`, touch | 10 | 16 | 12 |
+| `pill`, pointer | height / 2 (rows 20) | 24 | item + 2 |
+| `pill`, touch | height / 2 (rows 22) | 28 | item + 2 |
+| `sharp` | 1 | 1 | 3 |
+
+Popups cap `pill` at `rounded`: a pill-shaped menu row looks like a button.
+
+**Nesting:** outer radius = inner radius + the inset between them (`CoilRadii.concentric`; `CoilShape.nested` goes the other way).
+
+- **Count the radius that's drawn.** A superellipse draws a radius past half its shorter side as half of it, so under `pill` a 28 px button has 14 px corners, not 20. Pass the inner shape's height (`innerExtent:`) and the container follows the pill: a composer 8 px around that button is 14 + 8 = **22**, not 12 (a corner sharper than the button) or 28.
+- **The inset is visual.** A compact button on touch is 36 inside a 44 hit box, so it sits 4 farther in than its layout slot.
+- **Tall containers keep the concentric corner.** A composer that grows to ten lines keeps its 22, like Apple's and Fluid Functionalism's: a pill-shaped box stops making sense once it's taller than a row.
+- **A corner control takes the nested radius.** A ghost ✕ 8 in from a 12 card corner hovers at 12 − 8 = 4. Where that's more than a round button has (`pill`), the button moves in until its round end shares the corner's center.
+- **`sharp` nests square.** A family whose containers are no rounder than its items gets its container radius back: a square button in a near-square frame, never a rounded one.
+- Popover = row radius + `popupInset`: 8 + 4 = **12** pointer, 10 + 6 = **16** touch; under `pill` the rows are pills, so 18 + 4 = **22** pointer and 22 + 6 = **28** touch. A sheet's top corners are a superellipse of the glass sheet's 36 (`CoilSheetRoute.glassRadius`, scaled by container / 16 for tighter shapes, so `sharp` is near square).
+- The focus ring sits 2 px outside, so it's item + 2.
+- A number-stepper button 4 px inside an input has radius item − 4, and so does a button in an input's slot (`CoilInputSlotScope.radiusFor`, which counts the field's corner as drawn: under `pill` a compact button in a 36 field is 18 − 4 = 14, itself a pill).
+- Every corner gap is even.
+
+**Merged selection runs** round only their outer corners, at the item radius.
+
+## 6. Elevation and borders
+
+- **Hairline:** 1 px `border` (`foreground` @ 12 %, 40 % in high contrast). The checkbox and radio use 1.5 px.
+- **Surface N pairs with shadow N** (`CoilColors.shadow(n)`):
+  - Light: a 1 px `shadowColor` ring plus stacked drops (1, 3, 6, 12, 24, 48, 96 px; spread = −offset / 2) at black 6 %. Surfaces are white from level 3.
+  - Dark: an outer black ring from level 3 (12 % + 2 % per level) and drops at black 18 %. Inside the shape, `insetRing(n)` draws a white ring at 2 % (levels 1–3), 4 % (4–5) or 6 % (6–8), and `topHighlight(n)` a 1 px white line along the top edge at 1 % (level 2), 2 % (3–4), 4 % (5–6) or 6 % (7–8). Don't skip them; they separate dark surfaces.
+  - **Blur:** the recipes use CSS blur. A CSS blur of `B` has sigma `B / 2`, so `shadow()` converts it for Flutter's `BoxShadow` (the 1 px drop becomes a hard edge).
+- **`CoilSurface`** paints all of this on a superellipse and tells its children their level: `min(ambient + offset, 8)`, with offset 2 for popovers, menus and sheets and 4 for dialogs. A popover in a dialog is level 7. `shadowLevel` pins the shadow weight while the fill follows the level. `CoilSurface.scope` sets the level without painting, for a widget that paints its own surface, such as a card.
+- **Every surface takes its level from the one it sits on.** Never hard-code a level: the numbers below are what each surface gets on the page.
+- **Uses:** popover surface 3 / shadow 3; sheet surface 3 / shadow 3 (only its ring and, in dark, the inner ring and top highlight show along its top edge); submenu 5 / 3 (a popover over its menu); card 3 / 3 in light and 2 with a hairline in dark (two steps up in light, one in dark); dialog 5 / 5; tooltip inverted (`foreground` fill, `background` text, no shadow).
+- **Scrim:** sheets, dialogs and drawers that slide over the page use the `scrim` color token, black 20 % (light) / 30 % (dark) (`CoilColors.scrim`). Nothing blurs the page. The phone drawer revealed from behind veils the page instead: in light it lightens it (the top surface, white, at 35 %), so the page recedes into haze; in dark it dims it (black 15 %), since a lighter page there would read as raised (`CoilDrawerLook.behindScrim`).
+- **No borders between rows.** Separators exist only as `role=separator` dividers in menus (between groups and before destructive items), Field separators, and table cell rules.
+
+### 6.1 Plasticity
+
+How lit controls look: `CoilThemeData.plasticity`, a `CoilPlasticity(amount:)` from 0 to 1 over one character of light (opencode's elevation tokens, kept to what you press).
+
+- **One amount, three checkpoints:** 0 (`CoilPlasticity.flat`, the default) paints nothing and components keep their decorations untouched; 0.5 (`CoilPlasticity.subtle`) is the lighting as tuned; 1 has a slightly brighter top rim and edge and a slightly stronger sheen, with the same shadows and wells. Amounts in between interpolate. There are no other presets and no per-ingredient knobs.
+- **Light from above.** Each shape has a role (`CoilReliefRole`): `raised` and `filled` controls (buttons, thumbs, the select trigger, an on switch) catch light on the top edge and cast a shadow below; `recessed` wells (checkbox, radio, the off switch) and `field`s are shaded at the top and lit at the bottom. `quiet` buttons (tertiary, ghost) and slider `track`s are never lit. Containers (cards, popovers, dialogs) have no role and are never lit. Shadows paint outside the shape only, so a see-through fill never shows its own.
+- **Resolved per role and brightness** into a `CoilRelief` (a gradient edge, top and bottom rims, a sheen and the drops) with `CoilTheme.reliefOf(context, role)`, and painted by `CoilRelief.decorate` on a superellipse. One setting reads right on white, black, gray, red and blue fills.
+- **What you press is lit evenly:** the primary (black or white fill), secondary (gray tint) and destructive (red tint) buttons read equally lit in light and dark. The tints' dark bottom edge, top rim and dark-mode edge sit a little under opencode's, the primary's top rim and sheen a little over. Raised controls are at 0.78 and filled ones at 0.8 of the recipe, wells at 0.35, fields at 0.2.
+- **States:** hover brightens the light, a press flattens it and moves the shade to the top edge (the control sinks in), half way in both cases, and a disabled control is flat.
+- **Selection indicators are never lit** (the tabs pill, toggle-group segments, merged selection blocks): they mark the current item, they aren't pressed.
+- **Not on raised surfaces.** Controls on a card, popover, menu, dialog or sheet are flat: `CoilSurface` places a `CoilPlasticityScope(elevated: true)` above the plasticity's `flattenAbove` level (1, the page, by default; 3 also lights controls on a card or a popover opened from the page), and `CoilTheme.of` reads a flat plasticity inside it. A component style's `plasticity`, or `CoilPlasticityScope(elevated: false)`, lights them anyway.
+
+## 7. Motion
+
+### 7.1 Tokens (`CoilMotion`, springs only)
+
+| Token | Default (`CupertinoMotion`) | Moves |
+|---|---|---|
+| `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight glide, press collapse, focus-ring travel, chevron rotate, tooltip and chip enter, switch squish, popover open/close on the pointer tier |
+| `standard` / `standardExit` | 180 ms / 140 ms, no bounce | indicators that must land: tab pill, switch thumb, radio selected fill, merge/split, popover open/close on the touch tier, collapse heights, month paging, drawer, slider thumb settle, list reorder |
+| `gentle` / `gentleExit` | 340 ms, bounce 0.1 / 260 ms | large surfaces: sheets (`gentle` both ways), dialogs, full-screen pages, sidebar rail open/close, Banner appear |
+| `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity and color: label colors, tints, rings fading, check and dash drawing, scrollbar visibility |
+
+Two durations sit next to the springs:
+
+- `minPressDuration` (90 ms): a quick tap still shows its press.
+- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes. Meanwhile the list ignores the pointer and the keys: the highlight stays on the picked row, and nothing else can be picked.
+- `stagger` (60 ms): the delay between siblings that arrive in turn (Reveal). Zero under reduced motion.
+- Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
+
+Named holds that aren't tokens:
+
+- **Copy result hold (InputCopy, every copy affordance):** 2 s after the last copy.
+- **Tooltip timing:** 200 ms delay, 300 ms group skip-delay.
+
+### 7.2 Rules
+
+- **The bigger the thing, the softer the spring.** Only `gentle` bounces. No component invents a duration.
+- **Exits are tighter springs, never curves**, so a reversed transition keeps its velocity. Enter always outlasts exit.
+- **Overlays enter with the blur-fade** (`CoilBlurFade`): opacity 0 → 1, blur 1.5 → 0 (`CoilBlurFade.defaultBlur`, a hint of softness rather than a smear), scale 0.96 → 1, plus a 4 px slide from the resolved side (popovers, tooltips). Exits run it in reverse on the exit token.
+- **Popovers follow the tier.** Pointer popovers open on `quick` and close on `quickExit`, like the original's popups (`spring.fast`). Touch popovers are bigger and open under a finger, so they use `standard` / `standardExit`. The tier comes from `CoilTheme.tierOf`, not the platform.
+- **Scale an image, not the text.** While an overlay scales or slides, its content is drawn at rest size and the result is resampled (a matrix image filter, medium quality). Text drawn under an animated scale is re-rasterized every frame, and Impeller snaps each glyph to the pixel grid on its own, so letters jitter. At rest the content paints directly.
+- **Gestures hand off their velocity:**
+  - a sheet drag, drawer drag or switch flick releases into its spring with the fling velocity;
+  - a switch decides by the projected position `x + v · 0.1 s`;
+  - sliders don't fling: the value never coasts.
+- **Snap on reflow.** A highlight, selected pill or active background springs when its *target* changes, and snaps when the target only moved because of layout.
+- **Height collapses** (Accordion, groups, ThinkingSteps, Banner rows) animate a 0..1 height factor on `standard`. Opacity leads on `fade`, so content dissolves instead of being sliced. A child resizing inside an open region is instant.
+- **No idle tickers.** Nothing animates at rest. The loops are spinners, the Skeleton pulse and the ThinkingIndicator's word cycle. Reduced motion stops the first two and turns the word cycle into a crossfade.
+
+### 7.3 Customizing
+
+- Tokens are runtime theme data. Set them app-wide on `CoilThemeData.motion`, per subtree with `CoilTheme.override`, or per instance with a component's `motion:`.
+- Multi-part components expose typed tracks, such as `CoilSwitchTrack.thumb`, `.squish` and `.tint`. Their springs belong to the component's style, next to the rest of its look: set them app-wide or per subtree with `CoilThemeData.withComponentStyle(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: …}))`, per instance with `style:`, or per instance directly with `motions: {.thumb: …}`.
+- A component's `motions:` wins, then its style (its `style:` merged over the theme's entry, key by key), then the tokens.
+- Components read the motion on every animation, so a change applies to the next animation.
+
+### 7.4 Reduced motion
+
+Reduced motion (`MediaQuery.disableAnimations`) is applied last:
+
+- spatial tokens become `Motion.instant()`;
+- `fade` / `fadeExit` stay, so opacity and color still transition (fewer and gentler, not none);
+- overlays fade only, with no blur, scale or slide;
+- `stagger` becomes zero, so revealed siblings fade in together;
+- icon presences (§11) land at once: a checkbox tick or a select check appears complete, and swapped icons (the copy feedback, send and stop) trade places without crossing. coil's copy check still draws itself in on `fade` inside its presence;
+- loops (spinners, Skeleton pulse) stop. The ThinkingIndicator keeps its word cycle as a crossfade (§14.4), because the changing word is the content;
+- the holds stay.
+
+## 8. Interaction
+
+### 8.1 States per modality
+
+| State | Mouse / trackpad / hovering pen | Touch | Keyboard |
+|---|---|---|---|
+| **Hover** | `hover` fill, or the gliding highlight in lists; muted → foreground label; icon weight 400 → 533 | never | — |
+| **Press** | buttons collapse 1 px per side; rows show no extra fill (the highlight is already there) | `active` fill on touch-down. Inside scrollables it waits `kPressTimeout` (100 ms); it clears on up, cancel, scroll start or a slide past 18 px; it shows for at least 90 ms | Space/Enter: the same pressed look while the key is held |
+| **Focus-visible** | no ring after a click | no ring after a tap | 1 px `brand` ring 2 px outside, radius + 2; shows only while the keyboard is the last input (`CoilInputModality`) |
+| **Selected** | `active` fill, foreground, semibold | same | same |
+| **Disabled** | 50 % opacity, no hover, skipped by arrows | 40 % on touch rows | skipped |
+
+Text fields are the exception: they show their focus border (`foreground` @ 40 %) however they were focused.
+
+**No sticky states.** Nothing stays lit where a finger lifted.
+
+**Cursor: the arrow over controls.** That's the desktop convention, so buttons, rows, toggles and cards show the arrow. `CoilThemeData.controlCursor` changes it for every control (`SystemMouseCursors.click` for the web's pointing hand). Links (breadcrumb crumbs) always point, text shows the I-beam, and a disabled control keeps the cursor beneath it.
+
+**States come from events.** `CoilInteractionDetector` writes hover, press and focus into its `WidgetStatesController` only from pointer, focus and input-modality events, never while building. So a widget that listens to the controller can sit above the detector. Disabled is configuration, so the controller never holds it. The visuals combine the controller with `enabled` through `CoilInteractionDetector.statesFor`: a disabled control drops a hover it had, and gets it back if it's enabled again under the same pointer.
+
+**Touch rows rest at full foreground.** The muted → foreground fade means "the pointer is here", which a finger can't express.
+
+### 8.2 The gliding highlight
+
+- **One highlight per list** (`CoilHoverRegion`). It glides between rows on `quick` (`quickExit` when leaving) and fades on `fade`.
+- **It starts fresh after empty space.** When the pointer re-enters a list, the highlight fades in at the row instead of sliding over from where it last was.
+- **Keyboard focus moves it too:** arrows move the active item, and the highlight follows.
+- **On touch it isn't a highlight.** It becomes the press fill in place: it never travels between taps and never stays.
+
+### 8.3 The active item
+
+Lists keep an **active item** separate from focus and hover (like `aria-activedescendant`):
+
+- hover, the arrow keys and typeahead move it;
+- Enter, Space and the soft keyboard's Search key act on it;
+- in search and combobox lists, completed taps move it too.
+
+**Typeahead:** a 1 s buffer, prefix-matched on each item's `searchText`, searching from the active item and skipping disabled rows.
+
+### 8.4 Merged selection
+
+- Adjacent selected rows (or segments) share one `active` block with only its outer corners rounded.
+- Selecting the row between two runs **merges** them: the edges converge on the bridging row and the inner corners stay round until the halves meet.
+- Deselecting a row inside a run **splits** it: it snaps to the seam, then the halves diverge.
+- Both run on `standard`.
+- **Used by:** CheckboxGroup, ToggleGroup, multi-select lists, Combobox (multi), the Calendar range band, Sidebar multi-select and DataTable selection.
+- In a popup the block is inset `popupInset`, so it's concentric with the panel.
+
+### 8.5 Press collapse
+
+- A filled button draws its fill 1 px inside its bounds plus a 1 px spread in the same color.
+- Pressing collapses the spread, so the fill shrinks exactly 1 px per side at any width, on `quick`.
+- There's **no scale**, on any platform.
+
+### 8.6 Haptics (theme field, platform defaults)
+
+| Event | iOS | Android | Desktop |
+|---|---|---|---|
+| Toggle flips (switch, checkbox), segment change | `selectionClick` | none | none |
+| Pick in a sheet | `selectionClick` | none | none |
+| Long-press menu opens | `mediumImpact` | `Feedback.forLongPress` | — |
+| Sheet snaps to a detent | `lightImpact` | none | — |
+| Copy succeeds (InputCopy) | `selectionClick` | `selectionClick` | none |
+
+The table is `CoilHaptics.platform`. Set `CoilThemeData.haptics` to remap events, or to `CoilHaptics.none` to turn them off. Components play them with `CoilHaptics.play(context, event)`.
+
+## 9. Adaptivity
+
+### 9.1 Presentation: popover vs sheet
+
+The presentation is decided **when an overlay opens**. An open overlay never morphs. First match wins:
+
+1. The component's `presentation:` override.
+2. `CoilAdaptiveScope(presentation:)`.
+3. **Touch tier and window width < 600 → the phone rule:**
+   - **sheet** if the overlay is a combobox, a date/time picker or the command menu, has search, is multi-select, has submenus nested 2 or more levels deep, or has more than 8 items;
+   - otherwise an **anchored touch popover**.
+4. Otherwise a popover.
+
+The decision uses window width, not the platform: an iPad in a 320-wide split view is a phone.
+
+### 9.2 Platform conventions
+
+| | iOS / iPadOS | Android | macOS / Windows / Linux | Web |
+|---|---|---|---|---|
+| Context menu | long-press 500 ms | long-press 500 ms | right-click, Ctrl-click (macOS), Shift+F10, Menu key | as the input in use; our long-press on touch |
+| Tooltips | hover only (trackpad, Pencil); none for touch | long-press on icon-only buttons | hover / focus | hover / focus |
+| Scroll | the app's `ScrollBehavior` (physics, overscroll, drag devices); coil's overlay bar | the app's `ScrollBehavior`; coil's overlay bar | the app's `ScrollBehavior`; thin coil bar that widens on hover | the app's `ScrollBehavior` |
+| Text selection | system edit menu (`SystemContextMenu`), Cupertino handles | Material handles and toolbar | coil-styled right-click menu | browser menu |
+| Back | edge swipe pops routes | system / predictive back dismisses the top overlay | Esc | Esc / browser back |
+| Modifier glyphs | ⌘ ⌥ ⇧ ⌃ | Ctrl Alt Shift | ⌘ on macOS, Ctrl elsewhere | by OS |
+| Hit target | 44 | 44 (no 48 px Android hit box: Flutter has no hit slop, and a larger hit area without a larger layout needs a custom hit-test override) | — | per tier |
+
+coil sets no scroll behavior of its own. Physics, overscroll and which pointers drag content are whatever the app's ambient `ScrollBehavior` says (Flutter's platform defaults unless the app sets one with `ScrollConfiguration`), so a coil list scrolls like every other list in the app. Where coil draws its own scrollbar (`CoilScrollbar`, in a scroll area and a menu), it turns off only the ambient behavior's scrollbar, with `copyWith(scrollbars: false)`.
+
+Coil never draws Cupertino or Material chrome. Platform pieces come in only where they're genuinely native: the edit menu, selection handles and the keyboard. They're used only inside `CoilTextFieldCore`.
+
+**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold.
+
+### 9.2.1 Keyboard shortcuts
+
+coil's keys are Flutter shortcuts: each widget maps keys to an `Intent` in `Shortcuts` and handles it in `Actions`. There is no raw key handling except typeahead, which needs typed characters, and the input-modality tracker, which only listens.
+
+- **Intents an app may want to change are public and replaceable:** `CoilDismissIntent` (Escape closes the focused popover, menu, select list, combobox list, tooltip or drawer panel) and the slider's `CoilSliderStepIntent` and `CoilSliderLimitIntent`. coil registers its own action for them with `CoilDefaultAction`; an app's enabled `Actions` entry for the intent anywhere above the widget replaces it, nested popups included. A disabled entry leaves coil's.
+- **Everything else is private** (list movement, table keys, keyboard scrolling): an app changes those by ejecting the component.
+- **Flutter's intents only where coil's action is the nearest one** (`ActivateIntent` on a control and in a list, `NextFocusIntent` for Tab out of a menu). coil doesn't reuse `DismissIntent`, `ScrollIntent` or `DirectionalFocusIntent`: text fields, routes and `WidgetsApp` already have actions for those, and an action lookup starts at the focused widget, so theirs would answer for coil's keys or shadow them.
+- **Modifiers follow the platform:** ⌘ on Apple platforms, Ctrl elsewhere. Character shortcuts use `CharacterActivator`, which follows the keyboard layout. App-wide shortcuts, such as ⌘K for the command menu, belong to the app, in `Shortcuts` at its root or `ShortcutRegistry`.
+
+### 9.3 Every overlay
+
+- Dismiss with Esc, a scrim or outside tap, system back, and drag (sheets).
+- Focus returns to the trigger.
+- The payload survives the exit animation.
+- `open()` resolves once, with a reason.
+- A search field in a sheet opened by touch is **not** autofocused (it would throw the keyboard over the list). Combobox and CommandMenu are the exceptions: typing is the point.
+
+## 10. Accessibility floor
+
+Every component ships with all of these. They're required to call it done.
+
+- **Text scaling** up to 2×, checked at 1, 1.5 and 2. Rows and controls grow, and icons scale through `IconThemeData.applyTextScaling`. Gaps and paddings don't scale.
+- **High contrast** (§2.4) and **bold text** (`MediaQuery.boldTextOf`: normal → semibold).
+- **Contrast:**
+  - body text ≥ 4.5 : 1;
+  - muted text on its surface ≥ 4.5 : 1 for content, 3 : 1 for placeholders;
+  - focus ring ≥ 3 : 1;
+  - the switch-off track ≥ 3 : 1 against its surface in high contrast.
+- **Hit targets** ≥ 44 on touch, on every platform, Android included. The box that receives taps is the control's layout box (`minHitTarget` pads it out), never a hit-test override. A control inside a row that's already the target shrink-wraps (`CoilTapTargetSize.shrinkWrap`).
+- **Semantics:** correct roles (button, checkbox, mixed, switch/toggled, radio in a mutually exclusive group, slider/adjustable, menu/menuItem, tab, textField, header, table/row/cell), names and states. Rows merge their parts into one node.
+- **Live regions:** Banner (polite; assertive for destructive), copy results, command and combobox result counts, Field errors.
+- **Keyboard:** everything reachable and operable, with the patterns in §14. Arrow and Enter interception respects IME composition (`value.composing`).
+- **RTL:** layouts mirror, and directional glyphs (chevrons, arrows) flip. Progress and slider direction follow `Directionality`.
+- **Reduced motion** (§7.4).
+- No information lives only in hover or only in a tooltip.
+
+## 11. Iconography
+
+- **Coil bundles no icon set.** Icon slots take any `Widget` and are styled by Flutter's `IconTheme`:
+  - `size` = `iconSize` for the tier;
+  - `color` = the label's current color;
+  - `weight` = 400 at rest, 533 when hovered or active (`CoilIconWeight`, the 1.5 → 2 stroke);
+  - `applyTextScaling: true`.
+- Variable icon fonts read `weight` directly. Stroke icons scale their stroke by `1.5 · weight / 400`. A set with one static font per stroke picks its font by `weight`; a filled set loses the cue.
+- **Glyphs coil draws** are icons with a role, named for what they mean: `check`, `dash`, `copy`, `failed`, `close`, `alert`, `chevronStart`, `chevronEnd`, `chevronDown`, `chevronUp`, `send`, `stop` (`CoilIconRole`). Each is a field of `CoilIcons`, the theme's role map (`CoilThemeData.icons`), so an app swaps coil's glyphs for its icon set app-wide, as Fluid Functionalism's `IconProvider` does, also where a component has no slot (calendar arrows, the sheet's close button). Precedence: a component's slot (`checkmark:`, `indicator:`, `dismissIcon:`, `separator:`, `glyphBuilder:`…), then the theme's entry, then coil's drawn glyph (`CoilDrawnGlyph`: a 24-unit grid, round caps, the stroke following `weight`; the select trigger's chevron keeps a fixed 2). Icons are plain widgets in the slot's `IconTheme`, never `IconData`, and a custom icon sits where coil's glyph sat, at the same size and center. [doc/icons.md](doc/icons.md) lists where each role shows and has complete Lucide and Material Symbols sets.
+- **Direction:** coil's `chevronStart` and `chevronEnd` mirror in RTL. A custom icon mirrors itself (`matchTextDirection: true`).
+- **Animated icons:** where coil animates an icon in, out or into another (checkbox tick and dash, select and question-row check, the copy feedback, the composer's send and stop), it wraps it in a `CoilIconPresence`: an `Animation<double>`, 0 absent to 1 fully there, clamped (a bounce belongs outside the icon), on the component's motion tokens, and jumping to its end under reduced motion. An icon that reads it (`CoilIconPresence.maybeOf`) animates itself, as coil's tick does by drawing in; any other gets coil's fallback, a fade and a scale from 80 %, applied when it paints. A swap is two presences crossing. coil's own glyphs keep their look: the tick and dash draw in, the copy feedback and send/stop blur-fade. Morphs between two shapes and a linear-progress contract are out of scope.
+- **Not icons:** the spinner (it loops; `loadingIndicator:` replaces it), the radio dot and the thinking steps' dots are drawn and aren't roles.
+- **Icons are optional decoration.** Never put meaning only in an icon: icon-only buttons need `semanticLabel`.
+
+## 12. Writing
+
+- **Labels are short verbs or nouns in sentence case:** "New file", "Save changes", "Delete project". No Title Case and no trailing punctuation.
+- **Buttons say what happens:** "Delete project", not "OK". A destructive confirm repeats the verb from the title.
+- **Menus:**
+  - verbs for actions, nouns for choices;
+  - no ellipsis unless the item opens a dialog that asks for more ("Rename…");
+  - destructive items go last, after a separator.
+- **Placeholders are examples or hints, never labels.** A field always has a label (`labelHidden` only for an obvious inline search).
+- **Errors** say what to do: "Enter an email address like ada@example.com". No "Invalid input".
+- **Descriptions** are one sentence, without "This field…".
+- **Empty states** say what's missing and offer the next action: "No results for 'xyz'" plus a "Clear search" action.
+- **Times and dates** use the locale (`intl`), 12/24 h from `MediaQuery.alwaysUse24HourFormat`. Ranges use an en dash ("Nov 13 – 15").
+- Keep labels short enough to fit 160 at body size. If a label truncates, the full text must be reachable another way (menu, semantics).
+
+## 13. Shared anatomy
+
+### 13.1 Row (menus, selects, lists, groups)
+
+```
+| inset | pad | [leading] gap | label                 | gap [trailing] | pad | inset |
+                              | description (caption) |
+```
+
+| | Pointer | Pointer compact | Touch | Touch compact |
+|---|---|---|---|---|
+| Min height, one line | 36 | 28 | 44 | 36 (44 hit) |
+| Min height, two lines (label + description) | 52 | 40 | 60 | 52 |
+| Leading glyph | 16 | 14 | 20 | 16 |
+| Avatar / tile in two-line rows | 24 | 20 | 32 | 24 |
+| Trailing slot | check, value (muted), chevron, shortcut caps (pointer only), badge | same | same, no shortcut caps | same |
+
+- Label colors: pointer rows rest at `mutedForeground` and turn `foreground` when lit, selected or checked. Touch rows rest at `foreground`.
+- The trailing check is the text color (`foreground`) in menus, popovers and sheets, never `brand`.
+- **No separators between rows.** A check slot keeps its width when empty.
+- A trailing check means single choice. A leading checkbox means a standalone checklist (CheckboxGroup). A merged fill plus a check means multi-select in a menu.
+
+### 13.2 Popup surface
+
+- Surface 3 / shadow 3; radius = container (item + `popupInset`: 12 pointer, 16 touch); inset `popupInset`.
+- Width ≥ the trigger's (menus default to 288 pointer, `max(trigger, 220)` touch).
+- Max height `min(480, available)` for menus, 300 for pointer selects; touch popovers are uncapped (≤ 8 rows).
+- 6 px from the anchor; flips to the side with room; 8 px from window edges.
+- Enter with the blur-fade from the resolved side: `quick` / `quickExit` on pointer, `standard` / `standardExit` on touch (§7.2).
+- Lists scroll inside a ScrollArea with 32 px edge fades.
+
+### 13.3 Sheet
+
+- coil's own sheet (`CoilSheetRoute`) on `stupid_simple_sheet`'s plain route (`StupidSimpleSheetRoute`), which brings the drag, the scroll handoff and the keyboard inset: flush with the bottom edge, full width up to 560 (wider windows center it), top capped at the top safe area or 5 % of the height, whichever is larger.
+- It dims the page with the `scrim` token (20 % light, 30 % dark) and doesn't blur it. A sheet opened from a sheet slides over it with its own scrim; the one below stays put.
+- Surface: `CoilSurface` two levels above the opener (3 from the page) with its shadow, in a `RoundedSuperellipseBorder` whose top corners are the glass sheet's 36 (§5), clipping the content. Content clears the home indicator and the side insets that reach it.
+- It rides on the keyboard: a field inside stays above it.
+- No grabber: the sheet drags anywhere.
+- **Header** (`CoilSheetPanel`): one line holding an optional title and the close button, the touch control height (44) tall, whose middle runs through the center of the top corner: 36 down for the default shape (`CoilSheetPanel.headerCenterOf`), so the line spans 14–58. Title and button are centered on that line together. With neither a title nor a close button there is no header and the content starts 12 down (`CoilSheetPanel.topGap`).
+- **Close button** (`CoilSheetCloseButton`, the panel's `close` slot, shown by default as the signifier that the sheet closes): a round 36 button (the touch compact control height) with a 16 ✕ at stroke 2, the secondary `tint` fill (`tintHover` on hover, the 1 px press collapse), in a 44 hit target. Its center is the corner's center (36, 36 for the default shape), so its round shape sits concentric in the 36 corner, 18 from the top and side edges (`CoilShape.nested(36, 18)`); a corner too tight for that (`sharp`) keeps it 12 from the edges. It grows with the text like its glyph (52 at 2×, still 12 from the edges). It pops the route like a dismissal (`Navigator.maybePop`, so a `PopScope` can stop it), is named "Close" for screen readers, takes Tab, Enter and Space, and plays no haptic (coil's buttons don't, nor do the platforms' close buttons). The default button hides on a route that can't be popped (a non-dismissible dialog). Pass `close: null` for none, or a `CoilSheetCloseButton(onPressed:, semanticLabel:)` or any widget to replace it.
+- **Per platform** (`CoilSheetHeaderLayout`, `headerLayout:` to pin it):
+  - **iOS and macOS, `centered`:** the close button in the **leading** corner and the title **centered** on the sheet, as Apple's HIG has it (Cancel/Close on the leading edge of a sheet's top bar; the round close button in the upper-left corner of iOS 26 sheets). An empty slot on the trailing side balances the button so the title centers on the sheet.
+  - **Android and everything else, `start`:** the title **leading**, aligned with the rows' text (16 in: `popupInset` + `itemPaddingX`), and the close button in the **trailing** corner, where Material puts a sheet's close affordance (M3 side sheets: a close icon button at the end of the header; Google's bottom sheets the same).
+  - Both mirror in RTL.
+- **Title:** 17/22 semibold `foreground`, `Semantics(header)`, **one line**: a long title ends in an ellipsis before the button (8 apart, the compact touch gap), never under it.
+- **Search sheets** (the command menu, a dropdown with search, a combobox without a sheet title): no header; the search line takes its place and the close button **ends that line on every platform**, where iOS puts a search bar's Cancel and Material a search bar's trailing action, so the field keeps the full width before it and the button stays concentric with the corner (`CoilSheetCloseSlot`; `CoilSheetPanel.lineTopOf` lines the field's middle up with the corner's center). A combobox with a sheet title keeps the header and puts its field under it.
+- **Optional pinned header row** under the header: for push navigation, a back row ("‹ Parent"). A search field is 44, not autofocused on touch, kept above the keyboard.
+- **Content under the header** lines up with the title: a dialog shown as a sheet pads its body and action bar 16 at the sides (the rows' text inset), 8 under the header line; a settings dialog's title moves into the header next to the close button.
+- A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. At the top there is no line.
+- **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
+- **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top, unless the footer leads with a summary of what its one action confirms (§13.5, summary footer), as the date picker's does. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
+- **Height:** it hugs its content: a short list makes a short sheet on the bottom edge; a scroll view or long content grows it up to the cap and scrolls inside. Search and command sheets open at the large detent and grow while the keyboard is up.
+- **Motion:** `gentle` both ways; a dismissing drag hands its fling velocity to it. The scrim fades with the sheet.
+- **Scrollables that take their own behavior** (a `PageView`, a `ListWheelScrollView`) use `CoilSheetRoute.scrollBehaviorOf(context)`, so a drag still hands off to the sheet.
+- **Dismiss:** drag down, tap the scrim, system back, Esc.
+- **Rows** are always touch rows, whatever the tier.
+
+### 13.4 Focus ring
+
+1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2, so it's concentric with the element. Every control draws it the same way: single controls, choice cards, groups, rows, menus, tabs, calendar days and the switch alike. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the gap (`offset`, 2 by default) and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`, drawn with `CoilFocusRingTheme.decorationAround` on the row grown by `extent` (gap + width).
+
+**Room for the ring.** A parent that clips keeps `extent` (3 px, 4 in high contrast) clear around what it holds, or lets the ring paint past its edge: a popup's rows sit `popupInset` (4 / 6) in; the tabs strip and the calendar's pagers clip only their scrolling sides, so the ring shows above and below; the calendar keeps `extent` beside its edge days (`CoilCalendar.edgeInsetOf`); a sheet's pinned footer scrolls inside the gaps around it. Inside clipping parents that can't do that (ScrollArea, table cells, a card's stretched action) the ring is inset by 1 instead.
+
+**Focus within.** A container may mark that the user is working inside it, like CSS `:has(:focus-visible)`. The rule is the ring's: it shows while something inside has focus and the keyboard was the last input. A text field inside counts however it was focused, because text fields always show focus (§8.1); the text field core marks itself with `CoilFocusAlwaysVisible`, which a custom field can use too. A click on a button inside never turns it on. `CoilFocusWithin` reports this and adds no tab stop. A ChoiceCard draws the ring around the whole card, and its control's own ring steps aside. The mark fades on `fade` in and `fadeExit` out.
+
+### 13.5 Action bar
+
+The buttons that end a dialog or a sheet. `CoilActionBar` (primitive) lays them out, and every dialog and sheet uses it. Actions are given Cancel first and the primary last. The gap between buttons is the tier's `gap` (8 pointer, 12 touch) unless the caller passes `spacing`; a dialog passes its style's `actionGap` (8).
+
+- **Pointer tier, tablets, wide windows:** a row at the buttons' own width, trailing-aligned, gap 8, Cancel before the primary. Buttons that don't fit wrap onto another trailing row.
+- **Phone** (inside a sheet, a modal shown as one or any `CoilSheetRoute`, such as a popup's sheet; or on the touch tier in a window under 600, which includes centered confirmations): every button is the full content width and the touch height (44), stacked 8 apart, **primary on top, Cancel at the bottom**. One action is full width too. A button never floats centered at its own width.
+- **Always a stack on a phone, never a two-up row.** One shape whatever the labels, locale and text size: a row would turn into a stack when a label grows, so the same dialog would look different in German or at large text. Every button is a full-width thumb target, and the primary is always in the same place, whatever the count. The order matches both platforms: iOS puts Cancel last in action sheets and stacked alerts, and Material's stacked dialog buttons put the confirming action on top. A destructive primary goes on top like any primary; its color marks it, not its position.
+- **Labels** stay on one line and end in an ellipsis when they don't fit (§ Button); the stack gives them the most room.
+- **In a sheet** the bar is pinned under the content (§13.3), 16 from the sides (the rows' text inset, where the sheet's title starts) with half the usual 16 gap above it.
+- **Summary footer** (a footer whose one action confirms a choice made above it, like the date picker's Done): the **summary** of what the action will confirm on the **leading** side and the action on the **trailing** side, at its own width, on every tier, phones included. The summary is body text in `foreground`, tabular, starting at the footer's inset (16 in a sheet, aligned with the sheet's title); before anything is picked it's empty and the action is disabled. They sit `gap × 2` apart (24 touch, 16 pointer), centered on each other. It replaces the full-width stack here because the footer now holds two things to read together, "this is what you'll get" and "confirm it", and a stack would put the summary in a row of its own above a full-width button. The action is still a 44 touch target.
+  - **Narrow phones and large text:** the action never gives up width; the row lays it out first, at its label's width, and the summary takes what's left. The summary wraps onto a second line and past that ends in an ellipsis, so at 1.5× or 2× text a "Fri, Nov 22, 2019, 14:30" breaks across two lines beside a full-size Done, never the other way round.
+  - **Not a button:** the summary takes no tap and no focus. Screen readers hear it as one label ("Selected: Friday, November 22, 2019"), and Tab goes straight to the action.
+
+---
+
+## 14. Components
+
+Every component follows §8 and §10. Each entry gives anatomy, sizes, states, motion, pointer vs touch, keyboard and semantics, then do/don't. "P / Pc / T / Tc" = pointer, pointer compact, touch, touch compact.
+
+### 14.1 Leaf controls
+
+#### Button
+
+- **Anatomy:** fill → [leading] label [trailing]; icon-only is square.
+- **Sizes** (height · padding · gap):
+
+  | | P | Pc | T | Tc |
+  |---|---|---|---|---|
+  | Labeled | 36 · 16 (12 next to icon) · 6 | 28 · 12/8 · 4 | 44 · 20/16 · 8 | 36 · 16/12 · 6, 44 hit |
+  | Icon-only | 36 | 28 | 44 | 36 visual, 44 hit |
+
+  The label is body at the regular weight (400), as in Fluid Functionalism; semibold is for headings, selected rows and emphasis.
+- **Variants:**
+
+  | Variant | Rest | Hover | Pressed / selected | Label |
+  |---|---|---|---|---|
+  | primary | `foreground` | 90 % Oklab toward background | 80 % | `background` |
+  | secondary | `tint` | `tintHover` | `tint` | foreground |
+  | tertiary | clear, hairline | `hover` | `active` | foreground |
+  | ghost | clear | `hover` | `active` | muted → foreground |
+  | destructive | red 15 % (dark 20 %) | 25 % (30 %) | 15 % | `redLabel` |
+
+- **States:**
+  - `loading`: a spinner replaces the leading slot (or the icon) with the width locked, at full strength, `Semantics(value: 'Loading')`.
+  - `selected`: held pressed colors, for a menu trigger while its menu shows.
+  - Disabled: 50 %.
+- **Motion:** fill and label colors on `fade`; press collapse on `quick` (release on `standard`); icon weight on `fade`; leading/loading swap with the blur-fade on `quick`.
+- **Keyboard:** Enter or Space activates.
+- **Do:** one primary per view; destructive actions as `destructive` with a confirm.
+- **Don't:** scale on press; ripple; a solid red button; two primaries side by side.
+
+#### Badge
+
+- **Anatomy:** [dot 7 (6 compact)] label (micro/caption).
+- **Sizes:** P 24 high, padding 10, caption, gap 6. Compact: 20, padding 8, micro, gap 4. **No touch bump.** A badge isn't interactive.
+- **Variants:**
+  - `solid`: the hue at 15 % into the background, foreground text; gray uses `accent`.
+  - `dot`: hairline outline, foreground text, colored dot.
+  - `ghost`: no outline, no padding, inherits text color. It keeps the badge's height (24, compact 20), so it lines up with the others in a row.
+  - Colors: gray (default), brand, and the Tailwind-500 hues (red … rose).
+- **Shape** (`shape: CoilBadgeShape`): `item` (the default) takes the theme's item radius, which `CoilShape.pill` already makes full; `pill` is full (half the height) under any shape family.
+- **Motion:** none. When a host adds one (ThinkingSteps sources), scale 0.85 → 1 + fade on `standard`.
+- **Semantics:** plain text; the dot is excluded.
+- **Do:** status and categories.
+- **Don't:** make it tappable; use a Chip-like Button instead.
+
+#### Kbd
+
+- **Anatomy:** one cap per key of a shortcut (`⇧⌘O` → ⇧ ⌘ O; `Ctrl+K` → Ctrl K), 2 apart.
+- **Sizes:** 18 square at least (it scales with text), padding 4, 11 type with tabular figures, radius 3. No touch bump; it isn't interactive.
+- **Colors:** from the ambient text color: the keys in it, the fill a 15 % wash of it, so the caps follow the text around them and suit any surface, the inverted tooltip bubble included. Where no color is set they take `foreground`, never a muted fallback; muted caps come only from a component that sets muted text around them on purpose (a menu's shortcut column, the command menu footer's hints, a text field's slot in its placeholder color).
+- **In a tooltip:** the shortcut slot pins the cap to 16, which fits the caption line, so the bubble stays 24 tall.
+- **Semantics:** the keys read as one label.
+
+#### Checkbox
+
+- **Anatomy:** a box (1.5 px border); when checked, a bare tick with no box (FF's signature); a dash when null.
+- **Sizes:** box 16 / 14 / 20 / 18, radius 5 / 4 / 6 / 5, glyph 18 / 16 / 22 / 20. Hit box 44 on touch. Inside a row, use `CoilCheckboxIndicator`, which has no hit box of its own.
+- **States:**
+  - unchecked: `border`; hover and press: foreground 40 % (so a finger, which never hovers, sees its press); invalid: destructive 50 %;
+  - checked / indeterminate: border transparent; hover and press bring the 40 % border back;
+  - disabled: 50 %.
+  - High contrast draws the box around the tick.
+- **API:** `value: bool?` + `tristate`. A tap cycles false → true → (null) → false.
+- **Motion:** the tick draws on `fade` and retracts on `fadeExit`; check ↔ dash re-keys (old retracts, new draws); border on `fade`. The tick and dash are the theme's `check` and `dash` icons (§11) in a `CoilIconPresence` on the `glyph` track: coil's draw themselves, an app's animate themselves or fade and scale. Reduced motion lands them at once.
+- **Keyboard:** Space toggles. Enter toggles only inside a choice card (Field).
+- **Semantics:** `checked`, `mixed`, `enabled`, label from the Field.
+- **Do:** use it for independent on/off in forms, with a visible label.
+- **Don't:** use it for a setting that applies immediately (use Switch).
+
+#### Switch
+
+- **Anatomy:** track → thumb, plus an optional label. The whole row is the target.
+- **Sizes:** see §4.2. The thumb is inset 2. Hover grows the thumb +2 (pointer only, into a pill). Press widens it +4 and flattens it −4 (+5 / −5 on touch). The labeled row's vertical padding is (row − track) / 2.
+- **Colors:**
+  - off: `accent`; on: `brand`;
+  - hover shifts the track 10 % toward `overlay` (off) or 8 % toward black (on), in Oklab;
+  - thumb white with `shadow(2)`;
+  - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
+- **Motion** (tracks `CoilSwitchTrack.thumb` / `.squish` / `.tint`):
+  - thumb on `standard`, squish on `quick`, tint on `fade`;
+  - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
+  - release decides by `x + v · 0.1 s` and animates with the release velocity.
+- **Keyboard:** Space or Enter toggles. The focus ring sits 2 px outside the track, as every ring does (§13.4).
+- **Semantics:** `toggled`, label.
+- **Haptic:** iOS `selectionClick` when the value flips mid-drag.
+- **Do:** use it for settings that apply immediately.
+- **Don't:** use it in forms that need Submit; don't copy iOS's 51×31.
+
+#### Input
+
+- **Anatomy:** a hairline field → [leading muted icon] text [trailing slot].
+- **Sizes:** height = `controlHeight`, padding `controlPaddingX`, field text role.
+- **Slots:** placed by measuring them in the same layout pass as the text (`CoilInputSlotPlacement.auto`), so the first frame is right:
+  - a slot that fits a line of text (an icon, a "EUR" unit, a spinner, a kbd) sits **inline**: inside the padding, centered on the text;
+  - a taller slot (a button) sits **inset**: into the padding, centered, and as far from the side as from the top and bottom, so its corners are concentric with the field's. The field keeps its height while the slot and `slotInset` (4; 2 compact) on each side fit: a 28 compact button in a 36 field, a 36 one in a 44 touch field. In a compact field the compact button takes the height that fits (`CoilInputSlotScope.maxExtent`): 24 in a 28 field, 32 in a 36 touch one, so the field keeps its compact height too. Only a taller slot grows the field, by just enough (a 36 button makes a pointer field 44);
+  - a `CoilButton` in a slot defaults to compact and to the nested radius (`CoilInputSlotScope`); an explicit `size:` or `style:` wins. On touch it drops its own hit padding and the field gives taps in a 44 box around it to the button;
+  - `leadingPlacement` / `trailingPlacement` override: `inline` keeps today's padding (a button makes the field grow), `inset` tucks even a short slot in.
+- **States:**
+  - rest: `border`, transparent; hover (pointer): `hover` fill;
+  - focus: border `foreground` @ 40 %, hover fill removed (shown for any focus);
+  - invalid: `destructive` 50 % (focus wins); disabled: 50 %; read-only: no hover.
+- **Number variant:** two stepper buttons inset 4 (2 compact) at the trailing edge, 28 / 24 / 36 visual (44 hit on touch), radius item − 4, muted → foreground on hover. Long-press repeats with acceleration (400 ms, then every 80 ms, then 40 ms). Up and Down step.
+- **Motion:** border and fill on `fade`.
+- **Platform:** `keyboardType`, `textInputAction`, `autofillHints` and `textCapitalization` per use; autocorrect and suggestions are forced off while obscured; `scrollPadding` clears the keyboard by 16; native selection, magnifier and edit menu.
+- **Enter:** single-line Return is the input action (`onSubmitted`); a Return that commits an IME composition only commits.
+- **Keyboard:** native editing; IME-safe.
+- **Do:** always pair it with a Field label.
+- **Don't:** put a focus ring on fields; use the placeholder as the label.
+
+#### Textarea
+
+- **`CoilInput.multiline`:** the same widget, chrome and style as Input. It grows from 3 lines to 10, then scrolls. Inline slots sit on the first line; an inset slot (a button) sits in the bottom corner, as far in as it would be in a single-line field, like the composer's send button.
+- **Radius:** the item radius, capped at the `rounded` container radius (12 / 16), so a `pill` shape doesn't make a capsule.
+- **Sizes:** min 3 lines and max 10, each plus the vertical pad. The first line aligns with Input text.
+- **Motion:** growth is instant; colors on `fade`.
+- **Keyboard:** Return inserts a newline. (Composers decide sending; see InputMessage.)
+- **Don't:** animate growth (it jitters while typing).
+
+#### Skeleton
+
+- **Anatomy:** a block in `hover` tint at the item radius (text lines: line-box height × 0.6, full radius).
+- **Motion:** after a 160 ms grace period it fades in over `fade`, then pulses opacity 1 → 0.5 → 1 every 2 s. Reduced motion keeps the grace and the fade, and drops the pulse.
+- **Switching:** `CoilSkeletonSwitcher(loading:)` stacks the skeleton and the content in one cell and cross-fades them (`fade` in, `fadeExit` out), so the space is never empty. Skeletons shown first keep the grace period, so content that lands within it replaces them before they show. Skeletons that replace content on screen show at once. To swap without a fade, set the `swap` track to `Motion.instant()`.
+- **Semantics:** excluded. The loading region carries `Semantics(label: 'Loading', liveRegion)`.
+- **Do:** match the final layout's line count and widths. Text lines vary between 55 and 82 % of the width.
+- **Don't:** shimmer.
+
+### 14.2 Grouped controls
+
+#### Field (FieldSet, Legend, Field, Label, Description, Error, Separator, ChoiceCard)
+
+- **Anatomy:** a label (body; muted when stacked, foreground beside a control), the control, a description (caption muted), and an error (caption `destructive` with a 14 alert icon, live region). These are Widget slots, not discovery.
+- **Orientation:**
+  - `vertical`: gaps 6 and 4 (touch 6 and 6);
+  - `horizontal`: label left, control right, the tier's `gap` apart (8 pointer, 12 touch; 4 and 8 compact);
+  - `responsive`: vertical below 448 of group width, horizontal above.
+- **Spacing:** fields 12 apart (touch 16). FieldSet legend: subtitle semibold, 4 below.
+- **ChoiceCard:** a checkbox, switch or radio at the start, centered on the title's first line, then the title (body, foreground) and description (caption, muted), in a 1 px `border` container at the container radius. Padding is `controlPaddingX` (12, 10 compact, 16 touch).
+  - The whole card is the target. Inside it the control drops its own hit-area padding.
+  - Hover (pointer): the `hover` fill, and the control shows its hover look. Touch press: the `active` fill.
+  - Selected: border `foreground` 40 %.
+  - Keyboard focus rings the whole card, 2 px outside like every ring (§13.4). The control leaves out its own ring, told by `CoilFieldScope.framed`.
+  - Fill and border on `fade` / `fadeExit`. Pass the control's value as `selected`, as with a list tile.
+- **Separator:** 20 high with a hairline, optionally with a centered caption label.
+- **Required:** a muted ` *` after the label (excluded from semantics) plus the `isRequired` semantics flag.
+- **Horizontal:** label and description share the row 1 : 1 with the control, which sits at the trailing edge.
+- **Semantics:** one node per field. Label, description and error join the control's label, in that order, so they're read with its role and value. The node carries `isRequired` and `validationResult`, and is a live region while an error shows.
+- **Label tap:** runs the control's label action (`CoilFieldControl`): text fields focus, toggles toggle.
+- **Toggle rows are one target.** In a horizontal field or a setting row, a tap anywhere in the row (padding, gap, description) toggles a checkbox, switch or radio, as in a native settings list. The control shows hover and press while the row has them, and keeps its own focus ring. Other controls (text fields, selects, sliders, buttons) and rows with several controls respond only on the control; the label still focuses a text field. `CoilFieldRow` does this for any row; a control opts in with `CoilFieldControl.tapArea`.
+- **One control per Field.** A group of controls goes in a FieldSet, a container with a header legend.
+- **Invalid:** the label turns `destructive`, and the control gets its invalid look.
+
+#### CheckboxGroup (built)
+
+- **Anatomy:** a column of rows: [checkbox] label. Labels wrap and grow the row.
+- **Sizes:** row = §13.1. The checkbox shrink-wraps inside the row.
+- **States:**
+  - checked rows merge into one `active` block (§8.4);
+  - the pointer highlight glides on top;
+  - the label is foreground (it rests muted on pointer when unchecked).
+- **Motion:** merge/split on `standard`, highlight `quick`, tick `fade`, ring `quick`.
+- **Keyboard:** each row is a tab stop. Up and Down move with wrapping; Home and End jump; Space or Enter toggles.
+- **Semantics:** a group with a label; rows are `checked`.
+- **Touch:** press fill only. Selection is the merged blocks.
+- **Do:** use it for 2–10 related options.
+- **Don't:** use it for mutually exclusive options.
+
+#### RadioGroup
+
+- **Anatomy:** rows of [radio] label. The radio is a 16 / 14 / 20 / 18 circle, 1.5 px border, with a dot 8 / 7 / 10 / 9.
+- **States:**
+  - **one selected fill (`active`) glides between rows** on `standard`;
+  - the selected label is semibold foreground (with a ghost width);
+  - the selected radio's border is transparent and its dot is foreground;
+  - hover is the gliding highlight.
+- **Motion:** dot in from scale 0.3 + fade on `quick`, out on `fadeExit` (bespoke and short); selected fill `standard`.
+- **Keyboard:** roving focus, so the selected row is the tab stop. Arrows move *and* select, with wrapping; Home and End jump.
+- **Semantics:** `inMutuallyExclusiveGroup`, `checked`.
+- **API:** generic `CoilRadioGroup<T>(value, onChanged, options)`.
+- **Other layouts** (radio choice cards): `CoilRadioGroup<T>.custom(value, onChanged, child)` with a `CoilRadio(value:)` anywhere in `child`. It is Flutter's `RadioGroup`, so the keyboard model is the rows': the selected radio is the tab stop, arrows select the next enabled radio in reading order with wrapping, and coil adds Home and End. A radio on its own shows its own ring and hover; in a choice card the card takes both.
+- **Don't:** use it for more than 7 options (use Select).
+
+#### ToggleGroup (built)
+
+- **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
+- **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
+- **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
+- **Motion:** merge/split `standard`, highlight `quick`.
+- **Keyboard:** roving; Left and Right move; Space toggles.
+- **Semantics:** toggle buttons with `selected`.
+- **Use:** multi-select formatting (Bold / Italic). For single choice use Tabs or a RadioGroup.
+
+#### Slider (built)
+
+- **Widgets:** `CoilSlider` for one value. `CoilRangeSlider` for two: `values: CoilRangeValues(start, end)`, like Flutter's `RangeSlider`.
+- **Value API:** `label` is a widget. The value shows through `valueBuilder` (a widget, default a plain number up to two decimals), screen readers get `semanticFormatter`, and the value field uses `editFormatter` / `editParser`.
+- **Anatomy:**
+  - **Row** (variants `scrubber`, the default, and `pips`): a full-width bordered row, `controlHeight` tall, with the label at the start and the value at the end (tabular, muted). The fill is `active` and a handle line sits at the value. `pips` adds a 5 px dot per step, left out where the label or value sits. The range spans the row edge to edge: the fill is empty at min and full at max, and the end pips sit under the handle line. The label takes the free space and ellipsizes; the value keeps its reserved width.
+  - **Pill** (variant `pill`): an 18 high pill track with a 1 px `border` and a 16 white knob in a 20 box, between the label and the value; fill `selected` 50 % (dark `accent` 40 %). `pillPips` adds a 4 px dot per step (`pip` color), growing 1.25× while hovered on `standard`. Dots under the fill fade out over 2 px past its edge; a range hides those between its thumbs.
+  - **Narrow pill rows:** when the label, the value and a 96 px track (`pillMinTrack`) don't fit on one line, the label and value share a line above a full-width track, and the label ellipsizes. The original has no automatic rule: its compact slider takes an explicit `valuePosition` (`left`, `right`, `top`, `bottom`). coil decides during layout, from the row's width and the label's and value's natural widths.
+  - **Range:** always the pill (`pill` or `pillPips`), with a knob per thumb and the fill between them. On the row, the two handle lines would land in the label and value text, and the original draws ranges only on the pill. The value text reads `start – end`.
+- **Steps:** `divisions` (equal steps) or `steps` (a list of allowed values at any spacing, between `min` and `max`). Never both. Values snap to the nearest step; a value exactly halfway goes to the lower one. Pips sit at each step.
+- **Value display** (`valueDisplay`):
+  - `text` (default): the value text.
+  - `editable`: a click or tap on a value, or Enter on a focused thumb, turns it into a field (the `field` type role, a 1 px `border` underline, as wide as the widest value). It opens with `editFormatter`'s text (the raw number by default) selected and reads it back with `editParser`. Enter or Done applies it, clamped to the range and snapped to a step; leaving the field applies it too. Esc leaves the value unchanged. Text that isn't a number changes nothing. Enter and Esc return focus to the thumb. While the pointer is on the value, the track shows no hover preview.
+  - `tooltip`: no value text. A bubble rides each thumb while the slider is hovered, pressed or focused with the keyboard. With steps, a pressed or dragged thumb's bubble follows the pointer instead (its text is still the snapped value), and on release it springs back onto its thumb on `standard`.
+- **Sizes:** `size` changes sizes only: the row is `controlHeight` (36 / 28 pointer, 44 / 42 touch) with `controlPaddingX`. On touch the pill's knob is 22 visual, 44 hit.
+- **States:** the label and value turn foreground and semibold (with ghost width) while hovered, pressed or focused. Pips: dots at 30 % muted, the one at each thumb foreground. Disabled 50 %.
+- **Focus ring:** after keyboard use only. The row rings the whole row, and the focused thumb's handle line goes full foreground. The pill rings the focused knob, as the original does per thumb.
+- **Pointer extras:** hover shows a preview bar (`accent` 40 %) that springs on `quick` from the nearest thumb toward the snapped hover value, plus the value bubble (the touch bubble) with the hover value.
+  - The bubble appears on the hover at once, with no sideways travel; only its fade plays.
+  - Until the preview reaches it, the bubble follows the hover directly while the preview chases.
+  - Once they meet (the preview arrives or crosses it), the bubble rides the preview's spring as the hover moves.
+  - With steps, the bubble's position is the pointer's, not the step's: it follows the pointer (gliding on the preview's `quick` once they meet) while its text, the preview and the value snap from step to step.
+- **Touch:** no preview. **A value bubble** (the tooltip look) sits 8 above the track at the press and shows the value under the pointer, snapped. The bubble belongs to the pointer: it sits under the finger, between steps too, while the thumb springs underneath from step to step, and it never travels with the thumb's spring. On release it springs onto the value's position on `standard` while it fades on `fade` / `fadeExit`; a mouse that still hovers keeps it at the pointer as the hover bubble. A press on the track jumps the nearest thumb there on the way down, as native sliders do. It happens when the press shows (at once, or after `kPressTimeout` while a drag could still win, as in Flutter's `Slider`). Dragging then sets the value directly with no fling, and a press that becomes a drag reports one change (one `onChangeStart`, one `onChangeEnd`).
+- **Range input:** a tap or drag moves the nearest thumb, by touch and by mouse. On two stacked thumbs, the side of the press picks one, and on them the drag's direction does. The thumbs can't cross but may meet.
+- **Motion:** thumbs and fill settle on `standard` after a jump, a key or a typed value; follow the finger 1:1 while dragging a continuous slider; with steps they spring to each step and retarget as the pointer crosses steps, while the value bubble follows the finger 1:1. Pointer positions are mapped into the track as it is laid out at that moment, so a track that shifts mid-drag (the pill's text turning semibold) doesn't put the thumb or bubble off the pointer. Handle and color on `fade`; pip growth `standard`. `CoilSliderTrack.thumb` moves both thumbs of a range.
+- **Keyboard:** arrows ±step (a step list walks the list); PageUp/PageDown and Shift+arrow ±10 %, at least one step; Home and End go to min and max, or to the other thumb in a range. A range is two tab stops.
+- **Semantics:** `slider` / adjustable, a formatted `value`, increase and decrease actions. A range is a group (the label) with one slider node per thumb, named `startSemanticLabel` and `endSemanticLabel` ("Minimum" and "Maximum" by default). An open value field is its own text-field node.
+- **Bubbles:** every value bubble (hover, press and tooltip mode) is a `CoilTooltipAnchor.controlled` with the `CoilTooltipBubble` look, faded in and out on `CoilSliderTrack.bubble`. Its anchor is a knob-wide box as tall as the track, at the bubble's fraction, so the bubble sits 8 above the track and follows the thumb in layout. Bubbles live in the overlay and stay out of semantics; the slider's nodes carry the value.
+
+#### Tabs (built)
+
+- **Anatomy:** a row of tabs: [icon] label. The **selected pill** (`active`) sits under the selected tab.
+- **Sizes:** tab height `controlHeight`, padding `controlPaddingX`, icon gap `gap`.
+- **States:** selected is foreground semibold (ghost width) with icon weight 533; others are muted; hover is a lighter pill (`active` @ 40 %) that grows out of the selected pill (pointer only).
+- **`labels: CoilTabLabels`:** `always` or `selected` (unselected tabs show the icon only, and the label width springs).
+- **Motion:** selected pill `standard`; hover pill `quick` (glides back into the selected pill on leave); ring `quick`; label width `quick`; scroll into view `standard`.
+- **Overflow:** the strip scrolls horizontally with 24 px edge fades, and the selected tab scrolls into view on `standard`.
+- **Touch:** no hover pill. Swipe between panels is opt-in. iOS `selectionClick` on change.
+- **Keyboard:** roving; arrows move focus, Enter or Space selects (manual activation); Home and End jump.
+- **Semantics:** tab, `selected`.
+- **Do:** use it for 2–6 peer views.
+- **Don't:** use tabs as navigation between pages of a flow.
+
+#### InputGroup
+
+- **Anatomy:** a column of labeled Inputs sharing one hover scope. The field nearest the pointer gets the `hover` fill; nothing glides. Each Input places its slots as Input does, so a button in one doesn't make it taller than its neighbors.
+- **Spacing:** 12 between fields (touch 16). Errors sit under each field.
+- **Keyboard:** Tab between fields. A tap anywhere in a field's box focuses its text.
+- **Touch:** no hover, only focus states.
+
+#### InputCopy
+
+- **Anatomy:** a read-only row (monospace value, truncated) plus a copy action: `icon` or `button` ("Copy"), on the trailing side or with `align: start`. The action always shows: without an `icon`, it is the theme's `copy` icon (§11), else coil's drawn copy glyph (two sheets). Label it with a Field: a tap on the label copies.
+- **Sizes:** row = `controlHeight`, padding `controlPaddingX`.
+- **States:**
+  - idle;
+  - hover (pointer): the value gets a `brand` 20 % mark and the action turns foreground;
+  - after a copy: `copied` (check) or `failed` (× in destructive) for 2 s after the last copy, then idle. Any failure to set the clipboard counts as `failed`, not only a platform error.
+  - Copying again while the result shows animates nothing and only restarts the 2 s. Copying while the result leaves turns it around from where it is (no restart, the check stays drawn). This is `CoilCopyController` plus `CoilCopySwitcher`, the one state machine every copy affordance uses.
+  - The button label width is reserved by a "Copied" ghost.
+- **Feedback:** **inline on every platform.** The icon swaps to a check (the theme's `check`, or a drawn one; `failed` for an ×) and the button label reads "Copied". On iOS and Android also `selectionClick`. A pointer tooltip ("Copy to clipboard") is optional extra, never the only feedback.
+- **Motion:** icon swap: two icon presences crossing (§11), in on `quick`, out on `quickExit`; coil's glyphs blur-fade at scale 0.8 with them and its check and × also draw in on `fade`, once per appearance; an app's icons animate themselves or fade and scale. The icon stays in place while the button's label cross-fades beside it, start-aligned (`CoilCopySwitcher`), so nothing shifts when the longer label leaves. Tracks: `CoilInputCopyTrack.fill`, `.mark`, `.action`, `.weight`, `.swap`, `.draw`; the swap and draw run in the shared `CoilCopyGlyph`, keyed there by `CoilCopyTrack.swap` and `.draw`. Reduced motion makes the swap instant; coil's check still draws in on `fade`.
+- **Value font:** coil bundles no monospace font; the value is the theme's font with tabular figures and a slashed zero. Apps set `CoilInputCopyStyle.valueStyle` for a real mono.
+- **Semantics:** a button named "Copy" plus the Field label (or `semanticLabel`); its value is the full text. It announces "Copied" or "Copy failed" when the result appears (not again for a copy that only extends it).
+- **Keyboard:** Enter or Space copies.
+
+### 14.3 Menus and overlays
+
+#### Dialog
+
+- **Anatomy:**
+  - header: title (title role), description (body muted), gap 6, 16 below;
+  - body;
+  - footer: the action bar (§13.5): buttons trailing-aligned, gap 8, Cancel before primary; on a phone full width and stacked, primary on top;
+  - an optional close button (ghost icon-only, 12 from the top and trailing edges).
+- **Sizes:** max width `sm` 400 / `lg` 540 / `xl` 880; width = window − 32 up to the max; padding 24; container radius; surface level + 4.
+- **Presentation:**
+  - Pointer and tablets: centered.
+  - **Phone (touch, < 600):**
+    - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, beside the sheet's close button (leading on iOS, trailing elsewhere; it calls `onClose` when the dialog has one, else pops), so the sheet never shows two; and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
+    - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
+    - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
+- **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
+- **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.
+- **Semantics:** a modal route, `scopesRoute`, title as the route name.
+- **Routes:** `showCoilDialog` pushes a `CoilModalRoute`. Apps that use `Navigator.pages` or a router show the same dialog in a `CoilModalPage`, or return a `CoilModalRoute` from the router's custom route builder. Both paths pick the presentation, scrim, focus and back the same way: the route decides it when it's created, and the dialog reads it with `CoilModalRoute.presentationOf`.
+- **Do:** use it for decisions that block the flow.
+- **Don't:** nest dialogs; open a dialog from a sheet on a phone (push inside the sheet instead).
+
+#### Tooltip
+
+- **Anatomy:** an inverted bubble (`foreground` fill, caption text in `background`), padding 8×4 (~24 high), item radius, 8 from the trigger.
+- **Pointer:**
+  - opens after 200 ms of hover, or immediately on keyboard focus;
+  - closes on leave, blur, Esc or pointer-down;
+  - within 300 ms of another closing, it opens without delay;
+  - **TooltipGroup:** one bubble glides between adjacent triggers on `quick`, morphing its width and crossfading the label on `fade`.
+- **Touch:**
+  - Android: long-press on icon-only buttons shows it above the finger (8 + 24), held while pressed and faded on release. It never fires the button.
+  - iOS: none by default.
+  - If the element has a context menu, long-press opens the menu instead.
+- **Motion:** blur-fade + a 4 px slide out from the trigger (it starts 4 px closer and moves away) on `quick`, out on `quickExit`.
+- **Semantics:** the text is also `Semantics(tooltip:)`.
+- **Don't:** put required information in a tooltip; tooltip a labeled button.
+
+#### Dropdown (action menu; +sub, +search)
+
+- **Anatomy:** popup (§13.2) → rows (§13.1) with optional leading icon, label, trailing shortcut caps (pointer) or chevron (submenu); group labels (caption muted, padding 8 / 6); separators (1 px, edge to edge, 4 above and below, in `border` at 60 % of its own alpha: foreground at about 7 %); checkable rows (check or radio dot, trailing); destructive rows (`redLabel`, last, after a separator); empty state (muted, centered, padding `popupInset + itemPaddingX`: 12 pointer, 16 touch, on the rows' text edge).
+- **Sizes:** rows per §13.1. Default width 288 (pointer), `max(trigger, 220)` (touch). Submenu width 224.
+- **States:** the pointer highlight glides; checked rows are semibold with a check; the single-choice selected fill glides on `standard`; disabled rows are skipped.
+- **Submenus:**
+  - Pointer: open on hover after 100 ms with a safe triangle, or on Right / Enter. Placed 2 px from the parent, with the first row level with the trigger row. Left or Esc closes one level.
+  - **Touch: tap to drill.** In a touch popover the submenu *replaces* the parent in place, with a "‹ Parent" back row; the panel height springs and the page slides on `standard`. In a sheet it's the same push.
+- **Search** (`DropdownSearch`): a field band one row high at the top with a hairline below. Typing filters by word prefix, and printable keys typed into the list go to the field. Pointer: autofocused. Touch sheet: not autofocused.
+- **Presentation:** §9.1. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
+- **Motion:** popup blur-fade on the tier's popover tokens (§7.2); highlight `quick`; sub push `standard`.
+- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile), and immediately for actions.
+- **Semantics:** menu, menuItem / menuItemCheckbox / menuItemRadio, `expanded` on the trigger.
+- **Haptic:** iOS `selectionClick` on a pick in a sheet.
+- **Do:** keep it to ≤ 12 items and ≤ 1 submenu level.
+- **Don't:** put form inputs inside menus; nest more than 2 levels.
+
+#### Select / MultiSelect (built)
+
+- **Trigger:** like Input (hairline, `controlHeight`, `controlPaddingX`, min width 160) → [icon] value (placeholder muted) → chevron (muted → foreground on hover). Hover is the `hover` fill. While open it holds the `active` fill.
+- **List:** popup rows; a trailing check; selected `active` fill in popovers; check only in sheets; multi-select uses merged blocks plus checks.
+- **Presentation:** pointer popover (max height 300); phone ≤ 8 options touch popover; > 8 options or multi → sheet with the field label as its title. Lists over 12 options add a search row.
+- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input, then closes; the selected fill glides `standard`.
+- **Keyboard:** the trigger opens on Enter, Space, Up or Down (the list starts on the picked row with the ring). The list has arrows, Home/End, PageUp/PageDown, typeahead, Enter/Space to pick, and Esc/Tab to dismiss. Focus returns to the trigger.
+- **Semantics:** the trigger is a button with `expanded` and its value; the list is a menu; rows are `selected`.
+- **Don't:** use it for fewer than 3 options (use a RadioGroup or Tabs) or for actions (use Dropdown).
+
+#### ContextMenu
+
+- **The Dropdown, opened at a point.**
+- **Triggers:** right-click; Ctrl-click (macOS); Shift+F10 / Menu key (at the focused element); **long-press 500 ms on touch**.
+- **Touch:** the pressed element lifts (scale 1.02 and shadow +1 on `quick`) with a haptic (§8.6). The menu anchors at the touch point as a touch popover (≤ 8 items), else a sheet.
+- **Don't:** use the iOS preview-blur; put the only path to an action in a context menu (also offer a visible ⋯ button).
+
+#### Combobox
+
+- **Anatomy:** an input (field role) with an optional clear button and chevron; a list below (§13.2) with match highlighting (semibold on the matched prefix); an optional "Create '…'" row last; an empty state.
+- **Multi:** chips wrap inside the field before the input. A chip is 24 / 20 / 28 / 24 high, padding 8, caption, `hover` fill, item radius (pill → full). Its remove × is 16 visual with the hit box growing to the chip height (44 on touch). The field height springs on `quick` as chips wrap.
+- **Pointer:** the list anchors under the input, at least the input's width, max height 300; the input keeps focus.
+- **Phone:** a **full-height sheet**. The input is on top, focused, with the keyboard up. Chips sit above the input, results below, and Done in the header for multi.
+- **Motion:** chips enter scale 0.9 → 1 + fade on `quick` (growing from the leading edge) and exit on `quickExit`; siblings slide on `standard`; the list blur-fades on the tier's popover tokens (§7.2).
+- **Keyboard:** typing filters and the active item resets to the first match; Up and Down move the active item; Enter picks it (IME-safe); Esc clears, then closes; Backspace on an empty input removes the last chip; Left and Right move between chips.
+- **Semantics:** a combobox textField with `expanded`; rows `selected`; a live result count; the chip toolbar is labeled "Selected".
+- **Do:** use it for long or open-ended option sets.
+- **Don't:** autocomplete inline over the user's typing.
+
+#### CommandMenu
+
+- **Anatomy:** a search field (subtitle role, a line 48 high on pointer, 52 on touch, `CoilCommandMenu.searchHeightOf`) over a hairline; groups with caption headings; rows (§13.1) with icon, label and trailing shortcut caps; an empty state; in the dialog, a footer with key hints.
+- **Footer** (`CoilCommandMenuFooter`, the `footer:` slot; null for none): a hairline (`border` at 60 %, like the menu's separators), then one line `controlHeight` high (36 pointer, 44 touch) whose text starts on the rows' text edge (`popupInset + itemPaddingX`). Each hint is a caption in `mutedForeground` followed by its key caps (Kbd), `buttonGap` apart (6 / 8); hints sit `gap × 2` apart (16 pointer, 24 touch) on one line, and hints that don't fit are cut at the end. The defaults (`CoilCommandMenuFooter.defaultHints`) are Select ↑ ↓, Run ↵ and Close esc; pass `hints:` to localize or replace them. Screen readers skip it. A phone's sheet has none.
+- **Pointer:** a centered dialog panel, `min(560, window − 32)` wide, a fifth of the way down the window (top at 20 % of its height), at most `min(440, 76 %)` tall with the search line and footer (`CoilCommandMenu.maxHeight`, `maxHeightFraction`); the list scrolls inside. Opened with ⌘K / Ctrl+K through `Shortcuts`.
+- **Touch phone:** a **full-height sheet**. The field is focused (the keyboard is the point). No shortcut caps, no footer. The soft keyboard's Search key runs the active row. The app must provide a visible entry point, since there's no shortcut.
+- **iPad with keyboard:** the dialog, with ⌘ caps and the footer.
+- **Filtering:** per-word prefix/substring matching (not fuzzy); groups with no hits hide.
+- **Motion:** the panel height springs to the result height on `standard`; the highlight on `quick`; keyboard moves scroll the row to the center on `quick`.
+- **Keyboard:** Up and Down wrap and skip disabled rows; Enter runs; Esc clears, then closes.
+- **Semantics:** a combobox with a live result count.
+
+### 14.4 Layout and display
+
+#### Accordion (built)
+
+- **Anatomy:** items, each a trigger row (label + chevron, trailing) and a collapsible panel (body muted, padding `controlPaddingX` sideways, 12 below). In `group` mode the items share one hover highlight and expanded items get a `hover` tint behind trigger and panel.
+- **Sizes:** trigger = §13.1 one-line row; default width 288 (`group`) or full.
+- **States:** the label is muted (pointer) or foreground (touch) at rest, foreground when open or hovered, and semibold when open. The chevron rotates 0 → 90° (RTL: 0 → −90°) with icon weight 533 when lit.
+- **Modes:** `single` (with `collapsible`) and `multiple`.
+- **Motion:** chevron on `quick`; panel height factor on `standard` with opacity on `fade` / `fadeExit`; tint on `fade`.
+- **Keyboard:** each trigger is a tab stop; Enter or Space toggles; Up and Down move between triggers in a group.
+- **Semantics:** button with `expanded`, and the panel is labelled by its trigger.
+- **Touch:** press fill only.
+
+#### Card (built)
+
+- **Anatomy:** a container (two levels above what it sits on with that level's shadow in light, one level above with a hairline in dark: 3 and 2 on the page; container radius) → [media] header (title role, description caption muted) → content → footer (actions); an optional dismiss ✕ at the top trailing corner (8 in, its hover fill at the nested radius, 12 − 8 = 4; where that's more than the round button has, as under `pill` on the pointer tier, the button moves in until its round end shares the corner's center), which the header and an inline card's trailing actions keep clear of (its 44 touch hit box included); an optional stretched action (the whole card is a link or button).
+- **Variants:** `stacked` (media on top, full-bleed 16:9 image) and `inline` (media leading: a 32 tinted tile or an image 160 square).
+- **Padding:** 16 (compact 12). Content and footer 12 below the header.
+- **Groups:** one divided block with hairlines between cards, or `separated` (gap 8).
+- **States:** a card with an action hovers (pointer) with the gliding highlight across a card grid; pressed `active` (touch); keyboard focus draws an inset ring.
+- **Dismiss ✕:** pointer shows it on hover or focus-within; **touch always shows it**, 44 hit.
+- **Card buttons:** small ghost buttons (28 pointer, 36 / 44 hit touch), caption semibold.
+- **Motion:** highlight `quick`; dismiss exit is a blur-fade plus a height collapse on `standard`.
+- **Do:** one primary action per card.
+- **Don't:** nest cards.
+
+#### Table (built)
+
+- **Anatomy:** a header row (semibold, caption muted on pointer); body rows (cells muted, foreground when the row is lit or selected); hairline cell rules (`border`); an optional empty state that holds N rows of height.
+- **Sizes:** cell padding `controlPaddingX` × vertical pad: rows 36 / 28 / 44 / 36.
+- **States:** the row highlight glides (pointer); selected rows merge (§8.4); press fill on touch. A header cell that sorts is pressable.
+- **Overflow:** scrolls horizontally inside a ScrollArea, with its edge fades where columns are hidden. A fade, not a shadow: it is the same signal every coil scroll region uses.
+- **Pinned first column:** not built yet. It needs a two-dimensional viewport; the plan is `two_dimensional_scrollables`' `TableView` with `pinnedColumnCount: 1`, shared with the DataTable.
+- **Motion:** highlight `quick`; selection `standard`.
+- **Keyboard:** Tab to the table; arrows move the active row (and cell in interactive tables); Space selects; Enter opens.
+- **Semantics:** table / row / cell roles with column headers.
+- **Don't:** zebra stripes.
+
+#### Banner (built)
+
+- **Anatomy:** [status icon, one title line tall] title (body semibold) + description (body muted) → actions (Buttons, compact) → [dismiss ✕]. An optional tinted variant (status hue 8 % background).
+- **Sizes:** padding 16 (compact 12; touch 16 with a 44 ✕ hit); icon 20 / 16 / 20; gap 12.
+- **Placement:** `inline` (in flow) or `fixed` (top of the viewport, under the safe area).
+- **Motion:**
+  - Appear: the row height opens on `standard`; then the banner fades and scales 0.4 → 1 from the top on `gentle`, 80 ms later.
+  - Dismiss: reverse on the exit tokens.
+  - Touch: swipe horizontally to dismiss (with velocity).
+  - Reduced motion: fade only.
+- **Semantics:** a live region (polite; assertive for destructive); the ✕ is labeled "Dismiss".
+- **Don't:** stack more than 2; use it for transient confirmations (use inline feedback).
+
+#### Breadcrumb (built)
+
+- **Anatomy:** a single row of crumbs (body, muted; the current page foreground, not a link). Each crumb ends in a chevron separator (14, muted). "…" opens a menu of the hidden crumbs. A sibling picker on a crumb waits for the Dropdown component.
+- **Sizes:** crumb height `controlHeight` (28 on pointer compact by default; 44 hit on touch), padding 6.
+- **Collapse:** when the row overflows, the middle crumbs collapse into "…". On phones only the first, "…" and the last two show. The full names of truncated crumbs are reachable in the "…" menu, not only in a tooltip.
+- **Motion:** the highlight glides across crumbs on `quick` (pointer).
+- **Keyboard:** native Tab order; Enter follows or opens.
+- **Semantics:** navigation, labeled "Breadcrumb"; the current page has `selected`.
+
+#### ThinkingSteps / ThinkingIndicator (built)
+
+- **ThinkingSteps:**
+  - Anatomy: a collapsible trigger ("Thought for 12s", body semibold when open, chevron) → a list of steps (panel padding 4 top, 12 bottom). A step (padding 8 × 6) is [icon or a 6 dot, in a one-icon square centered on the title's first line] title (body, semibold) → detail (body muted, 4 below) → sources (small solid badges, 8 below, gap 6; a private badge until the Badge component lands) → an image (max 200 wide, 8 below).
+  - Connector (FF's step rail): every step but the last draws a 1 px line in `border` @ 60 %, centered under its glyph, from 4 below the glyph's square to the bottom of the step's content. It runs beside the detail, sources and image, so a one-line step shows none. It is part of the step's layout, so it follows wrapping, text scale and RTL, and is revealed with the step's height as the step grows in. When a step stops being the last, its connector fades in on `fade`. Color, width and gap are style fields.
+  - Width 320, max full.
+  - Motion: collapse on `standard`; each new step grows its height on `gentle` and fades in after 80 ms; source badges scale 0.85 → 1 on `standard` with a 1.5 → 0 blur.
+- **ThinkingIndicator:**
+  - Anatomy: [glyph 20 / 18, muted] label (body muted). The width is reserved by the longest word.
+  - Motion: the word cycles every 4 s; the incoming word rises 80 % → 0 and fades on `standard`, the outgoing word rises out on `standardExit`. The words are a parameter. Reduced motion: crossfade only, every 4 s.
+  - Semantics: a live region (polite), announced once per change at most every 4 s.
+
+#### CarouselDots (built)
+
+- **Anatomy:** a row of 6 dots 12 apart. The current dot is a 24 pill, either solid or filling with progress. Track `foreground` 15 %, fill 40 %.
+- **Pointer:** each dot has its own 18 round click target; the highlight glides across dots. For screen readers the row is still one adjustable control.
+- **Touch:** the group is **one adjustable control**, 44 high. Tap or drag along it to scrub; swipe the carousel itself to page. Single dots don't get 44 boxes.
+- **Motion:** pill width 6 ↔ 24 on `standard`; fill driven by progress. The dots never advance by themselves: autoplay belongs to the carousel that owns them, which stops it under reduced motion.
+- **Semantics:** adjustable, "Slide 2 of 5".
+
+#### ChatMessage (built)
+
+- **Anatomy:** attachments (FileThumbnails 80, gap 6, aligned to the sender's side) → bubble → meta row (time caption muted and actions as icon-only ghost buttons, gap 2).
+- **Sizes:** max width 80 %; text is subtitle role; bubble padding 14×8 (compact 12×6; touch 16×10).
+- **Variants:**
+  - user: a bubble in `accent` mixed 45 % into background (Oklab), container radius, aligned to the end;
+  - assistant: no bubble, full width, aligned to the start.
+- **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
+- **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
+- **Semantics:** each message is a container labeled with sender and time.
+
+#### Reveal
+
+- **What it is:** a screen settling in. `CoilReveal` blur-fades its children in one after another on first build (`CoilBlurFade`). Rebuilds don't replay it, and nothing moves on scroll. A Reveal that's built anew (a new route, a lazy list building it again) plays again, as a fresh subtree should.
+- **Presets:**
+
+  | Preset | Step | Motion (in / out) | Look when hidden |
+  |---|---|---|---|
+  | `product` (default) | `stagger` (60 ms) | `fade` / `fadeExit` | blur 1.5, scale 0.96 |
+  | `subtle` | ⅔ `stagger` (40 ms) | `fade` / `fadeExit` | blur 1.5, scale 0.96 |
+  | `landing` | 5⁄3 `stagger` (100 ms) | `gentle` / `gentleExit` (the original's `slow`) | blur 1.5, scale 0.94, 12 px below |
+
+  `landing` is for the part of a landing page on screen at load.
+- **Steps:** child 1 at once, then one step per child. `CoilRevealSteps.blocks` (a screen's panels) staggers 3 steps and brings the rest in with the 4th; `.items` (a list's rows) staggers 7.
+- **Hiding:** `visible: false` hides the children with the same stagger, in the same order (as the original's `reveal-out` keeps each child's delay), on the exit motion. `true` reveals them again. A flip halfway turns each child around from where it is. Hidden children stay mounted but take no pointer, focus or semantics.
+- **Loading:** the original's `reveal-swap` is `CoilSkeletonSwitcher`. Put the loaded content in a `CoilReveal` with `.items`, and its rows arrive one by one.
+- **Reduced motion:** `stagger` is zero, and the blur-fade only fades. Every child fades in or out at once, on `fade` / `fadeExit`, `landing` included.
+- **Do:** wrap the main column or a list. Keep headers, sidebars and footers outside, so the frame stays still.
+- **Don't:** reveal on scroll. The landing page's scroll-driven reveal is cut.
+
+#### ScrollArea (built)
+
+- **Physics:** the app's ambient `ScrollBehavior` decides physics, overscroll and drag devices (§9.2); the area only replaces its scrollbar with coil's.
+- **Edge fades (`CoilScrollEdgeFade`):** each edge fades in as content scrolls away from it, up to 32, following the scroll direction (RTL, reversed lists). The amount springs on `fade`. The ramp is eased, not linear, so it has no visible start or end. Over a known solid background the fade is painted in that color on top; elsewhere it masks the content, which costs an offscreen layer.
+- **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later. The hide is `RawScrollbar`'s timed fade over the `fade` token's duration, not a spring: `RawScrollbar` owns that animation and exposes no way to drive it.
+- **Touch:** a thin overlay bar in coil's colors (3 wide) that shows only while scrolling and can't be grabbed. Flutter draws no OS scrollbar, so this stands in for it.
+- **Keyboard:** the viewport is focusable when it scrolls; arrows, Page and Home/End scroll; the focus ring is inset 1.
+- **Don't:** nest scroll areas on the same axis.
+
+### 14.5 Shell and composites
+
+#### Sidebar
+
+- **Anatomy:**
+  - a scaffold holding the sidebar and the page (`body`);
+  - the panel: header, scrolling content, footer;
+  - groups: a caption label (32 row; a toggle with a chevron when collapsible) with 1–3 actions, then menu rows;
+  - menu rows, two levels deep (sub-rows indented so their labels line up with the parent's, rows 28);
+  - callouts in the footer, one card or a stacked pile;
+  - the trigger (a ghost icon button in the page) and the rail (pointer only, an 8 grab strip on the inner edge).
+- **Sizes:**
+  - width 256, resizable 160–360 by the rail; dragging 56 past the minimum folds it;
+  - rows 32 / 28 / 44 / 36, padding 8, icon 16 / 14 / 20 / 16;
+  - **one 24 rhythm:** every action, badge and chevron is a 24 box (16 icon, gap 4), its center 26 from the inner edge, from header to footer; touch hit 44;
+  - the phone drawer `min(320, 85 % width)` (`CoilDrawer.maxWidth`, `CoilDrawer.widthFraction`).
+- **Variants:** `sidebar` (a flush column with an edge hairline), `floating` (a surface card inset 8), `inset` (flush rows; the page becomes a raised card with an 8 margin that gives way on the sidebar's side as it opens).
+- **Side:** `start` or `end`, following the text direction. The rail, the drawer, the peek edge and the default key follow it.
+- **Folding:** `offcanvas` slides it off the edge and gives the page its width back; `none` is a static column (no rail, shortcut or drawer), as in the settings dialog. **There is no icon-only rail on purpose:** glyphs alone turn navigation into a quiz, and section labels and actions have nowhere to go. Peek brings the real sidebar back instead.
+- **Header and footer:** stack parts vertically (each on its own row, actions as menu rows) or horizontally (`CoilSidebarBar`: the primary part, then 1–3 icon actions on the 24 rhythm).
+- **Callouts:** a pile of cards, front first, laid out by `CoilCardStack` (the queued stack's too). At rest up to 2 peek 12 behind the front, each 5 % smaller, measured at their top edges, so cards of any height peek evenly. Fanned out, the cards stack by their measured heights with the tier's `gap` between each pair. Inline cards fan out into a list under a hovering mouse or while focus is inside (Tab, or a field being typed in); on touch a tap on the pile fans it out until a tap outside it. Banners never fan. Fanned out, every card takes taps, hovers, text and focus where it shows; folded, only the front card's controls do, and a tap on a peeking card fans the pile out instead of pressing what is under the peek. Tab goes front to back. A dismissed card fades in place while the next moves forward on `standard` (it doesn't collapse its height inside a pile). Every card needs its own key (a missing one is an assertion error), since the pile follows cards by key. Under reduced motion a custom `callouts` spring is instant.
+- **States:** rows are muted → foreground when lit; the active row has the `active` fill with semibold (ghost width), its own glide per level; hover glides across all levels; disabled 50 %. A group label raises its contrast on hover and reveals its chevron; a folded group keeps the chevron. On touch the chevron always shows.
+- **Row actions:** menu entries (an action, or a submenu such as the overflow ⋯). Pointer shows them as 24 icon buttons on hover, focus or while their menu is open, and the label claims their width only then; a right-click opens all of them as a context menu. **Touch shows only the last one** (the ⋯, rightmost by convention; a lone action shows as is), 44 hit, and a long-press opens all of them as a context menu with the haptic lift, as DataTable does, so the label keeps its width at large text.
+- **Pointer behavior:**
+  - `[` (`]` for a sidebar on the right) or ⌘B / Ctrl+B toggles it while focus is inside the scaffold; the innermost scaffold answers; never while typing in a field. With nothing focused (at launch), the outermost scaffold takes focus, so the key works at once. The scaffold is a focus scope, so focus a folding sidebar drops stays inside and the next press still works.
+  - Opening and closing run on `gentle` / `gentleExit`. A rail drag sets the width 1:1; a fold or reopen during the drag springs on `standard`, and once it lands the drag tracks 1:1 again. The space taken is the width times how open it is, two separate tracks.
+  - Peek: hovering the folded edge (or the folded trigger) 150 ms, or clicking the edge, floats the sidebar out as a card over the page on `standard`. It holds while the pointer is within 8 of the card (a tooltip or menu over it doesn't count as leaving) and lets go 250 ms after it leaves; Escape or a press elsewhere dismisses it. Peeking never pins it open.
+- **< 768 (the scaffold's width): a drawer** (`CoilDrawer`) on `standard` / `standardExit` (the `drawer` track's spring both ways when set; instant under reduced motion). The page and each panel slide as their own layers, and keep their state if the reveal changes.
+  - **Touch: revealed from behind.** The sidebar lies under the page, and the page slides aside by the drawer's width to reveal it. The sidebar emerges from under the page: it fades from 40 % to fully opaque and grows from 0.95 to full size, anchored at the page's edge, both following the slide so they track the finger (`drawerTransition: CoilDrawerTransition`; reduced motion keeps the fade and drops the growth). The page recedes as it slides: a veil that lightens it in light (the top of the surface ladder, white, at 35 %) and dims it in dark (black 15 %), so in both it reads as pushed back rather than highlighted (`CoilDrawerLook.behindScrim`, `.behindVeilAlpha`, `.behindScrimDark`). Its edge separates it from the sidebar: shadow blurs centered on the page so they show along its side (the ladder's drops would hide under a page pushed sideways), kept light: step 7 at half strength in light, where a full shadow beside the whitened page reads as a heavy gray band, and step 8 at 70 % in dark (`CoilDrawerLook.edgeShadows`, `.edgeShadowLevelLight`/`Dark`, `.edgeShadowAlphaLight`/`Dark`); and a hairline in `border`, which still reads against the lightened page; all of it fades in with the slide and is gone at rest. A tap on the veiled page closes it. As soon as the page moves it takes the device's screen corner radius (read once through `CoilScreenRadius`), and it squares up only once it covers the sidebar again. Where the platform can't tell (a failed or early query, which is retried once, a device the plugin doesn't know, or an implausible answer above 64 or a quarter of the screen) a phone uses 40 on iOS and 24 on Android; desktop, web and screens Android reports square stay square. An optional scale (`CoilDrawerTransition.scale`, 1 by default) shrinks it away from the drawer. The look is `CoilSidebarStyle`'s `drawer…` fields, filled by its `fallback`; the drawer itself takes one `CoilDrawerLook`.
+  - **Pointer (a narrow desktop window): over the page**, a raised panel sliding in from the sidebar's edge with the `scrim` token (20 %, dark 30 %).
+  - **Opening by drag (touch):** a horizontal drag anywhere on the page, read with a scroll-aware drag detector: a horizontal scrollable (carousel, page view) scrolls first and hands over only when the drag starts at its edge, so flicking back through a carousel never opens the drawer. Once that drag moves the drawer it keeps it in both directions, so moving back follows the finger instead of jumping to the carousel; only when the page is back at rest (or, for a drag that started open, back fully open) does the scrollable scroll again, in the same gesture. On a route iOS can swipe back, a start-side drawer leaves that swipe to the route. The pointer tier opens only through the trigger or the keys.
+  - **Both sides:** nest a start and an end scaffold. A drag opens the side it heads for, and opening one closes the other.
+  - It stays a descendant of the scaffold (not a route), so it always shows the app's current state.
+  - Dragging follows the finger and releases into the spring with its velocity: a fling decides by direction, a slow release by position (past half opens).
+  - It **closes on navigation** (a row pick), on a press on the page or scrim, Escape and system back.
+  - Focus moves into it and returns on close.
+- **Persistence:** `CoilSidebarController` holds `open` and `width`. The app saves them and restores them by creating the controller; coil stores nothing. The drawer and peeks never change `open`.
+- **Keyboard:** roving within each menu; Up and Down; Right and Left expand and collapse sub-trees; Enter navigates; the ring travels. Group labels are tab stops that Enter or Space folds. A folded sidebar leaves the focus order.
+- **Semantics:** a navigation landmark when the sidebar has a label (each needs its own); the active row is `selected`; collapsible labels are buttons with `expanded`; the rail offers increase, decrease and tap; the drawer is a named route scope, and while it is open the page is hidden from screen readers except for its dismiss action.
+
+#### SettingsDialog
+
+- **Anatomy:** an `xl` dialog frame, `min(640, window − 64)` tall: a static sidebar of sections (208 wide, a 3 % `overlay` tint, no hairline) beside a panel with the section's heading, description and a scrolling body of setting rows.
+- **Setting row:** label (body) and an optional description (caption, muted) at the start, the control at the end, 16 vertical padding, hairlines between rows. A toggle row is one tap target, and one semantics node named by the label and description (§ Field).
+- **Compact (< 600):** the sidebar hides and a select at the top of the panel picks the section, under the dialog's title.
+- **Touch, phone:** it opens as a sheet, like a form dialog: the title moves into the sheet's header beside its one close button, and the section select and rows sit under it at the rows' 16 inset.
+- **Keyboard and semantics:** as the dialog and the sidebar; the title names the route; the close button sits in the corner.
+
+#### Calendar
+
+- **Anatomy:**
+  - caption: the month title, a button "November 2026 ⌄" (body, semibold, a ghost-style fill on hover and press, the focus ring) at the start, and the ‹ › arrows at the end. The title zooms out to the month view (below), where it names only the year ("2026 ⌃");
+  - weekday row (caption muted, locale first day);
+  - a 6 × 7 day grid (body, tabular), **always 6 rows** so the height never jumps.
+- **Cell sizes:** square, the control height (36 / 28 / 44 / 36), grown by as much as the text scale grows the line box (the padding doesn't scale).
+- **Width:** seven cells when it can choose (a popover hugs it). A wider space it's given is filled until the days are 30 % past their natural side (a sheet on any phone, up to 430 wide); past that the calendar centers at that width (a tablet sheet), so **days are always square** and never stretch into wide rectangles. The cell's fill is the natural-size square in the middle of each cell. A narrower space is shared: the rows shrink to stay square (measured inside the focus ring's inset, so the columns and rows match) and the numbers scale down rather than wrap.
+- **Alignment:** the title's text starts on the days' leading edge and the › glyph ends on their trailing edge; the title and the arrows are ghost buttons whose padding hangs outside the grid. The days' edge is the calendar's box less its focus-ring room (`CoilCalendar.edgeInsetOf`); whatever sits under a calendar and should line up with it (a footer, a time band) insets that much. In a date picker's sheet that edge is the sheet's 16 text inset, shared by its title and footer; in its popover, the popover's padding.
+- **Hit area:** each day takes the tap on its whole cell, with no gaps between days or rows; a tap in the focus ring's inset at either edge of the grid picks the edge day.
+- **Day states:**
+  - outside the month: muted 60 %;
+  - today: semibold with a 4 `brand` dot;
+  - selected: `foreground` fill with `background` text;
+  - range: an `active` band per week row (merged-selection block, rounded at the ends) with the endpoints filled;
+  - disabled: 40 % and struck through for "booked";
+  - hover (pointer): the gliding highlight; in range picking, the highlight *is* the proposed end.
+- **Months:** pointer and tablets show 2 side by side when they fit; phones show 1.
+- **Title follows the pages:** the title names the page more than half in view, so it changes mid-swipe while the finger is still down (and back, if the swipe returns), not when the page settles. The old and new names swap with the blur-fade (`MotionSizeSwitcher` with `CoilBlurFade` on `fade` / `fadeExit`, the width springing on `standard`). Large text in a narrow calendar scales the title down rather than cut off the year. It's announced (live region) as "November 2026".
+- **Month view:** tapping the title (or Enter/Space on it) zooms out to the months: a horizontal pager, **one year per page**, its twelve months 3 × 4 with no heading of their own: the title names the year ("2026 ⌃"), so the year shows once. The months fill exactly the weekday row and grid's space, so the calendar's height and width don't change. It opens on the shown month's year. The picked day's month is filled like a selected day; this month is semibold. The keyboard's month, which the title zooms back into, has the `active` wash while it isn't the picked one, so the way back shows without the month in the title. Months outside `firstDate`/`lastDate` are dimmed and take no tap, and the pages start and end at their years. Picking a month zooms back into its days. The chevron turns up.
+  - **Paging:** as the days page (Motion, below): a swipe past half a page or a flick turns a year on `standard`, and the arrows stay and turn a year ("Previous year" / "Next year"; a mouse can't swipe). The title names the year more than half in view ("1990"), changing mid-swipe with the blur-fade, and the keyboard's month moves into that year; the title or Escape zooms back into that month.
+  - **Zoom:** spatial, from the title's corner: the days shrink to 90 % and fade while the months settle from 110 % to 100 % and fade in; back runs it in reverse. The scale springs on `standard` / `standardExit` (none under reduced motion, which keeps the fade on `fade` / `fadeExit`). The title follows: its width springs from "April 2020" to "2020" on `standard` with the year held still at its end, while the month blur-fades out on `fade` and slides out past the start, fading over the button's padding; zooming in brings the month back the same way. The chevron turns with it. The hidden view takes no pointer, focus or semantics; focus moves with the view when it was in the calendar.
+  - **Keyboard:** one focus stop; arrows move a month (Up/Down a row of three), PageUp/PageDown a year, Enter or Space picks, Escape returns to the days of the month the title names (it doesn't close a popup). A move into another year turns the page. Arrows mirror in RTL.
+  - In a sheet, the pager uses `CoilSheetRoute.scrollBehaviorOf` like the days, so a vertical drag on the months moves the sheet.
+- **No selection chip in the header.** The header holds only the title and the arrows: a chip naming the picked day beside them read like a second title. A date picker names its draft in its footer instead (DatePicker, below).
+- **Motion:** the months are pages: the arrows and PageUp/PageDown slide a full page on `standard`, and a jump of more than one month (Shift+PageUp) is a cut. On touch, **horizontal paging follows the finger and keeps the fling velocity**: a swipe past half a page or a flick turns one page, anything less springs back, all on `standard`. A trackpad's horizontal swipe pages too; a mouse drag doesn't. Highlight `quick`; range band `standard`.
+- **Haptics:** `toggle` when a swipe lands on a new month and as a time column passes a row; `pick` when a finger picks a day (not on a click, Enter or Space, as in the select's list).
+- **Keyboard:** Tab reaches the title, the arrows, then the grid. Arrows move the day; PageUp/PageDown change the month; Shift+PageUp/PageDown change the year; Home and End go to the week's start and end; Enter selects and submits (`onSubmitted`, which a date picker confirms with); Space only selects.
+- **Semantics:** grid cells carry full-date labels; previous and next month are semantics actions; the title is a button named by `monthLabel`, with the `chooseMonthLabel` hint and an expanded state; in the month view it's named by `yearLabel` ("2026"), with the `showDaysLabel` hint ("Back to the days of November 2026"); month cells carry "Month Year" labels and selected/enabled states.
+
+#### DatePicker
+
+- **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
+- **Sizing:** the popover hugs the calendar's seven cells, not the field's width (`CoilAdaptivePopup.minWidth: 0`); a sheet's calendar fills the sheet's width up to days 30 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. Both scroll when the window is too short. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
+- **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
+- **Phone (touch, < 600): a sheet built for the thumb.**
+  - Caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **horizontal paging**, fixed 6 rows.
+  - Presets: a horizontally scrolling chip row (Today, Tomorrow, Next week…).
+  - Time: chips ("Start 11:00", "End 12:45"). Tapping one pushes the **time page** inside the sheet on `standard`, with a "‹ Date" back row.
+    - The time page is **two snap columns** (hours | minutes in the minute step), flat rows: a line of body text in tabular figures and the tier's gap (28 pointer, 34 touch at 1×, grown with the text scale), **five visible**. The rows fade out toward the top and bottom over two rows (the scroll edge fade). A selection band in `active` with the day cells' radius sits across the center; the center row and the colon are foreground semibold and the others are muted. The columns are a day and a half wide each.
+    - The columns snap on `standard` with the fling velocity. No 3D wheel.
+    - A duration caption ("1 h 45 min") sits under the end column. "Type a time" opens a numeric field (opt-in).
+  - Footer: a summary footer (§13.5) pinned as the sheet's footer (`CoilSheetPanel.footer`, 16 from the sides): the draft on the leading side, **Done** (primary, `CoilCalendarLabels.confirm`) at its own width on the trailing side. Clear (ghost) joins Done in range mode, before it.
+- **Footer summary (built):** in the sheet, the footer's leading side names the **draft** Done will confirm, not the last confirmed value, so the selection stays readable however far the calendar has paged or zoomed, and follows every pick and every turn of a time column. `CoilCalendarLabels.summary` shows it, `summaryLabel` names it for screen readers:
+  - date: "Fri, Nov 22, 2019" ("Selected: Friday, November 22, 2019");
+  - with time: "Fri, Nov 22, 2019, 14:30";
+  - range (when range mode lands): "Nov 13 – 15, 2026", "Nov 28 – Dec 3, 2026" across months, "Dec 29, 2026 – Jan 2, 2027" across years;
+  - nothing picked: nothing, beside the disabled Done. The field says what to pick; the footer only says what Done would confirm.
+  - A popover has **no** footer: it applies each pick at once, so the field under it already shows the selection.
+- **Confirming (built):** a sheet holds what's picked as a draft until Done; a popover applies each pick at once (`onChanged` per pick), so closing it is done and there is nothing to cancel.
+  - **Sheet (date, or date and time): Done confirms.** The close button, the scrim, a drag down, back and Escape cancel; reopening starts from the value. A sheet is a modal task that takes the screen, the platform pickers presented that way confirm explicitly (Material's modal date picker dialog and bottom sheet: Cancel + OK), and the sheet already has its close button as the Cancel, so the footer holds the one primary action.
+  - **Popover, date only: a tap on a day confirms and closes**, as iOS's compact `UIDatePicker` popover, shadcn/Radix and React Aria (`shouldCloseOnSelect`, default true), MUI's desktop picker (no action bar on desktop) and Fluid Functionalism (`onValueChange` on a pick) do. One tap is the whole answer, so a button would only add a step.
+  - **Popover with time: each pick applies at once and the popover stays open**; a tap outside, Escape or Enter closes it with what's picked. The field's label follows every day and every turn of a time column, so it is the summary. No Done, no Cancel: iOS's compact `UIDatePicker` (date and time in one popover), macOS's pickers and MUI's desktop date-time picker (no action bar on desktop) work this way; Ant Design (`needConfirm`), Mantine and Windows' time flyout confirm instead, and Material's pickers, which are modal, confirm with OK.
+  - In the sheet, Done is disabled until something is picked. Enter anywhere in the popup confirms (on the grid it picks the focused day first); Space only picks; Escape closes (in the month view it returns to the days first): a sheet without its draft, a popover with what it applied.
+- **Keyboard:** as Calendar, plus Enter to confirm and Escape to close. Esc restores the previous range. Hardware keyboards on iPad get the typed time field.
+- **Semantics:** the snap columns are adjustable (VoiceOver swipe up/down changes the hour).
+- **Scope:** v1 includes date, range, presets and time. The time page can land one milestone after the grid. A drag-to-select range is later.
+
+#### InputMessage (chat composer)
+
+- **Anatomy:** a container (hairline, padding 8) → attachment tray (FileThumbnail 80 tiles, each with a 20 × badge with a 32 / 44 hit) → queue rows (32 / 28 / 44, muted, reorderable) → textarea (subtitle role, 1–10 lines) → toolbar (attach, model, trailing **send button**).
+- **Corners:** concentric with the send button in the bottom trailing corner (§5): its drawn radius + its visual inset. Pointer 8 + 8 = **16**, touch 10 + 16 = **26** (`rounded`); pointer 14 + 8 = **22**, touch 18 + 16 = **34** (`pill`); `sharp` stays 1. The corner holds however tall the draft grows, and the attach button in the other bottom corner shares it. The attachment tray's tiles take the nested radius (corner − 8), so the top corners match too.
+- **Send button:** icon-only primary, 28 / 24 / 36 (44 hit). It morphs **send ↔ stop ↔ queue**. Send and queue share the arrow, so only the swap to and from stop animates: two icon presences crossing on `quick` (§11), coil's arrow and square blur-fading with them. The icons are the theme's `send` and `stop`.
+- **Queue:** while a reply streams, a draft queues instead of sending. Enter or the queue button hands the trimmed text to `onQueue` and clears the field. With an empty field the button is stop. Without `onQueue`, nothing sends until the reply ends. The app owns the queue: it shows it in a QueuedStack and sends the front message when the reply ends.
+- **Behavior:**
+  - **Hardware keyboard:** Enter sends, Shift+Enter makes a newline, ↑ in an empty field recalls history.
+  - **Touch:** Return inserts a newline; Send is the button.
+  - Suggestions: chips above the field (touch: above the keyboard).
+- **States:** focus (container border foreground 40 %), drag-over (`brand` 30 % dashed border), disabled, streaming.
+- **Motion:** tray, queue and suggestion regions open with height on `standard` and opacity on `fade`; tiles scale 0.9 → 1 on `quick` and siblings slide on `standard`; queue rows reorder on `standard`.
+- **Touch:** the tile × and queue × are always visible; swipe a queue row to delete.
+- **Semantics:** textField multiline, labeled "Message"; send is a button whose label follows its mode.
+
+#### QueuedStack
+
+- **What it is:** messages sent while a reply streams, waiting in a pile above the composer. The front card is sent next.
+- **Anatomy:** a start gutter (an optional glyph, plus the queued count once cards hide behind the pile) → cards → an end gutter of the same width. Gutters are 40 / 32 / 48 and grow with the text.
+- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its `semanticLabel`. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×), padded to the 44 hit target on touch. Remove sits as far in from the trailing edge as from the top and bottom (8), and their hover fills take the radius nested in the card's corner (12 − 8 = 4 pointer, 16 − 8 = 8 touch; a full pill under `pill`), so the corners are concentric. When the message would get less width than the actions beside it (a narrow screen at a large text scale), the actions move to their own line under the message, at the end, and wrap if they still don't fit; the message keeps the card's width and ellipsizes.
+- **Folded:** 2 cards peek out behind the front one, their top edges 12 px apart whatever the cards' heights, each 5 % smaller (scaled about its top edge); deeper cards fade out. A card longer than its peek is cut off at the pile's bottom edge, behind the front card.
+- **Fanned out:** each card sits its measured height plus the `gap` of the stack's size step (8 at pointer regular, 4 compact; `size:` wins over the ambient scope, and the drag pitch uses the same gap) above the one in front, so mixed heights space evenly.
+- **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
+- **Touch:** a tap fans it out and pins it open. The start gutter becomes a collapse button (chevron down) while two or more messages are queued; when the queue drops to one the button goes and the pin is cleared, so the next message queued finds the pile folded. Actions always show. Drag to reorder.
+- **Reach:** fanned out, every card takes taps, hovers and focus where it shows. Folded, only the front card's controls do; a tap on a card peeking behind it fans the pile out instead of pressing the action under the peek. A peeking card's buttons (drawn at 95 % and 90 %, under the hit target) are left out of semantics too; screen readers get Edit and Remove as actions on the card.
+- **Keyboard:** each card is a tab stop, in queue order (front first). Enter or F2 edits, Delete or Backspace removes, Alt+↑ / Alt+↓ move the card back or forward.
+- **Motion:**
+  - fan out and fold on `standard` / `standardExit`;
+  - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
+  - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
+  - a message queued behind the folded pile makes it recoil 7 px on `gentle`. The original uses a one-off spring here (0.42 s, bounce 0.5) that isn't one of its tiers, so coil keeps its own bounciest token.
+- **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action (and Remove while it peeks behind the folded pile). The gutter reads "3 queued messages".
+- **Layout:** pass the transcript as `child`. With a child the stack fills its space, so give it a bounded height (`Expanded` in a `Column`); without one it is as tall as its pile. Either way it needs a bounded width. The stack fills its space, lays the transcript out under the pile, and adds the folded pile's height (from the cards' real layout, plus the 8 gap) to the transcript's bottom `MediaQuery` padding, so a `ListView` keeps its last message clear. Only the pile's own area fans it out on hover.
+- **Not ported:** the queued card morphing into the sent bubble. Flutter has no shared-element transition inside one route.
+
+#### FileThumbnail
+
+- **Anatomy:** a square preview (`dimension`, 56 by default), radius item (or nested), `muted` background.
+- **States:**
+  - pending: spinner 24, muted;
+  - image: cover-fit;
+  - PDF: page 1 via a pluggable renderer;
+  - failed or unsupported: a document glyph at 35 % of the size (min 16), muted.
+- **Motion:** none of its own; the image fades in on `fade`.
+- **Semantics:** an image labeled with the file name; the spinner announces "Loading preview".
+
+#### DataTable (reduced v1)
+
+- **v1 scope:**
+  - a headless controller (sort, search, column filters, visibility, pagination, selection);
+  - the grid (Table look, rows 36 / 28 / 44 / 36);
+  - a select column (checkboxes always visible);
+  - a sortable header menu (Sort ascending/descending, Clear, Hide);
+  - row actions (a trailing ⋯ ghost button, 28 / 44 hit) and the same items as a context menu;
+  - search (a ghost icon button that springs open to a 224 field on `standard`);
+  - pagination (compact buttons, 44 hit on touch);
+  - the full row keyboard model;
+  - skeleton and empty states;
+  - a pinned first column.
+- **Deferred (v2):** typed filter chips, inline editors, column reorder and resize, sub-rows, the selection command bar, layout FLIP.
+- **States:** the row highlight glides (pointer); selection merges (§8.4); press fill (touch).
+- **Touch:**
+  - rows 44, cell padding 16, the sticky first column with an edge shadow once scrolled;
+  - no resize or move handles;
+  - header menus anchored;
+  - row actions on long-press plus the visible ⋯;
+  - an optional `mobileLayout: cards` below 600 (label : value pairs);
+  - selection shows a bottom action bar above the safe area.
+- **Keyboard:** arrows move the active row; Space selects; Shift+arrows extend; Enter opens; ⌘A / Ctrl+A selects all; Esc clears the selection; Shift+F10 opens row actions.
+- **Semantics:** table roles, the header with sort state, rows `selected`.
+- **Title:** display role, aligned past the select column.
+
+#### AskUserQuestions
+
+- **What it is:** an assistant's questions, one at a time, in a card. A question takes one option (picking it moves on), several options (then Continue), or typed text.
+- **Anatomy:** a hairline card (surface 3 light, 2 dark; container radius; max width 520) → "Question 2 of 4" (caption muted) → the question (title role) → option rows, an optional typed "other" row last, or a text field → footer: Back (ghost) at the start; Skip (ghost) and Continue or Finish (primary) at the end. Footer buttons are compact.
+- **Geometry:** rows and the footer's buttons are inset `popupInset` from the card edge, like a popover, and the card's corners are concentric with the footer buttons in them: item radius + inset (12 pointer; 20 touch, where a compact button sits 4 farther in its 44 hit box, so the footer is padded 4 at the sides to match; 18 under `pill` on the pointer tier). Text starts at `popupInset + controlPaddingX`, and the step line, the question and Back's label all align with it.
+- **Rows:** §13.1 heights (36 / 28 / 44 / 36), padding `controlPaddingX`. The label is foreground at rest (a question's options are content, not a menu) and semibold with a ghost width when picked. A description follows inline in muted body, or sits under the label in caption (`layout: stacked`).
+- **Number keys (pointer only):** each row ends with its number (11/14 micro), or starts with it (`keyPosition: start`). Single choice: a plain number, foreground when picked. Multiple choice: the number in a 20 box (18 compact) with a hairline, filled `foreground` when picked. A lit single-choice row swaps its key for a submit arrow: a `foreground` block 8 larger than the key with a chevron, in on `quick`, out on `quickExit`.
+- **States:** the gliding highlight lights rows; picked rows, and the "other" row once it has text, merge into one `active` block (§8.4); one focus ring travels between rows. The "other" field is quiet at rest; while focused and empty it shows a surface fill and a hairline. A rejected free-text answer shows its message under the field (caption `destructive`, live region) and the field turns invalid.
+- **Touch:** no number keys and no submit arrow. Rows are 44, rest at full foreground, and show the press fill under a finger. A picked multiple-choice row shows a trailing check instead of a filled key. A tap never pulls focus, so the keyboard stays down until the user taps a field.
+- **Motion** (tracks `CoilAskUserQuestionsTrack.height`, `.step`, `.selection`, `.ring`, `.label`, `.hint`, `.press`, `.buttons`): between questions the card's height springs on `standard` while the old question fades out on `fadeExit` (clipped as the card shrinks) and the new one fades in on `fade`. Footer buttons appear and leave with a fade and scale 0.85 on `quick`, and their neighbors slide. Merge/split on `standard`, highlight and ring on `quick`, label weight and key colors on `fade`.
+- **Keyboard:** works while focus is in the card. 1 to 9 pick the row with that number; the number after the options focuses the "other" field. Up and Down move between rows with wrapping and don't pick. Enter or Space picks or toggles the focused row. Ctrl+Enter (⌘+Enter on Apple platforms) continues. Escape or the arrow pointing back returns; the arrow pointing forward skips (both flip in RTL). In a text field, digits and arrows edit text, Enter answers, and Shift+Enter is a newline in a multi-line field (touch: Return is a newline and Continue answers). Up and Down in the one-line "other" field return to the rows. When a question changes and focus was in the card, focus moves to the new question's picked row, its first row, or its field.
+- **Semantics:** the step line is a live region, so each new question is announced. The question is a header. A single-choice question is a radio group labelled by the question, with radio rows; a multiple-choice one is a group of checked rows. Each row reads its label and description. Keys and the arrow are excluded.
+- **API:** `CoilAskUserQuestions<T>(questions:, controller:, onCompleted:, onSkipped:)`. Questions are `CoilQuestion.single`, `.multiple` and `.freeText`; answers are `CoilAnswer<T>` (values, text, skipped) keyed by question id in a `CoilAskUserQuestionsController`. Every visible text (the question, option labels and descriptions, placeholders, button labels, the step line) is a `Widget` the card styles with `DefaultTextStyle`. Strings remain only for screen readers (`semanticLabel`, `otherSemanticLabel`) and for typed answers.
+- **Not ported from the web:** the document-wide digit listener (coil scopes keys to the card's focus; pass `autofocus`); the footer's ← and → and ⌘↵ key caps (coil has no key-cap primitive); a growing multi-line "other" field (it is one line, so the keyboard's action button can submit it).
+- **Do:** keep it to a few short questions.
+- **Don't:** use it for a form the user fills at their own pace (use Field); put more than 9 options in a question (keys stop at 9).
+
+---
+
+## 15. Out of scope
+
+- **Out entirely:** NavItem / NavMenu (Sidebar covers it), and the docs-site libraries.
+- **Deferred:**
+  - ColorPicker;
+  - Reveal's scroll-driven reveal (cut, not deferred);
+  - Calendar's 2-month strip animation and stacked layout;
+  - DataTable v2;
+  - PDF thumbnails beyond the renderer hook.
+
+## 16. Review checklist
+
+A component is done when:
+
+1. Its labels pass the ink-centering test (±0.5) at every tier and text scale.
+2. It is checked for pointer and touch, light and dark, text scales 1 / 1.5 / 2, RTL and high contrast.
+3. `expectCoilPattern` passes for semantics, keyboard and focus.
+4. All of its motion goes through tokens, and reduced motion is honored.
+5. No sticky hover after a tap, and no ring after a click (`touch_vs_mouse` test).
+6. Shapes are superellipses, and nested radii are concentric.
+7. It follows this document, or this document is updated in the same change.
+
+## 17. Decisions
+
+The user's decisions on the former open questions (2026-11-13):
+
+1. **Touch radii:** item 10, popover 16, focus ring 12; sheets take the glass sheet's 36 (§5). `CoilShape` resolves per tier; pointer values are unchanged (§5).
+2. **One row height:** 44 visual everywhere, Android included. There is no 48 px Android hit box: Flutter has no hit slop, and growing the hit area without changing layout would need a custom hit-test override, the kind of workaround coil avoids (§4.2, §9.2, §10).
+3. **The check in sheets and menus** stays the text color (`foreground`) (§13.1).
+4. **Sheet header hairline:** only while content scrolls beneath the header (§13.3).
+5. **Dialogs on phones** become a sheet only when they contain a form; short confirmations stay centered. A dialog shown as a sheet is always drag-to-dismiss, unless it's non-dismissible (§14.3 Dialog).

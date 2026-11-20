@@ -1,0 +1,450 @@
+import 'package:coil/coil.dart';
+import 'package:coil_cli/testing.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:motor/motor.dart';
+
+import 'src/ink_centering.dart';
+import 'src/test_icons.dart';
+
+const _names = ['Home', 'Projects', 'Coil', 'Components', 'Breadcrumb'];
+
+List<CoilCrumb> _crumbs([List<String> names = _names, List<String>? log]) => [
+  for (final (i, name) in names.indexed)
+    CoilCrumb(
+      label: Text(name),
+      leading: i == 0 ? const TestIcon(TestGlyph.home) : null,
+      onPressed: () => log?.add(name),
+    ),
+];
+
+Widget _app(
+  Widget child, {
+  CoilTier tier = CoilTier.pointer,
+  TextDirection direction = TextDirection.ltr,
+}) => WidgetsApp(
+  color: const Color(0xFF000000),
+  builder: (context, navigator) => Directionality(
+    textDirection: direction,
+    child: CoilTheme(
+      data: CoilThemeData.light.copyWith(tier: tier),
+      child: navigator!,
+    ),
+  ),
+  onGenerateRoute: (_) => PageRouteBuilder<void>(
+    pageBuilder: (context, _, _) => Align(
+      alignment: Alignment.topCenter,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          KeyedSubtree(key: const ValueKey('target'), child: child),
+          const SizedBox(height: 16),
+          CoilButton(onPressed: () {}, child: const Text('After')),
+        ],
+      ),
+    ),
+  ),
+);
+
+final _target = find.byKey(const ValueKey('target'));
+final _more = find.text('…');
+
+/// Whether [label]'s crumb paints in the trail.
+bool _shown(WidgetTester tester, String label) {
+  final semantics = tester.ensureSemantics();
+  final found = find.semantics.byLabel(label).evaluate().isNotEmpty;
+  semantics.dispose();
+  return found;
+}
+
+/// [text] in the open "…" menu.
+Finder _inMenu(String text) => find.descendant(
+  of: find.byWidgetPredicate(
+    (w) => w is Semantics && w.properties.role == SemanticsRole.menu,
+  ),
+  matching: find.text(text),
+);
+
+void main() {
+  // The select goldens cover the popover and both themes; this one shows
+  // a long list scrolling in a sheet.
+
+  group('ink centering', () {
+    // Hiding the label by color keeps the layout identical.
+    CoilBreadcrumbStyle? hide({required bool ink}) => ink
+        ? null
+        : const CoilBreadcrumbStyle(
+            label: WidgetStatePropertyAll(Color(0x00000000)),
+          );
+    inkCenteringTests({
+      'breadcrumb/link': (ink) => CoilBreadcrumb(
+        style: hide(ink: ink),
+        crumbs: [
+          CoilCrumb(label: const Text('HEH'), onPressed: () {}),
+          const CoilCrumb(label: Text('HEH')),
+        ],
+      ),
+      'breadcrumb/page': (ink) => CoilBreadcrumb(
+        style: hide(ink: ink),
+        crumbs: const [CoilCrumb(label: Text('HEH'))],
+      ),
+    });
+  });
+
+  for (final direction in TextDirection.values) {
+    testWidgets('is a navigation trail (${direction.name})', (tester) async {
+      await tester.pumpWidget(
+        _app(CoilBreadcrumb(crumbs: _crumbs()), direction: direction),
+      );
+      await expectCoilPattern(tester, _target, CoilPattern.navigation);
+    });
+  }
+
+  testWidgets('Enter follows the focused link', (tester) async {
+    final log = <String>[];
+    await tester.pumpWidget(_app(CoilBreadcrumb(crumbs: _crumbs(_names, log))));
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(log, ['Projects']);
+  });
+
+  group('collapse', () {
+    Widget trail(double width, {List<String>? log}) => SizedBox(
+      width: width,
+      child: CoilBreadcrumb(crumbs: _crumbs(_names, log)),
+    );
+
+    testWidgets('a trail that fits shows every crumb and no "…"', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(trail(600)));
+      for (final name in _names) {
+        expect(_shown(tester, name), isTrue, reason: name);
+      }
+      expect(_shown(tester, 'Show hidden pages'), isFalse);
+    });
+
+    testWidgets('a narrow trail hides middle crumbs from view, Tab and '
+        'semantics; the first, last link and page stay', (tester) async {
+      await tester.pumpWidget(_app(trail(260)));
+      expect(_shown(tester, 'Home'), isTrue);
+      expect(_shown(tester, 'Show hidden pages'), isTrue);
+      expect(_shown(tester, 'Projects'), isFalse);
+      expect(_shown(tester, 'Components'), isTrue);
+      expect(_shown(tester, 'Breadcrumb'), isTrue);
+      expect(
+        tester.getSize(find.byType(CoilBreadcrumb)).width,
+        lessThanOrEqualTo(260),
+      );
+
+      final reached = <String>[];
+      for (var i = 0; i < 6; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        final context = FocusManager.instance.primaryFocus?.context;
+        final text = context == null
+            ? null
+            : find
+                  .descendant(
+                    of: find.byWidget(context.widget),
+                    matching: find.byType(Text),
+                  )
+                  .evaluate()
+                  .map((e) => (e.widget as Text).data)
+                  .firstOrNull;
+        if (text != null) reached.add(text);
+      }
+      expect(reached.take(4), ['Home', '…', 'Components', 'After']);
+    });
+
+    testWidgets('resizing re-decides in the same frame', (tester) async {
+      final width = ValueNotifier<double>(600);
+      addTearDown(width.dispose);
+      await tester.pumpWidget(
+        _app(
+          ValueListenableBuilder(
+            valueListenable: width,
+            builder: (context, w, _) => trail(w),
+          ),
+        ),
+      );
+      expect(_shown(tester, 'Coil'), isTrue);
+      width.value = 260;
+      await tester.pump();
+      expect(_shown(tester, 'Coil'), isFalse);
+      expect(_shown(tester, 'Show hidden pages'), isTrue);
+    });
+
+    testWidgets('phones show the first crumb, "…" and the last two', (
+      tester,
+    ) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(390, 800);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _app(CoilBreadcrumb(crumbs: _crumbs()), tier: CoilTier.touch),
+      );
+      expect(_shown(tester, 'Home'), isTrue);
+      expect(_shown(tester, 'Projects'), isFalse);
+      expect(_shown(tester, 'Coil'), isFalse);
+      expect(_shown(tester, 'Components'), isTrue);
+      expect(_shown(tester, 'Breadcrumb'), isTrue);
+    });
+
+    testWidgets('"…" lists the hidden crumbs by full name; a pick follows', (
+      tester,
+    ) async {
+      final log = <String>[];
+      await tester.pumpWidget(_app(trail(260, log: log)));
+      await tester.tap(_more);
+      await tester.pumpAndSettle();
+      // The hidden crumbs stay built in the trail; the menu adds its rows.
+      expect(find.text('Projects'), findsNWidgets(2));
+      expect(find.text('Coil'), findsNWidgets(2));
+      await tester.tap(_inMenu('Coil'));
+      await tester.pumpAndSettle();
+      expect(log, ['Coil']);
+      expect(find.text('Coil'), findsOneWidget, reason: 'the menu closed');
+    });
+
+    testWidgets('the menu works from the keyboard; Escape returns focus', (
+      tester,
+    ) async {
+      final log = <String>[];
+      await tester.pumpWidget(_app(trail(260, log: log)));
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Projects'), findsNWidgets(2));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('Projects'), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.byWidget(
+            FocusManager.instance.primaryFocus!.context!.widget,
+          ),
+          matching: find.byType(CoilBreadcrumb),
+        ),
+        findsOneWidget,
+        reason: 'focus is back on "…"',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(log, ['Coil'], reason: 'the menu starts on the first row');
+    });
+
+    testWidgets('a phone with many hidden crumbs opens a sheet', (
+      tester,
+    ) async {
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(390, 800);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _app(
+          CoilBreadcrumb(
+            crumbs: _crumbs([for (var i = 0; i < 13; i++) 'Step $i']),
+          ),
+          tier: CoilTier.touch,
+        ),
+      );
+      await tester.tap(_more);
+      await tester.pumpAndSettle();
+      expect(find.byType(CoilSheetPanel), findsOneWidget);
+    });
+  });
+
+  group('pointer vs touch', () {
+    testWidgets('a mouse lights the crumb under it', (tester) async {
+      await tester.pumpWidget(_app(CoilBreadcrumb(crumbs: _crumbs())));
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('Coil')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text('Coil'))
+            .text
+            .style!
+            .color,
+        CoilThemeData.light.colors.foreground,
+      );
+    });
+
+    testWidgets('a tap leaves nothing lit and no ring', (tester) async {
+      final log = <String>[];
+      await tester.pumpWidget(
+        _app(
+          CoilBreadcrumb(crumbs: _crumbs(_names, log)),
+          tier: CoilTier.touch,
+        ),
+      );
+      await tester.tap(find.text('Coil'));
+      await tester.pumpAndSettle();
+      expect(log, ['Coil']);
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text('Coil'))
+            .text
+            .style!
+            .color,
+        CoilThemeData.light.colors.mutedForeground,
+      );
+      expect(
+        tester
+            .widgetList<CoilFocusRing>(find.byType(CoilFocusRing))
+            .any((r) => r.visible),
+        isFalse,
+      );
+    });
+
+    testWidgets('crumbs are 44 px targets on touch', (tester) async {
+      await tester.pumpWidget(
+        _app(CoilBreadcrumb(crumbs: _crumbs()), tier: CoilTier.touch),
+      );
+      final target = find
+          .ancestor(
+            of: find.text('Coil'),
+            matching: find.byType(CoilInteraction),
+          )
+          .first;
+      expect(tester.getSize(target).height, greaterThanOrEqualTo(44));
+    });
+  });
+
+  testWidgets('RTL starts the trail on the right', (tester) async {
+    await tester.pumpWidget(
+      _app(CoilBreadcrumb(crumbs: _crumbs()), direction: TextDirection.rtl),
+    );
+    expect(
+      tester.getCenter(find.text('Home')).dx,
+      greaterThan(tester.getCenter(find.text('Breadcrumb')).dx),
+    );
+  });
+
+  group('motion', () {
+    Future<Color> labelMidway(
+      WidgetTester tester, {
+      Map<CoilBreadcrumbTrack<Object>, Motion>? motions,
+      CoilThemeData? theme,
+    }) async {
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, _) => CoilTheme(
+            data: theme ?? CoilThemeData.light,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: CoilBreadcrumb(crumbs: _crumbs(), motions: motions),
+            ),
+          ),
+        ),
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('Coil')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      return tester
+          .renderObject<RenderParagraph>(find.text('Coil'))
+          .text
+          .style!
+          .color!;
+    }
+
+    const slow = CupertinoMotion(duration: Duration(seconds: 2));
+    final lit = CoilThemeData.light.colors.foreground;
+
+    testWidgets('the label is close to lit on its default motion', (
+      tester,
+    ) async {
+      final color = await labelMidway(tester);
+      expect(color.r, closeTo(lit.r, 0.01));
+    });
+
+    testWidgets('motions: overrides one track', (tester) async {
+      expect(
+        await labelMidway(tester, motions: {CoilBreadcrumbTrack.label: slow}),
+        isNot(lit),
+      );
+    });
+
+    testWidgets('the theme overrides one track', (tester) async {
+      expect(
+        await labelMidway(
+          tester,
+          theme: CoilThemeData.light.withComponentStyle(
+            CoilBreadcrumbStyle(motions: {CoilBreadcrumbTrack.label: slow}),
+          ),
+        ),
+        isNot(lit),
+      );
+    });
+  });
+
+  testWidgets('labels name the trail and "…"', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _app(
+        SizedBox(
+          width: 260,
+          child: CoilBreadcrumb(
+            crumbs: _crumbs(),
+            labels: const CoilBreadcrumbLabels(
+              navigationLabel: 'Fil d’Ariane',
+              showHiddenLabel: 'Pages masquées',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.semantics.byLabel('Fil d’Ariane'), findsOneWidget);
+    expect(find.semantics.byLabel('Pages masquées'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('style: fallback < theme < instance', (tester) async {
+    const themed = Color(0xFF00FF00);
+    const own = Color(0xFF0000FF);
+    Widget app(CoilThemeData theme, {CoilBreadcrumbStyle? style}) => WidgetsApp(
+      color: const Color(0xFF000000),
+      builder: (context, _) => CoilTheme(
+        data: theme,
+        child: CoilBreadcrumb(crumbs: _crumbs(), style: style),
+      ),
+    );
+    Color page() => tester
+        .renderObject<RenderParagraph>(find.text('Breadcrumb'))
+        .text
+        .style!
+        .color!;
+    await tester.pumpWidget(app(CoilThemeData.light));
+    expect(page(), CoilThemeData.light.colors.foreground);
+    final theme = CoilThemeData.light.withComponentStyle(
+      const CoilBreadcrumbStyle(label: WidgetStatePropertyAll(themed)),
+    );
+    await tester.pumpWidget(app(theme));
+    expect(page(), themed);
+    await tester.pumpWidget(
+      app(
+        theme,
+        style: const CoilBreadcrumbStyle(label: WidgetStatePropertyAll(own)),
+      ),
+    );
+    expect(page(), own);
+  });
+}

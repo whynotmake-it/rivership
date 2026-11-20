@@ -5,3 +5,5 @@ analyzer:
     # This package is the first-party consumer of motor's experimental
     # inspection API and moves in lockstep with it.
     experimental_member_use: ignore
+  exclude:
+    - build/**

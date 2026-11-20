@@ -1,0 +1,593 @@
+import 'dart:ui' show Tristate;
+
+import 'package:coil/coil.dart';
+import 'package:coil_cli/testing.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'src/ink_centering.dart';
+import 'src/test_icons.dart';
+
+const _steps = [
+  CoilThinkingStep(
+    title: Text('Searched the docs'),
+    leading: TestIcon(TestGlyph.search),
+    sources: [Text('flutter.dev'), Text('api.flutter.dev')],
+  ),
+  CoilThinkingStep(
+    title: Text('Compared two layouts'),
+    detail: Text('The grid keeps cards aligned at every width.'),
+  ),
+  CoilThinkingStep(
+    title: Text('Drew a sketch'),
+    image: ColoredBox(
+      color: Color(0xFF9DB7F5),
+      child: SizedBox(width: 240, height: 64),
+    ),
+  ),
+];
+
+const _words = [Text('Thinking'), Text('Moonwalking'), Text('Planning')];
+
+Widget _app(
+  Widget child, {
+  CoilTier tier = CoilTier.pointer,
+  bool reduceMotion = false,
+  TextDirection direction = TextDirection.ltr,
+}) => WidgetsApp(
+  color: const Color(0xFF000000),
+  debugShowCheckedModeBanner: false,
+  builder: (context, navigator) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(disableAnimations: reduceMotion),
+    child: Directionality(
+      textDirection: direction,
+      child: CoilTheme(
+        data: CoilThemeData.light.copyWith(tier: tier),
+        child: navigator!,
+      ),
+    ),
+  ),
+  onGenerateRoute: (settings) => PageRouteBuilder<void>(
+    pageBuilder: (context, _, _) => Align(
+      alignment: Alignment.topLeft,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          KeyedSubtree(key: const ValueKey('target'), child: child),
+          CoilButton(onPressed: () {}, child: const Text('After')),
+        ],
+      ),
+    ),
+  ),
+);
+
+final _target = find.byKey(const ValueKey('target'));
+
+/// Pumps [initial] in [_app] and returns a notifier that swaps the content
+/// (the page route is built once, so pumping a new [_app] wouldn't).
+Future<ValueNotifier<Widget>> _pumpLive(
+  WidgetTester tester,
+  Widget initial, {
+  bool reduceMotion = false,
+}) async {
+  final content = ValueNotifier(initial);
+  addTearDown(content.dispose);
+  await tester.pumpWidget(
+    _app(
+      ValueListenableBuilder(
+        valueListenable: content,
+        builder: (context, child, _) => child,
+      ),
+      reduceMotion: reduceMotion,
+    ),
+  );
+  return content;
+}
+
+/// Thinking steps that apply their own `onChanged`; [steps] can grow.
+class _Steps extends StatefulWidget {
+  const _Steps({this.steps = _steps, this.expanded = false});
+
+  final List<CoilThinkingStep> steps;
+  final bool expanded;
+
+  @override
+  State<_Steps> createState() => _StepsState();
+}
+
+class _StepsState extends State<_Steps> {
+  late bool expanded = widget.expanded;
+
+  @override
+  Widget build(BuildContext context) => CoilThinkingSteps(
+    label: const Text('Thought for 12s'),
+    steps: widget.steps,
+    expanded: expanded,
+    onChanged: (next) => setState(() => expanded = next),
+  );
+}
+
+final _trigger = find.ancestor(
+  of: find.text('Thought for 12s').last,
+  matching: find.byType(CoilInteraction),
+);
+
+Set<WidgetState> _states(WidgetTester tester) => tester
+    .widget<CoilInteractionDetector>(
+      find.descendant(
+        of: _trigger,
+        matching: find.byType(CoilInteractionDetector),
+      ),
+    )
+    .states
+    .value;
+
+void _ignore(bool _) {}
+
+void main() {
+  group('CoilThinkingSteps', () {
+    for (final direction in TextDirection.values) {
+      testWidgets('${direction.name}: the trigger is a disclosure', (
+        tester,
+      ) async {
+        await tester.pumpWidget(_app(const _Steps(), direction: direction));
+        await expectCoilPattern(tester, _target, CoilPattern.disclosure);
+      });
+    }
+
+    testWidgets('steps show only while expanded', (tester) async {
+      await tester.pumpWidget(_app(const _Steps()));
+      expect(find.bySemanticsLabel('Searched the docs'), findsNothing);
+      expect(
+        tester
+            .getSemantics(_trigger)
+            .getSemanticsData()
+            .flagsCollection
+            .isExpanded,
+        Tristate.isFalse,
+      );
+
+      await tester.tap(_trigger);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Searched the docs'), findsOne);
+      expect(find.bySemanticsLabel('flutter.dev'), findsOne);
+      expect(
+        tester
+            .getSemantics(_trigger)
+            .getSemanticsData()
+            .flagsCollection
+            .isExpanded,
+        Tristate.isTrue,
+      );
+    });
+
+    testWidgets('a new step grows in; steps there at first show at once', (
+      tester,
+    ) async {
+      const added = CoilThinkingStep(title: Text('Wrote the answer'));
+      final first = _steps.take(1).toList();
+      final content = await _pumpLive(
+        tester,
+        _Steps(steps: first, expanded: true),
+      );
+      await tester.pump();
+      expect(
+        tester.getSize(find.text('Searched the docs')).height,
+        greaterThan(0),
+      );
+      final initial = tester.getSize(_target).height;
+      await tester.pumpAndSettle();
+      expect(tester.getSize(_target).height, initial, reason: 'no entrance');
+
+      content.value = _Steps(steps: [...first, added], expanded: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final growing = tester.getSize(_target).height;
+      await tester.pumpAndSettle();
+      final grown = tester.getSize(_target).height;
+      expect(growing, inExclusiveRange(initial, grown));
+    });
+
+    testWidgets('steps added after a clear grow in again', (tester) async {
+      final content = await _pumpLive(
+        tester,
+        _Steps(steps: _steps.take(2).toList(), expanded: true),
+      );
+      await tester.pumpAndSettle();
+      content.value = const _Steps(steps: [], expanded: true);
+      await tester.pumpAndSettle();
+      final empty = tester.getSize(_target).height;
+
+      content.value = _Steps(steps: _steps.take(1).toList(), expanded: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final growing = tester.getSize(_target).height;
+      await tester.pumpAndSettle();
+      final grown = tester.getSize(_target).height;
+      expect(growing, inExclusiveRange(empty, grown));
+    });
+
+    testWidgets('reduced motion: a new step takes its height at once', (
+      tester,
+    ) async {
+      const added = CoilThinkingStep(title: Text('Wrote the answer'));
+      final first = _steps.take(1).toList();
+      final content = await _pumpLive(
+        tester,
+        _Steps(steps: first, expanded: true),
+        reduceMotion: true,
+      );
+      await tester.pumpAndSettle();
+      content.value = _Steps(steps: [...first, added], expanded: true);
+      await tester.pump();
+      await tester.pump();
+      final height = tester.getSize(_target).height;
+      await tester.pumpAndSettle();
+      expect(tester.getSize(_target).height, height);
+    });
+
+    testWidgets('a touch presses the trigger and leaves nothing lit', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(const _Steps(), tier: CoilTier.touch));
+      final gesture = await tester.startGesture(tester.getCenter(_trigger));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_states(tester), {WidgetState.pressed});
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(_states(tester), isEmpty);
+    });
+
+    group('connector', () {
+      const ink = Color(0xFFFF00FF);
+      const style = CoilThinkingStepsStyle(connectorColor: ink);
+
+      Finder connectors() => find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == ink,
+      );
+
+      /// The connectors that show, top to bottom.
+      List<Rect> shown(WidgetTester tester) =>
+          [
+              for (final e in connectors().evaluate())
+                tester.getRect(find.byWidget(e.widget)),
+            ].where((r) => r.height > 0).toList()
+            ..sort((a, b) => a.top.compareTo(b.top));
+
+      CoilThinkingStep step(int i, {Widget? detail, String title = 'Step'}) =>
+          CoilThinkingStep(
+            title: Text('$title $i'),
+            leading: SizedBox.square(key: ValueKey('glyph$i'), dimension: 8),
+            detail: detail,
+          );
+
+      Widget steps(
+        List<CoilThinkingStep> steps, {
+        double width = 320,
+        CoilThinkingStepsStyle? style = style,
+      }) => SizedBox(
+        width: width,
+        child: CoilThinkingSteps(
+          label: const Text('Thought for 12s'),
+          steps: steps,
+          expanded: true,
+          onChanged: _ignore,
+          style: style,
+        ),
+      );
+
+      final withDetail = [
+        for (var i = 0; i < 3; i++) step(i, detail: Text('Detail $i')),
+      ];
+
+      testWidgets('runs beside every step but the last', (tester) async {
+        await tester.pumpWidget(_app(steps(withDetail)));
+        final lines = shown(tester);
+        expect(lines, hasLength(2));
+        for (final (i, line) in lines.indexed) {
+          final glyph = tester.getRect(find.byKey(ValueKey('glyph$i')));
+          final detail = tester.getRect(find.text('Detail $i'));
+          final next = tester.getRect(find.byKey(ValueKey('glyph${i + 1}')));
+          expect(line.width, 1);
+          expect(line.center.dx, closeTo(glyph.center.dx, 0.01));
+          // Starts just under the glyph, ends with the step's content,
+          // short of the next glyph.
+          expect(line.top, greaterThan(glyph.bottom));
+          expect(line.bottom, closeTo(detail.bottom, 0.01));
+          expect(line.bottom, lessThan(next.top));
+        }
+      });
+
+      testWidgets('a one-line step has none', (tester) async {
+        await tester.pumpWidget(
+          _app(steps([for (var i = 0; i < 3; i++) step(i)])),
+        );
+        expect(shown(tester), isEmpty);
+      });
+
+      testWidgets('follows long titles, narrow widths and text scale 2', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(800, 3000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final long = [
+          for (var i = 0; i < 2; i++)
+            step(
+              i,
+              title: 'A long step title that wraps onto several lines',
+              detail: const Text('And a detail that wraps as well'),
+            ),
+        ];
+        await tester.pumpWidget(
+          _app(
+            MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+              child: steps(long, width: 160),
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        final [line] = shown(tester);
+        final glyph = tester.getRect(find.byKey(const ValueKey('glyph0')));
+        final title = tester.getRect(find.textContaining('A long step').first);
+        expect(line.center.dx, closeTo(glyph.center.dx, 0.01));
+        expect(line.top, greaterThan(glyph.bottom));
+        expect(line.top, lessThan(title.top + title.height / 4));
+        expect(
+          line.bottom,
+          closeTo(
+            tester
+                .getRect(find.text('And a detail that wraps as well').first)
+                .bottom,
+            0.01,
+          ),
+        );
+      });
+
+      testWidgets('rtl: sits under the glyph on the right', (tester) async {
+        await tester.pumpWidget(
+          _app(steps(withDetail), direction: TextDirection.rtl),
+        );
+        final lines = shown(tester);
+        expect(lines, hasLength(2));
+        final glyph = tester.getRect(find.byKey(const ValueKey('glyph0')));
+        final title = tester.getRect(find.text('Step 0'));
+        expect(glyph.left, greaterThan(title.right));
+        expect(lines.first.center.dx, closeTo(glyph.center.dx, 0.01));
+      });
+
+      testWidgets('the step that stops being last fades its connector in', (
+        tester,
+      ) async {
+        final content = await _pumpLive(
+          tester,
+          steps(withDetail.take(1).toList()),
+        );
+        await tester.pumpAndSettle();
+        expect(shown(tester), isEmpty);
+
+        content.value = steps(withDetail.take(2).toList());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 40));
+        Opacity fading() => tester.widget<Opacity>(
+          find
+              .ancestor(of: connectors().first, matching: find.byType(Opacity))
+              .first,
+        );
+        expect(fading().opacity, inExclusiveRange(0, 1));
+        await tester.pumpAndSettle();
+        expect(shown(tester), hasLength(1));
+      });
+
+      testWidgets('style: width and gap', (tester) async {
+        await tester.pumpWidget(
+          _app(
+            steps(
+              withDetail,
+              style: style.merge(
+                const CoilThinkingStepsStyle(
+                  connectorWidth: 2,
+                  connectorGap: 6,
+                ),
+              ),
+            ),
+          ),
+        );
+        final line = shown(tester).first;
+        final glyphBox = tester.getRect(
+          find
+              .ancestor(
+                of: find.byKey(const ValueKey('glyph0')),
+                matching: find.byType(SizedBox),
+              )
+              .first,
+        );
+        expect(line.width, 2);
+        expect(line.top - glyphBox.bottom, closeTo(6, 0.01));
+      });
+    });
+
+    inkCenteringTests({
+      'thinking_steps/trigger': (ink) => CoilThinkingSteps(
+        label: InkLabel(ink, const Text('HEH')),
+        steps: const [],
+        expanded: false,
+        onChanged: (_) {},
+        indicator: const SizedBox.square(dimension: 12),
+      ),
+    });
+  });
+
+  group('CoilThinkingIndicator', () {
+    final word = find.byType(CoilThinkingIndicator);
+    String announced(WidgetTester tester) =>
+        tester.getSemantics(word).getSemanticsData().label;
+
+    testWidgets('a polite live region that announces each new word', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_app(const CoilThinkingIndicator(words: _words)));
+      final data = tester.getSemantics(word).getSemanticsData();
+      expect(data.flagsCollection.isLiveRegion, isTrue);
+      expect(data.label, 'Thinking');
+
+      await tester.pump(const Duration(seconds: 4));
+      expect(announced(tester), 'Moonwalking');
+      await tester.pump(const Duration(seconds: 4));
+      expect(announced(tester), 'Planning');
+      await tester.pump(const Duration(seconds: 4));
+      expect(announced(tester), 'Thinking', reason: 'the cycle wraps');
+    });
+
+    testWidgets('the cycle pauses while tickers are muted', (tester) async {
+      final content = await _pumpLive(
+        tester,
+        const TickerMode(
+          enabled: false,
+          child: CoilThinkingIndicator(words: _words),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 8));
+      expect(announced(tester), 'Thinking');
+
+      content.value = const TickerMode(
+        enabled: true,
+        child: CoilThinkingIndicator(words: _words),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(announced(tester), 'Moonwalking');
+    });
+
+    testWidgets('new words never announce sooner than every 4 s', (
+      tester,
+    ) async {
+      final content = await _pumpLive(
+        tester,
+        const CoilThinkingIndicator(words: _words),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      content.value = const CoilThinkingIndicator(
+        words: [Text('Reading'), Text('Writing')],
+      );
+      await tester.pump();
+      expect(announced(tester), 'Thinking');
+      await tester.pump(const Duration(seconds: 2));
+      expect(announced(tester), 'Thinking');
+      await tester.pump(const Duration(seconds: 1));
+      expect(announced(tester), 'Reading');
+    });
+
+    testWidgets('words rebuilt every second (not const) still cycle', (
+      tester,
+    ) async {
+      // Words built fresh each time, as a parent that rebuilds often does.
+      Widget indicator() => CoilThinkingIndicator(
+        words: [
+          for (final w in ['A', 'B', 'C']) Text(w),
+        ],
+      );
+      final content = await _pumpLive(tester, indicator());
+      final seen = <String>[announced(tester)];
+      for (var second = 1; second <= 12; second++) {
+        content.value = indicator();
+        await tester.pump(const Duration(seconds: 1));
+        if (second % 4 == 0) seen.add(announced(tester));
+      }
+      expect(seen, ['A', 'B', 'C', 'A']);
+    });
+
+    // In release builds the two const `Text('A')`s are one instance, which
+    // a lookup by identity would never move past.
+    testWidgets('a repeated word still moves on', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          const CoilThinkingIndicator(
+            words: [Text('A'), Text('A'), Text('B')],
+          ),
+        ),
+      );
+      final seen = <String>[announced(tester)];
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 4));
+        seen.add(announced(tester));
+      }
+      expect(seen, ['A', 'A', 'B', 'A']);
+    });
+
+    testWidgets('the longest word reserves the width', (tester) async {
+      await tester.pumpWidget(_app(const CoilThinkingIndicator(words: _words)));
+      final widths = <double>[];
+      for (var i = 0; i < 3; i++) {
+        widths.add(tester.getSize(word).width);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(widths.toSet(), hasLength(1));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(
+        _app(const CoilThinkingIndicator(words: [Text('Moonwalking')])),
+      );
+      await tester.pump();
+      expect(tester.getSize(word).width, widths.first);
+    });
+
+    testWidgets('the incoming word rises into place', (tester) async {
+      await tester.pumpWidget(_app(const CoilThinkingIndicator(words: _words)));
+      final rest = tester.getTopLeft(find.text('Thinking').last).dy;
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      final rising = tester.getTopLeft(find.text('Moonwalking').last).dy;
+      await tester.pumpAndSettle();
+      expect(rising, greaterThan(rest));
+      expect(tester.getTopLeft(find.text('Moonwalking').last).dy, rest);
+    });
+
+    testWidgets('reduced motion: words still change, crossfading in place', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(const CoilThinkingIndicator(words: _words), reduceMotion: true),
+      );
+      final rest = tester.getTopLeft(find.text('Thinking').last).dy;
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(tester.getTopLeft(find.text('Moonwalking').last).dy, rest);
+      expect(announced(tester), 'Moonwalking');
+    });
+
+    inkCenteringTests({
+      'thinking_indicator': (ink) => CoilThinkingIndicator(
+        words: const [Text('HEH')],
+        style: ink
+            ? null
+            : const CoilThinkingIndicatorStyle(
+                textStyle: TextStyle(color: Color(0x00000000)),
+              ),
+      ),
+    });
+  });
+
+  testWidgets('style: instance overrides the theme', (tester) async {
+    const red = Color(0xFFFF0000);
+    await tester.pumpWidget(
+      _app(
+        const CoilThinkingIndicator(
+          words: _words,
+          style: CoilThinkingIndicatorStyle(
+            textStyle: TextStyle(color: red),
+          ),
+        ),
+      ),
+    );
+    final color = DefaultTextStyle.of(
+      tester.element(find.text('Thinking').last),
+    ).style.color;
+    expect(color, red);
+  });
+}

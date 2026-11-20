@@ -1,0 +1,241 @@
+import 'package:coil/foundation.dart';
+import 'package:coil/src/components/slider/slider.dart' show CoilSliderTrack;
+import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
+
+/// Overrides for how a `CoilSlider` looks; unset fields come from
+/// [CoilSliderStyle.fallback].
+///
+/// [handle], [label] and [value] resolve [WidgetState.hovered],
+/// [WidgetState.focused] and [WidgetState.pressed].
+class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
+  /// Creates a slider style.
+  const CoilSliderStyle({
+    this.fill,
+    this.pillFill,
+    this.border,
+    this.handle,
+    this.pip,
+    this.activePip,
+    this.label,
+    this.value,
+    this.preview,
+    this.knob,
+    this.knobShadows,
+    this.textStyle,
+    this.radius,
+    this.knobSize,
+    this.knobBox,
+    this.pillHeight,
+    this.pillMinTrack,
+    this.pipSize,
+    this.pipGrowth,
+    this.dotSize,
+    this.dotGrowth,
+    this.handleWidth,
+    this.handleInset,
+    this.motions,
+    this.plasticity,
+  });
+
+  /// The defaults from [theme]'s tokens at [metrics].
+  factory CoilSliderStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
+    final c = theme.colors;
+    final touch = metrics.tier == CoilTier.touch;
+    return CoilSliderStyle(
+      plasticity: theme.plasticity,
+      fill: c.active,
+      pillFill: theme.brightness == Brightness.dark
+          ? c.accent.withValues(alpha: 0.4)
+          : c.selected.withValues(alpha: 0.5),
+      border: c.border,
+      handle: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.focused)
+            ? c.foreground
+            : s.contains(WidgetState.hovered) || s.contains(WidgetState.pressed)
+            ? c.foreground.withValues(alpha: 0.5)
+            : c.foreground.withValues(alpha: 0.25),
+      ),
+      pip: c.mutedForeground.withValues(alpha: 0.3),
+      activePip: c.foreground,
+      label: WidgetStateProperty.resolveWith(
+        (s) => s.isEmpty ? c.mutedForeground : c.foreground,
+      ),
+      value: WidgetStateProperty.resolveWith(
+        (s) => s.isEmpty ? c.mutedForeground : c.foreground,
+      ),
+      preview: c.accent.withValues(alpha: 0.4),
+      knob: const Color(0xFFFFFFFF),
+      knobShadows: const [
+        BoxShadow(
+          color: Color(0x1A000000),
+          offset: Offset(0, 1),
+          blurRadius: 3,
+        ),
+        BoxShadow(
+          color: Color(0x1A000000),
+          offset: Offset(0, 1),
+          blurRadius: 2,
+          spreadRadius: -1,
+        ),
+      ],
+      textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
+      radius: theme.shape.radii(metrics.tier).item,
+      knobSize: touch ? 22 : 16,
+      knobBox: touch ? 44 : 20,
+      pillHeight: 18,
+      pillMinTrack: 96,
+      pipSize: 5,
+      pipGrowth: 0.4,
+      dotSize: 4,
+      dotGrowth: 0.25,
+      handleWidth: 2,
+      handleInset: 8,
+    );
+  }
+
+  /// The row's fill, up to the value.
+  final Color? fill;
+
+  /// The pill track's fill.
+  final Color? pillFill;
+
+  /// The 1 px outline of the row and the pill.
+  final Color? border;
+
+  /// The handle line of the row.
+  final WidgetStateProperty<Color?>? handle;
+
+  /// A pip dot.
+  final Color? pip;
+
+  /// The pip dot at the value.
+  final Color? activePip;
+
+  /// The label color.
+  final WidgetStateProperty<Color?>? label;
+
+  /// The value color.
+  final WidgetStateProperty<Color?>? value;
+
+  /// The hover preview bar.
+  final Color? preview;
+
+  /// The pill's knob.
+  final Color? knob;
+
+  /// The pill knob's shadows.
+  final List<BoxShadow>? knobShadows;
+
+  /// The label and value text style (color from [label] and [value]).
+  final TextStyle? textStyle;
+
+  /// The row's corner radius.
+  final double? radius;
+
+  /// The pill knob's visual diameter.
+  final double? knobSize;
+
+  /// The pill knob's box; its hit area is this tall.
+  final double? knobBox;
+
+  /// The pill track's height.
+  final double? pillHeight;
+
+  /// The narrowest the pill track gets beside the label and the value. A
+  /// row that can't keep it moves the label and value to a line above the
+  /// track.
+  final double? pillMinTrack;
+
+  /// A pip's diameter.
+  final double? pipSize;
+
+  /// How much larger the pip at the value is, as a fraction of [pipSize].
+  final double? pipGrowth;
+
+  /// The diameter of a step dot on the pill, colored [pip].
+  final double? dotSize;
+
+  /// How much larger the pill's dots grow while hovered, as a fraction of
+  /// [dotSize].
+  final double? dotGrowth;
+
+  /// The handle line's width.
+  final double? handleWidth;
+
+  /// How far the handle line stops short of the row's top and bottom.
+  final double? handleInset;
+
+  /// Springs for the slider's animated parts, keyed by [CoilSliderTrack]s:
+  /// `{CoilSliderTrack.thumb: const Motion.bouncySpring()}`. A slider's own
+  /// `motions:` win over these; these win over the motion tokens. [merge]
+  /// combines the maps key by key.
+  final Map<CoilSliderTrack<Object>, Motion>? motions;
+
+  /// How lit this component is. Defaults to the theme's
+  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
+  /// component type or instance.
+  final CoilPlasticity? plasticity;
+
+  @override
+  CoilSliderStyle merge(CoilSliderStyle? other) => other == null
+      ? this
+      : CoilSliderStyle(
+          plasticity: other.plasticity ?? plasticity,
+          fill: other.fill ?? fill,
+          pillFill: other.pillFill ?? pillFill,
+          border: other.border ?? border,
+          handle: CoilComponentStyle.mergeStates(handle, other.handle),
+          pip: other.pip ?? pip,
+          activePip: other.activePip ?? activePip,
+          label: CoilComponentStyle.mergeStates(label, other.label),
+          value: CoilComponentStyle.mergeStates(value, other.value),
+          preview: other.preview ?? preview,
+          knob: other.knob ?? knob,
+          knobShadows: other.knobShadows ?? knobShadows,
+          textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
+          radius: other.radius ?? radius,
+          knobSize: other.knobSize ?? knobSize,
+          knobBox: other.knobBox ?? knobBox,
+          pillHeight: other.pillHeight ?? pillHeight,
+          pillMinTrack: other.pillMinTrack ?? pillMinTrack,
+          pipSize: other.pipSize ?? pipSize,
+          pipGrowth: other.pipGrowth ?? pipGrowth,
+          dotSize: other.dotSize ?? dotSize,
+          dotGrowth: other.dotGrowth ?? dotGrowth,
+          handleWidth: other.handleWidth ?? handleWidth,
+          handleInset: other.handleInset ?? handleInset,
+          motions: other.motions == null
+              ? motions
+              : {...?motions, ...?other.motions},
+        );
+
+  @override
+  List<Object?> get props => [
+    fill,
+    pillFill,
+    border,
+    handle,
+    pip,
+    activePip,
+    label,
+    value,
+    preview,
+    knob,
+    knobShadows,
+    textStyle,
+    radius,
+    knobSize,
+    knobBox,
+    pillHeight,
+    pillMinTrack,
+    pipSize,
+    pipGrowth,
+    dotSize,
+    dotGrowth,
+    handleWidth,
+    handleInset,
+    motions,
+    plasticity,
+  ];
+}

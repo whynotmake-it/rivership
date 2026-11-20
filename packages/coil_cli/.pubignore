@@ -1,0 +1,4 @@
+# Not part of the package.
+build/
+coverage/
+test/

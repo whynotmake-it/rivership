@@ -1,2 +1,5 @@
+analyzer:
+  exclude:
+    - build/**
 include: package:lintervention/analysis_options.yaml
 
