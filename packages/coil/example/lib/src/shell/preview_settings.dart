@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor_devtools/motor_devtools.dart';
 
 /// The settings button in every page header.
 class SettingsButton extends StatelessWidget {
@@ -448,6 +449,18 @@ class _Accessibility extends StatelessWidget {
 }
 
 List<Widget> _deviceRows(CatalogSettings settings) => [
+  if (kMotorDevTools)
+    ValueListenableBuilder(
+      valueListenable: coilDevtoolsVisible,
+      builder: (context, visible, _) => _SwitchRow(
+        label: 'Motor DevTools',
+        description: const Text(
+          'Inspect and tune the springs every component moves on.',
+        ),
+        value: visible,
+        onChanged: (value) => coilDevtoolsVisible.value = value,
+      ),
+    ),
   _SelectRow<CatalogTier>(
     label: const Text('Size tier'),
     description: const Text(

@@ -46,9 +46,14 @@ class _CoilCatalogAppState extends State<CoilCatalogApp> {
     );
     return CatalogSettingsScope(
       settings: _settings,
-      child: MotorDevTools(
-        // The catalog ships the inspector on purpose, in release builds too.
-        enabled: widget.devTools,
+      child: ValueListenableBuilder(
+        valueListenable: coilDevtoolsVisible,
+        builder: (context, visible, child) => MotorDevTools(
+          // The catalog ships the inspector on purpose, in release builds too.
+          enabled: widget.devTools,
+          visible: visible,
+          child: child!,
+        ),
         child: app,
       ),
     );

@@ -39,12 +39,13 @@ void main() async {
   );
 
   runApp(
-    ValueListenableBuilder(
-      valueListenable: devtoolsVisible,
-      builder: (context, visible, child) => MotorDevTools(
+    ListenableBuilder(
+      // The motor home and the coil settings each have a DevTools switch.
+      listenable: Listenable.merge([devtoolsVisible, coilDevtoolsVisible]),
+      builder: (context, child) => MotorDevTools(
         // The gallery ships the tools on purpose, also in release builds.
         enabled: true,
-        visible: visible,
+        visible: devtoolsVisible.value || coilDevtoolsVisible.value,
         child: child!,
       ),
       child: CupertinoApp.router(

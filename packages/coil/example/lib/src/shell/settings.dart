@@ -253,6 +253,11 @@ enum CatalogMotion {
   };
 }
 
+/// Whether the Motor devtools overlay is shown. It starts off. The preview
+/// settings turn it on, and the apps that mount the catalog show the overlay
+/// while this is true.
+final ValueNotifier<bool> coilDevtoolsVisible = ValueNotifier(false);
+
 /// The catalog's preview controls. Each one maps onto a real platform input
 /// (MediaQuery, Directionality, the theme, the adaptive scope), so a
 /// component sees exactly what it would see on a device set up that way.
