@@ -1,29 +1,108 @@
 # coil
 
-A Flutter design system built on [Motor](https://pub.dev/packages/motor) springs. It works under
-any `WidgetsApp` (no Material or Cupertino app shell) and adapts to pointer
-and touch, keyboard and screen readers on every platform.
+A Flutter design system built on [Motor](https://pub.dev/packages/motor)
+springs. It works under any `WidgetsApp`, with no Material or Cupertino app
+shell, and adapts to pointer and touch, keyboard and screen readers on every
+platform.
 
-> Pre-release. coil builds on Motor 2.0 pre-releases, and its API may change
-> before 1.0. It needs Flutter 3.47 or later.
+- Dozens of components, from buttons and fields to sidebars, calendars and chat
+  composers.
+- Every transition is a spring, so interrupting one keeps its velocity.
+- One look on every platform, with each platform's own conventions for
+  menus, scrolling, text selection, haptics and back gestures.
+- Themed with colors, shape, type, motion and icons, and each component can be
+  copied into your app to edit it.
 
-## Credits
+[Open the catalog](https://whynotmake-it.github.io/rivership/#/coil) to try
+every component in your browser.
 
-coil is inspired by **[Fluid Functionalism](https://www.fluidfunctionalism.com)**
-by Micka Touillaud (MIT). Its spacing rhythm, type, color restraint, the
-travelling hover highlight and merged selections are the starting point for
-coil's look. coil is its own system: it doesn't aim for pixel or timing
-parity, and its motion tokens are its own. The original license is in
-[`LICENSE.fluid-functionalism`](LICENSE.fluid-functionalism).
+> Pre-release: coil's API may change before 1.0. It needs Flutter 3.47 or
+> later.
+
+## Install
+
+```sh
+flutter pub add coil
+```
+
+## Usage
+
+```dart
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
+
+void main() => runApp(
+  WidgetsApp(
+    color: const Color(0xFF6B97FF),
+    builder: (context, _) => CoilTheme(
+      data: CoilThemeData.light,
+      child: Center(
+        child: CoilButton(
+          onPressed: () {},
+          child: const Text('Save'),
+        ),
+      ),
+    ),
+  ),
+);
+```
+
+`CoilTheme` is optional: without it components follow the platform
+brightness. Visible text and icons are `Widget` slots (`child`, `leading`,
+`label`), so pass `Text`, not a `String`.
+
+`package:coil/coil.dart` exports everything. To depend on less, import
+`package:coil/foundation.dart`, `package:coil/primitives.dart` or a single
+component's library such as `package:coil/button.dart`.
+
+## Components
+
+| | |
+|---|---|
+| Controls | `CoilButton`, `CoilBadge`, `CoilKbd`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilRangeSlider`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilSkeleton` |
+| Forms | `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilTabs`, `CoilSelect`, `CoilMultiSelect`, `CoilCombobox`, `CoilCalendar`, `CoilDatePicker` |
+| Menus and overlays | `CoilDialog`, `CoilSettingsDialog`, `CoilTooltip`, `CoilDropdown`, `CoilContextMenu`, `CoilCommandMenu` |
+| Layout and display | `CoilAccordion`, `CoilCard`, `CoilTable`, `CoilDataTable`, `CoilBanner`, `CoilBreadcrumb`, `CoilScrollArea`, `CoilCarouselDots`, `CoilFileThumbnail`, `CoilReveal`, `CoilSidebarScaffold` (with `CoilSidebar`) |
+| Chat | `CoilChatMessage`, `CoilInputMessage`, `CoilQueuedStack`, `CoilThinkingSteps`, `CoilThinkingIndicator`, `CoilAskUserQuestions` |
+
+The pieces they are built from, such as `CoilInteraction`, `CoilFocusRing`,
+`CoilPopover`, `CoilSheetRoute` and `CoilTextFieldCore`, are public in
+`primitives.dart` for building your own. The catalog in [`example/`](example)
+shows every component live, and is
+[hosted on the web](https://whynotmake-it.github.io/rivership/#/coil).
+
+## Theming
+
+Change things in the theme before reaching for anything else:
+
+```dart
+CoilTheme(
+  data: CoilThemeData(
+    shape: CoilShape.pill,
+    typography: CoilTypography.inter(),
+  ),
+  child: app,
+)
+```
+
+- `CoilColors.fromSeed(brightness:, brand:)` builds the colors.
+- `CoilShape` is `.rounded`, `.pill` or `.sharp`. Every rounded corner is a
+  superellipse.
+- `CoilMotion` holds the springs, which you can change app-wide, per subtree
+  with `CoilTheme.override`, or per component.
+- `CoilTier` picks pointer or touch sizes. By default it follows the platform.
+- `withComponentStyle(CoilButtonStyle(...))` restyles one component type.
+
+[`DESIGN.md`](DESIGN.md) describes coil's design language: color, type,
+spacing, shape, motion, interaction and each component's anatomy.
 
 ## Fonts
 
-coil bundles no font, so apps don't carry one they don't use. By default
-it uses the platform's UI font. Two presets are tuned for specific fonts:
+coil bundles no font, so apps don't carry one they don't use. By default it
+uses the platform's UI font. Two presets are tuned for specific fonts:
 
 - `CoilTypography.allo()`, for [Allo](https://allo.joshpuckett.me) by Josh
-  Puckett, with its roundness axis and stylistic sets. This is the
-  catalog's look.
+  Puckett, with its roundness axis and stylistic sets.
 - `CoilTypography.inter()`, for [Inter](https://rsms.me/inter/) by Rasmus
   Andersson.
 
@@ -48,26 +127,32 @@ bundle. For any other font, `CoilTypography.from(TextStyle(fontFamily:
 'Brand'))` puts coil's type scale on it. The catalog in `example/` bundles
 both fonts and shows the setup.
 
-## Using it
+## Icons
 
-```dart
-import 'package:coil/coil.dart';
+coil bundles no icons. Slots take any widget and are styled through
+Flutter's `IconTheme`. The few glyphs coil draws itself (check, dash, copy, ×,
+alert, chevrons, send, stop) can be swapped for your own icon set in one
+place, `CoilThemeData.icons`. [`doc/icons.md`](doc/icons.md) has complete
+sets for Lucide and Material Symbols.
 
-CoilTheme(
-  data: CoilThemeData.light,
-  child: CoilButton(onPressed: save, child: const Text('Save')),
-)
-```
+## Accessibility
 
-`CoilTheme` is optional; without it components follow the platform
-brightness. Import `package:coil/foundation.dart`, `primitives.dart` or a
-single component's library (`package:coil/button.dart`) to depend on less.
+Every component ships with:
 
-Read [`doc/api_guide.md`](doc/api_guide.md) before adding to the API.
+- semantics for its role, name and state;
+- full keyboard operation, safe for IME composition;
+- a focus ring that shows only after keyboard use;
+- text scaling up to 2×, with controls growing to fit;
+- high contrast, bold text and right-to-left layouts;
+- reduced motion: spatial springs become instant and fades stay;
+- 44 pt touch targets on touch.
+
+Hover only comes from pointers that can hover, and a press clears on release,
+cancel or scroll, so a touch never leaves a highlight behind.
 
 ## Ejecting a component
 
-To edit a component's look, copy it into the app with `coil_cli`, a dev
+To edit a component's look, copy it into your app with `coil_cli`, a dev
 dependency:
 
 ```sh
@@ -79,119 +164,27 @@ dart run coil_cli:update button   # later: three-way merge of coil's changes
 
 The app then imports its generated `lib/coil.dart` instead of
 `package:coil/coil.dart`. Behavior stays in coil's primitives, so only the
-look and composition are copied. Components ejected together, or one
-after another, use each other's copies.
+look and composition are copied. Components ejected together, or one after
+another, use each other's copies.
 
-The first eject can give the copies the app's names:
+The first eject can give the copies your app's names:
 `dart run coil_cli:eject --all --prefix Acme` turns `CoilButton` into
-`AcmeButton` in `acme_button.dart`, exported from `lib/acme.dart`.
-`--rename CoilButton=PrimaryButton` renames a single name. The analyzer
-does the renaming, and `coil_cli:update` renames coil's new version the
-same way before merging, so renamed copies merge as cleanly as plain
-ones.
+`AcmeButton`, and `coil_cli:update` renames coil's new version the same way
+before merging.
 
-[`SKILL.md`](SKILL.md) covers eject and update in full.
-[`doc/llms.txt`](doc/llms.txt) indexes the per-component pages in
-`doc/components/`, which `tool/generate_docs.dart` builds from DESIGN.md.
+[`SKILL.md`](SKILL.md) covers using, theming, ejecting and updating in full,
+for people and for coding agents.
 
-coil_cli's `test/ejectable_test.dart` fails when a component imports
-another component's `src/` or a private primitive, since eject couldn't
-copy it.
+## Limitations
 
-## Layers
+- Without Material or Cupertino localizations in the app, the text selection
+  toolbar's labels are English in every locale.
+- A modal pushed with `CoilModalRoute` is a route: it doesn't rebuild with the
+  widget that pushed it. Use `CoilModalPage` in `Navigator.pages` for that.
 
-| Layer | Library | Holds |
-|---|---|---|
-| Foundation | `foundation.dart` | `CoilThemeData`/`CoilTheme`, `CoilColors`, `CoilMotion`, `CoilMetrics` (`CoilTier` × `CoilSize`), `CoilTypography` and `CoilTextTheme`, `CoilFocusRingTheme`, `CoilShape`, `CoilPlasticity` (resolved into `CoilRelief`), `CoilHaptics`, `CoilInputModality`, `CoilAdaptiveScope` |
-| Primitives | `primitives.dart` | `CoilInteraction`, `CoilFocusRing`, `CoilRovingFocus`, `CoilTypeahead`, `CoilActiveItemController`, `CoilMotionLayer` with `CoilHoverRegion`, `CoilHighlight`, `CoilSelectionBlocks` (merge/split), `CoilLayerPaint`, `CoilHoverHighlight`, `CoilBlurFade`, `CoilPopover`, `CoilSheetRoute`, `CoilActionBar`, `CoilDrawer`, `CoilScreenRadius`, `CoilAdaptivePopup`, `CoilTextFieldCore`, `CoilFieldScope`, `CoilLineBox`, `CoilDrawnGlyph`, `CoilChoiceGroup`, `CoilChoiceItem`, `CoilChoiceRow`, `CoilPopoverSurface`, `CoilActionList`, `CoilCollapsible`, `CoilDisclosureTrigger`, `CoilCardStack`, `CoilCopyController`, `CoilScrollbar`, `CoilScrollEdgeFade`, `CoilScrollSpring`, `CoilDismissIntent`, `CoilDefaultAction` |
-| Components | one library each | `CoilButton`, `CoilBadge`, `CoilSkeleton`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilTabs`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilField` (with `CoilFieldSet`, `CoilFieldGroup`, `CoilFieldSeparator`), `CoilCheckboxGroup`, `CoilRadioGroup`, `CoilToggleGroup`, `CoilSelect`, `CoilMultiSelect`, `CoilScrollArea`, `CoilAccordion`, `CoilThinkingSteps`, `CoilThinkingIndicator`, `CoilCard` (with `CoilCardGroup`), `CoilTable`, `CoilBanner`, `CoilBreadcrumb`, `CoilChatMessage`, `CoilCarouselDots`, `CoilKbd`, `CoilTooltip`, `CoilDropdown`, `CoilContextMenu`, `CoilCombobox`, `CoilCalendar`, `CoilDatePicker`, `CoilDialog`, `CoilSettingsDialog`, `CoilCommandMenu`, `CoilDataTable`, `CoilSidebarScaffold` (with `CoilSidebar`), `CoilInputMessage`, `CoilAskUserQuestions`, `CoilQueuedStack`, `CoilFileThumbnail`, `CoilReveal` |
+## Credits
 
-Components reach pointers, overlays, haptics and travelling motion only
-through primitives. `test/architecture/import_rules_test.dart` enforces it,
-so the interaction rules hold in ejected copies too.
-
-## Interaction rules
-
-- Hover only from pointers that can hover (mouse, trackpad, hovering pen).
-  A touch never leaves a highlight behind.
-- Press shows on touch-down, clears on release, cancel or scroll, and a
-  quick tap still shows it for `CoilMotion.minPressDuration` (90 ms).
-- The focus ring shows only after keyboard use; taps and clicks hide it.
-  Text fields show their focus border while editing.
-- Lists have an active item, separate from focus and hover: arrows, hover
-  and typeahead move it, Enter acts on it.
-- The tier latches by platform (desktop → pointer sizes, phone/tablet →
-  touch sizes); each event's pointer kind decides hover and press.
-- Short menus stay anchored on phones; long, searchable and multi-select
-  lists open as sheets (`CoilAdaptivePopup.phonePresentation`).
-- Native first: the iOS system edit menu, the browser's menu on web.
-  Selection handles and toolbars come from `material_ui`/`cupertino_ui`,
-  used only inside `CoilTextFieldCore`.
-
-## Motion
-
-Every token is a Motor spring, exits included, so an interrupted transition
-keeps its velocity. Tokens are theme data: change them app-wide, per
-subtree (`CoilTheme.override`), per component (`motion:`) or per track
-(`motions: {.thumb: …}`, or a style's `motions` app-wide, such as
-`CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: …})`). Reduced motion is applied last: spatial springs become
-instant, fades stay.
-
-| Token | Default (`CupertinoMotion`) | Moves |
-|---|---|---|
-| `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight, press collapse |
-| `standard` / `standardExit` | 180 ms / 140 ms, no bounce | tab pill, switch thumb, merge/split, popovers |
-| `gentle` / `gentleExit` | 340 ms bounce 0.1 / 260 ms | dialogs; sheets use `gentle` both ways |
-| `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity, color, check drawing |
-
-## Shapes
-
-Every rounded shape is a superellipse (`RoundedSuperellipseBorder`,
-`RSuperellipse`), pills included; an architecture test keeps it that way.
-
-## Icons
-
-coil bundles no icons. Slots take any widget and are styled through
-Flutter's `IconTheme`, with `applyTextScaling` on so icons grow with text.
-
-The glyphs coil draws itself (check, dash, copy, ×, alert, chevrons, send,
-stop) are a role map in the theme, `CoilThemeData.icons`, so an app swaps
-them for its own icon set in one place, including where a component has no
-slot (the calendar's arrows, the sheet's close button). A component's slot
-still wins. Where coil animates an icon, it hands it a `CoilIconPresence`:
-an icon can animate itself from it, and any other fades and scales in.
-[doc/icons.md](doc/icons.md) has complete sets for Lucide and Material
-Symbols, and an animated check.
-
-## Tests
-
-Run with Flutter 3.47: `flutter test` in this package.
-
-Each component's file runs the shared checks from `test/src/`:
-
-- `expectCoilPattern` (public in `package:coil_cli/testing.dart`): semantics,
-  keyboard and focus-visible, in LTR and RTL.
-- `inkCenteringTests`: label ink centered within 1 px at every tier, size
-  and text scale.
-
-The M0 components still run these from the shared `patterns_test.dart` and
-`label_alignment_test.dart`.
-
-coil has no golden tests for now: the reference renderings differ between
-macOS and the Linux CI, so a pass on one machine failed on the other.
-- `test/text_field_core_ime_test.dart`: IME composition guards, the iOS
-  system menu, toolbars under a bare `WidgetsApp`.
-- `test/motion_theme_test.dart`: motion tokens changed at runtime.
-- `test/goldens/web_reference/`: Fluid Functionalism screenshots, for
-  reference only. They are not test goldens.
-
-## Known gaps
-
-- Without Material or Cupertino localizations in the app, the text
-  selection toolbar's labels are English in every locale.
-- Desktop text fields show Flutter's own right-click toolbar, not a
-  coil-styled menu; that needs the ContextMenu component.
-- A modal pushed with `CoilModalRoute` is a route: it doesn't rebuild
-  with the widget that pushed it (use `CoilModalPage` in
-  `Navigator.pages` for that). Popups shown as sheets
-  (`CoilAdaptivePopup`) and popovers do.
+coil is inspired by **[Fluid Functionalism](https://www.fluidfunctionalism.com)**
+by Micka Touillaud (MIT): its spacing rhythm, type, color restraint,
+travelling hover highlight and merged selections. coil is its own system. The
+original license is in [`LICENSE.fluid-functionalism`](LICENSE.fluid-functionalism).

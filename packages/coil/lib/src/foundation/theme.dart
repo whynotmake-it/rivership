@@ -285,7 +285,7 @@ class CoilThemeData with Diagnosticable {
 /// `WidgetsApp`; it also sets a [DefaultTextStyle] and
 /// [DefaultSelectionStyle] so plain [Text] in slots matches the system.
 ///
-/// Resolution, lowest to highest (doc/api_guide.md §6): package defaults,
+/// Resolution, lowest to highest: package defaults,
 /// the platform tier, the root theme, subtree [CoilTheme.override]s, a
 /// component's own `motion:`, high contrast ([of]), reduced motion
 /// ([motionOf]).

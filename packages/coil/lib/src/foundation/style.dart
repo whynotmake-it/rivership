@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart' show WidgetState, WidgetStateProperty;
 /// A style is a set of nullable overrides. Null means "use the default",
 /// which the component computes from the resolved theme tokens with its
 /// style's `fallback`, so a token change flows into every field the app
-/// didn't set. Styles layer, lowest to highest (doc/api_guide.md §6):
+/// didn't set. Styles layer, lowest to highest:
 ///
 /// 1. `fallback(...)`, derived from tokens;
 /// 2. the theme's entry for the style type (`CoilThemeData.components`),

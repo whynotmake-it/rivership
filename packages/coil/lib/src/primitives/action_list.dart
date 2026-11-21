@@ -1214,7 +1214,7 @@ class _Separator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FF's `bg-border/60`: 60 % of the hairline's own alpha (the border
+    // 60 % of the hairline's own alpha (the border
     // token is foreground at 12 %, 40 % in high contrast).
     final border = CoilTheme.of(context).colors.border;
     return Padding(

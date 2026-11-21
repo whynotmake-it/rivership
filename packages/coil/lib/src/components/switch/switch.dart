@@ -147,7 +147,7 @@ class _CoilSwitchState extends State<CoilSwitch>
               widget.style)
           ?.motions;
 
-  /// The motion for [track], per doc/api_guide.md §6.
+  /// The motion for [track]: the instance's, then the style's, then [token].
   Motion _motionFor(CoilSwitchTrack<Object> track, Motion token) =>
       CoilTheme.trackMotionOf(
         context,
