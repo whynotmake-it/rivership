@@ -10,9 +10,10 @@ enum CoilPresentation {
   /// A bottom sheet with touch-sized rows.
   sheet,
 
-  /// A modal panel floating under the top safe area, with a stable height
-  /// and touch-sized rows, dismissed by a horizontal swipe. Phone search
-  /// lists use it, so the search field doesn't move as the results shrink.
+  /// A modal panel floating under the top safe area with touch-sized rows,
+  /// dismissed by a horizontal swipe. It hugs its content up to the room
+  /// above the keyboard; phone search lists fill that room, so the search
+  /// field doesn't move as the results shrink.
   floating;
 
   /// Whether the content lays out in a sheet panel with touch rows: a

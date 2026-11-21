@@ -629,38 +629,45 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       motion: widget.motion,
       maxHeight: metrics.tier == CoilTier.pointer ? 300 : double.infinity,
       content: (context, popup) => popup.presentation.usesSheetPanel
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.sheetTitle == null)
-                  // No header: the close button ends the field's line,
-                  // where the header would put it.
-                  Padding(
-                    padding: EdgeInsetsDirectional.only(
-                      start: 16,
-                      top: CoilSheetPanel.lineTopOf(
-                        context,
-                        CoilSheetCloseSlot.extentOf(context),
+          ? SizedBox(
+              // A floating panel keeps its height while the matches change,
+              // so the field stays put; a sheet hugs them.
+              height: popup.presentation == CoilPresentation.floating
+                  ? double.infinity
+                  : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.sheetTitle == null)
+                    // No header: the close button ends the field's line,
+                    // where the header would put it.
+                    Padding(
+                      padding: EdgeInsetsDirectional.only(
+                        start: 16,
+                        top: CoilSheetPanel.lineTopOf(
+                          context,
+                          CoilSheetCloseSlot.extentOf(context),
+                        ),
+                        bottom: 8,
                       ),
-                      bottom: 8,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 8,
+                        children: [
+                          Expanded(child: _field(inSheet: true)),
+                          const CoilSheetCloseSlot(),
+                        ],
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: _field(inSheet: true),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 8,
-                      children: [
-                        Expanded(child: _field(inSheet: true)),
-                        const CoilSheetCloseSlot(),
-                      ],
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: _field(inSheet: true),
-                  ),
-                Flexible(child: _list(context, popup)),
-              ],
+                  Flexible(child: _list(context, popup)),
+                ],
+              ),
             )
           : _list(context, popup),
       popover: (context, content) {

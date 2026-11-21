@@ -31,9 +31,10 @@ enum CoilModalPresentation {
   /// keyboard, that a drag on `dismissAxis` throws away.
   ///
   /// It lays out like a sheet (touch rows, a [CoilSheetPanel] with a header
-  /// or search line), so search lists on a phone use it: the panel's height
-  /// doesn't follow the content, and the search field doesn't jump as the
-  /// results shrink. See [CoilModalAnchor].
+  /// or search line), so search lists on a phone use it: they fill the room
+  /// under the top safe area, so the panel's height doesn't follow the
+  /// results and the search field doesn't jump as they shrink. See
+  /// [CoilModalAnchor].
   floating;
 
   /// Whether the content lays out in a [CoilSheetPanel] with touch rows: a
@@ -44,9 +45,11 @@ enum CoilModalPresentation {
 
 /// Where a [CoilModalPresentation.floating] panel sits and how tall it is.
 enum CoilModalAnchor {
-  /// Under the top safe area. The panel fills the room down to the keyboard
-  /// (or the home indicator), so its height never follows its content: for
-  /// search, filtering moves nothing.
+  /// Under the top safe area, hugging its content up to the room down to
+  /// the keyboard (or the home indicator). The keyboard shrinks the room
+  /// from below and never moves the panel. Content that should keep a
+  /// stable height, such as a search list whose results change, fills the
+  /// room itself (a `SizedBox(height: double.infinity)` takes all of it).
   top,
 
   /// Centered in the room above the keyboard, hugging its content up to
@@ -177,8 +180,9 @@ Future<T?> showCoilModal<T>({
 /// margins ([CoilModalStyle.margin]) over the scrim, above the keyboard,
 /// at most [CoilSheetRoute.maxWidth] wide and on a dialog-level surface with
 /// a sheet's corners on all four sides, so a [CoilSheetPanel] lays out in
-/// it as in a sheet. The `anchor` puts it under the top safe area, filling the
-/// room down to the keyboard, or centers it hugging its content.
+/// it as in a sheet. The `anchor` puts it under the top safe area or centers
+/// it; either way it hugs its content up to the room above the keyboard,
+/// and content that should keep its height fills that room.
 /// Dragging along the `dismissAxis` moves the panel with the finger, fading it
 /// and the scrim, and throws it away when the release projects past half
 /// its extent (`offset + velocity * 0.1 s`), springing on the `settle`
@@ -798,7 +802,6 @@ class _FloatingPanelState extends State<_FloatingPanel>
           constraints: const BoxConstraints(maxWidth: CoilSheetRoute.maxWidth),
           child: SizedBox(
             width: double.infinity,
-            height: top ? double.infinity : null,
             // A drag only moves and fades the panel: no scale or blur.
             child: CoilBlurFade(
               presence: route.animation!,

@@ -102,7 +102,11 @@ class CoilMenuPopup extends StatelessWidget {
       // In a sheet with search the close button ends the search line,
       // which takes the header's place.
       final searchSheet = popup.presentation.usesSheetPanel && search != null;
-      return MotorInspectionScope(
+      // A search list fills a floating panel's room, so the panel keeps its
+      // height and the field stays put while the results change.
+      final fill =
+          popup.presentation == CoilPresentation.floating && search != null;
+      final list = MotorInspectionScope(
         group: 'CoilMenu',
         child: CoilActionList(
           entries: entries,
@@ -123,6 +127,7 @@ class CoilMenuPopup extends StatelessWidget {
           motion: motion,
         ),
       );
+      return fill ? SizedBox(height: double.infinity, child: list) : list;
     },
     popover: _surface,
     sheet: (context, content) => search == null

@@ -160,6 +160,14 @@ class CoilCommandMenu extends StatelessWidget {
     CoilTier.touch => 52,
   };
 
+  /// [child] filling a floating panel's room, so the panel keeps its height
+  /// and the search line stays put while the results change. A sheet keeps
+  /// hugging its content.
+  static Widget _fillFloating(BuildContext context, Widget child) =>
+      CoilModalRoute.presentationOf(context) == CoilModalPresentation.floating
+      ? SizedBox(height: double.infinity, child: child)
+      : child;
+
   @override
   Widget build(BuildContext context) {
     final sheet =
@@ -201,14 +209,17 @@ class CoilCommandMenu extends StatelessWidget {
         close: null,
         // The search line's middle runs through the close button's, the
         // corner's center: a 52 line reaches 2 into the sheet's top gap.
-        child: PaddingExtended(
-          padding: EdgeInsets.only(
-            top:
-                CoilSheetPanel.headerCenterOf(context) -
-                CoilSheetPanel.topGap -
-                searchHeight / 2,
+        child: _fillFloating(
+          context,
+          PaddingExtended(
+            padding: EdgeInsets.only(
+              top:
+                  CoilSheetPanel.headerCenterOf(context) -
+                  CoilSheetPanel.topGap -
+                  searchHeight / 2,
+            ),
+            child: list,
           ),
-          child: list,
         ),
       );
     }

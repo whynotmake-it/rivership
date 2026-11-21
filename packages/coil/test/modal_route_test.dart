@@ -567,6 +567,45 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('a top panel hugs its content, and a child that fills gets '
+        'the room above the keyboard', (tester) async {
+      const short = ValueKey('short');
+      await open(
+        tester,
+        content: const Column(
+          key: short,
+          mainAxisSize: MainAxisSize.min,
+          children: [Text('Content')],
+        ),
+      );
+      expect(
+        tester.getSize(find.byType(CoilSurface)).height,
+        tester.getSize(find.byKey(short)).height,
+      );
+      await tester.pumpWidget(const SizedBox());
+
+      await open(
+        tester,
+        content: const SizedBox(
+          height: double.infinity,
+          child: Column(children: [Text('Content')]),
+        ),
+      );
+      final roomy = tester.getRect(find.byType(CoilSurface));
+      final window = tester.view.physicalSize / tester.view.devicePixelRatio;
+      expect(roomy.height, greaterThan(window.height / 2));
+
+      // The keyboard takes the bottom of the room; the panel's top stays.
+      tester.view.viewInsets = FakeViewPadding(
+        bottom: window.height / 2 * tester.view.devicePixelRatio,
+      );
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+      final squeezed = tester.getRect(find.byType(CoilSurface));
+      expect(squeezed.top, roomy.top);
+      expect(squeezed.bottom, lessThan(window.height / 2));
+    });
+
     testWidgets('a swipe along its axis throws it away, and only along it', (
       tester,
     ) async {
