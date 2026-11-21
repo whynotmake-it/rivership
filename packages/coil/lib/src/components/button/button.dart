@@ -39,6 +39,15 @@ final class CoilButtonTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilButton.light',
   );
 
+  /// The button's width: a label that changes, a leading or trailing part
+  /// (or the spinner) that comes or goes. Default motion: `standard`
+  /// growing, `standardExit` shrinking; the content fades on `fade` /
+  /// `fadeExit`.
+  static final size = CoilButtonTrack<double>._(
+    .single,
+    debugLabel: 'CoilButton.size',
+  );
+
   /// The icon weight. Default motion: `fade`.
   static final weight = CoilButtonTrack<double>._(
     .single,
@@ -52,11 +61,17 @@ final class CoilButtonTrack<T extends Object> extends Track<T> {
 /// styled through [IconTheme]: icon size, the label color, and a weight that
 /// rises on hover. Pressing shrinks the fill by 1 px per side.
 ///
-/// While [loading], a spinner takes the leading slot (the icon of an
-/// icon-only button, or the whole content when there is no leading slot) and
-/// presses are ignored. The width stays locked and the button keeps full
-/// strength. The animated parts are [CoilButtonTrack]s; override them with
-/// [motions].
+/// While [loading], a spinner takes the leading slot and presses are
+/// ignored; the button keeps full strength. A [leading] widget (and an
+/// icon-only button's icon) is replaced by the spinner in place, so the
+/// size stays. Without a [leading] widget the spinner enters beside the
+/// label: the button grows by the spinner and its gap, and the label stays
+/// visible.
+///
+/// The button springs to its new width when its own content changes: a new
+/// label, or a leading or trailing part that comes or goes. When the
+/// constraints around it change, it relayouts at once. The animated parts
+/// are [CoilButtonTrack]s; override them with [motions].
 class CoilButton extends StatefulWidget {
   /// Creates a labeled button.
   const CoilButton({
@@ -449,52 +464,58 @@ class _CoilButtonState extends State<CoilButton> {
     );
   }
 
+  /// A part that comes and goes beside the label: it owns its gap, so the
+  /// button grows by the part and its gap together.
+  Widget _slot(
+    Widget? child, {
+    required double gap,
+    required CoilPresentSlotGap gapSide,
+  }) {
+    final tokens = _motion;
+    return CoilPresentSlot(
+      axis: Axis.horizontal,
+      gap: gap,
+      gapSide: gapSide,
+      motion: widget.motion,
+      presenceMotion: _motionFor(CoilButtonTrack.size, tokens.standard),
+      presenceExitMotion: _motionFor(
+        CoilButtonTrack.size,
+        tokens.standardExit,
+      ),
+      child: child,
+    );
+  }
+
   Widget _labelContent(CoilMetrics sizes, CoilButtonStyle style) {
     final leading = widget.leading;
     final trailing = widget.trailing;
-    Widget row(Widget? leadingSlot) => Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: sizes.buttonGap,
-      children: [
-        if (leadingSlot != null) leadingSlot,
-        Flexible(child: widget.child!),
-        if (trailing != null) trailing,
-      ],
+    final loading = widget.loading;
+    // The leading slot is the leading widget, which the spinner replaces in
+    // place; or, without one, the spinner entering beside the label.
+    final leadingContent = leading != null
+        ? _swap(
+            loading
+                ? _spinner()
+                : KeyedSubtree(key: const ValueKey('idle'), child: leading),
+          )
+        : (loading ? _spinner() : null);
+    // The padding is the one a slotted button has; a missing slot hands
+    // back the difference as a spacer, so it grows with the slot.
+    final extraX = sizes.buttonPaddingX - sizes.buttonIconPaddingX;
+    Widget spacer({required bool present}) => _slot(
+      present ? SizedBox(width: extraX) : null,
+      gap: 0,
+      gapSide: CoilPresentSlotGap.before,
     );
-
-    Widget content;
-    if (leading != null) {
-      // The spinner takes the leading slot; the label stays put.
-      content = row(
-        _swap(
-          widget.loading
-              ? _spinner()
-              : KeyedSubtree(key: const ValueKey('idle'), child: leading),
-        ),
-      );
-    } else if (widget.loading) {
-      // No slot to take: the spinner replaces the content, which stays
-      // laid out (unseen) so the width doesn't change.
-      content = Stack(
-        alignment: Alignment.center,
-        children: [
-          Opacity(opacity: 0, child: ExcludeSemantics(child: row(null))),
-          _swap(_spinner()),
-        ],
-      );
-    } else {
-      content = Stack(
-        alignment: Alignment.center,
-        children: [
-          _swap(
-            KeyedSubtree(
-              key: const ValueKey('idle'),
-              child: row(null),
-            ),
-          ),
-        ],
-      );
-    }
+    final label = CoilSizeSwitcher(
+      // Start-pinned, so only the trailing edge can be clipped; the row
+      // around it stays centered in the button.
+      alignment: AlignmentDirectional.centerStart,
+      sizeMotion: _motionFor(CoilButtonTrack.size, _motion.standard),
+      motion: widget.motion,
+      debugLabel: 'CoilButton.label',
+      child: widget.child,
+    );
     // A minimum height plus symmetric padding: the label's line box sits
     // centered, and the button grows with the text scale.
     final padY = sizes.controlPaddingY(style.textStyle!);
@@ -502,16 +523,34 @@ class _CoilButtonState extends State<CoilButton> {
       constraints: BoxConstraints(minHeight: style.minHeight!),
       child: Padding(
         padding: EdgeInsetsDirectional.only(
-          start: leading != null
-              ? sizes.buttonIconPaddingX
-              : sizes.buttonPaddingX,
-          end: trailing != null
-              ? sizes.buttonIconPaddingX
-              : sizes.buttonPaddingX,
+          start: sizes.buttonIconPaddingX,
+          end: sizes.buttonIconPaddingX,
           top: padY,
           bottom: padY,
         ),
-        child: Center(widthFactor: 1, heightFactor: 1, child: content),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          // The gaps belong to the slots, not to the row.
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              spacer(present: leadingContent == null),
+              _slot(
+                leadingContent,
+                gap: sizes.buttonGap,
+                gapSide: CoilPresentSlotGap.after,
+              ),
+              Flexible(child: label),
+              _slot(
+                trailing,
+                gap: sizes.buttonGap,
+                gapSide: CoilPresentSlotGap.before,
+              ),
+              spacer(present: trailing == null),
+            ],
+          ),
+        ),
       ),
     );
   }

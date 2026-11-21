@@ -1,15 +1,25 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
-import 'package:motor_widgets/src/motion_size.dart';
 import 'package:motor_widgets/src/motion_switcher.dart';
+import 'package:motor_widgets/src/raw_motion_size.dart';
 
-/// A [MotionSwitcher] inside a [MotionSize]: switches its child with a
+/// A [MotionSwitcher] inside a `MotionSize`: switches its child with a
 /// spring transition and springs its size to fit.
 ///
 /// The Motor version of rivership's `AnimatedSizeSwitcher`. If [child] is
 /// null, it shrinks to take up as little space as possible.
-class MotionSizeSwitcher extends StatelessWidget {
+///
+/// ## Entering children fade in with the width
+///
+/// While the size grows in width toward a new child, the new child is
+/// clipped. So that no half-drawn glyph shows, a new child is also kept
+/// nearly transparent until the width has arrived: the [transitionBuilder]'s
+/// result is faded by how far the growth has come (eased, so it stays low
+/// early). Leaving children are never faded this way, and neither are
+/// children while the size shrinks or only grows in height, such as a
+/// message that reveals vertically.
+class MotionSizeSwitcher extends StatefulWidget {
   /// Creates a [MotionSizeSwitcher].
   const MotionSizeSwitcher({
     required this.motion,
@@ -67,8 +77,7 @@ class MotionSizeSwitcher extends StatelessWidget {
   /// their layout as long as those don't change. They sit by [alignment],
   /// overflowing the new size and clipped by [clipBehavior].
   ///
-  /// Changing this value changes the shape of the tree below, so the current
-  /// child loses its state unless it has a [GlobalKey].
+  /// A child that starts leaving keeps its state in both modes.
   final bool immediateResize;
 
   /// {@macro motor_widgets.tickerRate}
@@ -78,68 +87,103 @@ class MotionSizeSwitcher extends StatelessWidget {
   final String? debugLabel;
 
   @override
-  Widget build(BuildContext context) {
-    final label = debugLabel ?? 'MotionSizeSwitcher';
-    if (!immediateResize) {
-      return MotionSize(
-        motion: sizeMotion ?? motion,
-        alignment: alignment,
-        clipBehavior: clipBehavior,
-        tickerRate: tickerRate,
-        debugLabel: '$label size',
-        child: MotionSwitcher(
-          motion: motion,
-          exitMotion: exitMotion,
-          transitionBuilder: transitionBuilder,
-          tickerRate: tickerRate,
-          debugLabel: label,
-          // An empty Stack would take the biggest size it is allowed, not
-          // the smallest.
-          layoutBuilder: (currentChild, previousChildren) =>
-              currentChild == null && previousChildren.isEmpty
-              ? const SizedBox.shrink()
-              : Stack(
-                  clipBehavior: clipBehavior,
-                  alignment: alignment,
-                  children: [
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                ),
-          child: child,
-        ),
-      );
+  State<MotionSizeSwitcher> createState() => _MotionSizeSwitcherState();
+}
+
+class _MotionSizeSwitcherState extends State<MotionSizeSwitcher> {
+  /// How far the size has come while it grows in width, see
+  /// [RawMotionSize.widthGrowth].
+  final _growth = ValueNotifier<double>(1);
+
+  /// Wraps the user's transition. Replaced when the user's builder changes,
+  /// which makes [MotionSwitcher] rebuild its transitions.
+  late AnimatedSwitcherTransitionBuilder _transition = _buildTransition;
+
+  @override
+  void didUpdateWidget(MotionSizeSwitcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.transitionBuilder != oldWidget.transitionBuilder) {
+      _transition = _buildTransition;
     }
-    return MotionSwitcher(
-      motion: motion,
-      exitMotion: exitMotion,
-      transitionBuilder: transitionBuilder,
-      tickerRate: tickerRate,
-      debugLabel: label,
-      layoutBuilder: (currentChild, previousChildren) => _ImmediateResizeLayout(
-        alignment: alignment,
-        clipBehavior: clipBehavior,
-        children: [
-          ...previousChildren,
-          MotionSize(
-            motion: sizeMotion ?? motion,
-            alignment: alignment,
-            clipBehavior: clipBehavior,
-            tickerRate: tickerRate,
-            debugLabel: '$label size',
-            child: currentChild,
-          ),
-        ],
+  }
+
+  @override
+  void dispose() {
+    _growth.dispose();
+    super.dispose();
+  }
+
+  Widget _buildTransition(Widget child, Animation<double> presence) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([_growth, presence]),
+      child: widget.transitionBuilder(child, presence),
+      builder: (context, child) => Opacity(
+        // Only a child on its way in follows the growth.
+        opacity: presence.status == AnimationStatus.reverse ? 1 : _growth.value,
+        child: child,
       ),
-      child: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final MotionSizeSwitcher(
+      :motion,
+      :exitMotion,
+      :sizeMotion,
+      :alignment,
+      :clipBehavior,
+      :immediateResize,
+      :tickerRate,
+      :child,
+    ) = widget;
+    final label = widget.debugLabel ?? 'MotionSizeSwitcher';
+    return RawMotionSize(
+      motion: sizeMotion ?? motion,
+      alignment: alignment,
+      clipBehavior: clipBehavior,
+      tickerRate: tickerRate,
+      debugLabel: '$label size',
+      widthGrowth: _growth,
+      child: MotionSwitcher(
+        motion: motion,
+        exitMotion: exitMotion,
+        transitionBuilder: _transition,
+        tickerRate: tickerRate,
+        debugLabel: label,
+        layoutBuilder: immediateResize
+            ? (currentChild, previousChildren) => _ImmediateResizeLayout(
+                alignment: alignment,
+                clipBehavior: clipBehavior,
+                children: [
+                  ...previousChildren,
+                  currentChild ?? const SizedBox.shrink(),
+                ],
+              )
+            // An empty Stack would take the biggest size it is allowed, not
+            // the smallest.
+            : (currentChild, previousChildren) =>
+                  currentChild == null && previousChildren.isEmpty
+                  ? const SizedBox.shrink()
+                  : Stack(
+                      clipBehavior: clipBehavior,
+                      alignment: alignment,
+                      children: [
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    ),
+        child: child,
+      ),
     );
   }
 }
 
-/// Lays out the last child, the [MotionSize] around the current child, and
-/// takes its size. The leaving children before it keep the constraints this
-/// box gets, so a wrapping one doesn't reflow while it leaves. They sit by
-/// [alignment], overflowing and clipped by [clipBehavior].
+/// Lays out the last child, the current one, and takes its size. The leaving
+/// children before it keep the constraints this box gets, so a wrapping one
+/// doesn't reflow while it leaves. They sit by [alignment], overflowing and
+/// clipped by [clipBehavior]. The size then springs in the `MotionSize`
+/// around this box.
 class _ImmediateResizeLayout extends MultiChildRenderObjectWidget {
   const _ImmediateResizeLayout({
     required this.alignment,
@@ -225,7 +269,7 @@ class _RenderImmediateResize extends RenderBox
     super.dispose();
   }
 
-  /// The child that sizes this box: the [MotionSize], always last.
+  /// The child that sizes this box: the current one, always last.
   RenderBox get _sizing => lastChild!;
 
   @override

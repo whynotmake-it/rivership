@@ -6,6 +6,21 @@ import 'package:coil/src/components/field/field_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
+/// The animated parts of a [CoilField], as Motor tracks. Use them as keys of
+/// [CoilField.motions] or [CoilFieldStyle.motions].
+final class CoilFieldTrack<T extends Object> extends Track<T> {
+  CoilFieldTrack._(super.converter, {required String super.debugLabel});
+
+  /// The room of the description and the error, and an error that changes
+  /// size: the field grows and shrinks to fit them, gap included. Default
+  /// motion: `standard` growing, `standardExit` shrinking; the messages
+  /// fade on `fade` / `fadeExit`.
+  static final message = CoilFieldTrack<double>._(
+    .single,
+    debugLabel: 'CoilField.message',
+  );
+}
+
 /// Where a [CoilField] puts its label.
 enum CoilFieldOrientation {
   /// The label above the control, messages below.
@@ -52,6 +67,7 @@ class CoilField extends StatefulWidget {
     this.orientation = CoilFieldOrientation.vertical,
     this.size,
     this.motion,
+    this.motions,
     this.style,
   });
 
@@ -88,6 +104,10 @@ class CoilField extends StatefulWidget {
   /// Overrides the theme's motion tokens for this field.
   final CoilMotion? motion;
 
+  /// Per-track motions for this field, keyed by [CoilFieldTrack]s. They win
+  /// over the style's [CoilFieldStyle.motions] and [motion]'s tokens.
+  final Map<CoilFieldTrack<Object>, Motion>? motions;
+
   /// Overrides for this field's look.
   final CoilFieldStyle? style;
 
@@ -123,6 +143,8 @@ class _CoilFieldState extends State<CoilField> {
               onTap: _labelTarget.activate,
               child: widget.label!,
             ),
+      motion: widget.motion,
+      motions: widget.motions,
       description: widget.description,
       error: widget.error == null
           ? null
@@ -131,6 +153,7 @@ class _CoilFieldState extends State<CoilField> {
               icon: widget.errorIcon,
               child: widget.error!,
             ),
+      errorKey: CoilSizeSwitcher.contentKeyOf(widget.error),
       control: widget.child,
     );
     return CoilFieldScope(
@@ -157,8 +180,11 @@ class _FieldBody extends StatelessWidget {
     required this.invalid,
     required this.isRequired,
     required this.label,
+    required this.motion,
+    required this.motions,
     required this.description,
     required this.error,
+    required this.errorKey,
     required this.control,
   });
 
@@ -167,9 +193,47 @@ class _FieldBody extends StatelessWidget {
   final bool invalid;
   final bool isRequired;
   final Widget? label;
+  final CoilMotion? motion;
+  final Map<CoilFieldTrack<Object>, Motion>? motions;
   final Widget? description;
   final Widget? error;
+
+  /// What the error says, so a new message cross-fades.
+  final Object? errorKey;
   final Widget control;
+
+  /// A description or an error: a slot that owns its [gap], so the field
+  /// grows by the gap and the message together, and a size spring for a
+  /// message that changes.
+  Widget _message(
+    BuildContext context,
+    Widget? child, {
+    required double gap,
+    Object? key,
+  }) {
+    final tokens = CoilTheme.motionOf(context, override: motion);
+    Motion track(Motion token) => CoilTheme.trackMotionOf(
+      context,
+      CoilFieldTrack.message,
+      instance: motions,
+      styled: style.motions,
+      token: token,
+    );
+    return CoilPresentSlot(
+      gap: gap,
+      motion: motion,
+      presenceMotion: track(tokens.standard),
+      presenceExitMotion: track(tokens.standardExit),
+      child: child == null
+          ? null
+          : CoilSizeSwitcher(
+              sizeMotion: track(tokens.standard),
+              motion: motion,
+              contentKey: key ?? CoilSizeSwitcher.contentKeyOf(child),
+              child: child,
+            ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,21 +243,29 @@ class _FieldBody extends StatelessWidget {
             style: style.descriptionStyle,
             child: this.description!,
           );
+    // The slots are always there, in the same places, so a message coming
+    // or going never moves the control in the tree.
+    final descriptionSlot = _message(
+      context,
+      description,
+      // Beside, without a label, there is nothing to separate from.
+      gap: beside && label == null ? 0 : style.messageGap!,
+      key: CoilSizeSwitcher.contentKeyOf(this.description),
+    );
     final Widget body;
     if (beside) {
-      final text = [?label, ?description];
+      final text = label != null || description != null;
       // Beside, the row is one target for a toggle (a switch, a checkbox).
       body = CoilFieldRow(
         child: Row(
           spacing: style.besideGap!,
           children: [
-            if (text.isNotEmpty)
+            if (text)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                  spacing: style.messageGap!,
-                  children: text,
+                  children: [label ?? const SizedBox.shrink(), descriptionSlot],
                 ),
               ),
             Expanded(
@@ -215,10 +287,7 @@ class _FieldBody extends StatelessWidget {
             SizedBox(height: style.labelGap),
           ],
           control,
-          if (description != null) ...[
-            SizedBox(height: style.messageGap),
-            description,
-          ],
+          descriptionSlot,
         ],
       );
     }
@@ -236,8 +305,10 @@ class _FieldBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
-          spacing: style.messageGap!,
-          children: [body, ?error],
+          children: [
+            body,
+            _message(context, error, gap: style.messageGap!, key: errorKey),
+          ],
         ),
       ),
     );
