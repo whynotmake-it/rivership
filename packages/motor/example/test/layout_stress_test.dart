@@ -102,7 +102,7 @@ void main() {
     // A quick drag up from card hands the springs enough speed to shrink
     // the player well below its mini size, and past zero.
     for (final speed in [30.0, 50.0, 80.0]) {
-      await tester.tap(find.text('CARD'));
+      await tester.tap(find.text('Card').first);
       await _frames(tester, 60);
       final drag = await tester.startGesture(tester.getCenter(player));
       for (var i = 0; i < 5; i++) {

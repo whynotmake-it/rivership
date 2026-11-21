@@ -6,11 +6,19 @@ import 'package:motor_example/pages/scrub.dart';
 import 'package:motor_example/pages/steps.dart';
 import 'package:motor_example/pages/sync.dart';
 import 'package:motor_example/pages/toggle.dart';
+import 'package:motor_example/widgets/icons.dart';
 
-/// The small drawing on a chapter's card on the home page.
-enum ChapterGlyph { toggle, retarget, cardStack, steps, sync, phases, scrub }
+/// The sidebar's sections, in order.
+enum ChapterGroup {
+  springs('Springs'),
+  choreography('Choreography');
 
-/// One lesson in the gallery.
+  const ChapterGroup(this.title);
+
+  final String title;
+}
+
+/// One demo in the gallery.
 @immutable
 class Chapter {
   const Chapter({
@@ -18,6 +26,7 @@ class Chapter {
     required this.path,
     required this.idea,
     required this.page,
+    required this.group,
     required this.glyph,
   });
 
@@ -26,16 +35,16 @@ class Chapter {
 
   final String path;
 
-  /// What the chapter teaches, in a few words.
+  /// What the demo shows, in one sentence.
   final String idea;
 
   final Widget Function() page;
 
-  /// The drawing on the chapter's card.
-  final ChapterGlyph glyph;
+  /// The sidebar section it's listed in.
+  final ChapterGroup group;
 
-  /// The chapter's position, starting at "01".
-  String get number => (chapters.indexOf(this) + 1).toString().padLeft(2, '0');
+  /// Its icon in the sidebar and on the overview.
+  final Glyph glyph;
 
   /// The following chapter, if any.
   Chapter? get next {
@@ -52,49 +61,56 @@ final chapters = [
     idea:
         'One controller animates every part, and a drag hands over its speed.',
     page: TogglePage.new,
-    glyph: .toggle,
+    group: .springs,
+    glyph: Glyph.hand,
   ),
   Chapter(
     title: 'Retarget',
     path: 'retarget',
     idea: 'Retarget mid-flight without a jump. Springs keep their speed.',
     page: RetargetPage.new,
-    glyph: .retarget,
+    group: .springs,
+    glyph: Glyph.spline,
   ),
   Chapter(
     title: 'Card stack',
     path: 'card-stack',
     idea: 'Throw a card. It keeps your speed and returns under the stack.',
     page: CardStackPage.new,
-    glyph: .cardStack,
+    group: .springs,
+    glyph: Glyph.squareStack,
   ),
   Chapter(
     title: 'Steps',
     path: 'steps',
     idea: 'Each track runs its own steps, with a different motion per step.',
     page: StepsPage.new,
-    glyph: .steps,
+    group: .choreography,
+    glyph: Glyph.listOrdered,
   ),
   Chapter(
     title: 'Sync',
     path: 'sync',
     idea: 'Tracks wait for each other at a sync barrier.',
     page: SyncPage.new,
-    glyph: .sync,
+    group: .choreography,
+    glyph: Glyph.layers,
   ),
   Chapter(
     title: 'Phases',
     path: 'phases',
     idea: 'Named layouts you can drag between, even while they autoplay.',
     page: PhasesPage.new,
-    glyph: .phases,
+    group: .choreography,
+    glyph: Glyph.repeat,
   ),
   Chapter(
     title: 'Scrub',
     path: 'scrub',
     idea: 'Scrub to any moment, then play on from there.',
     page: ScrubPage.new,
-    glyph: .scrub,
+    group: .choreography,
+    glyph: Glyph.timer,
   ),
 ];
 

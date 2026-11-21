@@ -1,16 +1,152 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
 import 'package:flutter/foundation.dart';
-// For SelectableText only.
-import 'package:flutter/material.dart' show SelectableText;
+import 'package:flutter/widgets.dart';
 import 'package:motor_example/chapters.dart';
-import 'package:motor_example/widgets/controls.dart';
-import 'package:motor_example/widgets/style.dart';
+import 'package:motor_example/shell/motor_shell.dart';
+import 'package:motor_example/widgets/code_block.dart';
+import 'package:motor_example/widgets/icons.dart';
 
-/// The layout every chapter shares: a title, a short lead, the stage, the
-/// code that is running, and an optional timeline.
+/// Layout values from coil's DESIGN.md §4.3 that the gallery's pages use.
+abstract final class PageLayout {
+  /// The widest a page's content gets; wider windows center it.
+  static const maxContentWidth = 760.0;
+
+  /// Page gutter: 16 on a touch phone, 24 everywhere else.
+  static double gutterOf(BuildContext context) =>
+      CoilTheme.tierOf(context) == CoilTier.touch &&
+          MediaQuery.sizeOf(context).width < phoneBreakpoint
+      ? 16
+      : 24;
+
+  /// Section → section: 24 pointer, 32 touch.
+  static double sectionGapOf(BuildContext context) =>
+      CoilTheme.tierOf(context) == CoilTier.touch ? 32 : 24;
+}
+
+/// A page of the gallery: the header with the sidebar trigger and the
+/// title, then [children] in a centered, scrolling column.
+class GalleryPage extends StatelessWidget {
+  const GalleryPage({
+    required this.title,
+    required this.children,
+    this.lead,
+    super.key,
+  });
+
+  final String title;
+
+  /// What to try and what to notice, in a sentence or two.
+  final String? lead;
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final gutter = PageLayout.gutterOf(context);
+    final sectionGap = PageLayout.sectionGapOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    final text = CoilTheme.textOf(context);
+    final lead = this.lead;
+    return ColoredBox(
+      color: CoilTheme.of(context).colors.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PageHeader(title: title),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: CoilScrollArea(
+                child: Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    gutter + padding.left,
+                    8,
+                    gutter + padding.right,
+                    48 + padding.bottom,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: PageLayout.maxContentWidth,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (lead != null) ...[
+                            Text(lead, style: text.muted.subtitle),
+                            SizedBox(height: sectionGap),
+                          ],
+                          for (final (i, child) in children.indexed) ...[
+                            if (i > 0) SizedBox(height: sectionGap),
+                            child,
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The bar at the top of every page: the sidebar's trigger and the title.
+class PageHeader extends StatelessWidget {
+  const PageHeader({required this.title, super.key});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final gutter = PageLayout.gutterOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    // A ghost icon button has no visible edge, so the bar pulls it 8
+    // toward the screen edge to line its glyph up with the content.
+    final inset = gutter - 8;
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        inset + padding.left,
+        padding.top + 8,
+        inset + padding.right,
+        8,
+      ),
+      child: Row(
+        children: [
+          // Outside the gallery's sidebar (a page on its own) there is
+          // nothing to open.
+          if (HasSidebar.of(context)) ...[
+            const CoilSidebarTrigger(icon: GlyphIcon(Glyph.panelLeft)),
+            const SizedBox(width: 4),
+          ] else
+            const SizedBox(width: 8),
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: CoilTheme.textOf(context).title,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The layout every demo shares: a short lead, the stage, the code that is
+/// running, an optional timeline, and a link to the next demo.
 class ChapterPage extends StatelessWidget {
   const ChapterPage({
     required this.chapter,
@@ -27,9 +163,10 @@ class ChapterPage extends StatelessWidget {
   /// What to try and what to notice, in a few short sentences.
   final String lead;
 
+  /// The live demo. It fills the stage, edge to edge.
   final Widget stage;
 
-  /// The code this chapter is about. Pages update it as you interact, so it
+  /// The code this demo is about. Pages update it as you interact, so it
   /// shows the call that's running.
   final ValueListenable<String>? code;
 
@@ -40,219 +177,98 @@ class ChapterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
     final next = chapter.next;
+    final gap = CoilTheme.metricsOf(context).gap;
     // Stages lay out text in a fixed height, so they grow with larger text.
     final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    return CupertinoPageScaffold(
-      backgroundColor: p.canvas,
-      child: DefaultTextStyle(
-        style: p.body,
-        child: SafeArea(
-          bottom: false,
-          child: SingleChildScrollView(
-            padding: const .fromLTRB(20, 8, 20, 48),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: Column(
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    _TopBar(chapter: chapter),
-                    const SizedBox(height: 36),
-                    Text(chapter.title, style: p.display),
-                    const SizedBox(height: 12),
-                    Text(lead),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      height: stageHeight * math.max(1, textScale),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: p.inset,
-                          borderRadius: .circular(radius),
-                          border: Border.all(color: p.border),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: .circular(radius),
-                          child: stage,
-                        ),
-                      ),
-                    ),
-                    if (code case final code?) ...[
-                      const SizedBox(height: 12),
-                      ValueListenableBuilder(
-                        valueListenable: code,
-                        builder: (context, code, _) => CodeLine(code),
-                      ),
-                    ],
-                    if (below case final below?) ...[
-                      const SizedBox(height: 12),
-                      below,
-                    ],
-                    if (next != null) ...[
-                      const SizedBox(height: 40),
-                      _NextButton(next: next),
-                    ],
-                  ],
-                ),
-              ),
+    return GalleryPage(
+      title: chapter.title,
+      lead: lead,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: stageHeight * math.max(1, textScale),
+              child: DemoStage(child: stage),
             ),
+            if (code case final code?) ...[
+              SizedBox(height: gap),
+              ValueListenableBuilder(
+                valueListenable: code,
+                builder: (context, code, _) => CodeBlock(code),
+              ),
+            ],
+            if (below case final below?) ...[SizedBox(height: gap), below],
+          ],
+        ),
+        if (next != null) NextChapter(next: next),
+      ],
+    );
+  }
+}
+
+/// The surface a live demo plays on: a card's level with a hairline and
+/// no drop shadow, clipped to its corners.
+class DemoStage extends StatelessWidget {
+  const DemoStage({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).container);
+    final colors = CoilTheme.of(context).colors;
+    return CoilSurface(
+      offset: CoilSurface.popoverOffset,
+      shadowLevel: 1,
+      borderRadius: radius,
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: ShapeDecoration(
+          shape: RoundedSuperellipseBorder(
+            borderRadius: radius,
+            side: BorderSide(color: colors.border),
           ),
+        ),
+        child: ClipRSuperellipse(
+          borderRadius: radius,
+          // The stage stands in for a page, so controls on it are lit like
+          // controls on the page.
+          child: CoilPlasticityScope(elevated: false, child: child),
         ),
       ),
     );
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.chapter});
-
-  final Chapter chapter;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 44),
-      child: Row(
-        children: [
-          PressScale(
-            onTap: () => Navigator.of(context).maybePop(),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 32),
-              padding: const .fromLTRB(6, 0, 12, 0),
-              decoration: BoxDecoration(
-                borderRadius: .circular(radius),
-                border: Border.all(color: p.border),
-              ),
-              child: Row(
-                children: [
-                  Icon(CupertinoIcons.chevron_back, size: 15, color: p.text),
-                  const SizedBox(width: 4),
-                  Text(
-                    'All examples',
-                    style: archivo(13, weight: 500, color: p.text),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // The dots shrink rather than overflow on narrow screens.
-          Expanded(
-            child: Align(
-              alignment: .centerRight,
-              child: FittedBox(
-                fit: .scaleDown,
-                child: Row(
-                  children: [
-                    for (final other in chapters)
-                      Container(
-                        width: 14,
-                        height: 3,
-                        margin: const .only(left: 3),
-                        color: identical(other, chapter) ? p.accent : p.control,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A few lines of code, lightly highlighted, that can be selected and
-/// copied.
-class CodeLine extends StatelessWidget {
-  const CodeLine(this.code, {super.key});
-
-  final String code;
-
-  static final _tokens = RegExp(
-    r'(//.*)|(#\w+|\b\d[\d.]*\b)|(\w+)(?=\()|([()\[\]{},;:]|\.(?=\w))',
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    final spans = <TextSpan>[];
-    var start = 0;
-    for (final match in _tokens.allMatches(code)) {
-      if (match.start > start) {
-        spans.add(TextSpan(text: code.substring(start, match.start)));
-      }
-      final color = match.group(2) != null
-          ? p.accent
-          : match.group(3) != null
-          ? p.text
-          : p.textTertiary;
-      spans.add(
-        TextSpan(
-          text: match.group(0),
-          style: TextStyle(color: color),
-        ),
-      );
-      start = match.end;
-    }
-    spans.add(TextSpan(text: code.substring(start)));
-    return Container(
-      padding: const .symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: .circular(radius),
-        border: Border.all(color: p.border),
-      ),
-      child: SelectableText.rich(
-        TextSpan(children: spans),
-        style: p.code,
-        // The Cupertino menu needs no Material localizations.
-        contextMenuBuilder: (context, state) =>
-            CupertinoAdaptiveTextSelectionToolbar.editableText(
-              editableTextState: state,
-            ),
-      ),
-    );
-  }
-}
-
-class _NextButton extends StatelessWidget {
-  const _NextButton({required this.next});
+/// A link to the demo after this one, at the end of a page.
+class NextChapter extends StatelessWidget {
+  const NextChapter({required this.next, super.key});
 
   final Chapter next;
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return PressScale(
-      // Replace, so walking the chapters doesn't stack pages and back always
-      // returns home.
-      onTap: () => context.replaceRoute(NamedRoute(next.title)),
-      child: Container(
-        padding: const .fromLTRB(16, 14, 14, 14),
-        decoration: BoxDecoration(
-          color: p.surface,
-          borderRadius: .circular(radius),
-          border: Border.all(color: p.borderStrong),
-        ),
-        child: Row(
-          children: [
-            Text('Next', style: p.body),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                next.title,
-                maxLines: 1,
-                overflow: .ellipsis,
-                style: p.title,
-              ),
-            ),
-            Icon(CupertinoIcons.arrow_right, color: p.accent, size: 18),
-          ],
-        ),
-      ),
+    final text = CoilTheme.textOf(context);
+    final card = CoilCard(
+      variant: CoilCardVariant.inline,
+      semanticLabel: 'Next: ${next.title}',
+      icon: GlyphIcon(next.glyph),
+      title: Text(next.title),
+      description: Text(next.idea),
+      onPressed: () {
+        final router = AutoRouter.of(context);
+        unawaited(openChapter(router, next));
+      },
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ExcludeSemantics(child: Text('Next', style: text.muted.caption)),
+        const SizedBox(height: 6),
+        card,
+      ],
     );
   }
 }

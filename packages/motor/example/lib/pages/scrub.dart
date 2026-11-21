@@ -5,12 +5,13 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
-import 'package:motor_example/widgets/controls.dart';
+import 'package:motor_example/widgets/icons.dart';
 import 'package:motor_example/widgets/live_timeline.dart';
 import 'package:motor_example/widgets/style.dart';
 
@@ -130,7 +131,7 @@ class _ScrubPageState extends State<ScrubPage>
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final text = CoilTheme.textOf(context);
     return ChapterPage(
       chapter: chapterNamed('Scrub'),
       lead:
@@ -178,9 +179,9 @@ class _ScrubPageState extends State<ScrubPage>
                 progress: value(_caption),
                 child: Column(
                   children: [
-                    Text('\$42 sent', style: t.title.copyWith(fontSize: 20)),
+                    Text('\$42 sent', style: text.title),
                     const SizedBox(height: 2),
-                    Text('to Jules', style: t.caption),
+                    Text('to Jules', style: text.muted.caption),
                   ],
                 ),
               ),
@@ -189,11 +190,10 @@ class _ScrubPageState extends State<ScrubPage>
                 padding: const .fromLTRB(20, 0, 20, 18),
                 child: Row(
                   children: [
-                    PillButton(
-                      label: 'Send',
-                      icon: CupertinoIcons.paperplane_fill,
-                      filled: true,
-                      onTap: _play,
+                    CoilButton(
+                      leading: const GlyphIcon(Glyph.send),
+                      onPressed: _play,
+                      child: const Text('Send'),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -232,21 +232,24 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     final label = ((width - _puck) / (_button - _puck)).clamp(0.0, 1.0);
     final spinning = spinner > 0 && spinner < 2 && check == 0;
     return SizedBox(
       width: 260,
       height: 200,
       child: CustomPaint(
-        painter: _ConfettiPainter(burst, t.accent),
+        painter: _ConfettiPainter(burst, colors.brand),
         child: Center(
           child: Container(
             width: width,
             height: math.min(width, _puck),
-            decoration: BoxDecoration(
-              color: Color.lerp(t.text, t.accent, check),
-              borderRadius: .circular(width),
+            decoration: ShapeDecoration(
+              color: Color.lerp(colors.foreground, colors.brand, check),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(math.min(width, _puck) / 2),
+              ),
             ),
             child: Stack(
               alignment: .center,
@@ -258,7 +261,9 @@ class _SendButton extends StatelessWidget {
                     maxWidth: _button,
                     child: Text(
                       'Send \$42',
-                      style: archivo(15, weight: 560, color: t.canvas),
+                      style: text.body
+                          .copyWith(fontWeight: text.emphasis)
+                          .copyWith(color: colors.background),
                     ),
                   ),
                 ),
@@ -267,13 +272,13 @@ class _SendButton extends StatelessWidget {
                     angle: spinner * 2 * math.pi,
                     child: CustomPaint(
                       size: const .square(26),
-                      painter: _ArcPainter(t.canvas),
+                      painter: _ArcPainter(colors.background),
                     ),
                   ),
                 if (check > 0)
                   CustomPaint(
                     size: const .square(30),
-                    painter: _CheckPainter(check, CupertinoColors.white),
+                    painter: _CheckPainter(check, colors.background),
                   ),
               ],
             ),
@@ -303,7 +308,7 @@ class _Scrubber extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -331,18 +336,30 @@ class _Scrubber extends StatelessWidget {
               child: Stack(
                 alignment: .centerLeft,
                 children: [
-                  Container(height: 4, color: t.control),
+                  Container(
+                    height: 4,
+                    decoration: ShapeDecoration(
+                      color: colors.muted,
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
                   Container(
                     width: progress * width,
                     height: 4,
-                    color: t.accent,
+                    decoration: ShapeDecoration(
+                      color: colors.foreground,
+                      shape: const StadiumBorder(),
+                    ),
                   ),
                   Positioned(
                     left: progress * (width - 4),
                     child: Container(
                       width: 4,
                       height: 26,
-                      color: scrubbing ? t.accent : t.text,
+                      decoration: ShapeDecoration(
+                        color: scrubbing ? colors.brand : colors.foreground,
+                        shape: const StadiumBorder(),
+                      ),
                     ),
                   ),
                 ],

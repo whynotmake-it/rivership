@@ -1,9 +1,9 @@
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
 import 'package:motor_example/widgets/live_timeline.dart';
-import 'package:motor_example/widgets/style.dart';
 
 /// A thrown card clears the stack, then curves back under it.
 class CardStackPage extends StatefulWidget {
@@ -184,7 +184,9 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
+    final radii = CoilTheme.radiiOf(context);
+    final text = CoilTheme.textOf(context);
     return SingleMotionBuilder(
       value: depth.toDouble(),
       motion: const .smoothSpring(duration: Duration(milliseconds: 350)),
@@ -207,27 +209,28 @@ class _Card extends StatelessWidget {
       child: GestureDetector(
         onPanUpdate: onDrag,
         onPanEnd: onRelease,
-        child: Container(
-          width: 220,
-          height: 280,
-          padding: const .all(18),
-          decoration: BoxDecoration(
-            color: index == 0 ? p.accent : p.surface,
-            borderRadius: .circular(radius),
-            border: Border.all(color: index == 0 ? p.accent : p.borderStrong),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: colors.surface(4),
+            shadows: colors.shadow(2),
+            shape: RoundedSuperellipseBorder(
+              borderRadius: .circular(radii.container),
+              side: BorderSide(color: colors.border),
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: .start,
-            children: [
-              const Spacer(),
-              Text(
-                _words[index],
-                style: p.display.copyWith(
-                  fontSize: 36,
-                  color: index == 0 ? p.onAccent : p.text,
-                ),
+          child: SizedBox(
+            width: 220,
+            height: 280,
+            child: Padding(
+              padding: const .all(20),
+              child: Column(
+                crossAxisAlignment: .start,
+                children: [
+                  const Spacer(),
+                  Text(_words[index], style: text.display),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
