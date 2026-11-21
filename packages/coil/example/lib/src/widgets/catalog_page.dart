@@ -151,6 +151,21 @@ class CatalogHeader extends StatelessWidget {
           // the drawer on a narrow one.
           const CoilSidebarTrigger(icon: CatalogIcon(Glyph.panelLeft)),
           const SizedBox(width: 4),
+          // Mounted in another app on a phone, the host's way back leads
+          // the title, like a breadcrumb.
+          if (!CatalogChrome.hasTopBarOf(context))
+            if (CatalogHostLink.of(context) case final link?) ...[
+              Flexible(child: link),
+              // The title reads as the trail's last crumb.
+              IconTheme.merge(
+                data: IconThemeData(
+                  size: 14,
+                  color: CoilTheme.of(context).colors.mutedForeground,
+                ),
+                child: const CatalogIcon(Glyph.forward),
+              ),
+              const SizedBox(width: 6),
+            ],
           Expanded(
             child: Semantics(
               header: true,
