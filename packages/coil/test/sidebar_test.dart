@@ -499,6 +499,40 @@ void main() {
     });
   });
 
+  testWidgets('a focused field scrolls above the keyboard', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    const keyboard = 300.0;
+    tester.view.viewInsets = const FakeViewPadding(bottom: keyboard * 2);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        home: CoilSidebarScaffold(
+          sidebar: const CoilSidebar(children: [Text('Nav')]),
+          body: ListView(
+            children: [
+              for (var i = 0; i < 30; i++)
+                SizedBox(height: 48, child: Text('$i')),
+              const CoilInput(key: ValueKey('field')),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('field')));
+    await tester.pumpAndSettle();
+
+    final screen = TestScreen.phone.size.height;
+    expect(
+      tester.getRect(find.byKey(const ValueKey('field'))).bottom,
+      lessThanOrEqualTo(screen - keyboard),
+    );
+  });
+
   group('drawer', () {
     testWidgets('on a phone the trigger opens a drawer that a pick closes', (
       tester,
