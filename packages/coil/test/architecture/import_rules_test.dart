@@ -1,4 +1,5 @@
-// The layer rules of doc/api_guide.md §1, checked on the source files.
+// coil's layer rules (foundation, primitives, components), checked on the
+// source files.
 @TestOn('vm')
 library;
 
