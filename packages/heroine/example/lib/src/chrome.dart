@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
+import 'package:heroine_example/src/brand.dart';
 import 'package:heroine_example/src/icons.dart';
 
 /// Layout values from coil's DESIGN.md §4.3 that the demos use.
@@ -23,9 +24,13 @@ class DemoPage extends StatelessWidget {
     this.summary,
     this.trailing,
     this.showBack = true,
+    this.brand,
   });
 
   final String title;
+
+  /// Shown in the header instead of [title], such as the example's brand.
+  final Widget? brand;
 
   /// One sentence under the header.
   final String? summary;
@@ -50,7 +55,12 @@ class DemoPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DemoHeader(title: title, trailing: trailing, showBack: showBack),
+          DemoHeader(
+            title: title,
+            trailing: trailing,
+            showBack: showBack,
+            brand: brand,
+          ),
           if (summary != null)
             Padding(
               padding: EdgeInsetsDirectional.fromSTEB(
@@ -94,9 +104,14 @@ class DemoHeader extends StatelessWidget {
     super.key,
     this.trailing,
     this.showBack = true,
+    this.brand,
   });
 
   final String title;
+
+  /// Shown instead of [title]. It is pulled toward the edge by
+  /// [HeroineBrand.inkInsetOf], so its mark lines up with the content.
+  final Widget? brand;
 
   /// A widget after the title, such as a settings button.
   final Widget? trailing;
@@ -118,6 +133,8 @@ class DemoHeader extends StatelessWidget {
     final glyphPad = (metrics.controlHeight - metrics.iconSize) / 2;
     final start = showBack
         ? gutter - glyphPad - metrics.iconSize * 8.25 / 24
+        : brand != null
+        ? gutter - HeroineBrand.inkInsetOf(context)
         : gutter;
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(
@@ -137,17 +154,25 @@ class DemoHeader extends StatelessWidget {
             ),
             const SizedBox(width: 4),
           ],
-          Expanded(
-            child: Semantics(
-              header: true,
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: CoilTheme.textOf(context).title,
+          if (brand case final brand?)
+            Expanded(
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: brand,
+              ),
+            )
+          else
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: CoilTheme.textOf(context).title,
+                ),
               ),
             ),
-          ),
           ?trailing,
         ],
       ),

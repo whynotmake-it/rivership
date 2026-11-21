@@ -28,6 +28,9 @@ class Glyph {
     LucideIcons400.layoutGrid,
   );
   static const zoom = Glyph(LucideIcons300.maximize2, LucideIcons400.maximize2);
+
+  /// The brand mark: heroine is "the queen of hero transitions".
+  static const crown = Glyph(LucideIcons300.crown, LucideIcons400.crown);
   static const keyboard = Glyph(
     LucideIcons300.keyboard,
     LucideIcons400.keyboard,

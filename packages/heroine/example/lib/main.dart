@@ -4,18 +4,31 @@ import 'package:flutter/cupertino.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/image_grid.dart';
 import 'package:heroine_example/keyboard.dart';
+import 'package:heroine_example/src/brand.dart';
 import 'package:heroine_example/src/chrome.dart';
 import 'package:heroine_example/src/icons.dart';
 import 'package:heroine_example/zoom_transition.dart';
 
 void main() => runApp(const HeroineExampleApp());
 
-final heroineRoutes = [
+/// The example's routes, for an app that mounts them as a shell's children:
+///
+/// ```dart
+/// NamedRouteDef.shell(
+///   path: '/heroine',
+///   name: 'Heroine',
+///   children: heroineRoutesFor(onHome: () => router.navigate(home)),
+/// )
+/// ```
+///
+/// With [onHome], the brand at the top of the picker leads back to the app
+/// around the example.
+List<AutoRoute> heroineRoutesFor({VoidCallback? onHome}) => [
   NamedRouteDef(
     name: 'Heroine',
     path: '',
     type: RouteType.cupertino(),
-    builder: (context, _) => const HeroineExamplePicker(),
+    builder: (context, _) => HeroineExamplePicker(onHome: onHome),
   ),
   NamedRouteDef(
     name: ImageGridExample.name,
@@ -36,6 +49,9 @@ final heroineRoutes = [
     builder: (context, _) => const KeyboardCardExample(),
   ),
 ];
+
+/// The example's routes with an inert brand. See [heroineRoutesFor].
+final heroineRoutes = heroineRoutesFor();
 
 /// The routes as their own app, under a shell like the one that mounts them
 /// in the gallery (root paths must start with a slash).
@@ -63,7 +79,10 @@ class HeroineExampleApp extends StatelessWidget {
 
 /// The demos, one card each.
 class HeroineExamplePicker extends StatelessWidget {
-  const HeroineExamplePicker({super.key});
+  const HeroineExamplePicker({super.key, this.onHome});
+
+  /// Makes the brand a link back to the app around the example.
+  final VoidCallback? onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +91,7 @@ class HeroineExamplePicker extends StatelessWidget {
     return DemoPage(
       title: 'Heroine',
       showBack: false,
+      brand: HeroineBrand(onHome: onHome),
       summary: 'Spring-based hero transitions that keep their velocity.',
       child: ListView(
         padding: EdgeInsetsDirectional.fromSTEB(
