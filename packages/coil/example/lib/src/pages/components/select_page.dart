@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const selectEntry = CatalogEntry(
@@ -27,6 +28,31 @@ const _countries = [
   'Mexico',
 ];
 
+const _ranges = [
+  CoilOption(value: 'day', label: Text('Today'), searchText: 'Today'),
+  CoilOption(
+    value: 'week',
+    label: Text('This week'),
+    searchText: 'This week',
+  ),
+  CoilOption(
+    value: 'month',
+    label: Text('This month'),
+    searchText: 'This month',
+  ),
+];
+
+enum _Presentation {
+  automatic('Auto', null),
+  popover('Popover', CoilPresentation.popover),
+  sheet('Sheet', CoilPresentation.sheet);
+
+  const _Presentation(this.label, this.presentation);
+
+  final String label;
+  final CoilPresentation? presentation;
+}
+
 class SelectPage extends StatefulWidget {
   const SelectPage({super.key});
 
@@ -35,85 +61,63 @@ class SelectPage extends StatefulWidget {
 }
 
 class _SelectPageState extends State<SelectPage> {
-  String? _role = 'editor';
   String? _country;
   var _labels = {'bug'};
-  var _sheetPick = 'week';
-  var _popoverPick = 'week';
-  String? _visibility;
+  var _range = 'week';
+  var _presentation = _Presentation.automatic;
+  var _disabled = false;
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'Select',
     summary:
-        'On a touch phone, short single-choice lists stay anchored; long, '
-        'searchable or multi-select lists open as a sheet. Type to jump to '
-        'a row with a keyboard.',
-    children: [
-      DemoSection(
-        title: 'Short list',
-        description: 'Up to 8 rows: an anchored popover everywhere.',
-        child: DemoColumn(
-          children: [
-            CoilField(
-              label: const Text('Role'),
-              description: const Text(
-                'Editors can change content, not billing.',
-              ),
-              child: CoilSelect<String>(
-                value: _role,
-                onChanged: (value) => setState(() => _role = value),
-                icon: const CatalogIcon(Glyph.user),
-                options: const [
-                  CoilOption(
-                    value: 'viewer',
-                    label: Text('Viewer'),
-                    searchText: 'Viewer',
-                  ),
-                  CoilOption(
-                    value: 'editor',
-                    label: Text('Editor'),
-                    searchText: 'Editor',
-                  ),
-                  CoilOption(
-                    value: 'admin',
-                    label: Text('Admin'),
-                    searchText: 'Admin',
-                  ),
-                  CoilOption(
-                    value: 'owner',
-                    label: Text('Owner'),
-                    searchText: 'Owner',
-                    enabled: false,
-                  ),
-                ],
-              ),
-            ),
-            CoilField(
-              label: const Text('Visibility'),
-              child: CoilSelect<String>(
-                value: _visibility,
-                placeholder: const Text('Choose who can see it'),
-                onChanged: (value) => setState(() => _visibility = value),
-                options: const [
-                  CoilOption(
-                    value: 'private',
-                    label: Text('Private'),
-                    searchText: 'Private',
-                    icon: CatalogIcon(Glyph.lock),
-                  ),
-                  CoilOption(
-                    value: 'public',
-                    label: Text('Public'),
-                    searchText: 'Public',
-                    icon: CatalogIcon(Glyph.globe),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        'Pick one value, or several with MultiSelect. A popover where there '
+        'is room; on a touch phone, long, searchable or multiple lists '
+        'open as a sheet.',
+    hero: const _InviteForm(),
+    usage: '''
+CoilField(
+  label: const Text('Role'),
+  description: Text(role.description),
+  child: CoilSelect<Role>(
+    value: role,
+    onChanged: (value) => setState(() => role = value),
+    options: [
+      for (final r in Role.values)
+        CoilOption(value: r, label: Text(r.label)),
+    ],
+  ),
+)''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        'Enter, Space, Up or Down on the trigger opens the list on the '
+            'picked row. Arrows, Home, End, PageUp and PageDown move; type '
+            'to jump to a row; Enter or Space picks; Esc or Tab dismisses.',
       ),
+      CatalogNote(
+        'Pointer',
+        'A popover up to 300 tall. Lists over 12 options add a search row. '
+            'The picked row keeps an active fill that glides between rows.',
+      ),
+      CatalogNote(
+        'Touch',
+        'Up to 8 single-choice options stay in an anchored popover. More '
+            'than 8, or any MultiSelect, open a sheet titled with the '
+            'field’s label.',
+      ),
+      CatalogNote(
+        'Motion',
+        'A pick holds for 300 ms so the check can draw, then closes. The '
+            'page behind already takes input during that hold.',
+      ),
+      CatalogNote(
+        "Do / Don't",
+        'Fewer than 3 options want a RadioGroup or Tabs, and actions want '
+            'a Dropdown.',
+      ),
+    ],
+    children: [
       DemoSection(
         title: 'Long list',
         description: 'More than 8 rows: a sheet on a touch phone.',
@@ -121,7 +125,7 @@ class _SelectPageState extends State<SelectPage> {
           label: const Text('Country'),
           child: CoilSelect<String>(
             value: _country,
-            placeholder: const Text('Select a country'),
+            placeholder: const Text('Choose a country'),
             sheetTitle: const Text('Country'),
             onChanged: (value) => setState(() => _country = value),
             options: [
@@ -169,54 +173,160 @@ class _SelectPageState extends State<SelectPage> {
         ),
       ),
       DemoSection(
-        title: 'Pinned presentation',
+        title: 'Playground',
         description: 'presentation: overrides the phone rule.',
-        child: DemoColumn(
+        controls: DemoControls(
           children: [
-            CoilField(
-              label: const Text('Always a popover'),
-              child: CoilSelect<String>(
-                value: _popoverPick,
-                presentation: CoilPresentation.popover,
-                onChanged: (value) => setState(() => _popoverPick = value),
-                options: _ranges,
-              ),
+            DemoControl.choice(
+              label: 'Presentation',
+              value: _presentation,
+              values: _Presentation.values,
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _presentation = v),
             ),
-            CoilField(
-              label: const Text('Always a sheet'),
-              child: CoilSelect<String>(
-                value: _sheetPick,
-                presentation: CoilPresentation.sheet,
-                sheetTitle: const Text('Range'),
-                onChanged: (value) => setState(() => _sheetPick = value),
-                options: _ranges,
-              ),
-            ),
-            const CoilField(
-              label: Text('Disabled'),
-              child: CoilSelect<String>(
-                value: 'week',
-                onChanged: null,
-                options: _ranges,
-              ),
+            DemoControl.toggle(
+              label: 'Disabled',
+              value: _disabled,
+              onChanged: (v) => setState(() => _disabled = v),
             ),
           ],
+        ),
+        child: CoilField(
+          label: const Text('Date range'),
+          child: CoilSelect<String>(
+            value: _range,
+            presentation: _presentation.presentation,
+            sheetTitle: const Text('Date range'),
+            onChanged: _disabled
+                ? null
+                : (value) => setState(() => _range = value),
+            options: _ranges,
+          ),
         ),
       ),
     ],
   );
+}
 
-  static const _ranges = [
-    CoilOption(value: 'day', label: Text('Today'), searchText: 'Today'),
-    CoilOption(
-      value: 'week',
-      label: Text('This week'),
-      searchText: 'This week',
-    ),
-    CoilOption(
-      value: 'month',
-      label: Text('This month'),
-      searchText: 'This month',
-    ),
-  ];
+enum _Role {
+  viewer('Viewer', 'Viewers can read everything but change nothing.'),
+  editor('Editor', 'Editors can change content, not billing.'),
+  admin('Admin', 'Admins can also manage members and billing.');
+
+  const _Role(this.label, this.description);
+
+  final String label;
+  final String description;
+}
+
+/// Inviting a member: a role whose description follows the choice, and
+/// who may see the project.
+class _InviteForm extends StatefulWidget {
+  const _InviteForm();
+
+  @override
+  State<_InviteForm> createState() => _InviteFormState();
+}
+
+class _InviteFormState extends State<_InviteForm> {
+  final _email = TextEditingController();
+  var _role = _Role.editor;
+  String? _visibility = 'project';
+  String? _sentTo;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    final email = _email.text.trim();
+    if (email.isEmpty) return;
+    setState(() => _sentTo = email);
+    _email.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Invite a member', style: text.title),
+        const SizedBox(height: 2),
+        Text(
+          _sentTo == null
+              ? 'They get an email with a link to join.'
+              : 'Invitation sent to $_sentTo.',
+          style: text.muted.caption,
+        ),
+        const SizedBox(height: 20),
+        DemoColumn(
+          children: [
+            CoilField(
+              label: const Text('Email'),
+              child: CoilInput(
+                controller: _email,
+                placeholder: const Text('ada@example.com'),
+                keyboardType: TextInputType.emailAddress,
+                onSubmitted: (_) => _send(),
+              ),
+            ),
+            CoilField(
+              label: const Text('Role'),
+              description: Text(_role.description),
+              child: CoilSelect<_Role>(
+                value: _role,
+                icon: const CatalogIcon(Glyph.user),
+                sheetTitle: const Text('Role'),
+                onChanged: (role) => setState(() => _role = role),
+                options: [
+                  for (final role in _Role.values)
+                    CoilOption(
+                      value: role,
+                      label: Text(role.label),
+                      searchText: role.label,
+                    ),
+                ],
+              ),
+            ),
+            CoilField(
+              label: const Text('Can see'),
+              child: CoilSelect<String>(
+                value: _visibility,
+                sheetTitle: const Text('Can see'),
+                onChanged: (value) => setState(() => _visibility = value),
+                options: const [
+                  CoilOption(
+                    value: 'project',
+                    label: Text('Only this project'),
+                    searchText: 'Only this project',
+                    icon: CatalogIcon(Glyph.lock),
+                  ),
+                  CoilOption(
+                    value: 'workspace',
+                    label: Text('The whole workspace'),
+                    searchText: 'The whole workspace',
+                    icon: CatalogIcon(Glyph.globe),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: ListenableBuilder(
+            listenable: _email,
+            builder: (context, _) => CoilButton(
+              onPressed: _email.text.trim().isEmpty ? null : _send,
+              child: const Text('Send invite'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

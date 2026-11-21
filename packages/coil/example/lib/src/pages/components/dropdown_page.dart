@@ -1,15 +1,44 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
+import 'package:coil_example/src/widgets/shortcut.dart';
 import 'package:flutter/widgets.dart';
 
 const dropdownEntry = CatalogEntry(
   slug: 'dropdown',
   title: 'Dropdown',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'Action menus with headings, marks, submenus and search.',
+  summary: 'Action menus with marks, shortcuts, submenus and search.',
   page: DropdownPage.new,
 );
+
+const _projects = ['Website', 'Mobile app', 'Design system', 'Archive'];
+
+const _teammates = [
+  'Ada Lovelace',
+  'Alan Turing',
+  'Barbara Liskov',
+  'Dennis Ritchie',
+  'Edsger Dijkstra',
+  'Grace Hopper',
+  'Hedy Lamarr',
+  'Katherine Johnson',
+  'Margaret Hamilton',
+  'Radia Perlman',
+];
+
+enum _Presentation {
+  automatic('Auto', null),
+  popover('Popover', CoilPresentation.popover),
+  sheet('Sheet', CoilPresentation.sheet);
+
+  const _Presentation(this.label, this.presentation);
+
+  final String label;
+  final CoilPresentation? presentation;
+}
 
 class DropdownPage extends StatefulWidget {
   const DropdownPage({super.key});
@@ -19,81 +48,283 @@ class DropdownPage extends StatefulWidget {
 }
 
 class _DropdownPageState extends State<DropdownPage> {
-  var _grid = true;
-  var _sort = 'Name';
-
-  List<CoilMenuEntry> get _entries => [
-    const CoilMenuLabel(Text('View')),
-    CoilAction(
-      label: const Text('Show grid'),
-      searchText: 'Show grid',
-      mark: CoilActionMark.check,
-      selected: _grid,
-      onPressed: () => setState(() => _grid = !_grid),
-    ),
-    CoilSubmenu(
-      label: const Text('Sort by'),
-      searchText: 'Sort by',
-      entries: [
-        for (final key in ['Name', 'Date', 'Size'])
-          CoilAction(
-            label: Text(key),
-            searchText: key,
-            mark: CoilActionMark.radio,
-            selected: _sort == key,
-            onPressed: () => setState(() => _sort = key),
-          ),
-      ],
-    ),
-    const CoilMenuSeparator(),
-    CoilAction(
-      label: const Text('Rename'),
-      searchText: 'Rename',
-      shortcut: const Text('⌘R'),
-      onPressed: () {},
-    ),
-    CoilAction(
-      label: const Text('Delete'),
-      searchText: 'Delete',
-      tone: CoilActionTone.destructive,
-      onPressed: () {},
-    ),
-  ];
+  var _presentation = _Presentation.automatic;
+  String? _assignee;
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'Dropdown',
     summary:
-        'Hover a submenu row to open it; the pointer can cut across other '
-        'rows on the way. On touch, submenus replace the rows.',
+        'A menu of actions from any trigger. Hover a submenu row to open it; '
+        'on touch, submenus replace the rows.',
+    hero: const _DocumentToolbar(),
+    usage: '''
+CoilDropdown(
+  entries: [
+    CoilAction(
+      label: const Text('Duplicate'),
+      shortcut: CoilKbd('⌘D'),
+      onPressed: duplicate,
+    ),
+    CoilSubmenu(
+      label: const Text('Move to'),
+      entries: projectActions,
+    ),
+    const CoilMenuSeparator(),
+    CoilAction(
+      label: const Text('Move to trash'),
+      tone: CoilActionTone.destructive,
+      onPressed: trash,
+    ),
+  ],
+  builder: (context, menu) => CoilButton.icon(
+    variant: CoilButtonVariant.ghost,
+    semanticLabel: 'More',
+    icon: const Icon(LucideIcons.ellipsis),
+    onPressed: menu.open,
+  ),
+)''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        'Arrows loop and skip disabled rows; Home, End and typeahead jump. '
+            'Enter or Space activates, Right opens a submenu, Left or Esc '
+            'closes one level and Tab closes all.',
+      ),
+      CatalogNote(
+        'Pointer',
+        'A submenu opens after 100 ms of hover, with a safe triangle so the '
+            'pointer can cut across other rows on the way. The highlight '
+            'glides between rows.',
+      ),
+      CatalogNote(
+        'Touch',
+        'A short menu stays anchored. Search, more than 8 rows or nested '
+            'submenus open a sheet. Tapping a submenu drills in place with a '
+            'back row.',
+      ),
+      CatalogNote(
+        'Motion',
+        'Checkable rows hold for 300 ms so the mark can be seen before the '
+            'menu closes; actions close at once. The page behind takes input '
+            'during that hold.',
+      ),
+    ],
     children: [
       DemoSection(
-        title: 'Menu',
-        child: DemoWrap(
+        title: 'With search',
+        description:
+            'Typing filters by word prefix. Pointer menus focus the field; a '
+            'sheet on a phone does not, so the keyboard stays down.',
+        child: Row(
           children: [
             CoilDropdown(
-              entries: _entries,
+              search: const CoilMenuSearch(
+                placeholder: Text('Search teammates'),
+                semanticLabel: 'Search teammates',
+              ),
+              entries: [
+                for (final name in _teammates)
+                  CoilAction(
+                    label: Text(name),
+                    searchText: name,
+                    mark: CoilActionMark.radio,
+                    selected: _assignee == name,
+                    onPressed: () => setState(() => _assignee = name),
+                  ),
+              ],
               builder: (context, menu) => CoilButton(
                 variant: CoilButtonVariant.secondary,
+                trailing: const CatalogIcon(Glyph.chevronsUpDown),
                 onPressed: menu.open,
-                child: const Text('Actions'),
+                child: const Text('Assign to'),
               ),
             ),
-            CoilDropdown(
-              search: const CoilMenuSearch(
-                placeholder: Text('Filter actions'),
-                semanticLabel: 'Filter actions',
-              ),
-              entries: _entries,
-              builder: (context, menu) => CoilButton(
-                variant: CoilButtonVariant.secondary,
-                onPressed: menu.open,
-                child: const Text('With search'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _assignee ?? 'Unassigned',
+                style: CoilTheme.textOf(context).muted.body,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
       ),
+      DemoSection(
+        title: 'Presentation',
+        description:
+            'Decided when the menu opens. Pin it, or leave it to the '
+            'window: a sheet on a phone when the menu has search.',
+        controls: DemoControls(
+          children: [
+            DemoControl.choice(
+              label: 'Presentation',
+              value: _presentation,
+              values: _Presentation.values,
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _presentation = v),
+            ),
+          ],
+        ),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: CoilDropdown(
+            presentation: _presentation.presentation,
+            entries: [
+              const CoilMenuLabel(Text('Sort by')),
+              for (final key in ['Name', 'Date modified', 'Size'])
+                CoilAction(
+                  label: Text(key),
+                  searchText: key,
+                  mark: CoilActionMark.radio,
+                  selected: key == 'Name',
+                  onPressed: () {},
+                ),
+            ],
+            builder: (context, menu) => CoilButton(
+              variant: CoilButtonVariant.secondary,
+              leading: const CatalogIcon(Glyph.sort),
+              onPressed: menu.open,
+              child: const Text('Sort'),
+            ),
+          ),
+        ),
+      ),
     ],
   );
+}
+
+/// A document's toolbar: its title and where it lives, with a "More" menu
+/// that moves, favorites, duplicates and trashes it for real.
+class _DocumentToolbar extends StatefulWidget {
+  const _DocumentToolbar();
+
+  @override
+  State<_DocumentToolbar> createState() => _DocumentToolbarState();
+}
+
+class _DocumentToolbarState extends State<_DocumentToolbar> {
+  var _project = _projects.first;
+  var _favorite = false;
+  var _copies = 0;
+  var _trashed = false;
+
+  List<CoilMenuEntry> _entries(BuildContext context) => [
+    CoilAction(
+      label: const Text('Favorite'),
+      searchText: 'Favorite',
+      leading: const CatalogIcon(Glyph.star),
+      mark: CoilActionMark.check,
+      selected: _favorite,
+      onPressed: () => setState(() => _favorite = !_favorite),
+    ),
+    CoilAction(
+      label: const Text('Duplicate'),
+      searchText: 'Duplicate',
+      leading: const CatalogIcon(Glyph.copy),
+      shortcut: CoilKbd(shortcutOf(context, 'D')),
+      onPressed: () => setState(() => _copies++),
+    ),
+    CoilSubmenu(
+      label: const Text('Move to'),
+      searchText: 'Move to',
+      leading: const CatalogIcon(Glyph.folder),
+      entries: [
+        const CoilMenuLabel(Text('Projects')),
+        for (final project in _projects)
+          CoilAction(
+            label: Text(project),
+            searchText: project,
+            mark: CoilActionMark.radio,
+            selected: _project == project,
+            onPressed: () => setState(() => _project = project),
+          ),
+      ],
+    ),
+    CoilAction(
+      label: const Text('Copy link'),
+      searchText: 'Copy link',
+      leading: const CatalogIcon(Glyph.link),
+      shortcut: CoilKbd(shortcutOf(context, 'L', shift: true)),
+      onPressed: () {},
+    ),
+    const CoilMenuSeparator(),
+    CoilAction(
+      label: const Text('Move to trash'),
+      searchText: 'Move to trash',
+      leading: const CatalogIcon(Glyph.trash),
+      tone: CoilActionTone.destructive,
+      onPressed: () => setState(() => _trashed = true),
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final copies = _copies == 0
+        ? ''
+        : ' · $_copies ${_copies == 1 ? 'copy' : 'copies'}';
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      _trashed ? 'Moved to trash' : 'Q4 launch plan',
+                      style: text.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (_favorite && !_trashed) ...[
+                    const SizedBox(width: 8),
+                    const IconTheme(
+                      data: IconThemeData(size: 16),
+                      child: CatalogIcon(Glyph.star),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _trashed ? 'Q4 launch plan' : 'In $_project$copies',
+                style: text.muted.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        if (_trashed)
+          CoilButton(
+            variant: CoilButtonVariant.secondary,
+            onPressed: () => setState(() => _trashed = false),
+            child: const Text('Undo'),
+          )
+        else ...[
+          CoilButton(
+            variant: CoilButtonVariant.secondary,
+            onPressed: () {},
+            child: const Text('Share'),
+          ),
+          const SizedBox(width: 4),
+          CoilDropdown(
+            entries: _entries(context),
+            builder: (context, menu) => CoilButton.icon(
+              variant: CoilButtonVariant.ghost,
+              semanticLabel: 'More',
+              icon: const CatalogIcon(Glyph.more),
+              onPressed: menu.open,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
