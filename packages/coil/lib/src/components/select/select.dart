@@ -358,7 +358,9 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
             }
             widget.onPick?.call(value, {value});
             // Hold the list open long enough to see the check draw and the
-            // selected fill land on the picked row.
+            // selected fill land on the picked row, with the page already
+            // handed back.
+            popup.release();
             _acknowledge = Timer(
               CoilTheme.motionOf(
                 context,

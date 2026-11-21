@@ -233,7 +233,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
       traits: widget.traits(),
       override: widget.presentation,
     );
-    final handle = _Handle(presentation, _closed);
+    final handle = _Handle(presentation, _closed, _released);
     setState(() => _open = _shown = handle);
     switch (presentation) {
       case CoilPresentation.popover:
@@ -249,6 +249,13 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     if (_open != handle) return;
     _popover.hide();
     setState(() => _open = null);
+  }
+
+  void _released(_Handle handle) {
+    // A sheet is modal by nature: it keeps the page until it closes.
+    if (_open == handle && handle.presentation == CoilPresentation.popover) {
+      _popover.release();
+    }
   }
 
   void _pushSheet(_Handle handle) {
@@ -294,11 +301,12 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
 }
 
 class _Handle implements CoilPopupHandle {
-  _Handle(this.presentation, this._onClosed);
+  _Handle(this.presentation, this._onClosed, this._onReleased);
 
   @override
   final CoilPresentation presentation;
   final void Function(_Handle handle) _onClosed;
+  final void Function(_Handle handle) _onReleased;
   final _done = Completer<CoilPopupCloseReason>();
 
   /// The sheet's route, when it is a sheet.
@@ -340,6 +348,11 @@ class _Handle implements CoilPopupHandle {
     } else {
       navigator.removeRoute(route, reason);
     }
+  }
+
+  @override
+  void release() {
+    if (!_done.isCompleted) _onReleased(this);
   }
 }
 
