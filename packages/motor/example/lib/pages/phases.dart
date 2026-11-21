@@ -503,11 +503,11 @@ class _Artwork extends StatelessWidget {
         color: colors.muted,
         shape: RoundedSuperellipseBorder(borderRadius: .circular(radius)),
       ),
-      child: Center(
-        child: IconTheme.merge(
-          data: IconThemeData(color: colors.mutedForeground),
-          child: GlyphIcon(Glyph.music, size: size * .4),
-        ),
+      // Tight constraints from the artwork's rect make the icon fill it and
+      // draw the glyph centered.
+      child: IconTheme.merge(
+        data: IconThemeData(color: colors.mutedForeground),
+        child: GlyphIcon(Glyph.music, size: size * .4),
       ),
     );
   }

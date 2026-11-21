@@ -163,7 +163,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(_faceUpCards(tester), 3);
 
-    await tester.tap(find.text('On landing').first);
+    await tester.tap(find.text('On landing').last);
     await _pumpFor(tester, const Duration(milliseconds: 800));
     expect(_faceUpCards(tester), greaterThan(0));
     expect(_faceUpCards(tester), lessThan(3));
