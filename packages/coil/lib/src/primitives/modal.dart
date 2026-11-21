@@ -594,8 +594,8 @@ const _recede = 0.04;
 /// middle and flicked back lands short of it again.
 const _coast = FrictionMotion(drag: 0.03);
 
-/// The panel's opacity from the route's presence: nearly opaque until it's
-/// well on its way, so the scrim leads.
+/// The panel's opacity from the route's presence: opaque until it's half
+/// way gone, so the scrim leads.
 const _lateFade = _LateFade();
 
 class _LateFade extends Animatable<double> {
@@ -603,7 +603,11 @@ class _LateFade extends Animatable<double> {
 
   @override
   double transform(double t) =>
-      1 - Curves.easeInCubic.transform(1 - t.clamp(0.0, 1.0));
+      1 - _curve.transform(1 - t.clamp(0.0, 1.0));
+
+  /// Solid for the first half of the way, so the page never ghosts through
+  /// a panel that's only being moved, then fading in earnest.
+  static const _curve = Interval(0.5, 1, curve: Curves.easeIn);
 }
 
 /// The floating panel: laid out in the room the window leaves, on a
