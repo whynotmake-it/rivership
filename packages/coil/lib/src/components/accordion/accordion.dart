@@ -127,7 +127,7 @@ class CoilAccordion<T> extends StatefulWidget {
 }
 
 class _CoilAccordionState<T> extends State<CoilAccordion<T>>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   final _nodes = <T, FocusNode>{};
   final _states = <T, WidgetStatesController>{};
 

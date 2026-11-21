@@ -2,6 +2,8 @@
 /// and the adaptive scope. Values and context only; nothing here paints.
 library;
 
+export 'package:fixed_ticker/fixed_ticker.dart'
+    show TickerRate, TickerRateScope;
 export 'src/foundation/adaptive.dart';
 export 'src/foundation/color_mix.dart';
 export 'src/foundation/colors.dart';
