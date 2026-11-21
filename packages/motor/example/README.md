@@ -4,6 +4,8 @@ Seven chapters, one Motor idea each. Every chapter shows the call it is
 making. All but Retarget and Phases show the controller's tracks on a live
 timeline. The home screen fades in with a `TrackBuilder` stagger.
 
+[Open Example](https://whynotmake-it.github.io/rivership/#/motor)
+
 ## Run the app
 
 The gallery runs inside the repository's example app, which ships web and
