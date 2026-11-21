@@ -44,6 +44,14 @@ final class CoilInputCopyTrack<T extends Object> extends Track<T> {
     debugLabel: 'CoilInputCopy.swap',
   );
 
+  /// The width of the action's label as it goes from "Copy" to "Copied" and
+  /// back: the row springs between the labels' real widths. Default motion:
+  /// `standard`.
+  static final size = CoilInputCopyTrack<double>._(
+    .single,
+    debugLabel: 'CoilInputCopy.size',
+  );
+
   /// The check or × drawing itself in. Default motion: `fade`.
   static final draw = CoilInputCopyTrack<double>._(
     .single,
@@ -364,6 +372,18 @@ class _CoilInputCopyState extends State<CoilInputCopy> {
                         color: value(CoilInputCopyTrack.action),
                         weight: value(CoilInputCopyTrack.weight),
                         motion: widget.motion,
+                        sizeMotion: motionFor(
+                          CoilInputCopyTrack.size,
+                          motion.standard,
+                        ),
+                        swapMotion: motionFor(
+                          CoilInputCopyTrack.swap,
+                          motion.quick,
+                        ),
+                        swapExitMotion: motionFor(
+                          CoilInputCopyTrack.swap,
+                          motion.quickExit,
+                        ),
                         motions: {
                           CoilCopyTrack.swap: ?customOf(
                             CoilInputCopyTrack.swap,
@@ -477,6 +497,9 @@ class _Action extends StatelessWidget {
     required this.color,
     required this.weight,
     required this.motion,
+    required this.sizeMotion,
+    required this.swapMotion,
+    required this.swapExitMotion,
     required this.motions,
   });
 
@@ -488,6 +511,9 @@ class _Action extends StatelessWidget {
   final Color color;
   final double weight;
   final CoilMotion? motion;
+  final Motion sizeMotion;
+  final Motion swapMotion;
+  final Motion swapExitMotion;
   final Map<CoilCopyTrack<Object>, Motion> motions;
 
   Widget _text(CoilCopyStatus status) => switch (status) {
@@ -525,28 +551,21 @@ class _Action extends StatelessWidget {
           style: style.actionStyle!.copyWith(color: color),
           child: variant == CoilInputCopyVariant.icon
               ? glyph
-              // Every label's width is reserved, so the row never shifts
-              // as "Copy" becomes "Copied".
+              // The label cross-fades beside the icon, and the row springs
+              // from one label's width to the next one's.
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   spacing: style.actionGap!,
                   children: [
                     glyph,
-                    Stack(
+                    CoilSizeSwitcher(
                       alignment: AlignmentDirectional.centerStart,
-                      children: [
-                        for (final ghost in CoilCopyStatus.values)
-                          Visibility.maintain(
-                            visible: false,
-                            child: _label(ghost),
-                          ),
-                        CoilCopySwitcher(
-                          status: status,
-                          motion: motion,
-                          motions: motions,
-                          builder: (context, status) => _label(status),
-                        ),
-                      ],
+                      sizeMotion: sizeMotion,
+                      fadeMotion: swapMotion,
+                      fadeExitMotion: swapExitMotion,
+                      contentKey: status,
+                      debugLabel: 'CoilInputCopy.label',
+                      child: _label(status),
                     ),
                   ],
                 ),
