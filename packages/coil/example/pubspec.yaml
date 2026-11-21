@@ -44,3 +44,8 @@ flutter:
     - family: Inter
       fonts:
         - asset: lib/fonts/inter/InterVariable.ttf
+    # Code in the usage snippets. The aggregate app already declares this
+    # family from motor_example's copy.
+    - family: JetBrains Mono
+      fonts:
+        - asset: lib/fonts/jetbrains_mono/JetBrainsMonoVariable.ttf

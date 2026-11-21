@@ -51,7 +51,9 @@ Future<void> showCatalogSearch(BuildContext context, StackRouter router) =>
           for (final entry in catalogEntries.where((e) => e.group == group))
             CoilAction(
               label: Text(entry.title),
-              searchText: entry.title,
+              // The summary too, so "loading" finds Button and "range"
+              // finds Slider.
+              searchText: '${entry.title} ${entry.summary}',
               onPressed: () => unawaited(openCatalogPage(router, entry)),
             ),
         ],
