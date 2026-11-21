@@ -1,17 +1,27 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor_example/pages/card_stack.dart';
+import 'package:motor_example/pages/controllers.dart';
+import 'package:motor_example/pages/converters.dart';
+import 'package:motor_example/pages/devtools.dart';
+import 'package:motor_example/pages/drag_and_drop.dart';
+import 'package:motor_example/pages/implicit_widgets.dart';
 import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/retarget.dart';
 import 'package:motor_example/pages/scrub.dart';
+import 'package:motor_example/pages/spring_lab.dart';
 import 'package:motor_example/pages/steps.dart';
 import 'package:motor_example/pages/sync.dart';
+import 'package:motor_example/pages/tick_rates.dart';
 import 'package:motor_example/pages/toggle.dart';
 import 'package:motor_example/widgets/icons.dart';
 
 /// The sidebar's sections, in order.
 enum ChapterGroup {
   springs('Springs'),
-  choreography('Choreography');
+  choreography('Choreography'),
+  buildingBlocks('Building blocks'),
+  widgets('Widgets'),
+  tools('Tools');
 
   const ChapterGroup(this.title);
 
@@ -55,6 +65,14 @@ class Chapter {
 
 /// The gallery, in reading order.
 final chapters = [
+  Chapter(
+    title: 'Spring lab',
+    path: 'spring-lab',
+    idea: 'Tune a spring and see the curve it draws, then drag and let go.',
+    page: SpringLabPage.new,
+    group: .springs,
+    glyph: Glyph.slidersHorizontal,
+  ),
   Chapter(
     title: 'Toggle',
     path: 'toggle',
@@ -111,6 +129,54 @@ final chapters = [
     page: ScrubPage.new,
     group: .choreography,
     glyph: Glyph.timer,
+  ),
+  Chapter(
+    title: 'Converters',
+    path: 'converters',
+    idea: 'Offsets, colors and angles, with a spring for every dimension.',
+    page: ConvertersPage.new,
+    group: .buildingBlocks,
+    glyph: Glyph.move,
+  ),
+  Chapter(
+    title: 'Controllers',
+    path: 'controllers',
+    idea: 'Drive a value from code, interrupt it and read its velocity.',
+    page: ControllersPage.new,
+    group: .buildingBlocks,
+    glyph: Glyph.gauge,
+  ),
+  Chapter(
+    title: 'Tick rates',
+    path: 'tick-rates',
+    idea: 'The same animation at fewer frames a second, with fixed_ticker.',
+    page: TickRatesPage.new,
+    group: .buildingBlocks,
+    glyph: Glyph.blocks,
+  ),
+  Chapter(
+    title: 'Implicit widgets',
+    path: 'implicit-widgets',
+    idea: 'Spring versions of AnimatedSize, AnimatedSwitcher and friends.',
+    page: ImplicitWidgetsPage.new,
+    group: .widgets,
+    glyph: Glyph.squareStack,
+  ),
+  Chapter(
+    title: 'Drag and drop',
+    path: 'drag-and-drop',
+    idea: 'Reorder a list. The dropped row lands on a spring.',
+    page: DragAndDropPage.new,
+    group: .widgets,
+    glyph: Glyph.gripVertical,
+  ),
+  Chapter(
+    title: 'DevTools',
+    path: 'devtools',
+    idea: 'Inspect, scrub, slow down and tune every animation while it runs.',
+    page: DevToolsPage.new,
+    group: .tools,
+    glyph: Glyph.activity,
   ),
 ];
 

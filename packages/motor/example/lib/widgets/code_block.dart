@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor_example/widgets/icons.dart';
@@ -19,6 +21,8 @@ class CodeBlock extends StatefulWidget {
 }
 
 class _CodeBlockState extends State<CodeBlock> {
+  static const _padY = 12.0;
+
   final _copy = CoilCopyController();
 
   static final _tokens = RegExp(
@@ -60,6 +64,14 @@ class _CodeBlockState extends State<CodeBlock> {
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final radius = BorderRadius.circular(CoilTheme.radiiOf(context).container);
+    final style = mono(12.5, height: 1.6, color: colors.mutedForeground);
+    // The copy button sits centered on the first line.
+    final line = MediaQuery.textScalerOf(context).scale(12.5) * 1.6;
+    final button = CoilTheme.metricsOf(
+      context,
+      size: CoilSize.compact,
+    ).controlHeight;
+    final top = math.max(0.0, _padY + line / 2 - button / 2);
     return DecoratedBox(
       decoration: ShapeDecoration(
         color: colors.muted,
@@ -73,15 +85,12 @@ class _CodeBlockState extends State<CodeBlock> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             // Room at the end for the copy button over the first line.
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 48, 12),
-            child: Text.rich(
-              _highlight(colors),
-              style: mono(12.5, height: 1.6, color: colors.mutedForeground),
-            ),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, _padY, 48, _padY),
+            child: Text.rich(_highlight(colors), style: style),
           ),
           PositionedDirectional(
-            top: 4,
-            end: 4,
+            top: top,
+            end: top,
             child: ValueListenableBuilder(
               valueListenable: _copy,
               builder: (context, status, _) => CoilButton.icon(

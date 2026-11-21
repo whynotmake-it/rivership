@@ -328,26 +328,26 @@ class _PhasesPageState extends State<PhasesPage> {
                 left: 16,
                 right: 16,
                 bottom: 16,
-                child: Row(
-                  mainAxisAlignment: .spaceBetween,
+                child: Wrap(
+                  alignment: .spaceBetween,
+                  crossAxisAlignment: .center,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
-                    Flexible(
-                      child: CoilTabs<_Player>(
-                        value: selected,
-                        onChanged: _goTo,
-                        tabs: [
-                          for (final player in _Player.values)
-                            CoilTab(
-                              value: player,
-                              label: Text(
-                                '${player.name[0].toUpperCase()}'
-                                '${player.name.substring(1)}',
-                              ),
+                    CoilTabs<_Player>(
+                      value: selected,
+                      onChanged: _goTo,
+                      tabs: [
+                        for (final player in _Player.values)
+                          CoilTab(
+                            value: player,
+                            label: Text(
+                              '${player.name[0].toUpperCase()}'
+                              '${player.name.substring(1)}',
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
                     CoilSwitch(
                       value: _autoplay,
                       onChanged: (_) => _toggleAutoplay(),

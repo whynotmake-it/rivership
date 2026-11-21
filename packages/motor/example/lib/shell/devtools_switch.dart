@@ -36,14 +36,14 @@ class DevToolsSwitch extends StatelessWidget {
                       size: metrics.iconSize,
                       color: colors.mutedForeground,
                     ),
-                    child: const GlyphIcon(Glyph.activity),
+                    child: const GlyphIcon(Glyph.eye),
                   ),
                 ),
                 SizedBox(width: metrics.gap),
                 Expanded(
                   child: ExcludeSemantics(
                     child: Text(
-                      'DevTools',
+                      'Show DevTools',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: CoilTheme.textOf(context).muted.body,
@@ -52,7 +52,7 @@ class DevToolsSwitch extends StatelessWidget {
                 ),
                 CoilSwitch(
                   value: visible,
-                  semanticLabel: 'DevTools',
+                  semanticLabel: 'Show DevTools',
                   onChanged: (value) => devtoolsVisible.value = value,
                 ),
               ],

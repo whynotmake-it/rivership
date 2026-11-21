@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/shell/devtools_switch.dart';
@@ -35,24 +37,56 @@ class MotorShell extends StatelessWidget {
 
 /// Sets up coil for the gallery: the theme (unless an ancestor sets one),
 /// the touch tier in a phone-sized window, and the page background.
-class MotorEnvironment extends StatelessWidget {
+///
+/// The gallery's own theme uses coil's Allo typography when the app bundles
+/// Allo (the aggregate example app does), and the platform font otherwise.
+class MotorEnvironment extends StatefulWidget {
   const MotorEnvironment({required this.child, super.key});
 
   final Widget child;
 
   @override
+  State<MotorEnvironment> createState() => _MotorEnvironmentState();
+}
+
+class _MotorEnvironmentState extends State<MotorEnvironment> {
+  static Future<bool>? _alloBundled;
+
+  /// Whether the app's font manifest declares Allo.
+  static Future<bool> _loadAlloBundled() async {
+    try {
+      final manifest = await rootBundle.loadString('FontManifest.json');
+      final families = jsonDecode(manifest) as List<Object?>;
+      return families.any(
+        (family) => family is Map && family['family'] == 'Allo',
+      );
+    } on Object {
+      return false;
+    }
+  }
+
+  var _allo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(
+      (_alloBundled ??= _loadAlloBundled()).then((bundled) {
+        if (mounted && bundled != _allo) setState(() => _allo = bundled);
+      }),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     Widget result = Builder(
-      builder: (context) {
-        final theme = CoilTheme.of(context);
-        return ColoredBox(
-          color: theme.colors.background,
-          child: DefaultTextStyle(
-            style: CoilTheme.textOf(context).body,
-            child: child,
-          ),
-        );
-      },
+      builder: (context) => ColoredBox(
+        color: CoilTheme.of(context).colors.background,
+        child: DefaultTextStyle(
+          style: CoilTheme.textOf(context).body,
+          child: widget.child,
+        ),
+      ),
     );
     if (MediaQuery.sizeOf(context).width < phoneBreakpoint) {
       result = CoilAdaptiveScope(tier: CoilTier.touch, child: result);
@@ -63,7 +97,7 @@ class MotorEnvironment extends StatelessWidget {
     final dark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
     return CoilTheme(
       data: (dark ? CoilThemeData.dark : CoilThemeData.light).copyWith(
-        typography: CoilTypography.allo(),
+        typography: _allo ? CoilTypography.allo() : CoilTypography.platform,
       ),
       child: result,
     );

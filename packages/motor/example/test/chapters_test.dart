@@ -33,11 +33,13 @@ int _faceUpCards(WidgetTester tester) => find
 
 void main() {
   test('every chapter has a route', () {
+    // One shell route holds the sidebar; the pages are its children.
+    final pages = example.motorRoutes.single.children!;
     expect(
-      example.motorRoutes.map((route) => route.name),
+      pages.map((route) => route.name),
       containsAll(chapters.map((chapter) => chapter.title)),
     );
-    expect(example.motorRoutes, hasLength(chapters.length + 1));
+    expect(pages, hasLength(chapters.length + 1));
   });
 
   testWidgets('Retarget follows a change of mind', (tester) async {
@@ -172,9 +174,9 @@ void main() {
 
   testWidgets('Phases jumps between phases and autoplays', (tester) async {
     await _open(tester, 'Phases');
-    await tester.tap(find.text('Full').first);
+    await tester.tap(find.text('Full').last);
     await _pumpFor(tester, const Duration(milliseconds: 200));
-    await tester.tap(find.text('Card').first);
+    await tester.tap(find.text('Card').last);
     await _pumpFor(tester, const Duration(seconds: 2));
     await tester.tap(find.text('Autoplay'));
     await _pumpFor(tester, const Duration(seconds: 6));
@@ -197,7 +199,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(note(tester), closeTo(40, .5));
 
-    await tester.tap(find.text('Full').first);
+    await tester.tap(find.text('Full').last);
     await _pumpFor(tester, const Duration(seconds: 1));
     expect(note(tester), closeTo(272, .5));
     await tester.fling(artwork, const Offset(0, -500), 8000);

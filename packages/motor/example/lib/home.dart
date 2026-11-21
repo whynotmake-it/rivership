@@ -27,14 +27,20 @@ class HomePage extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const MotorLogo(size: 32),
-                const SizedBox(width: 12),
-                Text('Motor', style: text.display),
-                const SizedBox(width: 8),
-                const CoilBadge(child: Text('2.0')),
-              ],
+            // Scales down rather than overflow in a very narrow window.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const MotorLogo(size: 32),
+                  const SizedBox(width: 12),
+                  Text('Motor', style: text.display),
+                  const SizedBox(width: 8),
+                  const CoilBadge(child: Text('2.0')),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -44,7 +50,7 @@ class HomePage extends StatelessWidget {
               style: text.muted.subtitle,
             ),
             SizedBox(height: gap * 2),
-            const CodeBlock('flutter pub add motor'),
+            const CodeBlock("flutter pub add 'motor:^2.0.0-dev.0'"),
           ],
         ),
         const _Race(),

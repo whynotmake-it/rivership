@@ -21,6 +21,7 @@ class Glyph {
     LucideIcons300.panelLeft,
     LucideIcons400.panelLeft,
   );
+  static const eye = Glyph(LucideIcons300.eye, LucideIcons400.eye);
   static const copy = Glyph(LucideIcons300.copy, LucideIcons400.copy);
   static const check = Glyph(LucideIcons300.check, LucideIcons400.check);
   static const arrowRight = Glyph(
@@ -87,6 +88,8 @@ class Glyph {
     LucideIcons400.gripVertical,
   );
   static const repeat = Glyph(LucideIcons300.repeat, LucideIcons400.repeat);
+  static const plus = Glyph(LucideIcons300.plus, LucideIcons400.plus);
+  static const minus = Glyph(LucideIcons300.minus, LucideIcons400.minus);
   static const slidersHorizontal = Glyph(
     LucideIcons300.slidersHorizontal,
     LucideIcons400.slidersHorizontal,
