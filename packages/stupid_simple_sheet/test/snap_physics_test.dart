@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
@@ -325,6 +326,83 @@ void main() {
           absoluteVelocity: 99999, // doesn't matter for FrictionSnapPhysics
         );
         expect(result, 0.3); // closest to 0.4
+      });
+    });
+
+    group('detents', () {
+      test('resolves system, fixed, and fractional heights', () {
+        const config = SheetSnappingConfig.detents([
+          SheetDetent.large,
+          SheetDetent.height(240),
+          SheetDetent.medium,
+        ]);
+
+        final resolved = config.resolve(
+          const SheetDetentContext(
+            maxHeight: 800,
+            screenSize: Size(400, 800),
+          ),
+        );
+
+        expect(resolved.points, orderedEquals([0.3, 0.5, 1.0]));
+        expect(resolved.initialSnap, 0.3);
+      });
+
+      test('resolves initialSnap as a detent', () {
+        const config = SheetSnappingConfig.detents(
+          [SheetDetent.medium, SheetDetent.large],
+          initialSnap: SheetDetent.height(320),
+        );
+
+        final resolved = config.resolve(
+          const SheetDetentContext(
+            maxHeight: 800,
+            screenSize: Size(400, 800),
+          ),
+        );
+
+        expect(resolved.initialSnap, 0.4);
+      });
+
+      test('custom detents can adapt or omit themselves', () {
+        final config = SheetSnappingConfig.detents([
+          SheetDetent.custom(
+            (context) => context.screenSize.width > 500 ? null : 200,
+          ),
+          SheetDetent.custom((context) => context.maxHeight * 0.75),
+        ]);
+
+        final compact = config.resolve(
+          const SheetDetentContext(
+            maxHeight: 800,
+            screenSize: Size(400, 800),
+          ),
+        );
+        final wide = config.resolve(
+          const SheetDetentContext(
+            maxHeight: 800,
+            screenSize: Size(800, 800),
+          ),
+        );
+
+        expect(compact.points, orderedEquals([0.25, 0.75]));
+        expect(wide.points, orderedEquals([0.75]));
+      });
+
+      test('falls back to large when all custom detents are omitted', () {
+        final config = SheetSnappingConfig.detents([
+          SheetDetent.custom((context) => null),
+          SheetDetent.custom((context) => 0),
+        ]);
+
+        final resolved = config.resolve(
+          const SheetDetentContext(
+            maxHeight: 800,
+            screenSize: Size(400, 800),
+          ),
+        );
+
+        expect(resolved.points, orderedEquals([1]));
       });
     });
 

@@ -14,6 +14,21 @@ void main() {
 
   tearDown(SnaptestSettings.resetGlobal);
 
+  Future<void> useRegularDisplay(WidgetTester tester) async {
+    const size = Size(1180, 820);
+    final previousSurfaceSize = tester.binding.renderViews.single.size;
+    tester.view
+      ..physicalSize = size
+      ..devicePixelRatio = 1
+      ..padding = FakeViewPadding.zero;
+    await tester.binding.setSurfaceSize(size);
+    await tester.pump();
+    addTearDown(() async {
+      tester.view.reset();
+      await tester.binding.setSurfaceSize(previousSurfaceSize);
+    });
+  }
+
   for (final (glass, childOverride) in [
     (false, false),
     (true, false),
@@ -1089,6 +1104,7 @@ void main() {
       SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
       bool draggable = true,
       ShapeBorder? shape,
+      PresentationSizing presentationSizing = PresentationSizing.automatic,
       Widget? child,
     }) {
       return CupertinoApp(
@@ -1108,6 +1124,7 @@ void main() {
                       draggable: draggable,
                       shape:
                           shape ?? StupidSimpleCupertinoSheetRoute.iOS18Shape,
+                      presentationSizing: presentationSizing,
                       child: child ??
                           Scaffold(
                             key: const ValueKey('scaffold'),
@@ -1191,6 +1208,192 @@ void main() {
         expect(buttonFinder.hitTestable(), findsNothing);
         expect(find.byType(ModalBarrier).hitTestable(), findsOneWidget);
       });
+    });
+
+    group('presentation sizing and detents', () {
+      testWidgets(
+        'form presents a centered card on regular displays',
+        (tester) async {
+          await useRegularDisplay(tester);
+          await tester.pumpWidget(
+            build(
+              presentationSizing: PresentationSizing.form,
+              child: const SizedBox.expand(
+                key: ValueKey('sheet-content'),
+                child: ColoredBox(color: Color(0xFF2196F3)),
+              ),
+            ),
+          );
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final content = find.byKey(const ValueKey('sheet-content'));
+          final size = tester.getSize(content);
+          final center = tester.getCenter(content);
+
+          expect(size.width, closeTo(580, 0.5));
+          expect(size.height, closeTo(650, 0.5));
+          expect(center.dx, closeTo(590, 0.5));
+          expect(center.dy, closeTo(410, 0.5));
+        },
+      );
+
+      testWidgets(
+        'form resolves fixed detents against the card height',
+        (tester) async {
+          await useRegularDisplay(tester);
+          await tester.pumpWidget(
+            build(
+              presentationSizing: PresentationSizing.form,
+              snappingConfig: const SheetSnappingConfig.detents([
+                SheetDetent.height(260),
+              ]),
+              child: const SizedBox.expand(
+                key: ValueKey('sheet-content'),
+                child: ColoredBox(color: Color(0xFF2196F3)),
+              ),
+            ),
+          );
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final content = find.byKey(const ValueKey('sheet-content'));
+          final route = ModalRoute.of(tester.element(content))!
+              as StupidSimpleCupertinoSheetRoute;
+
+          expect(route.animation!.value, closeTo(0.4, 0.01));
+          expect(
+            tester.getSize(content).height,
+            closeTo(260, 1),
+          );
+        },
+      );
+
+      testWidgets(
+        'fitted sizing hugs content on regular displays',
+        (tester) async {
+          await useRegularDisplay(tester);
+          await tester.pumpWidget(
+            build(
+              presentationSizing: PresentationSizing.form.fitted(),
+              child: const SizedBox(
+                key: ValueKey('sheet-content'),
+                width: 240,
+                height: 180,
+                child: ColoredBox(color: Color(0xFF2196F3)),
+              ),
+            ),
+          );
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final size = tester.getSize(
+            find.byKey(const ValueKey('sheet-content')),
+          );
+          expect(size.width, closeTo(240, 0.5));
+          expect(size.height, closeTo(180, 0.5));
+        },
+      );
+
+      testWidgets(
+        'page stays edge-to-edge on regular displays',
+        (tester) async {
+          await useRegularDisplay(tester);
+          await tester.pumpWidget(
+            build(
+              presentationSizing: PresentationSizing.page,
+              child: const SizedBox.expand(
+                key: ValueKey('sheet-content'),
+                child: ColoredBox(color: Color(0xFF2196F3)),
+              ),
+            ),
+          );
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final content = find.byKey(const ValueKey('sheet-content'));
+          expect(tester.getTopLeft(content).dx, 0);
+          expect(tester.getSize(content).width, closeTo(1180, 0.5));
+        },
+      );
+
+      testWidgets(
+        'height detents resolve against the full sheet on compact displays',
+        (tester) async {
+          await tester.pumpWidget(
+            build(
+              snappingConfig: const SheetSnappingConfig.detents([
+                SheetDetent.height(240),
+              ]),
+              child: const SizedBox.expand(
+                key: ValueKey('sheet-content'),
+                child: ColoredBox(color: Color(0xFF2196F3)),
+              ),
+            ),
+          );
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final content = find.byKey(const ValueKey('sheet-content'));
+          final element = tester.element(content);
+          final route =
+              ModalRoute.of(element)! as StupidSimpleCupertinoSheetRoute;
+          final screenHeight = MediaQuery.sizeOf(element).height;
+
+          expect(
+            route.animation!.value,
+            closeTo(240 / screenHeight, 0.01),
+          );
+        },
+      );
+      testWidgets(
+        'a stacked sheet only pushes back after reaching the rear height',
+        (tester) async {
+          await tester.pumpWidget(
+            build(
+              snappingConfig: const SheetSnappingConfig(
+                [0.5, 1],
+                initialSnap: 0.5,
+              ),
+              child: const SizedBox.expand(
+                key: ValueKey('rear-sheet'),
+                child: ColoredBox(color: Color(0xFF2196F3)),
+              ),
+            ),
+          );
+          await tester.tap(find.byKey(const ValueKey('button')));
+          await tester.pumpAndSettle();
+
+          final rear = find.byKey(const ValueKey('rear-sheet'));
+          final rearElement = tester.element(rear);
+          Navigator.of(rearElement)
+              .push(
+                StupidSimpleCupertinoSheetRoute<void>(
+                  snappingConfig: const SheetSnappingConfig([0.25, 1]),
+                  child: const SizedBox.expand(
+                    key: ValueKey('front-sheet'),
+                    child: ColoredBox(color: Color(0xFFE91E63)),
+                  ),
+                ),
+              )
+              .ignore();
+          await tester.pumpAndSettle();
+
+          final front = find.byKey(const ValueKey('front-sheet'));
+          final frontElement = tester.element(front);
+          final frontRoute =
+              ModalRoute.of(frontElement)! as StupidSimpleCupertinoSheetRoute;
+          final initialTop = tester.getTopLeft(rear).dy;
+
+          frontRoute.animateToRelative(0.5).ignore();
+          await tester.pumpAndSettle();
+          expect(tester.getTopLeft(rear).dy, closeTo(initialTop, 0.5));
+
+          frontRoute.animateToRelative(0.75).ignore();
+          await tester.pumpAndSettle();
+          expect(tester.getTopLeft(rear).dy, lessThan(initialTop - 1));
+        },
+      );
     });
 
     group('snap and scroll', () {
@@ -2055,6 +2258,9 @@ void main() {
       ShapeBorder? shape,
       bool originateAboveBottomViewInset = false,
       DismissalMode dismissalMode = DismissalMode.slide,
+      PresentationSizing presentationSizing = PresentationSizing.automatic,
+      RouteSnapshotMode backgroundSnapshotMode = RouteSnapshotMode.never,
+      SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     }) {
       return CupertinoApp(
         home: Scaffold(
@@ -2072,6 +2278,9 @@ void main() {
                       originateAboveBottomViewInset:
                           originateAboveBottomViewInset,
                       dismissalMode: dismissalMode,
+                      presentationSizing: presentationSizing,
+                      snappingConfig: snappingConfig,
+                      backgroundSnapshotMode: backgroundSnapshotMode,
                       child: Scaffold(
                         key: const ValueKey('scaffold'),
                         body: ListView.builder(
@@ -2091,6 +2300,172 @@ void main() {
         ),
       );
     }
+
+    testWidgets(
+      'form presents a centered card on regular displays',
+      (tester) async {
+        await useRegularDisplay(tester);
+        await tester.pumpWidget(
+          build(
+            presentationSizing: PresentationSizing.form,
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final size = tester.getSize(scaffold);
+        final center = tester.getCenter(scaffold);
+
+        expect(size.width, closeTo(580, 0.5));
+        expect(size.height, closeTo(650, 0.5));
+        expect(center.dx, closeTo(590, 0.5));
+        expect(center.dy, closeTo(410, 0.5));
+      },
+    );
+
+    testWidgets(
+      'detents open when background snapshotting is enabled',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            backgroundSnapshotMode: RouteSnapshotMode.openAndForward,
+            snappingConfig: const SheetSnappingConfig.detents(
+              [SheetDetent.medium, SheetDetent.large],
+            ),
+            presentationSizing: PresentationSizing.automatic,
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('scaffold')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'dragging past large in shrink mode stays within animation bounds',
+      (tester) async {
+        await tester.pumpWidget(
+          build(
+            dismissalMode: DismissalMode.shrink,
+            snappingConfig: const SheetSnappingConfig.detents(
+              [SheetDetent.medium, SheetDetent.large],
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final scaffold = find.byKey(const ValueKey('scaffold'));
+        final route = ModalRoute.of(tester.element(scaffold))!
+            as StupidSimpleGlassSheetRoute;
+        expect(route.animation!.value, lessThan(1));
+
+        final gesture = await tester.startGesture(tester.getCenter(scaffold));
+        for (var i = 0; i < 30; i++) {
+          await gesture.moveBy(const Offset(0, -20));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // ignore: invalid_use_of_protected_member
+        final controller = route.controller!;
+        // ignore: cascade_invocations
+        controller.value = 1.05;
+        await tester.pump();
+
+        final homeRoute = ModalRoute.of(
+          tester.element(find.byKey(const ValueKey('button'))),
+        )!;
+        expect(homeRoute.secondaryAnimation!.value, lessThanOrEqualTo(1));
+        expect(route.animation!.value, lessThanOrEqualTo(1));
+      },
+    );
+
+    testWidgets(
+      'a stacked full sheet keeps a valid pushback range',
+      (tester) async {
+        await tester.pumpWidget(build());
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final rear = find.byKey(const ValueKey('scaffold'));
+        final rearElement = tester.element(rear);
+        Navigator.of(rearElement)
+            .push(
+              StupidSimpleGlassSheetRoute<void>(
+                child: const Scaffold(key: ValueKey('front-sheet')),
+              ),
+            )
+            .ignore();
+        await tester.pumpAndSettle();
+
+        final rearRoute =
+            ModalRoute.of(rearElement)! as StupidSimpleGlassSheetRoute;
+        final frontRoute = ModalRoute.of(
+          tester.element(find.byKey(const ValueKey('front-sheet'))),
+        )! as StupidSimpleGlassSheetRoute;
+
+        // ignore: invalid_use_of_protected_member
+        final range = rearRoute.slideBackRangeFor(
+          rearElement,
+          frontRoute,
+        );
+        expect(range.$1, lessThan(range.$2));
+        expect(range.$1.isFinite, isTrue);
+        expect(range.$2.isFinite, isTrue);
+      },
+    );
+
+    testWidgets(
+      'glass material blurs while floating and clears when attached',
+      (tester) async {
+        await tester.pumpWidget(
+          CupertinoApp(
+            home: Scaffold(
+              body: Center(
+                child: Builder(
+                  builder: (context) => CupertinoButton.filled(
+                    key: const ValueKey('button'),
+                    onPressed: () => Navigator.of(context).push(
+                      StupidSimpleGlassSheetRoute<void>(
+                        snappingConfig: const SheetSnappingConfig(
+                          [0.5, 1],
+                          initialSnap: 0.5,
+                        ),
+                        child: const SizedBox.expand(
+                          key: ValueKey('sheet-content'),
+                          child: ColoredBox(color: Color(0xFF2196F3)),
+                        ),
+                      ),
+                    ),
+                    child: const Text('Show Sheet'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const ValueKey('button')));
+        await tester.pumpAndSettle();
+
+        final content = find.byKey(const ValueKey('sheet-content'));
+        final floatingLeft = tester.getTopLeft(content);
+        expect(find.byType(BackdropFilter), findsOneWidget);
+        expect(floatingLeft.dx, greaterThan(0));
+        expect(floatingLeft.dy, greaterThan(0));
+
+        final route = ModalRoute.of(tester.element(content))!
+            as StupidSimpleGlassSheetRoute;
+        route.animateToRelative(1).ignore();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BackdropFilter), findsNothing);
+        expect(tester.getTopLeft(content).dx, 0);
+      },
+    );
 
     group('originateAboveBottomViewInset', () {
       for (final dismissalMode in DismissalMode.values) {
@@ -2232,7 +2607,7 @@ void main() {
           .push(
             StupidSimpleGlassSheetRoute<void>(
               child: const Scaffold(),
-              blurBehindBarrier: true,
+              blurSheetMaterial: true,
               barrierColor: Colors.red.withValues(alpha: .1),
             ),
           )
@@ -2253,7 +2628,7 @@ void main() {
           .push(
             StupidSimpleGlassSheetRoute<void>(
               child: const Scaffold(),
-              blurBehindBarrier: false,
+              blurSheetMaterial: false,
               barrierColor: Colors.blue.withValues(alpha: .1),
             ),
           )
@@ -2366,7 +2741,7 @@ void main() {
           .push(
             StupidSimpleGlassSheetRoute<void>(
               child: const Scaffold(),
-              blurBehindBarrier: false,
+              blurSheetMaterial: false,
             ),
           )
           .ignore();

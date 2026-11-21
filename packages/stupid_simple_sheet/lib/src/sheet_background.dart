@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:motor_widgets/motor_widgets.dart';
@@ -30,6 +32,7 @@ class SheetBackground extends StatelessWidget {
     this.clipBehavior = Clip.antiAlias,
     this.elevateCupertinoUserInterfaceLevel = true,
     this.extensionAtBottom,
+    this.backdropBlur = 0,
   })  : _includeSafeArea = false,
         _minimumTopPadding = 0;
 
@@ -49,6 +52,7 @@ class SheetBackground extends StatelessWidget {
     this.clipBehavior = Clip.antiAlias,
     this.elevateCupertinoUserInterfaceLevel = true,
     this.extensionAtBottom,
+    this.backdropBlur = 0,
     double minimumMargin = 32,
   })  : _includeSafeArea = true,
         _minimumTopPadding = minimumMargin;
@@ -99,6 +103,13 @@ class SheetBackground extends StatelessWidget {
 
   final double _minimumTopPadding;
 
+  /// The amount of blur the sheet material applies to the layers beneath it.
+  ///
+  /// This models SwiftUI's translucent presentation material: only the area
+  /// covered by the sheet is filtered; the revealed backdrop remains sharp.
+  /// Set to `0` for an opaque sheet.
+  final double backdropBlur;
+
   /// The content of the sheet.
   final Widget? child;
 
@@ -121,17 +132,26 @@ class SheetBackground extends StatelessWidget {
           builder: (context) {
             final color =
                 backgroundColor ?? _getDefaultBackgroundColor(context);
+            final clippedChild = OptimizedClip(
+              clipBehavior: clipBehavior,
+              shape: shape,
+              child: backdropBlur == 0
+                  ? child ?? const SizedBox.shrink()
+                  : BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: backdropBlur,
+                        sigmaY: backdropBlur,
+                      ),
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+            );
             return PaddingExtended(
               padding: EdgeInsets.only(bottom: -bottomExtension),
               child: DecoratedBox(
                 decoration: ShapeDecoration(shape: shape, color: color),
                 child: Padding(
                   padding: EdgeInsets.only(bottom: bottomExtension),
-                  child: OptimizedClip(
-                    clipBehavior: clipBehavior,
-                    shape: shape,
-                    child: child ?? const SizedBox.shrink(),
-                  ),
+                  child: clippedChild,
                 ),
               ),
             );

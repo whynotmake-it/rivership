@@ -28,6 +28,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = iOS18Shape,
+    this.presentationSizing = PresentationSizing.automatic,
   });
 
   /// The default iOS 18 shape for sheet controllers.
@@ -58,6 +59,14 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   ///
   /// Defaults to [iOS18Shape].
   final ShapeBorder shape;
+
+  /// How the sheet is sized on screen.
+  ///
+  /// Mirrors SwiftUI's `presentationSizing`. Defaults to
+  /// [PresentationSizing.automatic], which presents as a centered card on
+  /// regular-width displays and as an edge-to-edge bottom sheet on compact
+  /// displays. Use [PresentationSizing.page] to always present edge-to-edge.
+  final PresentationSizing presentationSizing;
 
   @override
   Color? get barrierColor => CupertinoColors.transparent;
@@ -95,19 +104,30 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
   @override
   final RouteSnapshotMode backgroundSnapshotMode;
 
+  @override
+  double presentationExtent(BuildContext context) {
+    return presentationSizing.maxPresentationExtent(context);
+  }
+
+  bool _isSecondCupertinoSheet = false;
+
   StupidSimpleSheetTransitionMixin<dynamic>? _nextSheet;
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       (context, animation, secondaryAnimation, canSnapshot, child) {
-        final snappingConfigForTransition =
-            _nextSheet?.effectiveSnappingConfig ?? effectiveSnappingConfig;
+        final nextSheet = _nextSheet;
+        final snappingConfigForTransition = nextSheet == null
+            ? resolvedSnappingConfig(context)
+            : nextSheet.resolvedSnappingConfig(context);
 
         return CopiedCupertinoSheetTransitions.secondarySlideDownTransition(
           context,
           animation: animation.clamped,
           secondaryAnimation: secondaryAnimation.clamped,
-          slideBackRange: snappingConfigForTransition.topTwoPoints,
+          slideBackRange: nextSheet == null
+              ? snappingConfigForTransition.topTwoPoints
+              : slideBackRangeFor(context, nextSheet),
           opacityRange: snappingConfigForTransition.bottomTwoPoints,
           primaryShape: shape,
           child: SnapshotWidget(
@@ -143,16 +163,26 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
             context,
             animation: controller!.view,
             secondaryAnimation: secondaryAnimation,
-            slideBackRange: effectiveSnappingConfig.topTwoPoints,
-            opacityRange: effectiveSnappingConfig.bottomTwoPoints,
+            slideBackRange: _nextSheet == null
+                ? resolvedSnappingConfig(context).topTwoPoints
+                : slideBackRangeFor(context, _nextSheet!),
+            opacityRange: resolvedSnappingConfig(context).bottomTwoPoints,
             backgroundColor: backgroundColor,
             dismissalMode: dismissalMode,
             shape: shape,
+            presentationSizing: presentationSizing,
+            secondSheet: _isSecondCupertinoSheet,
             child: maybeSnapshotChild(child),
           );
         },
       ),
     );
+  }
+
+  @override
+  void didChangePrevious(Route<dynamic>? previousRoute) {
+    _isSecondCupertinoSheet = previousRoute is StupidSimpleCupertinoSheetRoute;
+    super.didChangePrevious(previousRoute);
   }
 
   @override

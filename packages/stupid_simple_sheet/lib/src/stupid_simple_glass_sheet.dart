@@ -1,17 +1,17 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/src/glass_sheet_transitions.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 /// A sheet route styled after the iOS 26 liquid glass aesthetic.
 ///
-/// The first sheet of this kind that is pushed will blur the backdrop (if
-/// [blurBehindBarrier] is true) and apply [barrierColor] to the route behind.
+/// The first sheet of this kind that is pushed applies [barrierColor] to the
+/// route behind it; its translucent material blurs layers beneath the sheet
+/// while it is floating below its largest detent when [blurSheetMaterial] is
+/// true.
 ///
-/// Any subsequent sheet of this kind will not apply a barrier color or blur,
+/// Any subsequent sheet of this kind does not apply a barrier color,
 /// since the previous sheet will transition using its own internal secondary
 /// transition.
 ///
@@ -38,7 +38,8 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
     this.dismissalMode = DismissalMode.slide,
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
     this.shape = glassShape,
-    this.blurBehindBarrier = true,
+    this.presentationSizing = PresentationSizing.automatic,
+    this.blurSheetMaterial = true,
 
     /// The color applied to the route behind the first glass sheet.
     ///
@@ -80,10 +81,20 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   /// Defaults to [glassShape].
   final ShapeBorder shape;
 
-  /// Whether the first sheet will blur the backdrop when it appears.
+  /// How the sheet is sized on screen.
   ///
-  /// Defaults to true.
-  final bool blurBehindBarrier;
+  /// Mirrors SwiftUI's `presentationSizing`. Defaults to
+  /// [PresentationSizing.automatic], which presents as a centered card on
+  /// regular-width displays and as an edge-to-edge bottom sheet on compact
+  /// displays. Use [PresentationSizing.page] to always present edge-to-edge.
+  final PresentationSizing presentationSizing;
+
+  /// Whether the translucent sheet material blurs the layers beneath it while
+  /// the sheet is floating below its largest detent.
+  ///
+  /// Native iOS keeps the revealed backdrop sharp; this only controls the
+  /// material covering the sheet region. Defaults to true.
+  final bool blurSheetMaterial;
 
   final Color _barrierColor;
 
@@ -141,25 +152,15 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
   StupidSimpleSheetTransitionMixin<dynamic>? _nextSheet;
 
   @override
+  double presentationExtent(BuildContext context) {
+    return presentationSizing.maxPresentationExtent(context);
+  }
+
+  @override
   Widget buildModalBarrier() {
-    return Stack(
-      children: [
-        super.buildModalBarrier(),
-        if (blurBehindBarrier && !_isSecondGlassSheet)
-          Positioned.fill(
-            child: ValueListenableBuilder(
-              valueListenable: animation ?? kAlwaysDismissedAnimation,
-              builder: (context, value, child) {
-                final sigma = value * 10;
-                return BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-                  child: const SizedBox.expand(),
-                );
-              },
-            ),
-          ),
-      ],
-    );
+    // SwiftUI's sheet material is translucent over the sheet region, but the
+    // revealed backdrop itself remains sharp. Keep the barrier to dimming only.
+    return super.buildModalBarrier();
   }
 
   @override
@@ -184,8 +185,11 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
       data: CupertinoUserInterfaceLevelData.elevated,
       child: Builder(
         builder: (context) {
-          final snappingConfigForTransition =
-              _nextSheet?.effectiveSnappingConfig ?? effectiveSnappingConfig;
+          final nextSheet = _nextSheet;
+          final resolvedConfig = resolvedSnappingConfig(context);
+          final snappingConfigForTransition = nextSheet == null
+              ? resolvedConfig
+              : nextSheet.resolvedSnappingConfig(context);
           return Padding(
             padding: EdgeInsets.only(
               bottom: originateAboveBottomViewInset
@@ -196,12 +200,16 @@ class StupidSimpleGlassSheetRoute<T> extends PopupRoute<T>
               context,
               animation: controller!.view,
               secondaryAnimation: secondaryAnimation,
-              slideBackRange: snappingConfigForTransition.topTwoPoints,
+              slideBackRange: nextSheet == null
+                  ? snappingConfigForTransition.topTwoPoints
+                  : slideBackRangeFor(context, nextSheet),
               opacityRange: snappingConfigForTransition.bottomTwoPoints,
               backgroundColor: backgroundColor,
               secondSheet: _isSecondGlassSheet,
+              materialBlur: blurSheetMaterial,
               dismissalMode: dismissalMode,
               shape: shape,
+              presentationSizing: presentationSizing,
               child: maybeSnapshotChild(child),
             ),
           );

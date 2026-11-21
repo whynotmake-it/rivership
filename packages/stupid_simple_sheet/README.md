@@ -45,7 +45,8 @@ Each recipe below is a self-contained pattern you can copy into your project. Fu
 
 ### Glass sheet (iOS 26)
 
-The modern iOS sheet style with liquid glass blur. Glass sheets stack seamlessly -- only the first sheet blurs the backdrop.
+The modern iOS sheet style with a translucent material over the sheet region.
+Glass sheets stack seamlessly -- only the first sheet dims the backdrop.
 
 > [Full example](./example/lib/presets/glass_sheet_preset.dart)
 
@@ -115,6 +116,45 @@ StupidSimpleCupertinoSheetRoute(
   child: YourContent(),
 )
 ```
+
+### Presentation sizing and detents
+
+Both preset routes mirror SwiftUI's `presentationSizing`:
+
+```dart
+StupidSimpleGlassSheetRoute(
+  // Centered card on regular-width displays, edge-to-edge sheet on phones.
+  presentationSizing: PresentationSizing.form,
+  child: YourContent(),
+)
+
+// Always present edge-to-edge, even on tablets.
+presentationSizing: PresentationSizing.page
+
+// Let either axis size itself to the content in regular presentations.
+presentationSizing: PresentationSizing.form.fitted(
+  horizontal: false,
+  vertical: true,
+)
+
+// Start at the standard card size and grow to fit larger content.
+presentationSizing: PresentationSizing.form.sticky(horizontal: true)
+```
+
+Use `SheetSnappingConfig.detents` when snap heights should be expressed like
+SwiftUI detents instead of normalized values:
+
+```dart
+snappingConfig: const SheetSnappingConfig.detents([
+  SheetDetent.height(240),
+  SheetDetent.medium,
+  SheetDetent.large,
+])
+```
+
+`SheetDetent.height` stays fixed in logical pixels, `.fraction` resolves against
+the presentation's maximum height, and `.custom` can adapt to the current
+`SheetDetentContext`.
 
 ---
 
