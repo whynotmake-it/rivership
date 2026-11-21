@@ -183,10 +183,12 @@ Future<T?> showCoilModal<T>({
 /// it as in a sheet. The `anchor` puts it under the top safe area or centers
 /// it; either way it hugs its content up to the room above the keyboard,
 /// and content that should keep its height fills that room.
-/// Dragging along the `dismissAxis` moves the panel with the finger, fading it
-/// and the scrim, and throws it away when the release projects past half
-/// its extent (`offset + velocity * 0.1 s`), springing on the `settle`
-/// track from the release velocity; otherwise it springs back. A scrollable
+/// Dragging along the `dismissAxis` moves the panel with the finger, tilting
+/// it a little around where it was grabbed (horizontally) and letting it
+/// recede, while the scrim fades and the panel itself fades late. On release
+/// it is thrown away when it would coast past half its extent (friction on
+/// its offset and velocity), carrying its velocity out on the `settle`
+/// track; otherwise it springs back from that velocity. A scrollable
 /// inside hands the drag over only at its edge, so a vertical list keeps
 /// scrolling under a horizontal dismiss. A null `dismissAxis`, or a
 /// non-dismissible route, has no drag. Motion springs resolve from the
@@ -466,10 +468,11 @@ class _SlideFromStart extends StatelessWidget {
 /// A drag on [dismissAxis] moves the panel (see [_FloatingPanel]). The
 /// route's animation controller is driven by that drag, as Flutter's
 /// Cupertino back gesture drives its route's: the controller's value is the
-/// panel's presence, `1 - |offset| / extent`, so the scrim and the panel's
-/// opacity fade with the finger through the same animation the exit uses.
-/// While the drag or a drag-driven exit runs, the transition doesn't scale or
-/// blur the panel: only its offset and opacity change.
+/// panel's presence, `1 - |offset| / extent`, so the scrim fades with the
+/// finger through the same animation the exit uses, and the panel's opacity
+/// follows it late. While the drag, its spring back or a drag-driven exit
+/// runs, the transition doesn't scale or blur the panel: its offset, tilt,
+/// slight recede and opacity change.
 ///
 /// It doesn't call the navigator's `didStartUserGesture`: that makes the
 /// route's focus scope refuse focus for the length of the drag, which would
@@ -578,6 +581,31 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
   }
 }
 
+/// The most a horizontal drag tilts the panel, in radians, at a full extent.
+const _maxTilt = 0.06;
+
+/// How much the panel shrinks at a full extent: it recedes as it's thrown.
+const _recede = 0.04;
+
+/// Where a released panel would coast, for the decision to throw it away.
+/// With `drag: 0.03` a panel coasts `v / -ln(0.03)`, about `v / 3.5`:
+/// a flick of 700 px/s from rest lands 200 px out, past half of a phone's
+/// panel (about 190 px), a slower one doesn't, and a panel dragged past the
+/// middle and flicked back lands short of it again.
+const _coast = FrictionMotion(drag: 0.03);
+
+/// The panel's opacity from the route's presence: nearly opaque until it's
+/// well on its way, so the scrim leads.
+const _lateFade = _LateFade();
+
+class _LateFade extends Animatable<double> {
+  const _LateFade();
+
+  @override
+  double transform(double t) =>
+      1 - Curves.easeInCubic.transform(1 - t.clamp(0.0, 1.0));
+}
+
 /// The floating panel: laid out in the room the window leaves, on a
 /// sheet-level surface, with the route's blur-fade and the drag dismissal.
 class _FloatingPanel extends StatefulWidget {
@@ -610,25 +638,52 @@ class _FloatingPanelState extends State<_FloatingPanel>
   /// keeps moving the way it was thrown.
   bool _leaving = false;
 
+  /// A drag has touched the panel since it last came to rest: its opacity
+  /// follows the drag's curve and it doesn't blur or scale with the route.
+  /// Stays through the spring back, so nothing jumps when it arrives.
+  bool _touched = false;
+
   /// The panel's extent along the dismiss axis when the drag started.
   double _extent = 1;
 
   /// How far the finger has moved the panel, in pixels.
   double _pixels = 0;
 
+  /// Where in the panel the finger took hold, which it tilts around; null
+  /// for its center.
+  Offset? _grab;
+
   /// The window's, the panel's own or the system's setting.
   bool get _reduceMotion =>
       MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
   @override
+  void initState() {
+    super.initState();
+    widget.route.animation!.addStatusListener(_onPresenceStatus);
+  }
+
+  @override
   void dispose() {
+    widget.route.animation!.removeStatusListener(_onPresenceStatus);
     _slide.dispose();
     super.dispose();
   }
 
-  void _onDragStart() {
+  /// Back at rest after a drag: the route's own transition takes over.
+  void _onPresenceStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed &&
+        _touched &&
+        !_dragging &&
+        !_leaving) {
+      setState(() => _touched = false);
+    }
+  }
+
+  void _onDragStart(DragStartDetails details) {
     if (_leaving || !widget.route.holdForDrag()) return;
-    final size = _panelKey.currentContext?.size;
+    final box = _panelKey.currentContext?.findRenderObject();
+    final size = box is RenderBox && box.hasSize ? box.size : null;
     final axis = widget.route.dismissAxis!;
     _extent = math.max(
       1,
@@ -638,10 +693,18 @@ class _FloatingPanelState extends State<_FloatingPanel>
           } ??
           MediaQuery.sizeOf(context).shortestSide,
     );
+    // Held where the finger is (for a drag a scrollable handed over, where
+    // it began); a panel that can't say gives its center.
+    _grab = box is RenderBox && box.hasSize && box.attached
+        ? box.globalToLocal(details.globalPosition)
+        : null;
     // A panel still springing back is picked up where it is.
     _slide.stop();
     _pixels = _slide.value * _extent;
-    setState(() => _dragging = true);
+    setState(() {
+      _dragging = true;
+      _touched = true;
+    });
   }
 
   void _onDragUpdate(double delta) {
@@ -657,22 +720,29 @@ class _FloatingPanelState extends State<_FloatingPanel>
     setState(() => _dragging = false);
     final route = widget.route;
     if (!route.isActive) return;
-    // Where the panel is headed: coil's switch projects 0.1 s ahead too.
-    final projected = _pixels + velocity * 0.1;
+    // Where the panel would coast to if let go: it is thrown away when that
+    // is past half its extent in the direction it travels, so a quick flick
+    // from rest, or a slow drag past the middle, goes, and a drag past the
+    // middle flicked back toward rest returns.
+    final landing = _coast.project(
+      from: _pixels,
+      velocity: velocity,
+      converter: MotionConverter.single,
+    );
     final direction = velocity == 0 ? _pixels.sign : velocity.sign;
     final dismiss =
         !handedBack &&
-        projected.abs() > _extent / 2 &&
-        projected.sign == direction;
+        landing.abs() > _extent / 2 &&
+        landing.sign == direction;
     final vetoed = route.popDisposition == RoutePopDisposition.doNotPop;
+    final speed = velocity / _extent;
     if (!dismiss) {
-      _settleBack(route);
+      _settleBack(route, speed);
     } else if (vetoed) {
       // Let the PopScope hear it, then spring back.
       unawaited(route.navigator!.maybePop());
-      _settleBack(route);
+      _settleBack(route, speed);
     } else {
-      final speed = velocity / _extent;
       route.releaseDrag(
         // Fading out as fast as the panel moves away.
         exitVelocity: -speed.abs(),
@@ -680,15 +750,35 @@ class _FloatingPanelState extends State<_FloatingPanel>
       setState(() => _leaving = true);
       // Reduced motion: no movement, the exit fades.
       if (!_reduceMotion) {
+        // It keeps its speed to where it would coast, or clear of the
+        // window if that is further.
+        final target = math.max(landing.abs(), _distanceOutOfWindow(direction));
         _slide
           ..motion = route.settleAway
-          ..animateTo(direction, withVelocity: speed);
+          ..animateTo(direction * target / _extent, withVelocity: speed);
       }
       unawaited(route.navigator!.maybePop());
     }
   }
 
-  void _settleBack(_CoilFloatingRoute<Object?> route) {
+  /// How far the panel has to move from rest along the dismiss axis, toward
+  /// [direction] (1 or -1), to be fully outside the window, with room for
+  /// its tilt.
+  double _distanceOutOfWindow(double direction) {
+    final box = _panelKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return _extent;
+    final horizontal = widget.route.dismissAxis == Axis.horizontal;
+    final window = MediaQuery.sizeOf(context);
+    final center = box.localToGlobal(box.size.center(Offset.zero));
+    final restCenter = (horizontal ? center.dx : center.dy) - _pixels;
+    final windowExtent = horizontal ? window.width : window.height;
+    final tilted = horizontal ? math.sin(_maxTilt) * box.size.height : 0;
+    final start = restCenter - _extent / 2;
+    final end = restCenter + _extent / 2;
+    return (direction > 0 ? windowExtent - start : end) + tilted;
+  }
+
+  void _settleBack(_CoilFloatingRoute<Object?> route, double speed) {
     route
       ..releaseDrag()
       ..resume();
@@ -697,7 +787,7 @@ class _FloatingPanelState extends State<_FloatingPanel>
     } else {
       _slide
         ..motion = route.settleBack
-        ..animateTo(0);
+        ..animateTo(0, withVelocity: speed);
     }
   }
 
@@ -710,7 +800,7 @@ class _FloatingPanelState extends State<_FloatingPanel>
         down: ScrollDragMode.none,
         left: ScrollDragMode.boundaryStart,
         right: ScrollDragMode.boundaryStart,
-        onHorizontalDragStart: (_, _) => _onDragStart(),
+        onHorizontalDragStart: (details, _) => _onDragStart(details),
         onHorizontalDragUpdate: (details, _) =>
             _onDragUpdate(details.primaryDelta ?? 0),
         onHorizontalDragEnd: (details, willScroll) => _onDragEnd(
@@ -725,7 +815,7 @@ class _FloatingPanelState extends State<_FloatingPanel>
         down: ScrollDragMode.boundaryStart,
         left: ScrollDragMode.none,
         right: ScrollDragMode.none,
-        onVerticalDragStart: (_, _) => _onDragStart(),
+        onVerticalDragStart: (details, _) => _onDragStart(details),
         onVerticalDragUpdate: (details, _) =>
             _onDragUpdate(details.primaryDelta ?? 0),
         onVerticalDragEnd: (details, willScroll) => _onDragEnd(
@@ -761,7 +851,6 @@ class _FloatingPanelState extends State<_FloatingPanel>
           margin,
     );
     final axis = route.dismissAxis;
-    final userDriven = _dragging || _leaving;
 
     // The panel cleared the insets, so what it holds has none left.
     final content = MediaQuery(
@@ -782,18 +871,6 @@ class _FloatingPanelState extends State<_FloatingPanel>
         ),
       ),
     );
-    final moved = ListenableBuilder(
-      listenable: _slide,
-      child: panel,
-      builder: (context, child) => FractionalTranslation(
-        translation: switch (axis) {
-          null => Offset.zero,
-          Axis.horizontal => Offset(_slide.value, 0),
-          Axis.vertical => Offset(0, _slide.value),
-        },
-        child: child,
-      ),
-    );
     return Padding(
       padding: room,
       child: Align(
@@ -802,12 +879,46 @@ class _FloatingPanelState extends State<_FloatingPanel>
           constraints: const BoxConstraints(maxWidth: CoilSheetRoute.maxWidth),
           child: SizedBox(
             width: double.infinity,
-            // A drag only moves and fades the panel: no scale or blur.
-            child: CoilBlurFade(
-              presence: route.animation!,
-              scale: userDriven ? 1 : 0.97,
-              blur: userDriven ? 0 : CoilBlurFade.defaultBlur,
-              child: moved,
+            child: ListenableBuilder(
+              listenable: _slide,
+              child: panel,
+              builder: (context, child) {
+                // A drag moves the panel, tilts it around the finger and
+                // lets it recede a little, and fades it late, after the
+                // scrim has led. Otherwise it's the route's blur-fade.
+                final driven = _touched || _dragging || _leaving;
+                final offset = _slide.value;
+                final moving = driven && !_reduceMotion;
+                final depth = offset.abs().clamp(0.0, 1.0);
+                final tilt = moving && axis == Axis.horizontal
+                    ? offset * _maxTilt
+                    : 0.0;
+                final scale = moving ? 1 - _recede * depth : 1.0;
+                final tilted = tilt != 0 || scale != 1;
+                return CoilBlurFade(
+                  presence: driven
+                      ? route.animation!.drive(_lateFade)
+                      : route.animation!,
+                  scale: driven ? 1 : 0.97,
+                  blur: driven ? 0 : CoilBlurFade.defaultBlur,
+                  child: FractionalTranslation(
+                    translation: switch (axis) {
+                      null => Offset.zero,
+                      Axis.horizontal => Offset(offset, 0),
+                      Axis.vertical => Offset(0, offset),
+                    },
+                    // Resampled as one image, like the blur-fade's own scale.
+                    child: Transform(
+                      transform: Matrix4.rotationZ(tilt)
+                        ..scaleByDouble(scale, scale, 1, 1),
+                      origin: _grab,
+                      alignment: _grab == null ? Alignment.center : null,
+                      filterQuality: tilted ? FilterQuality.medium : null,
+                      child: child,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
