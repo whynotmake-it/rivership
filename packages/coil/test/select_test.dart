@@ -672,6 +672,80 @@ void main() {
     });
   });
 
+  testWidgets(
+    'while a pick is acknowledged, the page behind takes taps and drags',
+    (tester) async {
+      useScreen(tester, TestScreen.phone);
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      final pings = <String>[];
+      var value = 'banana';
+      await tester.pumpWidget(
+        _app(
+          tier: CoilTier.touch,
+          home: StatefulBuilder(
+            builder: (context, setState) => SafeArea(
+              child: ListView(
+                controller: scroll,
+                padding: const EdgeInsets.all(24),
+                children: [
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: CoilButton(
+                      onPressed: () => pings.add('ping'),
+                      child: const Text('Ping'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: 220,
+                    child: CoilSelect<String>(
+                      key: const ValueKey('select'),
+                      options: fruits,
+                      value: value,
+                      onChanged: (next) => setState(() => value = next),
+                    ),
+                  ),
+                  const SizedBox(height: 2000),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      final ping = find.text('Ping');
+      await tester.tap(_select);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: _list, matching: find.text('Mango')),
+      );
+      await tester.pump();
+
+      // The list still shows the pick landing, but the page is live: one
+      // tap on its button runs it, and a drag below the list scrolls it.
+      await tester.tap(ping);
+      await tester.pump();
+      expect(pings, ['ping']);
+      expect(_list, findsOneWidget);
+      await tester.dragFrom(
+        Offset(200, tester.getRect(_list).bottom + 120),
+        const Offset(0, -80),
+      );
+      await tester.pump();
+      expect(scroll.offset, greaterThan(0));
+      expect(_list, findsOneWidget);
+
+      // It still closes on its own time, with the picked value.
+      await _settle(tester);
+      expect(_list, findsNothing);
+      expect(value, 'mango');
+      expect(
+        find.descendant(of: _select, matching: find.text('Mango')),
+        findsOneWidget,
+      );
+    },
+  );
+
   group('multi-select', () {
     testWidgets('a phone opens a sheet; taps toggle and keep it open', (
       tester,

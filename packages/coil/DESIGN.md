@@ -238,7 +238,7 @@ How lit controls look: `CoilThemeData.plasticity`, a `CoilPlasticity(amount:)` f
 Two durations sit next to the springs:
 
 - `minPressDuration` (90 ms): a quick tap still shows its press.
-- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes. Meanwhile the list ignores the pointer and the keys: the highlight stays on the picked row, and nothing else can be picked.
+- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes. Meanwhile the list ignores the pointer and the keys: the highlight stays on the picked row, and nothing else can be picked. The page doesn't wait for it: from the pick, a popover captures nothing outside itself, as if it were already closing. Taps, drags, scrolls, hover and right-clicks outside reach the page at once (a tap doesn't need a second one), focus goes back to where it was when the popover opened, and Escape and back act on the page (`CoilPopupHandle.release`). A sheet stays modal until it closes.
 - `stagger` (60 ms): the delay between siblings that arrive in turn (Reveal). Zero under reduced motion.
 - Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
 
@@ -841,7 +841,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Search** (`DropdownSearch`): a field band one row high at the top with a hairline below. Typing filters by word prefix, and printable keys typed into the list go to the field. Pointer: autofocused. Touch sheet: not autofocused.
 - **Presentation:** §9.1. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
 - **Motion:** popup blur-fade on the tier's popover tokens (§7.2); highlight `quick`; sub push `standard`.
-- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile), and immediately for actions.
+- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile, while the page behind already takes it, §7.1), and immediately for actions.
 - **Semantics:** menu, menuItem / menuItemCheckbox / menuItemRadio, `expanded` on the trigger.
 - **Haptic:** iOS `selectionClick` on a pick in a sheet.
 - **Do:** keep it to ≤ 12 items and ≤ 1 submenu level.
@@ -852,7 +852,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Trigger:** like Input (hairline, `controlHeight`, `controlPaddingX`, min width 160) → [icon] value (placeholder muted) → chevron (muted → foreground on hover). Hover is the `hover` fill. While open it holds the `active` fill.
 - **List:** popup rows; a trailing check; selected `active` fill in popovers; check only in sheets; multi-select uses merged blocks plus checks.
 - **Presentation:** pointer popover (max height 300); phone ≤ 8 options touch popover; > 8 options or multi → sheet with the field label as its title. Lists over 12 options add a search row.
-- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input, then closes; the selected fill glides `standard`.
+- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input but handing the page back at once (§7.1), then closes; the selected fill glides `standard`.
 - **Keyboard:** the trigger opens on Enter, Space, Up or Down (the list starts on the picked row with the ring). The list has arrows, Home/End, PageUp/PageDown, typeahead, Enter/Space to pick, and Esc/Tab to dismiss. Focus returns to the trigger.
 - **Semantics:** the trigger is a button with `expanded` and its value; the list is a menu; rows are `selected`.
 - **Don't:** use it for fewer than 3 options (use a RadioGroup or Tabs) or for actions (use Dropdown).

@@ -17,7 +17,7 @@ To change its look or composition, eject a copy into your app with `dart run coi
 - **Trigger:** like Input (hairline, `controlHeight`, `controlPaddingX`, min width 160) → [icon] value (placeholder muted) → chevron (muted → foreground on hover). Hover is the `hover` fill. While open it holds the `active` fill.
 - **List:** popup rows; a trailing check; selected `active` fill in popovers; check only in sheets; multi-select uses merged blocks plus checks.
 - **Presentation:** pointer popover (max height 300); phone ≤ 8 options touch popover; > 8 options or multi → sheet with the field label as its title. Lists over 12 options add a search row.
-- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input, then closes; the selected fill glides `standard`.
+- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input but handing the page back at once (§7.1), then closes; the selected fill glides `standard`.
 - **Keyboard:** the trigger opens on Enter, Space, Up or Down (the list starts on the picked row with the ring). The list has arrows, Home/End, PageUp/PageDown, typeahead, Enter/Space to pick, and Esc/Tab to dismiss. Focus returns to the trigger.
 - **Semantics:** the trigger is a button with `expanded` and its value; the list is a menu; rows are `selected`.
 - **Don't:** use it for fewer than 3 options (use a RadioGroup or Tabs) or for actions (use Dropdown).

@@ -107,6 +107,7 @@ class CoilMenuPopup extends StatelessWidget {
         child: CoilActionList(
           entries: entries,
           onClose: popup.close,
+          onAcknowledge: popup.release,
           metrics: metrics,
           // The sheet paints its own surface; the popover may take the
           // style's.
