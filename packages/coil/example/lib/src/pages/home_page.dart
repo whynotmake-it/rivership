@@ -148,6 +148,7 @@ class _Hero extends StatelessWidget {
                     'Light and dark',
                     'Right to left',
                     'Text up to 2×',
+                    'Fixed frame rates',
                   ])
                     CoilBadge(
                       variant: CoilBadgeVariant.ghost,

@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -42,6 +43,14 @@ class MotionPage extends StatefulWidget {
 
 class _MotionPageState extends State<MotionPage> {
   var _atEnd = false;
+  var _ratesAtEnd = false;
+
+  static final _rates = <(String, TickerRate)>[
+    ('Display rate', const TickerRate.vsync()),
+    ('60 fps', TickerRate.fps(60)),
+    ('30 fps', TickerRate.fps(30)),
+    ('15 fps', TickerRate.fps(15)),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +62,24 @@ class _MotionPageState extends State<MotionPage> {
           'Every token is a spring, exits included. Play runs the enter '
           'springs, play again runs the exits. Tap mid-flight to see a '
           'spring reverse with its velocity instead of restarting.',
+      usage: '''
+TickerRateScope(
+  rate: TickerRate.fps(30),
+  child: const ActivityFeed(),
+)''',
+      notes: const [
+        CatalogNote(
+          'Motion',
+          "coil's springs follow the nearest TickerRateScope, so a fixed "
+              "rate saves frame work for low-priority motion. The Frame rate "
+              "setting in the preview settings applies one to everything.",
+        ),
+        CatalogNote(
+          'Accessibility',
+          'Reduced motion makes the spatial tokens instant and keeps fade. '
+              'Slow motion in the preview settings stretches them 5×.',
+        ),
+      ],
       children: [
         DemoSection(
           title: 'Tokens side by side',
@@ -71,6 +98,32 @@ class _MotionPageState extends State<MotionPage> {
               ),
               for (final lane in _Lane.values)
                 _LaneView(lane: lane, motion: motion, atEnd: _atEnd),
+            ],
+          ),
+        ),
+        DemoSection(
+          title: 'Frame rates',
+          description:
+              'The same spring, ticked at four rates. A lower rate samples '
+              'the spring less often and does less frame work; the motion '
+              'takes just as long.',
+          child: DemoColumn(
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: CoilButton(
+                  leading: const CatalogIcon(Glyph.play),
+                  onPressed: () => setState(() => _ratesAtEnd = !_ratesAtEnd),
+                  child: Text(_ratesAtEnd ? 'Play back' : 'Play'),
+                ),
+              ),
+              for (final (label, rate) in _rates)
+                _RateTrack(
+                  label: label,
+                  rate: rate,
+                  motion: motion.gentle,
+                  atEnd: _ratesAtEnd,
+                ),
             ],
           ),
         ),
@@ -210,6 +263,75 @@ class _Hold extends StatelessWidget {
           TextSpan(text: use, style: text.muted.caption),
         ],
       ),
+    );
+  }
+}
+
+/// One spring on its own track, ticked at [rate] by a [TickerRateScope].
+class _RateTrack extends StatelessWidget {
+  const _RateTrack({
+    required this.label,
+    required this.rate,
+    required this.motion,
+    required this.atEnd,
+  });
+
+  final String label;
+  final TickerRate rate;
+  final Motion motion;
+  final bool atEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final dot = MediaQuery.textScalerOf(context).scale(20);
+    final text = CoilTheme.textOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: text.body.copyWith(fontWeight: text.emphasis),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: dot + 8,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: colors.muted,
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular((dot + 8) / 2),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: TickerRateScope(
+                rate: rate,
+                child: SingleMotionBuilder(
+                  value: atEnd ? 1 : 0,
+                  motion: motion,
+                  debugLabel: 'MotionPage.rate $label',
+                  builder: (context, t, child) => Align(
+                    alignment: AlignmentDirectional(-1 + 2 * t, 0),
+                    child: child,
+                  ),
+                  child: SizedBox.square(
+                    dimension: dot,
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: colors.foreground,
+                        shape: RoundedSuperellipseBorder(
+                          borderRadius: BorderRadius.circular(dot / 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
