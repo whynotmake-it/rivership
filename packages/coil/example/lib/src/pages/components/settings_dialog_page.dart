@@ -1,235 +1,435 @@
 import 'package:coil/coil.dart';
+import 'package:coil_example/src/pages/components/sidebar_demo.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const settingsDialogEntry = CatalogEntry(
   slug: 'settings-dialog',
   title: 'SettingsDialog',
   group: CatalogGroup.shellAndComposites,
-  summary: 'A sidebar of sections inside a dialog.',
+  summary: 'A sidebar of sections beside the setting rows, in a dialog.',
   page: SettingsDialogPage.new,
 );
 
-class SettingsDialogPage extends StatelessWidget {
+/// What the settings change, held above the dialog so it outlives the
+/// panels and the app bar can show it.
+class _Prefs extends ChangeNotifier {
+  String name = 'Ada Lovelace';
+  String language = 'en';
+  String theme = 'system';
+  final switches = <String, bool>{
+    'digest': true,
+    'mentions': true,
+    'updates': false,
+    'twoFactor': true,
+    'alerts': true,
+  };
+  final roles = <String, String>{
+    'Jane Doe': 'Admin',
+    'Sam Park': 'Member',
+    'Ravi Patel': 'Member',
+  };
+
+  void update(VoidCallback change) {
+    change();
+    notifyListeners();
+  }
+}
+
+class SettingsDialogPage extends StatefulWidget {
   const SettingsDialogPage({super.key});
+
+  @override
+  State<SettingsDialogPage> createState() => _SettingsDialogPageState();
+}
+
+class _SettingsDialogPageState extends State<SettingsDialogPage> {
+  final _prefs = _Prefs();
+
+  @override
+  void dispose() {
+    _prefs.dispose();
+    super.dispose();
+  }
+
+  Future<void> _open([String section = 'account']) =>
+      showCoilSettingsDialog<String>(
+        context: context,
+        title: const Text('Settings'),
+        initialSection: section,
+        sections: _sections(_prefs),
+      );
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'SettingsDialog',
     summary:
-        'A sidebar that never folds, inside an xl dialog. Below 600 wide a '
-        'select picks the section; on a phone it opens as a sheet.',
+        'A sidebar that never folds beside the setting rows, in an xl '
+        'dialog. Below 600 wide a select picks the section; on a phone it '
+        'opens as a sheet.',
+    hero: _AppBar(prefs: _prefs, onOpen: _open),
+    usage: '''
+showCoilSettingsDialog<String>(
+  context: context,
+  title: const Text('Settings'),
+  initialSection: 'notifications',
+  sections: [
+    CoilSettingsSection(
+      value: 'notifications',
+      label: const Text('Notifications'),
+      icon: const Icon(LucideIcons.bell),
+      description: const Text('What reaches your inbox.'),
+      builder: (context) => CoilSettingsList(
+        children: [
+          CoilSettingRow(
+            label: const Text('Mentions'),
+            trailing: CoilSwitch(
+              value: mentions,
+              onChanged: setMentions,
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+)''',
+    notes: const [
+      CatalogNote(
+        'Touch',
+        'On a phone it opens as a sheet: the title moves into the sheet '
+            'header beside its one close button, and a select under it '
+            'picks the section.',
+      ),
+      CatalogNote(
+        'Pointer',
+        'The sections sit in a static sidebar, 208 wide, with no rail, '
+            'shortcut or drawer. The panel keeps its heading and '
+            'description while its body scrolls.',
+      ),
+      CatalogNote(
+        'Do / Don’t',
+        'Put one control in each row. A toggle row is one tap target; a '
+            'select, slider or button responds only on the control.',
+      ),
+      CatalogNote(
+        'Accessibility',
+        'The title names the route, the close button sits in the corner, '
+            'and a toggle row reads as one node: its label, description '
+            'and state.',
+      ),
+    ],
     children: [
       DemoSection(
-        title: 'Settings',
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: Builder(
-            builder: (context) => CoilButton(
+        title: 'The panel on its own',
+        description:
+            'CoilSettingsDialog is a plain widget: put it in a '
+            'CoilModalPage, or inline as here. Resize the window under 600 '
+            'to see the select take over.',
+        child: CoilSettingsDialog<String>(
+          title: const Text('Settings'),
+          initialSection: 'notifications',
+          sections: _sections(_prefs),
+        ),
+      ),
+    ],
+  );
+}
+
+/// The signed-in app's top bar: the workspace, and three ways into the
+/// settings.
+class _AppBar extends StatelessWidget {
+  const _AppBar({required this.prefs, required this.onOpen});
+
+  final _Prefs prefs;
+  final Future<void> Function([String section]) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return ListenableBuilder(
+      listenable: prefs,
+      builder: (context, _) => Row(
+        spacing: 12,
+        children: [
+          const WorkspaceTile('A'),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Acme AI', style: text.title),
+                Text(
+                  prefs.name.isEmpty ? 'Signed in' : prefs.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.muted.caption,
+                ),
+              ],
+            ),
+          ),
+          CoilButton.icon(
+            variant: CoilButtonVariant.ghost,
+            semanticLabel: 'Notification settings',
+            icon: const CatalogIcon(Glyph.bell),
+            onPressed: () => onOpen('notifications'),
+          ),
+          CoilDropdown(
+            entries: [
+              const CoilMenuLabel(Text('Ada Lovelace')),
+              CoilAction(
+                label: const Text('Settings'),
+                searchText: 'Settings',
+                leading: const CatalogIcon(Glyph.settings),
+                onPressed: onOpen,
+              ),
+              CoilAction(
+                label: const Text('Appearance'),
+                searchText: 'Appearance',
+                leading: const CatalogIcon(Glyph.palette),
+                onPressed: () => onOpen('appearance'),
+              ),
+              const CoilMenuSeparator(),
+              CoilAction(
+                label: const Text('Log out'),
+                searchText: 'Log out',
+                leading: const CatalogIcon(Glyph.logOut),
+                onPressed: () {},
+              ),
+            ],
+            builder: (context, menu) => CoilButton.icon(
+              variant: CoilButtonVariant.ghost,
+              semanticLabel: 'Account menu',
+              icon: const CatalogIcon(Glyph.user),
+              onPressed: menu.open,
+            ),
+          ),
+          if (MediaQuery.sizeOf(context).width >= 600)
+            CoilButton(
               variant: CoilButtonVariant.secondary,
               leading: const CatalogIcon(Glyph.settings),
-              onPressed: () => showDemoSettings(context),
-              child: const Text('Open settings'),
+              onPressed: onOpen,
+              child: const Text('Settings'),
+            )
+          else
+            CoilButton.icon(
+              variant: CoilButtonVariant.ghost,
+              semanticLabel: 'Settings',
+              icon: const CatalogIcon(Glyph.settings),
+              onPressed: onOpen,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+List<CoilSettingsSection<String>> _sections(_Prefs prefs) => [
+  CoilSettingsSection(
+    value: 'account',
+    label: const Text('Account'),
+    icon: const CatalogIcon(Glyph.user),
+    description: const Text('How you appear to the rest of the workspace.'),
+    builder: (context) => _Account(prefs),
+  ),
+  CoilSettingsSection(
+    value: 'appearance',
+    label: const Text('Appearance'),
+    icon: const CatalogIcon(Glyph.palette),
+    description: const Text('Theme on this device.'),
+    builder: (context) => _Appearance(prefs),
+  ),
+  CoilSettingsSection(
+    value: 'notifications',
+    label: const Text('Notifications'),
+    icon: const CatalogIcon(Glyph.bell),
+    description: const Text('What reaches your inbox, and when.'),
+    builder: (context) => _Switches(prefs, const [
+      ('digest', 'Daily digest', 'One email each morning with what changed.'),
+      ('mentions', 'Mentions', 'When someone mentions you.'),
+      ('updates', 'Product updates', 'New features, once a month at most.'),
+    ]),
+  ),
+  CoilSettingsSection(
+    value: 'security',
+    label: const Text('Security'),
+    icon: const CatalogIcon(Glyph.shield),
+    description: const Text('Sign-in protection and active sessions.'),
+    builder: (context) => _Security(prefs),
+  ),
+  CoilSettingsSection(
+    value: 'members',
+    label: const Text('Members'),
+    icon: const CatalogIcon(Glyph.users),
+    description: const Text('Who can open this workspace.'),
+    builder: (context) => _Members(prefs),
+  ),
+];
+
+class _Account extends StatefulWidget {
+  const _Account(this.prefs);
+
+  final _Prefs prefs;
+
+  @override
+  State<_Account> createState() => _AccountState();
+}
+
+class _AccountState extends State<_Account> {
+  late final _name = TextEditingController(text: widget.prefs.name);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.prefs,
+    builder: (context, _) => CoilSettingsList(
+      children: [
+        CoilSettingRow(
+          label: const Text('Display name'),
+          description: const Text('Shown on your messages and comments.'),
+          trailing: SizedBox(
+            width: 180,
+            child: CoilInput(
+              controller: _name,
+              semanticLabel: 'Display name',
+              onChanged: (value) =>
+                  widget.prefs.update(() => widget.prefs.name = value),
             ),
           ),
         ),
-      ),
-    ],
-  );
-}
-
-Future<void> showDemoSettings(BuildContext context) =>
-    showCoilSettingsDialog<String>(
-      context: context,
-      title: const Text('Settings'),
-      sections: [
-        CoilSettingsSection(
-          value: 'general',
-          label: const Text('General'),
-          icon: const CatalogIcon(Glyph.settings),
-          description: const Text('Workspace name, language and region.'),
-          builder: (context) => const _General(),
-        ),
-        CoilSettingsSection(
-          value: 'notifications',
-          label: const Text('Notifications'),
-          icon: const CatalogIcon(Glyph.bell),
-          description: const Text('What reaches your inbox, and when.'),
-          builder: (context) => const _Notifications(),
-        ),
-        CoilSettingsSection(
-          value: 'appearance',
-          label: const Text('Appearance'),
-          icon: const CatalogIcon(Glyph.palette),
-          description: const Text('Theme and density on this device.'),
-          builder: (context) => const _Appearance(),
-        ),
-        CoilSettingsSection(
-          value: 'security',
-          label: const Text('Security'),
-          icon: const CatalogIcon(Glyph.shield),
-          description: const Text('Sign-in protection and active sessions.'),
-          builder: (context) => const _Security(),
-        ),
-        CoilSettingsSection(
-          value: 'members',
-          label: const Text('Members'),
-          icon: const CatalogIcon(Glyph.users),
-          description: const Text('Who can open this workspace.'),
-          builder: (context) => const _Members(),
+        CoilSettingRow(
+          label: const Text('Language'),
+          description: const Text('Used for the interface and emails.'),
+          trailing: SizedBox(
+            width: 180,
+            child: CoilSelect<String>(
+              value: widget.prefs.language,
+              onChanged: (value) =>
+                  widget.prefs.update(() => widget.prefs.language = value),
+              options: const [
+                CoilOption(
+                  value: 'en',
+                  label: Text('English'),
+                  searchText: 'English',
+                ),
+                CoilOption(
+                  value: 'fr',
+                  label: Text('Français'),
+                  searchText: 'Français',
+                ),
+                CoilOption(
+                  value: 'de',
+                  label: Text('Deutsch'),
+                  searchText: 'Deutsch',
+                ),
+                CoilOption(
+                  value: 'ja',
+                  label: Text('日本語'),
+                  searchText: '日本語',
+                ),
+              ],
+            ),
+          ),
         ),
       ],
-    );
-
-class _General extends StatefulWidget {
-  const _General();
-
-  @override
-  State<_General> createState() => _GeneralState();
-}
-
-class _GeneralState extends State<_General> {
-  var _language = 'en';
-
-  @override
-  Widget build(BuildContext context) => CoilSettingsList(
-    children: [
-      CoilSettingRow(
-        label: const Text('Language'),
-        description: const Text('Used for the interface and emails.'),
-        trailing: SizedBox(
-          width: 180,
-          child: CoilSelect<String>(
-            value: _language,
-            onChanged: (value) => setState(() => _language = value),
-            options: const [
-              CoilOption(
-                value: 'en',
-                label: Text('English'),
-                searchText: 'English',
-              ),
-              CoilOption(
-                value: 'fr',
-                label: Text('Français'),
-                searchText: 'Français',
-              ),
-              CoilOption(
-                value: 'de',
-                label: Text('Deutsch'),
-                searchText: 'Deutsch',
-              ),
-              CoilOption(value: 'ja', label: Text('日本語'), searchText: '日本語'),
-            ],
-          ),
-        ),
-      ),
-    ],
+    ),
   );
 }
 
-class _Switches extends StatefulWidget {
-  const _Switches(this.rows);
+class _Switches extends StatelessWidget {
+  const _Switches(this.prefs, this.rows);
 
-  final List<(String, String, bool)> rows;
+  final _Prefs prefs;
+  final List<(String, String, String)> rows;
 
   @override
-  State<_Switches> createState() => _SwitchesState();
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: prefs,
+    builder: (context, _) => CoilSettingsList(
+      children: [
+        for (final (key, label, line) in rows)
+          CoilSettingRow(
+            label: Text(label),
+            description: Text(line),
+            trailing: CoilSwitch(
+              value: prefs.switches[key]!,
+              onChanged: (value) =>
+                  prefs.update(() => prefs.switches[key] = value),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
-class _SwitchesState extends State<_Switches> {
-  late final _on = [for (final (_, _, on) in widget.rows) on];
+class _Appearance extends StatelessWidget {
+  const _Appearance(this.prefs);
+
+  final _Prefs prefs;
 
   @override
-  Widget build(BuildContext context) => CoilSettingsList(
-    children: [
-      for (final (i, (label, line, _)) in widget.rows.indexed)
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: prefs,
+    builder: (context, _) => CoilSettingsList(
+      children: [
         CoilSettingRow(
-          label: Text(label),
-          description: Text(line),
-          trailing: CoilSwitch(
-            value: _on[i],
-            onChanged: (value) => setState(() => _on[i] = value),
+          label: const Text('Theme'),
+          description: const Text('Follows the system unless you pick one.'),
+          trailing: SizedBox(
+            width: 180,
+            child: CoilSelect<String>(
+              value: prefs.theme,
+              onChanged: (value) => prefs.update(() => prefs.theme = value),
+              options: const [
+                CoilOption(
+                  value: 'system',
+                  label: Text('System'),
+                  searchText: 'System',
+                  icon: CatalogIcon(Glyph.monitor),
+                ),
+                CoilOption(
+                  value: 'light',
+                  label: Text('Light'),
+                  searchText: 'Light',
+                  icon: CatalogIcon(Glyph.sun),
+                ),
+                CoilOption(
+                  value: 'dark',
+                  label: Text('Dark'),
+                  searchText: 'Dark',
+                  icon: CatalogIcon(Glyph.moon),
+                ),
+              ],
+            ),
           ),
         ),
-    ],
-  );
-}
-
-class _Notifications extends StatelessWidget {
-  const _Notifications();
-
-  @override
-  Widget build(BuildContext context) => const _Switches([
-    ('Daily digest', 'One email each morning with what changed.', true),
-    ('Mentions', 'When someone mentions you.', true),
-    ('Product updates', 'New features, once a month at most.', false),
-  ]);
-}
-
-class _Appearance extends StatefulWidget {
-  const _Appearance();
-
-  @override
-  State<_Appearance> createState() => _AppearanceState();
-}
-
-class _AppearanceState extends State<_Appearance> {
-  var _theme = 'system';
-
-  @override
-  Widget build(BuildContext context) => CoilSettingsList(
-    children: [
-      CoilSettingRow(
-        label: const Text('Theme'),
-        description: const Text('Follows the system unless you pick one.'),
-        trailing: SizedBox(
-          width: 180,
-          child: CoilSelect<String>(
-            value: _theme,
-            onChanged: (value) => setState(() => _theme = value),
-            options: const [
-              CoilOption(
-                value: 'system',
-                label: Text('System'),
-                searchText: 'System',
-                icon: CatalogIcon(Glyph.monitor),
-              ),
-              CoilOption(
-                value: 'light',
-                label: Text('Light'),
-                searchText: 'Light',
-                icon: CatalogIcon(Glyph.sun),
-              ),
-              CoilOption(
-                value: 'dark',
-                label: Text('Dark'),
-                searchText: 'Dark',
-                icon: CatalogIcon(Glyph.moon),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ],
+      ],
+    ),
   );
 }
 
 class _Security extends StatelessWidget {
-  const _Security();
+  const _Security(this.prefs);
+
+  final _Prefs prefs;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const _Switches([
+      _Switches(prefs, const [
         (
+          'twoFactor',
           'Two-factor authentication',
           'A code from your authenticator app at sign-in.',
-          true,
         ),
-        ('New sign-in alerts', 'Email when a new device signs in.', true),
+        ('alerts', 'New sign-in alerts', 'Email when a new device signs in.'),
       ]),
       CoilSettingRow(
         label: const Text('Active sessions'),
@@ -246,26 +446,50 @@ class _Security extends StatelessWidget {
 }
 
 class _Members extends StatelessWidget {
-  const _Members();
+  const _Members(this.prefs);
+
+  final _Prefs prefs;
 
   @override
-  Widget build(BuildContext context) => CoilSettingsList(
-    children: [
-      for (final (name, email) in const [
-        ('Jane Doe', 'jane@acme.com'),
-        ('Sam Park', 'sam@acme.com'),
-        ('Ravi Patel', 'ravi@acme.com'),
-      ])
-        CoilSettingRow(
-          label: Text(name),
-          description: Text(email),
-          trailing: CoilButton(
-            variant: CoilButtonVariant.ghost,
-            size: CoilSize.compact,
-            onPressed: () {},
-            child: const Text('Member'),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: prefs,
+    builder: (context, _) => CoilSettingsList(
+      children: [
+        for (final (name, email) in const [
+          ('Jane Doe', 'jane@acme.com'),
+          ('Sam Park', 'sam@acme.com'),
+          ('Ravi Patel', 'ravi@acme.com'),
+        ])
+          CoilSettingRow(
+            label: Text(name),
+            description: Text(email),
+            trailing: SizedBox(
+              width: 120,
+              child: CoilSelect<String>(
+                value: prefs.roles[name],
+                onChanged: (value) =>
+                    prefs.update(() => prefs.roles[name] = value),
+                options: const [
+                  CoilOption(
+                    value: 'Admin',
+                    label: Text('Admin'),
+                    searchText: 'Admin',
+                  ),
+                  CoilOption(
+                    value: 'Member',
+                    label: Text('Member'),
+                    searchText: 'Member',
+                  ),
+                  CoilOption(
+                    value: 'Viewer',
+                    label: Text('Viewer'),
+                    searchText: 'Viewer',
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-    ],
+      ],
+    ),
   );
 }

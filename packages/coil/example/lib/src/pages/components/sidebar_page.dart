@@ -1,9 +1,9 @@
 import 'package:coil/coil.dart';
-import 'package:coil_example/src/pages/components/settings_dialog_page.dart';
 import 'package:coil_example/src/pages/components/sidebar_demo.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const sidebarEntry = CatalogEntry(
@@ -16,55 +16,95 @@ const sidebarEntry = CatalogEntry(
   page: SidebarPage.new,
 );
 
-class SidebarPage extends StatelessWidget {
+class SidebarPage extends StatefulWidget {
   const SidebarPage({super.key});
 
   @override
-  Widget build(BuildContext context) => const CatalogPage(
+  State<SidebarPage> createState() => _SidebarPageState();
+}
+
+String _variantName(CoilSidebarVariant variant) => switch (variant) {
+  CoilSidebarVariant.sidebar => 'Sidebar',
+  CoilSidebarVariant.floating => 'Floating',
+  CoilSidebarVariant.inset => 'Inset',
+};
+
+String _peekName(CoilSidebarPeek peek) => switch (peek) {
+  CoilSidebarPeek.none => 'None',
+  CoilSidebarPeek.hover => 'Hover',
+  CoilSidebarPeek.click => 'Click',
+};
+
+class _SidebarPageState extends State<SidebarPage> {
+  var _bar = _Bar.horizontal;
+  var _callouts = _Callout.inline;
+
+  @override
+  Widget build(BuildContext context) => CatalogPage(
     title: 'Sidebar',
     summary:
-        'Drag its edge to resize, click the edge or press [ to fold it, and '
-        'on a phone the page slides aside to reveal it.',
+        'Drag its edge to resize, press [ to fold it and rest the pointer on '
+        'the edge to peek. On a phone the page slides aside to reveal it '
+        'from behind.',
+    hero: const _Shell(),
+    usage: '''
+CoilSidebarScaffold(
+  variant: CoilSidebarVariant.inset,
+  peek: CoilSidebarPeek.hover,
+  sidebar: CoilSidebar(
+    header: const WorkspaceSwitcher(),
+    footer: const UserMenu(),
     children: [
-      _Section(
-        title: 'Sidebar',
-        description: 'The default: a flush column with a hairline.',
-        child: _Frame(child: _Shell(variant: CoilSidebarVariant.sidebar)),
-      ),
-      _Section(
-        title: 'Floating',
-        description: 'A raised card, one surface above the page.',
-        child: _Frame(child: _Shell(variant: CoilSidebarVariant.floating)),
-      ),
-      _Section(
-        title: 'Inset',
-        description: 'The page becomes the card, so the content stands out.',
-        child: _Frame(child: _Shell(variant: CoilSidebarVariant.inset)),
-      ),
-      _Section(
-        title: 'On the right',
-        description: 'The rail, the drawer and the shortcut ] follow it.',
-        child: _Frame(
-          child: _Shell(
-            variant: CoilSidebarVariant.inset,
-            side: CoilSidebarSide.end,
-          ),
+      CoilSidebarGroup(
+        label: const Text('Workspace'),
+        child: CoilSidebarMenu(
+          items: [
+            CoilSidebarItem(
+              label: const Text('Chat'),
+              leading: const Icon(LucideIcons.messageSquare),
+              selected: section == 'Chat',
+              onPressed: () => setState(() => section = 'Chat'),
+            ),
+          ],
         ),
       ),
-      _Section(
-        title: 'On a phone, both sides',
-        description:
-            'Two nested scaffolds, one sidebar per side. On touch the page '
-            'slides aside to reveal one, rounding like the screen. Drag the '
-            'page sideways anywhere: the cards scroll first and hand over at '
-            'their ends.',
-        child: _PhoneFrame(),
+    ],
+  ),
+  body: Page(section: section),
+)''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        '[ folds the sidebar, ] when it sits on the right; ⌘B or Ctrl+B '
+            'too, never while typing in a field. Arrows roam the rows, Right '
+            'and Left open and close sub-trees.',
       ),
-      _Section(
-        title: 'Nesting',
+      CatalogNote(
+        'Pointer',
+        'Drag the rail to resize between 160 and 360; 56 past the minimum '
+            'folds it. There is no icon-only rail on purpose: peek brings the '
+            'real sidebar back instead.',
+      ),
+      CatalogNote(
+        'Touch',
+        'Below 768 the sidebar is a drawer. On touch the page slides aside '
+            'to reveal it from behind; drag the page sideways anywhere. A row '
+            'shows only its last action, and a long press opens them all.',
+      ),
+      CatalogNote(
+        'Accessibility',
+        'A labeled sidebar is a navigation landmark and the active row is '
+            'selected. While the drawer is open the page is hidden from '
+            'screen readers except for its dismiss action.',
+      ),
+    ],
+    children: [
+      const DemoSection(
+        title: 'Navigation depth',
         description:
-            'Two levels: a section opens its pages, and the current page is '
-            'lit beside its section.',
+            'A section opens its pages, and the current page is lit beside '
+            'its section.',
+        padding: 0,
         child: _Frame(
           child: _RailOnly(
             sidebar: CoilSidebar(
@@ -74,11 +114,13 @@ class SidebarPage extends StatelessWidget {
           ),
         ),
       ),
-      _Section(
+      const DemoSection(
         title: 'Actions and badges',
         description:
-            'Up to three actions per row show on hover (always on touch); '
-            'the badge keeps the last slot. The section label has its own.',
+            'Up to three actions per row show on hover, only the last on '
+            'touch; the badge keeps the last slot. The section label has its '
+            'own.',
+        padding: 0,
         child: _Frame(
           child: _RailOnly(
             sidebar: CoilSidebar(
@@ -88,78 +130,79 @@ class SidebarPage extends StatelessWidget {
           ),
         ),
       ),
-      _Section(
-        title: 'Header and footer, vertical',
-        description: 'Every part on its own row; actions are menu rows.',
-        child: _Frame(child: _HeaderFooter(vertical: true)),
-      ),
-      _Section(
-        title: 'Header and footer, horizontal',
-        description: 'The same parts packed into 24 icon buttons.',
-        child: _Frame(child: _HeaderFooter(vertical: false)),
-      ),
-      _Section(
-        title: 'Stacked inline callouts',
-        description: 'Hover fans the pile out; dismissing one brings the next.',
-        child: _Frame(child: _Callouts(banner: false)),
-      ),
-      _Section(
-        title: 'Stacked banners',
-        child: _Frame(child: _Callouts(banner: true)),
-      ),
-      _Section(
-        title: 'Peek on hover',
+      DemoSection(
+        title: 'Header and footer',
         description:
-            'Fold it, then rest the pointer on the left edge or the trigger.',
-        child: _Frame(child: _Peek(peek: CoilSidebarPeek.hover, open: true)),
-      ),
-      _Section(
-        title: 'Peek on click',
-        description:
-            'Press the left edge; Escape or a press elsewhere hides it.',
-        child: _Frame(child: _Peek(peek: CoilSidebarPeek.click, open: false)),
+            'Stacked, every part gets its own row and actions are menu rows. '
+            'Horizontal packs them into 24 icon buttons.',
+        controls: DemoControls(
+          children: [
+            DemoControl.choice(
+              label: 'Parts',
+              value: _bar,
+              values: _Bar.values,
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _bar = v),
+            ),
+          ],
+        ),
+        padding: 0,
+        child: _Frame(
+          child: _HeaderFooter(vertical: _bar == _Bar.vertical),
+        ),
       ),
       DemoSection(
-        title: 'Inside a dialog',
+        title: 'Callouts',
         description:
-            'A sidebar that never folds, as the settings dialog uses it.',
-        child: _OpenSettings(),
+            'Hover fans an inline pile out into a list; dismissing one '
+            'brings the next. Banners never fan.',
+        controls: DemoControls(
+          children: [
+            DemoControl.choice(
+              label: 'Style',
+              value: _callouts,
+              values: _Callout.values,
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _callouts = v),
+            ),
+          ],
+        ),
+        padding: 0,
+        child: _Frame(
+          child: _Callouts(
+            key: ValueKey(_callouts),
+            banner: _callouts == _Callout.banner,
+          ),
+        ),
+      ),
+      const DemoSection(
+        title: 'Both sides on a phone',
+        description:
+            'Two nested scaffolds, one sidebar per side. Drag the page '
+            'sideways anywhere: the cards scroll first and hand over at '
+            'their ends.',
+        child: _PhoneFrame(),
       ),
     ],
   );
 }
 
-/// A titled example on a full-bleed stage, so the shell meets its edges.
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child, this.description});
+enum _Bar {
+  horizontal('Horizontal'),
+  vertical('Stacked');
 
-  final String title;
-  final String? description;
-  final Widget child;
+  const _Bar(this.label);
 
-  @override
-  Widget build(BuildContext context) {
-    final description = this.description;
-    final text = CoilTheme.textOf(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          header: true,
-          child: Text(
-            title,
-            style: text.subtitle.copyWith(fontWeight: text.emphasis),
-          ),
-        ),
-        if (description != null) ...[
-          const SizedBox(height: 4),
-          Text(description, style: text.muted.caption),
-        ],
-        const SizedBox(height: 12),
-        DemoStage(padding: 0, child: child),
-      ],
-    );
-  }
+  final String label;
+}
+
+enum _Callout {
+  inline('Inline'),
+  banner('Banner');
+
+  const _Callout(this.label);
+
+  final String label;
 }
 
 /// A bounded frame for one shell.
@@ -174,7 +217,7 @@ class _Frame extends StatelessWidget {
     return ClipRSuperellipse(
       borderRadius: BorderRadius.circular(CoilTheme.radiiOf(context).container),
       child: SizedBox(
-        height: 520,
+        height: 480,
         child: ColoredBox(color: colors.background, child: child),
       ),
     );
@@ -210,27 +253,95 @@ class _PhoneFrame extends StatelessWidget {
   }
 }
 
-/// The app shell: header, navigation and user beside a page.
-class _Shell extends StatelessWidget {
-  const _Shell({required this.variant, this.side = CoilSidebarSide.start});
-
-  final CoilSidebarVariant variant;
-  final CoilSidebarSide side;
+/// The hero: an app shell with the sidebar's options in a playground above
+/// it, and a page that shows the section picked in the navigation.
+class _Shell extends StatefulWidget {
+  const _Shell();
 
   @override
-  Widget build(BuildContext context) => CoilSidebarScaffold(
-    autofocus: false,
-    variant: variant,
-    side: side,
-    // The examples share the page with the catalog, so drawers start
-    // where the frame gets too narrow for a column and a page.
-    drawerBreakpoint: 560,
-    sidebar: const CoilSidebar(
-      header: DemoHeader(),
-      footer: UserMenu(),
-      children: [WorkspaceGroup()],
-    ),
-    body: DemoPage(side: side),
+  State<_Shell> createState() => _ShellState();
+}
+
+class _ShellState extends State<_Shell> {
+  final _controller = CoilSidebarController();
+  var _variant = CoilSidebarVariant.inset;
+  var _side = CoilSidebarSide.start;
+  var _peek = CoilSidebarPeek.hover;
+  var _folds = true;
+  var _section = 'Chat';
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      DemoControls(
+        children: [
+          DemoControl.choice(
+            label: 'Variant',
+            value: _variant,
+            values: CoilSidebarVariant.values,
+            labelOf: _variantName,
+            onChanged: (v) => setState(() => _variant = v),
+          ),
+          DemoControl.choice(
+            label: 'Side',
+            value: _side,
+            values: CoilSidebarSide.values,
+            labelOf: (v) => v == CoilSidebarSide.start ? 'Start' : 'End',
+            onChanged: (v) => setState(() => _side = v),
+          ),
+          DemoControl.choice(
+            label: 'Peek',
+            value: _peek,
+            values: CoilSidebarPeek.values,
+            labelOf: _peekName,
+            onChanged: (v) => setState(() => _peek = v),
+          ),
+          DemoControl.toggle(
+            label: 'Folds',
+            value: _folds,
+            onChanged: (v) => setState(() => _folds = v),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      _Frame(
+        child: CoilSidebarScaffold(
+          autofocus: false,
+          controller: _controller,
+          variant: _variant,
+          side: _side,
+          peek: _peek,
+          collapsible: _folds
+              ? CoilSidebarCollapsible.offcanvas
+              : CoilSidebarCollapsible.none,
+          // The frame shares the page with the catalog, so the drawer
+          // starts where it gets too narrow for a column and a page.
+          drawerBreakpoint: 560,
+          sidebar: CoilSidebar(
+            header: const DemoHeader(),
+            footer: const UserMenu(),
+            children: [
+              WorkspaceGroup(
+                onChanged: (section) => setState(() => _section = section),
+              ),
+              const ThreadsGroup(count: 3),
+            ],
+          ),
+          body: WorkspacePage(
+            section: _section,
+            side: _side,
+            showTrigger: _folds,
+          ),
+        ),
+      ),
+    ],
   );
 }
 
@@ -340,7 +451,7 @@ class _HeaderFooter extends StatelessWidget {
 }
 
 class _Callouts extends StatefulWidget {
-  const _Callouts({required this.banner});
+  const _Callouts({required this.banner, super.key});
 
   final bool banner;
 
@@ -385,53 +496,4 @@ class _CalloutsState extends State<_Callouts> {
       ),
     );
   }
-}
-
-class _Peek extends StatefulWidget {
-  const _Peek({required this.peek, required this.open});
-
-  final CoilSidebarPeek peek;
-  final bool open;
-
-  @override
-  State<_Peek> createState() => _PeekState();
-}
-
-class _PeekState extends State<_Peek> {
-  late final _controller = CoilSidebarController(open: widget.open);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => CoilSidebarScaffold(
-    autofocus: false,
-    controller: _controller,
-    variant: CoilSidebarVariant.inset,
-    peek: widget.peek,
-    drawerBreakpoint: 560,
-    sidebar: const CoilSidebar(
-      header: DemoHeader(),
-      children: [ThreadsGroup()],
-    ),
-    body: const DemoPage(title: 'Threads'),
-  );
-}
-
-class _OpenSettings extends StatelessWidget {
-  const _OpenSettings();
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: AlignmentDirectional.centerStart,
-    child: CoilButton(
-      variant: CoilButtonVariant.secondary,
-      leading: const CatalogIcon(Glyph.settings),
-      onPressed: () => showDemoSettings(context),
-      child: const Text('Open settings'),
-    ),
-  );
 }
