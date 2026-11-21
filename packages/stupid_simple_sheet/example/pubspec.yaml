@@ -18,6 +18,7 @@ dependencies:
   # Only for the fonts coil's typography presets are tuned for.
   coil_example:
     path: ../../coil/example
+  cupertino_icons: ^1.0.8
   example_design:
     path: ../../example_design
   flutter:
