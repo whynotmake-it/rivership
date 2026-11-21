@@ -34,6 +34,14 @@ class _PageState extends State<_Page> {
   );
 }
 
+const _frame = Duration(milliseconds: 16);
+const _frames = 25;
+
+/// The most ticks a [fps] rate can fit into the frames [_changes] pumps:
+/// one per interval, plus one for where the first lands.
+int _ticksAt(double fps) =>
+    (_frame.inMicroseconds * _frames / (1e6 / fps)).ceil() + 1;
+
 /// How many 16 ms frames the switch thumb and the banner changed in, after
 /// toggling the switch and dismissing the banner.
 Future<({int switchThumb, int banner})> _changes(
@@ -64,8 +72,8 @@ Future<({int switchThumb, int banner})> _changes(
   var bannerChanges = 0;
   var lastThumb = thumb();
   var lastBanner = bannerHeight();
-  for (var i = 0; i < 25; i++) {
-    await tester.pump(const Duration(milliseconds: 16));
+  for (var i = 0; i < _frames; i++) {
+    await tester.pump(_frame);
     if (!listEquals(thumb(), lastThumb)) thumbChanges++;
     if (bannerHeight() != lastBanner) bannerChanges++;
     lastThumb = thumb();
@@ -76,21 +84,19 @@ Future<({int switchThumb, int banner})> _changes(
 
 void main() {
   group('coil motion', () {
-    testWidgets('advances every frame without a TickerRateScope', (
-      tester,
-    ) async {
+    testWidgets('advances more often than a slow rate allows without a '
+        'TickerRateScope', (tester) async {
       final changes = await _changes(tester);
-      expect(changes.switchThumb, greaterThan(10));
-      expect(changes.banner, greaterThan(10));
+      expect(changes.switchThumb, greaterThan(_ticksAt(10)));
+      expect(changes.banner, greaterThan(_ticksAt(10)));
     });
 
     testWidgets('only advances on the ticks of a TickerRateScope', (
       tester,
     ) async {
-      // 25 frames of 16 ms is 400 ms: at 10 fps that is about 4 ticks.
       final changes = await _changes(tester, rate: TickerRate.fps(10));
-      expect(changes.switchThumb, inInclusiveRange(1, 6));
-      expect(changes.banner, inInclusiveRange(1, 6));
+      expect(changes.switchThumb, inInclusiveRange(1, _ticksAt(10)));
+      expect(changes.banner, inInclusiveRange(1, _ticksAt(10)));
     });
   });
 }
