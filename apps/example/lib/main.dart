@@ -9,7 +9,7 @@ import 'package:motor_example/main.dart';
 import 'package:rivership/rivership.dart';
 import 'package:stupid_simple_sheet_example/main.dart';
 
-import 'src/example_frame.dart';
+import 'src/cupertino_environment.dart';
 import 'src/landing_page.dart';
 
 /// How the landing page and the examples swap: a quick fade, with no slide.
@@ -50,40 +50,16 @@ Widget _fadeTransition(
 NamedRouteDef _exampleRoute({
   required String name,
   required String path,
-  required String package,
   required List<AutoRoute> children,
-  bool cupertino = true,
 }) =>
     NamedRouteDef(
       name: name,
       path: path,
       type: exampleRouteType,
-      builder: (context, data) => ExampleFrame(
-        package: package,
-        cupertino: cupertino,
-        child: const AutoRouter(),
-      ),
+      builder: (context, data) =>
+          const CupertinoEnvironment(child: AutoRouter()),
       children: children,
     );
-
-/// The coil catalog's own route, framed.
-///
-/// The catalog's route is rebuilt rather than nested under a frame route with
-/// an empty path, which doesn't resolve the catalog's pages from deep links.
-NamedRouteDef _coilRoute() {
-  final catalog = coilCatalogRoute(path: '/coil');
-  return NamedRouteDef(
-    name: catalog.name,
-    path: catalog.path,
-    type: exampleRouteType,
-    builder: (context, data) => ExampleFrame(
-      package: 'coil',
-      cupertino: false,
-      child: catalog.page.builder(data),
-    ),
-    children: catalog.children,
-  );
-}
 
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized();
@@ -99,20 +75,17 @@ void main() async {
       _exampleRoute(
         name: 'Heroine',
         path: '/heroine',
-        package: 'heroine',
         children: heroineRoutes,
       ),
       _exampleRoute(
         name: 'Motor',
         path: '/motor',
-        package: 'motor',
         children: motorRoutes,
       ),
-      _coilRoute(),
+      coilCatalogRoute(path: '/coil'),
       _exampleRoute(
         name: 'Stupid Simple Sheet',
         path: '/stupid_simple_sheet',
-        package: 'stupid_simple_sheet',
         children: stupidSimpleSheetRoutes,
       ),
     ],
