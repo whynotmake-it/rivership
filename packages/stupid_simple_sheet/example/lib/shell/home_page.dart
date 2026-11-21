@@ -2,11 +2,16 @@ import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:stupid_simple_sheet_example/shell/demo_scaffold.dart';
+import 'package:stupid_simple_sheet_example/shell/home_logo.dart';
 
 /// The example's front page: what the package does, and the demos.
 class SheetHomePage extends StatelessWidget {
   /// Creates the home page.
-  const SheetHomePage({super.key});
+  const SheetHomePage({super.key, this.onHome});
+
+  /// Called when the logo is pressed, to go back to a combined gallery's
+  /// landing page. Null leaves the logo as a plain image.
+  final VoidCallback? onHome;
 
   static const _demos = [
     _DemoEntry(
@@ -52,6 +57,8 @@ class SheetHomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            HomeLogo(onPressed: onHome),
+            const SizedBox(height: HomeLogo.gap),
             Semantics(
               header: true,
               child: Text('Stupid Simple Sheet', style: text.display),

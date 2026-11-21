@@ -20,8 +20,19 @@ void main() {
 
 /// The example's pages, to mount under any [RootStackRouter]. Route names
 /// are prefixed with `sheet:` so they stay unique next to other examples.
-final stupidSimpleSheetRoutes = <AutoRoute>[
-  _page('sheet:home', '', (_) => const SheetHomePage()),
+///
+/// The logo on the home page is inert here. To make it a link back to a
+/// landing page, mount [buildStupidSimpleSheetRoutes] instead.
+final stupidSimpleSheetRoutes = buildStupidSimpleSheetRoutes();
+
+/// Builds the example's pages, to mount under any [RootStackRouter].
+///
+/// [onHome] turns the home page's logo into a link back to the app that
+/// hosts the example, such as a combined gallery's landing page. Mount it
+/// with `children: buildStupidSimpleSheetRoutes(onHome: () => ...)`. Without
+/// it the logo is decorative.
+List<AutoRoute> buildStupidSimpleSheetRoutes({VoidCallback? onHome}) => [
+  _page('sheet:home', '', (_) => SheetHomePage(onHome: onHome)),
   _page('sheet:detents', 'detents', (_) => const DetentsDemo()),
   _page('sheet:handoff', 'scroll-handoff', (_) => const ScrollHandoffDemo()),
   _page(
