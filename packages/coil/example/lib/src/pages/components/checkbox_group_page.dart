@@ -1,6 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const checkboxGroupEntry = CatalogEntry(
@@ -19,104 +20,186 @@ class CheckboxGroupPage extends StatefulWidget {
 }
 
 class _CheckboxGroupPageState extends State<CheckboxGroupPage> {
-  var _toppings = {'basil', 'mozzarella'};
-  var _days = {'mon', 'tue', 'thu'};
-  var _compact = {'errors'};
+  var _days = {'mon', 'tue'};
+  var _compact = false;
+  var _long = false;
+  var _unavailable = false;
+
+  static const _schedule = [
+    ('mon', 'Monday', 'Monday: standup and planning'),
+    (
+      'tue',
+      'Tuesday',
+      'Tuesday: design review with the whole product team, including the '
+          'people joining remotely',
+    ),
+    ('wed', 'Wednesday', 'Wednesday: focus day'),
+    ('thu', 'Thursday', 'Thursday: demos'),
+  ];
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'CheckboxGroup',
     summary:
         'Check the row between two runs to watch them merge; uncheck the '
-        'middle of a run to watch it split. Each row is a tab stop; Up and '
-        'Down move with a keyboard.',
+        'middle of a run to watch it split. Each row is a tab stop.',
+    hero: const _NotificationChannels(),
+    usage: '''
+CoilCheckboxGroup<String>(
+  values: channels,
+  onChanged: (values) => setState(() => channels = values),
+  options: const [
+    CoilOption(value: 'email', label: Text('Email')),
+    CoilOption(value: 'push', label: Text('Push')),
+    CoilOption(value: 'slack', label: Text('Slack')),
+  ],
+)''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        'Every row is a tab stop. Up and Down move with wrapping, Home and '
+            'End jump, Space or Enter toggles.',
+      ),
+      CatalogNote(
+        'Touch',
+        'A press fills the row; selection is the merged blocks. Rows are '
+            'full width, so the whole row is the hit target.',
+      ),
+      CatalogNote(
+        'Screen readers',
+        'A labeled group of checkable rows. Give the group a semanticLabel '
+            'or wrap it in a FieldSet with a legend.',
+      ),
+      CatalogNote(
+        'Do / Don’t',
+        'Do use it for 2 to 10 related options. Don’t use it for '
+            'mutually exclusive ones; that is a RadioGroup.',
+      ),
+    ],
     children: [
       DemoSection(
-        title: 'Toppings',
+        title: 'Playground',
+        description:
+            'Labels wrap and grow their row; a disabled row stays out of '
+            'the tab order.',
+        controls: DemoControls(
+          children: [
+            DemoControl.toggle(
+              label: 'Compact',
+              value: _compact,
+              onChanged: (v) => setState(() => _compact = v),
+            ),
+            DemoControl.toggle(
+              label: 'Long labels',
+              value: _long,
+              onChanged: (v) => setState(() => _long = v),
+            ),
+            DemoControl.toggle(
+              label: 'Wednesday off',
+              value: _unavailable,
+              onChanged: (v) => setState(() => _unavailable = v),
+            ),
+          ],
+        ),
         child: CoilFieldSet(
-          legend: const Text('Toppings'),
-          description: const Text('Pick as many as you like.'),
+          legend: const Text('Meeting days'),
           children: [
             CoilCheckboxGroup<String>(
-              values: _toppings,
-              onChanged: (values) => setState(() => _toppings = values),
-              options: const [
-                CoilOption(
-                  value: 'basil',
-                  label: Text('Basil'),
-                ),
-                CoilOption(
-                  value: 'mozzarella',
-                  label: Text('Mozzarella'),
-                ),
-                CoilOption(
-                  value: 'olives',
-                  label: Text('Olives'),
-                ),
-                CoilOption(
-                  value: 'mushrooms',
-                  label: Text('Mushrooms'),
-                ),
-                CoilOption(
-                  value: 'anchovies',
-                  label: Text('Anchovies (sold out)'),
-                  enabled: false,
-                ),
+              size: _compact ? CoilSize.compact : null,
+              values: _days,
+              onChanged: (values) => setState(() => _days = values),
+              options: [
+                for (final (value, short, long) in _schedule)
+                  CoilOption(
+                    value: value,
+                    label: Text(_long ? long : short),
+                    searchText: _long ? long : short,
+                    enabled: !(_unavailable && value == 'wed'),
+                  ),
               ],
             ),
           ],
         ),
       ),
-      DemoSection(
-        title: 'Long labels wrap',
-        child: CoilCheckboxGroup<String>(
-          values: _days,
-          onChanged: (values) => setState(() => _days = values),
-          options: const [
-            CoilOption(
-              value: 'mon',
-              label: Text('Monday: standup and planning'),
-            ),
-            CoilOption(
-              value: 'tue',
-              label: Text(
-                'Tuesday: design review with the whole product team, '
-                'including the people joining remotely',
-              ),
-              searchText:
-                  'Tuesday: design review with the whole product team, '
-                  'including the people joining remotely',
-            ),
-            CoilOption(
-              value: 'wed',
-              label: Text('Wednesday: focus day'),
-            ),
-            CoilOption(
-              value: 'thu',
-              label: Text('Thursday: demos'),
-            ),
-          ],
-        ),
-      ),
-      DemoSection(
-        title: 'Compact',
-        child: CoilCheckboxGroup<String>(
-          size: CoilSize.compact,
-          values: _compact,
-          onChanged: (values) => setState(() => _compact = values),
-          options: const [
-            CoilOption(
-              value: 'errors',
-              label: Text('Errors'),
-            ),
-            CoilOption(
-              value: 'warnings',
-              label: Text('Warnings'),
-            ),
-            CoilOption(value: 'info', label: Text('Info')),
-          ],
-        ),
-      ),
     ],
   );
+}
+
+/// Where a team hears about failed deploys: the merged block follows the
+/// checked rows, and a line below says what it adds up to.
+class _NotificationChannels extends StatefulWidget {
+  const _NotificationChannels();
+
+  @override
+  State<_NotificationChannels> createState() => _NotificationChannelsState();
+}
+
+class _NotificationChannelsState extends State<_NotificationChannels> {
+  var _channels = {'email', 'push'};
+
+  static const _names = {
+    'email': 'Email',
+    'push': 'Push notifications',
+    'sms': 'Text message',
+    'slack': 'Slack',
+  };
+
+  String get _summary {
+    final names = [
+      for (final entry in _names.entries)
+        if (_channels.contains(entry.key)) entry.value,
+    ];
+    return switch (names.length) {
+      0 => 'You won’t hear about failed deploys.',
+      1 => 'Failed deploys notify you by ${names.single}.',
+      _ =>
+        'Failed deploys notify you by '
+            '${names.sublist(0, names.length - 1).join(', ')} and '
+            '${names.last}.',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final all = _channels.length == _names.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CoilFieldSet(
+          legend: const Text('Deploy alerts'),
+          description: const Text('Choose where we reach you.'),
+          children: [
+            CoilCheckboxGroup<String>(
+              values: _channels,
+              onChanged: (values) => setState(() => _channels = values),
+              options: [
+                for (final entry in _names.entries)
+                  CoilOption(
+                    value: entry.key,
+                    label: Text(entry.value),
+                    searchText: entry.value,
+                  ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: Text(_summary, style: text.muted.caption)),
+            const SizedBox(width: 12),
+            CoilButton(
+              variant: CoilButtonVariant.ghost,
+              size: CoilSize.compact,
+              onPressed: () => setState(
+                () => _channels = all ? {} : _names.keys.toSet(),
+              ),
+              child: Text(all ? 'Clear all' : 'Select all'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
