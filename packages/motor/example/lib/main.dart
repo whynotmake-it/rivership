@@ -53,17 +53,22 @@ final _pageRouteType = RouteType.custom(
 /// The gallery's routes, for mounting it inside another app:
 ///
 /// ```dart
-/// NamedRouteDef.shell(name: 'Motor', path: '/motor', children: motorRoutes)
+/// NamedRouteDef.shell(
+///   name: 'Motor',
+///   path: '/motor',
+///   children: motorRoutesFor(onHome: () => router.navigate(home)),
+/// )
 /// ```
 ///
 /// One shell route holds the sidebar; the overview and every demo are its
-/// children.
-final motorRoutes = <AutoRoute>[
+/// children. With [onHome], the logo at the top of the sidebar leads back
+/// to the app around the gallery; without it the logo is inert.
+List<AutoRoute> motorRoutesFor({VoidCallback? onHome}) => [
   NamedRouteDef(
     name: 'Motor gallery',
     path: '',
     type: _pageRouteType,
-    builder: (context, state) => const MotorShell(),
+    builder: (context, state) => MotorShell(onHome: onHome),
     children: [
       NamedRouteDef(
         name: overviewRouteName,
@@ -81,6 +86,9 @@ final motorRoutes = <AutoRoute>[
     ],
   ),
 ];
+
+/// The gallery's routes with an inert logo. See [motorRoutesFor].
+final motorRoutes = motorRoutesFor();
 
 /// The router of the standalone gallery.
 final router = RootStackRouter.build(

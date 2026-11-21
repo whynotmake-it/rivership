@@ -24,13 +24,20 @@ const phoneBreakpoint = 600.0;
 /// that theme, so it matches the app around it. Otherwise it follows the
 /// platform's brightness with coil's Allo typography.
 class MotorShell extends StatelessWidget {
-  const MotorShell({super.key});
+  const MotorShell({super.key, this.onHome});
+
+  /// Leads back to the app around the gallery, from the logo. Null leaves
+  /// the logo inert.
+  final VoidCallback? onHome;
 
   @override
   Widget build(BuildContext context) => MotorEnvironment(
     child: AutoRouter(
-      builder: (context, navigator) =>
-          MotorNavigation(router: AutoRouter.of(context), child: navigator),
+      builder: (context, navigator) => MotorNavigation(
+        router: AutoRouter.of(context),
+        onHome: onHome,
+        child: navigator,
+      ),
     ),
   );
 }
@@ -120,7 +127,15 @@ Future<void> openChapter(StackRouter router, Chapter? chapter) async {
 /// window and a drawer on a narrow one. Lists the overview and every demo
 /// by group, highlights the one on screen, and has the DevTools switch.
 class MotorNavigation extends StatefulWidget {
-  const MotorNavigation({required this.router, required this.child, super.key});
+  const MotorNavigation({
+    required this.router,
+    required this.child,
+    this.onHome,
+    super.key,
+  });
+
+  /// Leads back to the app around the gallery, from the logo.
+  final VoidCallback? onHome;
 
   /// The router whose pages [child] shows.
   final StackRouter router;
@@ -161,7 +176,7 @@ class _MotorNavigationState extends State<MotorNavigation> {
       header: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _Brand(),
+          _Brand(onHome: widget.onHome),
           const SizedBox(height: 8),
           CoilSidebarMenu(
             items: [
@@ -201,32 +216,73 @@ class _MotorNavigationState extends State<MotorNavigation> {
   }
 }
 
-/// The logo, "Motor" and the version, at the top of the sidebar.
+/// The logo, "Motor" and the version, at the top of the sidebar. With
+/// [onHome] it is a link back to the app around the gallery, with coil's
+/// hover, press and focus states; without it, it is inert.
 class _Brand extends StatelessWidget {
-  const _Brand();
+  const _Brand({this.onHome});
+
+  final VoidCallback? onHome;
 
   @override
   Widget build(BuildContext context) {
     final text = CoilTheme.textOf(context);
     final metrics = CoilTheme.metricsOf(context);
-    return Semantics(
-      label: 'Motor 2.0',
-      excludeSemantics: true,
+    final colors = CoilTheme.of(context).colors;
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).item);
+    final row = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: metrics.controlHeight),
       child: Padding(
         // Rows inset their content by the item padding; the brand lines up
         // with their icons.
         padding: EdgeInsetsDirectional.symmetric(
           horizontal: metrics.itemPaddingX,
-          vertical: 4,
         ),
         child: Row(
           children: [
             MotorLogo(size: metrics.iconSize + 4),
             SizedBox(width: metrics.gap),
-            Text('Motor', style: text.title),
+            Flexible(
+              child: Text(
+                'Motor',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.title,
+              ),
+            ),
             const SizedBox(width: 8),
             const CoilBadge(child: Text('2.0')),
           ],
+        ),
+      ),
+    );
+    final onHome = this.onHome;
+    if (onHome == null) {
+      return Semantics(label: 'Motor 2.0', excludeSemantics: true, child: row);
+    }
+    return Semantics(
+      button: true,
+      label: 'Back to all packages',
+      onTap: onHome,
+      excludeSemantics: true,
+      child: CoilInteraction(
+        onPressed: onHome,
+        excludeFromSemantics: true,
+        child: row,
+        builder: (context, states, child) => CoilFocusRing(
+          visible: states.contains(WidgetState.focused),
+          borderRadius: radius,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: states.contains(WidgetState.pressed)
+                  ? colors.active
+                  : states.contains(WidgetState.hovered)
+                  ? colors.hover
+                  : null,
+              shape: RoundedSuperellipseBorder(borderRadius: radius),
+            ),
+            child: child,
+          ),
         ),
       ),
     );
