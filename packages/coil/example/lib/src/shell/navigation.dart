@@ -150,7 +150,6 @@ class _CatalogNavigationState extends State<CatalogNavigation> {
               label: const Text('coil'),
               semanticLabel: CatalogHomeLink.label,
               leading: CoilMark(size: CoilTheme.metricsOf(context).iconSize),
-              trailing: const CatalogIcon(Glyph.arrowUpRight),
               onPressed: onHome,
             ),
           CoilSidebarItem(
