@@ -83,15 +83,10 @@ final List<AutoRoute> coilCatalogRoutes = [
 
 /// The whole catalog as one route with its pages nested, for apps that
 /// mount it next to other examples.
-///
-/// [leading] is the host app's way back, such as a "Packages › coil"
-/// breadcrumb. The catalog shows it at the start of its top bar, or in the
-/// page header on a phone, inside its own theme.
-NamedRouteDef coilCatalogRoute({String path = '/coil', Widget? leading}) =>
-    NamedRouteDef(
-      name: 'Coil',
-      path: path,
-      type: catalogPageRouteType,
-      builder: (context, data) => CatalogShell(leading: leading),
-      children: coilCatalogRoutes,
-    );
+NamedRouteDef coilCatalogRoute({String path = '/coil'}) => NamedRouteDef(
+  name: 'Coil',
+  path: path,
+  type: catalogPageRouteType,
+  builder: (context, data) => const CatalogShell(),
+  children: coilCatalogRoutes,
+);

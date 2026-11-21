@@ -20,11 +20,7 @@ const catalogPhoneBreakpoint = 600.0;
 /// frame. Uses the settings of an enclosing [CatalogSettingsScope], or owns
 /// a set when mounted inside another app.
 class CatalogShell extends StatefulWidget {
-  const CatalogShell({super.key, this.leading});
-
-  /// The host app's way back when the catalog is mounted inside another
-  /// app; null when it runs on its own. See [CatalogHostLink].
-  final Widget? leading;
+  const CatalogShell({super.key});
 
   @override
   State<CatalogShell> createState() => _CatalogShellState();
@@ -78,9 +74,7 @@ class _CatalogShellState extends State<CatalogShell> {
         child: chrome,
       );
     }
-    final environment = CatalogEnvironment(
-      child: CatalogHostLink(link: widget.leading, child: chrome),
-    );
+    final environment = CatalogEnvironment(child: chrome);
     if (CatalogSettingsScope.maybeOf(context) != null) return environment;
     return CatalogSettingsScope(
       settings: _ownSettings ??= CatalogSettings(),
@@ -125,21 +119,6 @@ class _ChromeRoute extends PageRoute<void> {
 
   @override
   Duration get transitionDuration => Duration.zero;
-}
-
-/// The host app's link, such as a "Packages › coil" breadcrumb, when the
-/// catalog is mounted inside another app. The top bar shows it at its
-/// start; without a top bar, each page header does.
-class CatalogHostLink extends InheritedWidget {
-  const CatalogHostLink({required this.link, required super.child, super.key});
-
-  final Widget? link;
-
-  static Widget? of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<CatalogHostLink>()?.link;
-
-  @override
-  bool updateShouldNotify(CatalogHostLink oldWidget) => link != oldWidget.link;
 }
 
 /// Whether the catalog shows its top bar, which holds the preview
@@ -239,14 +218,7 @@ class CatalogTopBar extends StatelessWidget {
             children: [
               // Wide, the toggle sits in the middle; narrower, the
               // wordmark gives way to the mark and the controls pack right.
-              if (CatalogHostLink.of(context) case final link?)
-                Expanded(
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: link,
-                  ),
-                )
-              else if (wide)
+              if (wide)
                 Expanded(child: _Wordmark(showTagline: width >= 1280))
               else ...[
                 const CoilMark(),
