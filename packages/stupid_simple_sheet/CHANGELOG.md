@@ -1,3 +1,7 @@
+## 1.0.0-dev.8
+
+ - **BREAKING**: requires `motor` 2.0 and `motor_widgets`. `PaddingExtended` now comes from `motor_widgets`. See the [motor changelog](../motor/CHANGELOG.md).
+
 ## 1.0.0-dev.7
 
  - **FIX**(scroll_drag_detector): preserve handoff with custom scroll behaviors (#339).

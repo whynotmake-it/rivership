@@ -1,14 +1,21 @@
 ## 0.1.0-dev.0
 
- - **FEAT**: first release: spring-driven versions of Flutter's implicit animation widgets.
- - **FEAT**: `MotionOpacity`, `MotionAlign`, `MotionPositioned`, `MotionScale`, `MotionRotation` and `MotionSlide`, the Motor versions of `AnimatedOpacity`, `AnimatedAlign`, `AnimatedPositioned`, `AnimatedScale`, `AnimatedRotation` and `AnimatedSlide`.
- - **FEAT**: `MotionPadding` and `PaddingExtended`, moved here from `motor`. `MotionPadding` gains `onEnd` and `debugLabel`, takes any `EdgeInsetsGeometry`, and its `child` is optional, as in `AnimatedPadding`.
- - **FEAT**: `MotionContainer`, the Motor version of `AnimatedContainer`. Each property is its own track on one `TrackBuilder`, so changing one property never disturbs another in flight.
- - **FEAT**: per-track motions. `MotionContainer`, `MotionAlign` and `MotionPositioned` declare their tracks on `MotionContainerTrack`, `MotionAlignTrack` and `MotionPositionedTrack`, and take `motions: {.color: …}` to override `motion` for single tracks. The keys are typed per widget and the motions compare by value.
- - **FEAT**: `MotionSize`, the Motor version of `AnimatedSize`: a render object that springs its size toward its child's and keeps its velocity when the child's size changes mid-flight.
- - **FEAT**: `MotionSwitcher`: `AnimatedSwitcher` with a presence spring per child. A child that comes back while leaving turns around with its velocity and keeps its state.
- - **FEAT**: `MotionLayoutGroup` and `MotionLayoutItem`. When a rebuild moves an item, it flies from where it was painted to its new place. Items are matched by `id`, so lazy lists need no keys and an item flies into another container of the same group. Scrolling never makes an item fly, and nothing runs in frames without a rebuild.
- - **FEAT**: `MotionDraggable`, moved here from `motor` and rebuilt. The feedback is animated from pickup to landing: an accepted drop flies to the landing site with the draggable's `id`, like a `Hero` to its tag; a rejected one springs back; a drop with nowhere to land plays an exit. Ids are unique per `MotionLayoutGroup`. A landing on a `MotionLayoutItem` hands off to the item's spring once it can be seen, which `handoff` controls. `start: .longPress` replaces `MotionLongPressDraggable`, and `handleOnly` with `MotionDragHandle` starts the drag from a handle. `feedback` and `childWhenDragging` get the measured size, `transitions` animates `scale`, `rotation` and `opacity` per phase, and `MotionDragDetails.morph` lets the feedback turn into its destination. Plain `DragTarget`s work unchanged. `onlyReturnWhenCanceled` and `feedbackMatchesConstraints` are removed.
- - **FEAT**: `MotionReorderable` takes drags over any list, grid, wrap or sliver (`MotionReorderable.sliver`) and tells its builder where they would drop, between `MotionDrop.after` and `MotionDrop.before`. The builder places a `MotionDropGap` or draws a line. `onMove` gets a `MotionMove`, whose `index` counts after the item has left its old place; it covers reorders, drops from other reorderables and screen-reader moves, and may return a `Future` that keeps the drop pending. The drop stays when the drag leaves, and letting go outside drops there, unless `keepsDropOnLeave` is false.
- - **FEAT**: `MotionDragToScroll` scrolls the nearest scroll view below it while a drag is near one of its edges, faster the closer, with a speed that follows a spring. Nested ones scroll the inner one first, and a scroll view that is scrolling keeps going while the drag stays past its edge, unless `outside` is false.
- - **FEAT**: `MotionSizeSwitcher`, a `MotionSwitcher` inside a `MotionSize`, the Motor version of rivership's `AnimatedSizeSwitcher`. Unlike it, `motion` is required, `sizeMotion` sets the size's spring apart from the fade, and with `immediateResize` a leaving child keeps its layout instead of reflowing at the new size.
+First preview: spring-driven versions of Flutter's implicit animation widgets, plus drag and drop. Requires `motor` 2.0.
+
+Implicit animations
+
+ - `MotionOpacity`, `MotionScale`, `MotionRotation`, `MotionSlide`, `MotionAlign`, `MotionPositioned`, `MotionPadding`, `MotionContainer` and `MotionSize` replace the matching `Animated*` widgets. They take `motion` instead of `duration` and `curve`.
+ - `MotionContainer`, `MotionAlign` and `MotionPositioned` animate each property on its own track, so changing one never disturbs another in flight. Override a single track with `motions: {.color: .snappySpring()}`.
+ - `MotionSize` springs its size toward its child's and keeps its velocity when the child's size changes mid-flight.
+ - `MotionSwitcher` replaces `AnimatedSwitcher`, and `MotionSizeSwitcher` replaces rivership's `AnimatedSizeSwitcher`. Each child has a presence spring, so a child whose key comes back while leaving turns around with its velocity and keeps its state. `MotionSizeSwitcher` requires `motion`, and `sizeMotion` sets the size spring apart from the fade.
+ - `MotionPadding` and `PaddingExtended` moved here from `motor`. `MotionPadding` gains `onEnd` and `debugLabel`.
+
+Layout and drag and drop
+
+ - `MotionLayoutGroup` and `MotionLayoutItem` fly an item from where it was painted to its new place when a rebuild moves it. Items are matched by `id`, so lazy lists need no keys, and an item can fly into another container of the same group. Scrolling never makes an item fly.
+ - `MotionDraggable` moved here from `motor` and was rebuilt. The feedback animates from pickup to landing. An accepted drop flies to the `MotionLayoutItem` with the same `id`, like a `Hero`. A rejected drop springs back, and a drop with nowhere to land plays an exit. Plain `DragTarget`s work unchanged.
+   - `start: .longPress` replaces `MotionLongPressDraggable`, and `handleOnly` with `MotionDragHandle` starts the drag from a handle.
+   - `transitions` animates `scale`, `rotation` and `opacity` per phase, and `MotionDragDetails.morph` lets the feedback turn into its destination.
+   - `feedback` and `childWhenDragging` get the measured size. `onlyReturnWhenCanceled` and `feedbackMatchesConstraints` are removed, and `motion` defaults to `CupertinoMotion.smooth()`.
+ - `MotionReorderable` handles drags over any list, grid, wrap or sliver (`MotionReorderable.sliver`) and tells its builder where a drop would land. The builder places a `MotionDropGap` or draws a line. `onMove` covers reorders, drops from other reorderables and screen-reader moves, and may return a `Future` to keep the drop pending.
+ - `MotionDragToScroll` scrolls the nearest scroll view while a drag is near its edge, faster the closer it gets. It needs the `Draggable`'s data to be non-null.

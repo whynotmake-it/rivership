@@ -1,3 +1,7 @@
+## 1.0.0-dev.0
+
+ - **BREAKING**: requires `motor` 2.0, which changes controller `status` and default spring behavior. See the [motor changelog](../motor/CHANGELOG.md).
+
 ## 0.7.2+2
 
  - **FIX**(heroine): hide incoming page until the first flight frame (#348).
