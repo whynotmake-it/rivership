@@ -14,7 +14,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// The arrows move through the matching rows and Enter runs one; picking a
 /// row closes the menu, then runs its action. Escape or a tap outside
 /// closes it. It opens near the top of a large window, with a [footer] of
-/// key hints, and as a sheet on a phone.
+/// key hints, and as a floating panel on a phone.
 ///
 /// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
 /// the app's own, mapped in `Shortcuts` near the app's root (or registered
@@ -78,7 +78,8 @@ Future<void> showCoilCommandMenu({
   CoilMotion? motion,
 }) => showCoilModal<void>(
   context: context,
-  presentation: null,
+  presentation: CoilCommandMenu.presentationOf(context),
+  anchor: CoilModalAnchor.top,
   motion: motion,
   builder: (context) => CoilCommandMenu(
     entries: entries,
@@ -93,11 +94,13 @@ Future<void> showCoilCommandMenu({
 /// The panel [showCoilCommandMenu] opens: a search field over [entries],
 /// and in a dialog a [footer] with key hints.
 ///
-/// Show it in a [CoilModalRoute] or [CoilModalPage] with no presentation,
-/// so it's a sheet on a phone and centered elsewhere. In a sheet it uses
-/// touch rows and has no footer; centered, it sits a fifth of the way down
-/// the window, at most [maxHeight] or [maxHeightFraction] of the window
-/// tall.
+/// Show it in a [CoilModalRoute] or [CoilModalPage] with presentation
+/// [presentationOf] and anchor [CoilModalAnchor.top]: a floating panel on a
+/// phone and centered elsewhere. In a floating panel (or a sheet) it uses
+/// touch rows and has no footer, and the panel keeps its height while the
+/// results change, so the search field stays put; centered, it sits a fifth
+/// of the way down the window, at most [maxHeight] or [maxHeightFraction] of
+/// the window tall.
 class CoilCommandMenu extends StatelessWidget {
   /// Creates a command menu panel.
   const CoilCommandMenu({
@@ -123,12 +126,21 @@ class CoilCommandMenu extends StatelessWidget {
   final Widget empty;
 
   /// The strip under the list in a dialog: a [CoilCommandMenuFooter] with
-  /// the default key hints, your own, or null for none. A sheet (a phone,
-  /// with no keyboard to hint at) never shows it.
+  /// the default key hints, your own, or null for none. A sheet or floating
+  /// panel (a phone, with no keyboard to hint at) never shows it.
   final Widget? footer;
 
   /// Motion tokens for the list, instead of the theme's.
   final CoilMotion? motion;
+
+  /// How a command menu shows at [context]: a floating panel on the touch
+  /// tier in a compact window, centered elsewhere. Pass it, with
+  /// [CoilModalAnchor.top], to the route that shows the menu.
+  static CoilModalPresentation presentationOf(BuildContext context) =>
+      CoilModalRoute.adaptivePresentationOf(context) ==
+          CoilModalPresentation.sheet
+      ? CoilModalPresentation.floating
+      : CoilModalPresentation.centered;
 
   /// The widest the panel gets.
   static const maxWidth = 560.0;
@@ -151,7 +163,7 @@ class CoilCommandMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sheet =
-        CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet;
+        CoilModalRoute.presentationOf(context)?.usesSheetPanel ?? false;
     final theme = CoilTheme.of(context);
     final metrics = sheet
         ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)
@@ -179,8 +191,8 @@ class CoilCommandMenu extends StatelessWidget {
       fadeExtent: scroll.fadeExtent!,
       motion: motion,
       onClose: (_) => Navigator.pop(context),
-      // In a sheet the close button ends the search line, which takes the
-      // header's place.
+      // In a sheet or floating panel the close button ends the search line,
+      // which takes the header's place.
       searchTrailing: sheet ? const CoilSheetCloseSlot() : null,
     );
 

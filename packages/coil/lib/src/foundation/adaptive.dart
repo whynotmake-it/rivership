@@ -9,6 +9,15 @@ enum CoilPresentation {
 
   /// A bottom sheet with touch-sized rows.
   sheet,
+
+  /// A modal panel floating under the top safe area, with a stable height
+  /// and touch-sized rows, dismissed by a horizontal swipe. Phone search
+  /// lists use it, so the search field doesn't move as the results shrink.
+  floating;
+
+  /// Whether the content lays out in a sheet panel with touch rows: a
+  /// [sheet] or a [floating] panel.
+  bool get usesSheetPanel => this == sheet || this == floating;
 }
 
 /// Pins adaptive decisions for a subtree: the size [tier], the size step

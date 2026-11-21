@@ -110,7 +110,7 @@ class CoilDialog extends StatelessWidget {
       metrics,
     ).merge(CoilTheme.styleOf<CoilDialogStyle>(context)).merge(style);
     final sheet =
-        CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet;
+        CoilModalRoute.presentationOf(context)?.usesSheetPanel ?? false;
 
     final titleText = Semantics(
       header: true,
@@ -229,7 +229,7 @@ class CoilDialogFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet) {
+    if (CoilModalRoute.presentationOf(context)?.usesSheetPanel ?? false) {
       return CoilSheetPanel(
         close: CoilSheetCloseButton(
           onPressed: onClose,

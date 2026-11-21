@@ -489,6 +489,8 @@ void main() {
             (context) => Navigator.of(context).push(
               CoilModalRoute<void>(
                 context: context,
+                presentation: CoilCommandMenu.presentationOf(context),
+                anchor: CoilModalAnchor.top,
                 builder: (context) => CoilCommandMenu(entries: entries),
               ),
             ),
@@ -503,5 +505,178 @@ void main() {
         );
       });
     }
+  });
+
+  group('floating', () {
+    Future<List<Object?>> open(
+      WidgetTester tester, {
+      Axis? dismissAxis = Axis.horizontal,
+      bool dismissible = true,
+      FocusNode? trigger,
+      Widget content = const _Content(),
+    }) async {
+      useScreen(tester, TestScreen.phone);
+      final results = <Object?>[];
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Builder(
+            builder: (context) => Center(
+              child: CoilButton(
+                focusNode: trigger,
+                onPressed: () async => results.add(
+                  await Navigator.of(context).push(
+                    CoilModalRoute<String>(
+                      context: context,
+                      presentation: CoilModalPresentation.floating,
+                      anchor: CoilModalAnchor.top,
+                      dismissAxis: dismissAxis,
+                      dismissible: dismissible,
+                      builder: (context) => content,
+                    ),
+                  ),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      // Opened from the keyboard, so the trigger holds focus.
+      trigger?.requestFocus();
+      await tester.pump();
+      if (trigger == null) {
+        await tester.tap(find.text('Open'));
+      } else {
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsOneWidget);
+      return results;
+    }
+
+    /// Opens it again from the same page.
+    Future<void> reopen(WidgetTester tester) async {
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsOneWidget);
+    }
+
+    Future<void> swipe(WidgetTester tester, Offset by) async {
+      await tester.fling(find.byType(CoilSurface), by, 1500);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a swipe along its axis throws it away, and only along it', (
+      tester,
+    ) async {
+      final trigger = FocusNode();
+      addTearDown(trigger.dispose);
+      final results = await open(
+        tester,
+        dismissAxis: Axis.vertical,
+        trigger: trigger,
+      );
+      final rest = tester.getRect(find.byType(CoilSurface));
+      await swipe(tester, const Offset(-300, 0));
+      expect(find.text('Content'), findsOneWidget);
+      expect(tester.getRect(find.byType(CoilSurface)), rest);
+
+      // A short, slow drag springs back.
+      await tester.drag(find.byType(CoilSurface), const Offset(0, -40));
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsOneWidget);
+      expect(tester.getRect(find.byType(CoilSurface)), rest);
+
+      await swipe(tester, const Offset(0, -300));
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null]);
+      expect(trigger.hasFocus, isTrue);
+    });
+
+    testWidgets('a swipe either way closes a horizontal one, and no axis '
+        'means no swipe', (tester) async {
+      final results = await open(tester);
+      await swipe(tester, const Offset(300, 0));
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null]);
+
+      await reopen(tester);
+      await swipe(tester, const Offset(-300, 0));
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null, null]);
+    });
+
+    testWidgets('with no axis a swipe does nothing', (tester) async {
+      await open(tester, dismissAxis: null);
+      await swipe(tester, const Offset(-300, 0));
+      await swipe(tester, const Offset(0, 300));
+      expect(find.text('Content'), findsOneWidget);
+    });
+
+    testWidgets('a swipe that a PopScope vetoes springs back', (tester) async {
+      await open(
+        tester,
+        content: const PopScope(canPop: false, child: _Content()),
+      );
+      final rest = tester.getRect(find.byType(CoilSurface));
+      await swipe(tester, const Offset(-300, 0));
+      expect(find.text('Content'), findsOneWidget);
+      expect(tester.getRect(find.byType(CoilSurface)), rest);
+    });
+
+    testWidgets('Escape and the scrim close it with no result', (
+      tester,
+    ) async {
+      final results = await open(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null]);
+
+      await reopen(tester);
+      await _tapScrim(tester);
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null, null]);
+    });
+
+    testWidgets('not dismissible, nothing closes it', (tester) async {
+      await open(tester, dismissible: false);
+      await swipe(tester, const Offset(-300, 0));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await _tapScrim(tester);
+      await _back(tester);
+      expect(find.text('Content'), findsOneWidget);
+    });
+
+    testWidgets('with reduced motion it still follows the finger and swipes '
+        'away', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      final results = await open(tester);
+      final rest = tester.getRect(find.byType(CoilSurface));
+      final finger = await tester.startGesture(
+        tester.getCenter(find.byType(CoilSurface)),
+      );
+      await finger.moveBy(const Offset(-30, 0));
+      await finger.moveBy(const Offset(-60, 0));
+      await tester.pump();
+      expect(
+        tester.getRect(find.byType(CoilSurface)).left,
+        lessThan(rest.left),
+      );
+      await finger.up();
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsOneWidget);
+      expect(tester.getRect(find.byType(CoilSurface)), rest);
+
+      await swipe(tester, const Offset(-300, 0));
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null]);
+    });
   });
 }

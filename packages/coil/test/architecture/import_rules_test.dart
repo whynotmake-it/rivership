@@ -47,11 +47,14 @@ const _packageLayers = {
   'cupertino_ui': {'primitives'},
 };
 
-/// Packages kept behind exactly one primitive file, so swapping them out
-/// touches one place.
+/// Packages kept behind a few primitive files, so swapping them out
+/// touches few places.
 const _packageFiles = {
-  'corner_radius_plugin': 'src/primitives/screen_radius.dart',
-  'scroll_drag_detector': 'src/primitives/drawer.dart',
+  'corner_radius_plugin': {'src/primitives/screen_radius.dart'},
+  'scroll_drag_detector': {
+    'src/primitives/drawer.dart',
+    'src/primitives/modal.dart',
+  },
 };
 
 /// Things components must reach through a primitive.
@@ -125,8 +128,7 @@ void main() {
               case final package?
               when package != 'flutter' && package != 'coil')
             if (!(_packageLayers[package]?.contains(_layerOf(path)) ?? false) ||
-                (_packageFiles[package] != null &&
-                    _packageFiles[package] != path))
+                !(_packageFiles[package]?.contains(path) ?? true))
               '$path imports $uri',
     ];
     expect(violations, isEmpty);

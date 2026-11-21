@@ -526,7 +526,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
   }
 
   Widget _list(BuildContext context, CoilPopupHandle popup) {
-    final sheet = popup.presentation == CoilPresentation.sheet;
+    final sheet = popup.presentation.usesSheetPanel;
     final theme = CoilTheme.of(context);
     final metrics = sheet
         ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)
@@ -615,13 +615,11 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final sheet =
-        CoilAdaptivePopup.presentationOf(
-          context,
-          traits: _traits(),
-          override: widget.presentation,
-        ) ==
-        CoilPresentation.sheet;
+    final sheet = CoilAdaptivePopup.presentationOf(
+      context,
+      traits: _traits(),
+      override: widget.presentation,
+    ).usesSheetPanel;
     final metrics = CoilTheme.metricsOf(context);
     return CoilAdaptivePopup(
       controller: _popup,
@@ -630,7 +628,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       takeFocus: false,
       motion: widget.motion,
       maxHeight: metrics.tier == CoilTier.pointer ? 300 : double.infinity,
-      content: (context, popup) => popup.presentation == CoilPresentation.sheet
+      content: (context, popup) => popup.presentation.usesSheetPanel
           ? Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

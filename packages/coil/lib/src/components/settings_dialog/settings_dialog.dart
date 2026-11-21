@@ -142,7 +142,7 @@ class _CoilSettingsDialogState<T> extends State<CoilSettingsDialog<T>> {
   Widget build(BuildContext context) {
     final theme = CoilTheme.of(context);
     final window = MediaQuery.sizeOf(context);
-    if (CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet) {
+    if (CoilModalRoute.presentationOf(context)?.usesSheetPanel ?? false) {
       // The title goes in the sheet's header, on the close button's line.
       return CoilSheetPanel(
         title: Semantics(namesRoute: true, child: widget.title),

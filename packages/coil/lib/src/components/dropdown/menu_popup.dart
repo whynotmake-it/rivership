@@ -9,7 +9,8 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 
 /// The menu `CoilDropdown` and `CoilContextMenu` open: [entries] in a
-/// popover, or in a sheet on a phone when the menu is long.
+/// popover, or on a phone in a sheet when the menu is long and a floating
+/// panel when it has search.
 class CoilMenuPopup extends StatelessWidget {
   /// Creates a menu popup anchored to [child].
   const CoilMenuPopup({
@@ -90,7 +91,7 @@ class CoilMenuPopup extends StatelessWidget {
     content: (context, popup) {
       final theme = CoilTheme.of(context);
       // A sheet is a touch surface whatever the tier.
-      final metrics = popup.presentation == CoilPresentation.sheet
+      final metrics = popup.presentation.usesSheetPanel
           ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)
           : CoilTheme.metricsOf(context);
       final look = _style(context, metrics);
@@ -100,8 +101,7 @@ class CoilMenuPopup extends StatelessWidget {
       ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
       // In a sheet with search the close button ends the search line,
       // which takes the header's place.
-      final searchSheet =
-          popup.presentation == CoilPresentation.sheet && search != null;
+      final searchSheet = popup.presentation.usesSheetPanel && search != null;
       return MotorInspectionScope(
         group: 'CoilMenu',
         child: CoilActionList(
@@ -111,9 +111,7 @@ class CoilMenuPopup extends StatelessWidget {
           metrics: metrics,
           // The sheet paints its own surface; the popover may take the
           // style's.
-          surface: popup.presentation == CoilPresentation.sheet
-              ? null
-              : look.surface,
+          surface: popup.presentation.usesSheetPanel ? null : look.surface,
           scrollbar: scroll.scrollbarLook,
           fadeExtent: scroll.fadeExtent!,
           highlight: look.highlight,

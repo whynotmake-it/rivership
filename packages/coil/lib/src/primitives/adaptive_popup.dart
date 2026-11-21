@@ -5,6 +5,7 @@ import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/anchor.dart';
+import 'package:coil/src/primitives/modal.dart';
 import 'package:coil/src/primitives/popup_controller.dart';
 import 'package:coil/src/primitives/sheet.dart';
 import 'package:flutter/scheduler.dart';
@@ -56,19 +57,23 @@ class CoilOverlayTraits {
   final int submenuDepth;
 }
 
-/// Opens [content] from [child]: anchored to it in a [CoilPopover], or in
-/// a sheet, as [presentationOf] decides each time it opens.
+/// Opens [content] from [child]: anchored to it in a [CoilPopover], in a
+/// sheet, or in a top-anchored floating panel, as [presentationOf] decides
+/// each time it opens.
 ///
 /// [controller] opens and closes it; its `open()` resolves with why it
 /// closed. The popover is a descendant of this widget, so its content
-/// rebuilds with the owner. The sheet is a route: its content builds from
-/// the owner's widget when the sheet builds, but doesn't rebuild with it.
+/// rebuilds with the owner. The sheet and the floating panel are routes: their
+/// content builds from the owner's widget when they build, but doesn't
+/// rebuild with it.
 ///
 /// [popover] wraps the content in the popover's surface and [sheet] in the
-/// sheet's; [content] gets the [CoilPopupHandle] so it can close with a
-/// reason. A tap outside closes either one with
-/// [CoilPopupCloseReason.outsideTap] on tap-up; a sheet dragged away or
-/// closed by back reports [CoilPopupCloseReason.dismissed].
+/// sheet's, which a floating panel lays out like (touch rows, a sheet
+/// panel); [content] gets the [CoilPopupHandle] so it can close with a
+/// reason. A tap outside closes any of them with
+/// [CoilPopupCloseReason.outsideTap] on tap-up; a sheet dragged away, a
+/// floating panel swiped away, or either closed by back reports
+/// [CoilPopupCloseReason.dismissed].
 class CoilAdaptivePopup extends StatefulWidget {
   /// Creates an adaptive popup anchored to [child].
   const CoilAdaptivePopup({
@@ -102,7 +107,7 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// Wraps the content in the popover's surface.
   final Widget Function(BuildContext context, Widget content) popover;
 
-  /// Wraps the content in the sheet's surface.
+  /// Wraps the content in the sheet's surface; a floating panel uses it too.
   final Widget Function(BuildContext context, Widget content) sheet;
 
   /// The anchor.
@@ -116,7 +121,7 @@ class CoilAdaptivePopup extends StatefulWidget {
   final double maxHeight;
 
   /// Whether the popover takes focus; see [CoilPopover.takeFocus]. A sheet
-  /// always does.
+  /// or a floating panel always does.
   final bool takeFocus;
 
   /// Motion tokens for the popup's enter and exit, instead of the theme's.
@@ -154,14 +159,17 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// Short, simple lists stay anchored to what opened them, with touch-sized
   /// rows, like iOS pull-down menus and Android dropdown menus: action
   /// menus, context menus and selects with at most [shortMenuMaxItems] rows,
-  /// no search, single selection and at most one submenu level. Everything
-  /// that needs room or a keyboard is a sheet: longer lists, search,
-  /// multi-select, comboboxes and date/time pickers.
+  /// no search, single selection and at most one submenu level. Anything
+  /// with a search field (a combobox, a menu with search) is a floating
+  /// panel, whose height stays put while the results change. The other
+  /// cases that need room are sheets: longer lists, multi-select, deep
+  /// submenus and date/time pickers.
   static CoilPresentation phonePresentation(CoilOverlayTraits traits) {
+    if (traits.kind == CoilOverlayKind.combobox || traits.hasSearch) {
+      return CoilPresentation.floating;
+    }
     final needsRoom =
-        traits.kind == CoilOverlayKind.combobox ||
         traits.kind == CoilOverlayKind.dateTime ||
-        traits.hasSearch ||
         traits.multiSelect ||
         traits.submenuDepth > 1 ||
         traits.itemCount > shortMenuMaxItems;
@@ -238,8 +246,8 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     switch (presentation) {
       case CoilPresentation.popover:
         _popover.show(at: position);
-      case CoilPresentation.sheet:
-        _pushSheet(handle);
+      case CoilPresentation.sheet || CoilPresentation.floating:
+        _pushModal(handle);
     }
     widget.controller.didOpen(handle.closed);
     return handle.closed;
@@ -252,27 +260,41 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
   }
 
   void _released(_Handle handle) {
-    // A sheet is modal by nature: it keeps the page until it closes.
+    // A sheet or floating panel is modal by nature: it keeps the page until
+    // it closes.
     if (_open == handle && handle.presentation == CoilPresentation.popover) {
       _popover.release();
     }
   }
 
-  void _pushSheet(_Handle handle) {
+  /// Pushes the sheet, or the floating panel that lays out like it.
+  void _pushModal(_Handle handle) {
     final navigator = Navigator.of(context);
-    final route = CoilSheetRoute<CoilPopupCloseReason>(
-      context: context,
-      motion: widget.motion,
-      // The TapRegion closes on tap-up outside, with its reason.
-      barrierDismissible: false,
-      child: ListenableBuilder(
-        listenable: _sheetContent,
-        builder: (context, _) => TapRegion(
-          onTapUpOutside: (_) => handle.close(.outsideTap),
-          child: widget.sheet(context, widget.content(context, handle)),
-        ),
+    final content = ListenableBuilder(
+      listenable: _sheetContent,
+      builder: (context, _) => TapRegion(
+        onTapUpOutside: (_) => handle.close(.outsideTap),
+        child: widget.sheet(context, widget.content(context, handle)),
       ),
     );
+    final Route<CoilPopupCloseReason> route = switch (handle.presentation) {
+      CoilPresentation.floating => CoilModalRoute<CoilPopupCloseReason>(
+        context: context,
+        presentation: CoilModalPresentation.floating,
+        anchor: CoilModalAnchor.top,
+        motion: widget.motion,
+        // A swipe, back and Esc dismiss it; the TapRegion reports a tap on
+        // the scrim first, with its own reason.
+        builder: (_) => content,
+      ),
+      _ => CoilSheetRoute<CoilPopupCloseReason>(
+        context: context,
+        motion: widget.motion,
+        // The TapRegion closes on tap-up outside, with its reason.
+        barrierDismissible: false,
+        child: content,
+      ),
+    };
     handle._route = route;
     unawaited(
       navigator
@@ -309,7 +331,7 @@ class _Handle implements CoilPopupHandle {
   final void Function(_Handle handle) _onReleased;
   final _done = Completer<CoilPopupCloseReason>();
 
-  /// The sheet's route, when it is a sheet.
+  /// The sheet's or floating panel's route, when it is one.
   Route<CoilPopupCloseReason>? _route;
 
   @override

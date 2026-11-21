@@ -124,7 +124,7 @@ void main() {
     expect(find.text('Banana'), findsOneWidget);
   });
 
-  testWidgets('on a phone a trigger opens a sheet with the field', (
+  testWidgets('on a phone a trigger opens a floating panel with the field', (
     tester,
   ) async {
     useScreen(tester, TestScreen.phone);
