@@ -16,25 +16,46 @@ jobs:
     name: Check PR Title
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
-  flutter-check:
-    name: Build Check
+  changes:
+    name: Find Affected Packages
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      pull-requests: write
-      contents: write
+    timeout-minutes: 10
+    outputs:
+      full: ${{ steps.affected.outputs.full }}
+      matrix: ${{ steps.affected.outputs.matrix }}
+      has_tests: ${{ steps.affected.outputs.has_tests }}
+      motor: ${{ steps.affected.outputs.motor }}
     steps:
       - name: 📚 Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Ⓜ️ Set up Melos
+        uses: bluefireteam/melos-action@v3
         with:
-          flutter-version-file: .fvmrc
-          cache: true
-      
+          melos-version: '7.4.0' # keep in sync with the melos constraint in pubspec.yaml
+          run-bootstrap: false
+
+      - name: 🔎 Find affected packages
+        id: affected
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: tool/ci/affected_packages.sh --base "origin/$BASE_REF"
+
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-flutter
+
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3
         with:
@@ -43,24 +64,105 @@ jobs:
       - name: 🧪 Run Analyze
         run: melos run analyze
 
+  test:
+    name: Test (${{ matrix.name }})
+    needs: changes
+    if: ${{ needs.changes.outputs.has_tests == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.changes.outputs.matrix) }}
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: 📦 Get dependencies
+        # One resolution for the whole pub workspace.
+        run: flutter pub get
+
       - name: 🎬 Install FFmpeg
-        # snaptest's video recording shell-outs to ffmpeg.
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        # snaptest's video recording shells out to ffmpeg.
+        if: ${{ matrix.ffmpeg }}
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          github-token: ${{ github.token }}
 
       - name: 📝 Run Test
-        run: melos run coverage
+        working-directory: ${{ matrix.path }}
+        run: flutter test --coverage
 
-      - name: ⏱️ Benchmark Smoke
-        run: melos run benchmark:smoke
-      
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcov-${{ matrix.name }}
+          path: ${{ matrix.path }}/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Upload golden test failures
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: golden-failures-${{ steps.pkg.outputs.basename }}
-          path: |
-            **/test/**/failures/**
+          name: golden-failures-${{ matrix.name }}
+          path: ${{ matrix.path }}/**/test/**/failures/**
           if-no-files-found: ignore
+
+  benchmark_smoke:
+    name: Benchmark Smoke
+    needs: changes
+    if: ${{ needs.changes.outputs.motor == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Ⓜ️ Set up Melos
+        uses: bluefireteam/melos-action@v3
+        with:
+          melos-version: '7.4.0' # keep in sync with the melos constraint in pubspec.yaml
+
+      - name: ⏱️ Benchmark Smoke
+        run: melos run benchmark:smoke
+
+  coverage:
+    name: Coverage
+    needs: [changes, test]
+    if: ${{ needs.test.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: 📚 Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: 📥 Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lcov-*
+          path: ${{ runner.temp }}/lcov
+
+      - name: 🗂️ Place coverage in the packages
+        # Packages that did not run keep their committed lcov.info.
+        env:
+          MATRIX: ${{ needs.changes.outputs.matrix }}
+        run: |
+          jq -r '.[] | [.name, .path] | @tsv' <<<"$MATRIX" | while IFS=$'\t' read -r name path; do
+            mkdir -p "$path/coverage"
+            cp "$RUNNER_TEMP/lcov/lcov-$name/lcov.info" "$path/coverage/lcov.info"
+          done
 
       - name: 📊 Generate Coverage
         id: coverage-report
@@ -69,10 +171,27 @@ jobs:
           lower_threshold: 30
           upper_threshold: 50
           generate_badges: pr
-          
-      
-  
+
+  build_check:
+    name: Build Check
+    # `changes` too: if it fails, the jobs that need it are skipped, and
+    # skipped would otherwise pass.
+    needs: [changes, analyze, test, benchmark_smoke, coverage]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "* | *" cancelled "*) exit 1 ;;
+          esac
+
   sdk_borders:
+    needs: changes
+    if: ${{ needs.changes.outputs.motor == 'true' }}
     name: SDK Borders (${{ matrix.package }}, ${{ matrix.flutter }})
     timeout-minutes: 15
     runs-on: ubuntu-latest
@@ -132,11 +251,7 @@ jobs:
       - name: 📚 Checkout
         uses: actions/checkout@v5
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: .fvmrc
-          cache: true
+      - uses: ./.github/actions/setup-flutter
 
       - name: Ⓜ️ Set up Melos
         uses: bluefireteam/melos-action@v3
