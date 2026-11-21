@@ -34,9 +34,9 @@ class Photo {
 
   /// Every photo by the same photographer in [photos].
   List<Photo> get byAuthor => [
-        for (final photo in photos)
-          if (photo.author == author) photo,
-      ];
+    for (final photo in photos)
+      if (photo.author == author) photo,
+  ];
 }
 
 /// The photos the demos show.
