@@ -288,10 +288,11 @@ class _Switch extends StatelessWidget {
               height: _knob,
               child: DecoratedBox(
                 decoration: ShapeDecoration(
-                  color: const Color(0xFFFFFFFF),
+                  color: colors.surface(4),
                   shadows: colors.shadow(2),
                   shape: RoundedSuperellipseBorder(
                     borderRadius: .circular(radii.item * 2 - 6),
+                    side: BorderSide(color: colors.border),
                   ),
                 ),
                 child: Stack(
@@ -301,13 +302,13 @@ class _Switch extends StatelessWidget {
                       Glyph.sun,
                       shown: 1 - at,
                       turn: -at,
-                      color: const Color(0xFF737373),
+                      color: colors.mutedForeground,
                     ),
                     _Icon(
                       Glyph.moon,
                       shown: at,
                       turn: 1 - at,
-                      color: colors.brand,
+                      color: colors.foreground,
                     ),
                   ],
                 ),

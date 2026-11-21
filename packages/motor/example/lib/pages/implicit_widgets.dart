@@ -71,7 +71,7 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
             '  width: ${_expanded ? 128 : 64},\n'
             '  height: 64,\n'
             '  decoration: BoxDecoration(\n'
-            '    color: ${_expanded ? 'foreground' : 'muted'},\n'
+            '    color: ${_expanded ? 'foreground' : 'accent'},\n'
             '    borderRadius: .circular(${_expanded ? 'container' : 'item'}),\n'
             '  ),\n'
             ')',
@@ -99,6 +99,8 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
   Widget build(BuildContext context) {
     final gap = CoilTheme.metricsOf(context).gap;
     final motion = _feel.motion;
+    // Under 900 the stage can be under 600 wide, where the cells stack.
+    final stacked = MediaQuery.sizeOf(context).width < 900;
     return ChapterPage(
       chapter: chapterNamed('Implicit widgets'),
       lead:
@@ -106,14 +108,54 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
           'widgets. Tap quickly: a change mid-flight keeps its velocity '
           'instead of starting over.',
       code: _code,
-      stageHeight: 440,
+      stageHeight: stacked ? 740 : 300,
       stage: LayoutBuilder(
         builder: (context, constraints) {
           const inset = 16.0;
           const spacing = 24.0;
           final wide = constraints.maxWidth >= 600;
-          final width = constraints.maxWidth - 2 * inset;
-          final cell = wide ? (width - 2 * spacing) / 3 : width;
+          final cells = [
+            _Cell(
+              label: 'MotionSizeSwitcher',
+              example: _Counter(
+                motion: motion,
+                count: _counts[_countIndex],
+                gap: gap,
+                onFewer: _countIndex == 0
+                    ? null
+                    : () => _touch(_Example.sizeSwitcher, () => _countIndex--),
+                onMore: _countIndex == _counts.length - 1
+                    ? null
+                    : () => _touch(_Example.sizeSwitcher, () => _countIndex++),
+              ),
+            ),
+            _Cell(
+              label: 'MotionContainer',
+              example: _Square(
+                motion: motion,
+                expanded: _expanded,
+                onToggle: () =>
+                    _touch(_Example.container, () => _expanded = !_expanded),
+              ),
+              control: CoilButton(
+                variant: .secondary,
+                size: .compact,
+                onPressed: () =>
+                    _touch(_Example.container, () => _expanded = !_expanded),
+                child: const Text('Toggle'),
+              ),
+            ),
+            _Cell(
+              label: 'MotionSize',
+              example: _Reveal(motion: motion, open: _more),
+              control: CoilButton(
+                variant: .secondary,
+                size: .compact,
+                onPressed: () => _touch(_Example.size, () => _more = !_more),
+                child: Text(_more ? 'Show less' : 'Show more'),
+              ),
+            ),
+          ];
           return SingleChildScrollView(
             padding: const .all(inset),
             child: Column(
@@ -131,55 +173,13 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
                   ],
                 ),
                 SizedBox(height: spacing),
-                Wrap(
+                Flex(
+                  direction: wide ? Axis.horizontal : Axis.vertical,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: spacing,
-                  runSpacing: spacing,
                   children: [
-                    _Cell(
-                      width: cell,
-                      label: 'MotionSizeSwitcher',
-                      child: _Counter(
-                        motion: motion,
-                        count: _counts[_countIndex],
-                        gap: gap,
-                        onFewer: _countIndex == 0
-                            ? null
-                            : () => _touch(
-                                _Example.sizeSwitcher,
-                                () => _countIndex--,
-                              ),
-                        onMore: _countIndex == _counts.length - 1
-                            ? null
-                            : () => _touch(
-                                _Example.sizeSwitcher,
-                                () => _countIndex++,
-                              ),
-                      ),
-                    ),
-                    _Cell(
-                      width: cell,
-                      label: 'MotionContainer',
-                      child: _Square(
-                        motion: motion,
-                        expanded: _expanded,
-                        gap: gap,
-                        onToggle: () => _touch(
-                          _Example.container,
-                          () => _expanded = !_expanded,
-                        ),
-                      ),
-                    ),
-                    _Cell(
-                      width: cell,
-                      label: 'MotionSize',
-                      child: _Reveal(
-                        motion: motion,
-                        open: _more,
-                        gap: gap,
-                        onToggle: () =>
-                            _touch(_Example.size, () => _more = !_more),
-                      ),
-                    ),
+                    for (final cell in cells)
+                      if (wide) Expanded(child: cell) else cell,
                   ],
                 ),
               ],
@@ -191,27 +191,37 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
   }
 }
 
-/// A demo with the widget's name above it.
+/// A demo: the widget's name at the top, the example centered in a fixed
+/// area, and its control centered under it.
 class _Cell extends StatelessWidget {
-  const _Cell({required this.width, required this.label, required this.child});
+  const _Cell({required this.label, required this.example, this.control});
 
-  final double width;
+  /// The height every example is centered in.
+  static const exampleHeight = 120.0;
+
   final String label;
-  final Widget child;
+  final Widget example;
+
+  /// Under the example; the counter's buttons are part of the example.
+  final Widget? control;
 
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: .start,
-        children: [
-          Text(label, style: mono(11, color: colors.mutedForeground)),
-          const SizedBox(height: 10),
-          child,
+    final gap = CoilTheme.metricsOf(context).gap;
+    return Column(
+      crossAxisAlignment: .stretch,
+      children: [
+        Text(label, style: mono(11, color: colors.mutedForeground)),
+        SizedBox(
+          height: exampleHeight,
+          child: ClipRect(child: Center(child: example)),
+        ),
+        if (control case final control?) ...[
+          SizedBox(height: gap),
+          Center(child: control),
         ],
-      ),
+      ],
     );
   }
 }
@@ -236,9 +246,17 @@ class _Counter extends StatelessWidget {
     final colors = CoilTheme.of(context).colors;
     final radii = CoilTheme.radiiOf(context);
     final text = CoilTheme.textOf(context);
-    return Column(
-      crossAxisAlignment: .start,
+    return Row(
+      mainAxisSize: .min,
+      spacing: gap,
       children: [
+        CoilButton.icon(
+          variant: .secondary,
+          size: .compact,
+          semanticLabel: 'Fewer items',
+          icon: const GlyphIcon(Glyph.minus),
+          onPressed: onFewer,
+        ),
         DecoratedBox(
           decoration: ShapeDecoration(
             color: colors.surface(4),
@@ -261,26 +279,12 @@ class _Counter extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: gap),
-        Row(
-          mainAxisSize: .min,
-          spacing: gap,
-          children: [
-            CoilButton.icon(
-              variant: .secondary,
-              size: .compact,
-              semanticLabel: 'Fewer items',
-              icon: const GlyphIcon(Glyph.minus),
-              onPressed: onFewer,
-            ),
-            CoilButton.icon(
-              variant: .secondary,
-              size: .compact,
-              semanticLabel: 'More items',
-              icon: const GlyphIcon(Glyph.plus),
-              onPressed: onMore,
-            ),
-          ],
+        CoilButton.icon(
+          variant: .secondary,
+          size: .compact,
+          semanticLabel: 'More items',
+          icon: const GlyphIcon(Glyph.plus),
+          onPressed: onMore,
         ),
       ],
     );
@@ -291,99 +295,57 @@ class _Square extends StatelessWidget {
   const _Square({
     required this.motion,
     required this.expanded,
-    required this.gap,
     required this.onToggle,
   });
 
   final Motion motion;
   final bool expanded;
-  final double gap;
   final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final radii = CoilTheme.radiiOf(context);
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        SizedBox(
-          height: 64,
-          child: Align(
-            alignment: .centerLeft,
-            child: GestureDetector(
-              onTap: onToggle,
-              child: MotionContainer(
-                motion: motion,
-                debugLabel: 'Square',
-                width: expanded ? 128 : 64,
-                height: 64,
-                // A BoxDecoration's color and radius spring; other
-                // decorations change at once.
-                decoration: BoxDecoration(
-                  color: expanded ? colors.foreground : colors.muted,
-                  borderRadius: .circular(
-                    expanded ? radii.container : radii.item,
-                  ),
-                ),
-              ),
-            ),
-          ),
+    return GestureDetector(
+      onTap: onToggle,
+      child: MotionContainer(
+        motion: motion,
+        debugLabel: 'Square',
+        width: expanded ? 128 : 64,
+        height: 64,
+        // A BoxDecoration's color and radius spring; other decorations change
+        // at once.
+        decoration: BoxDecoration(
+          color: expanded ? colors.foreground : colors.accent,
+          borderRadius: .circular(expanded ? radii.container : radii.item),
         ),
-        SizedBox(height: gap),
-        CoilButton(
-          variant: .secondary,
-          size: .compact,
-          onPressed: onToggle,
-          child: const Text('Toggle'),
-        ),
-      ],
+      ),
     );
   }
 }
 
 class _Reveal extends StatelessWidget {
-  const _Reveal({
-    required this.motion,
-    required this.open,
-    required this.gap,
-    required this.onToggle,
-  });
+  const _Reveal({required this.motion, required this.open});
 
   final Motion motion;
   final bool open;
-  final double gap;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final text = CoilTheme.textOf(context);
-    return Column(
-      crossAxisAlignment: .start,
-      children: [
-        CoilButton(
-          variant: .secondary,
-          size: .compact,
-          onPressed: onToggle,
-          child: Text(open ? 'Show less' : 'Show more'),
-        ),
-        MotionSize(
-          motion: motion,
-          debugLabel: 'Paragraph size',
-          alignment: .topLeft,
-          child: open
-              ? Padding(
-                  padding: EdgeInsets.only(top: gap),
-                  child: Text(
-                    'MotionSize springs to its child\'s size. When its '
-                    'constraints change, it follows at once, so a resized '
-                    'window never lags.',
-                    style: text.muted.body,
-                  ),
-                )
-              : const SizedBox(width: double.infinity),
-        ),
-      ],
+    return MotionSize(
+      motion: motion,
+      debugLabel: 'Paragraph size',
+      alignment: .topCenter,
+      child: Text(
+        open
+            ? 'MotionSize springs to its child\'s size. When its '
+                  'constraints change, it follows at once, so a resized '
+                  'window never lags.'
+            : 'MotionSize springs to its child\'s size.',
+        textAlign: TextAlign.center,
+        style: text.muted.body,
+      ),
     );
   }
 }

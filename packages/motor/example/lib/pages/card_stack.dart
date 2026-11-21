@@ -23,7 +23,7 @@ final _offset = Track<Offset>(
   debugLabel: 'Offset',
 );
 
-const _words = ['Clear', 'Redirect', 'Settle'];
+const _cardCount = 3;
 const _friction = FrictionMotion(drag: .001, constantDeceleration: 200);
 const _clearance = 300.0;
 // Only the first 10% of a spring, so the card is still moving when the
@@ -37,7 +37,7 @@ const _clear = TrimmedMotion(
 class _CardStackPageState extends State<CardStackPage>
     with TickerProviderStateMixin {
   late final _cards = [
-    for (var i = 0; i < _words.length; i++)
+    for (var i = 0; i < _cardCount; i++)
       PhaseTrackController<_Phase>(
         vsync: this,
         // Releases pass the gesture's own velocity.
@@ -222,13 +222,13 @@ class _Card extends StatelessWidget {
             width: 220,
             height: 280,
             child: Padding(
-              padding: const .all(20),
-              child: Column(
-                crossAxisAlignment: .start,
-                children: [
-                  const Spacer(),
-                  Text(_words[index], style: text.display),
-                ],
+              padding: const .all(16),
+              child: Align(
+                alignment: AlignmentDirectional.bottomStart,
+                child: Text(
+                  '${index + 1} of $_cardCount',
+                  style: text.muted.caption.tabular,
+                ),
               ),
             ),
           ),

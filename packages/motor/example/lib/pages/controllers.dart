@@ -228,7 +228,7 @@ class _ControllersPageState extends State<ControllersPage>
                                     Radius.circular(2),
                                   ),
                                 ),
-                                color: colors.muted,
+                                color: colors.accent,
                               ),
                             ),
                           ),
@@ -243,11 +243,8 @@ class _ControllersPageState extends State<ControllersPage>
                         ),
                         child: DecoratedBox(
                           decoration: ShapeDecoration(
-                            shape: CircleBorder(
-                              side: BorderSide(color: colors.border),
-                            ),
-                            color: colors.surface(4),
-                            shadows: colors.shadow(2),
+                            shape: const CircleBorder(),
+                            color: colors.foreground,
                           ),
                           child: const SizedBox.square(dimension: _knob),
                         ),

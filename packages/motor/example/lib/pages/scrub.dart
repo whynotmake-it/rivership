@@ -73,12 +73,9 @@ class _ScrubPageState extends State<ScrubPage>
       'send\n'
       '  ..stop(canceled: true)\n'
       '  ..set(timeline.startValues)\n'
-      '  ..play(timeline);\n'
-      '// The clock does not restart on play: note where it was.\n'
-      '// Experimental: Motor has no public getter for it yet.\n'
-      'origin = send.inspectPlayback().position;';
+      '  ..play(timeline);';
 
-  final _code = ValueNotifier('// Tap Send to play.\n$_playCode');
+  final _code = ValueNotifier('// Tap Play to send.\n$_playCode');
 
   @override
   void dispose() {
@@ -135,7 +132,7 @@ class _ScrubPageState extends State<ScrubPage>
     return ChapterPage(
       chapter: chapterNamed('Scrub'),
       lead:
-          'Tap Send, then drag the scrubber. Scrubbing shows exactly what '
+          'Tap Play, then drag the scrubber. Scrubbing shows exactly what '
           'playback shows, sync barrier included. Let go and it plays on.',
       code: _code,
       below: LiveTimeline(
@@ -191,9 +188,9 @@ class _ScrubPageState extends State<ScrubPage>
                 child: Row(
                   children: [
                     CoilButton(
-                      leading: const GlyphIcon(Glyph.send),
+                      leading: const GlyphIcon(Glyph.play),
                       onPressed: _play,
-                      child: const Text('Send'),
+                      child: const Text('Play'),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -260,7 +257,7 @@ class _SendButton extends StatelessWidget {
                   child: OverflowBox(
                     maxWidth: _button,
                     child: Text(
-                      'Send \$42',
+                      'Send',
                       style: text.body
                           .copyWith(fontWeight: text.emphasis)
                           .copyWith(color: colors.background),
