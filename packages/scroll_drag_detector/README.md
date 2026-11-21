@@ -1,9 +1,9 @@
 # Scroll Drag Detector
 
 
-[![Pub Version](https://img.shields.io/pub/v/motor)](https://pub.dev/packages/scroll_drag_detector)
+[![Pub Version](https://img.shields.io/pub/v/scroll_drag_detector)](https://pub.dev/packages/scroll_drag_detector)
 [![Coverage](./coverage.svg)](./test/)
-[![lintervention_badge]]([lintervention_link])
+[![lintervention_badge]][lintervention_link]
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 
@@ -12,17 +12,20 @@ A special version of `GestureDetector` that picks up overscrolling ScrollViews i
 Unlocks easy draggable scrollable sheets in Flutter.
 ## Installation 💻
 
-**❗ In order to start using Scroll Drag Detector you must have the [Dart SDK][dart_install_link] installed on your machine.**
-
-Or install via `dart pub`:
+**❗ In order to start using Scroll Drag Detector you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
 
 ```sh
-dart pub add scroll_drag_detector
+flutter pub add scroll_drag_detector
 ```
 
 ## Usage
 
-Choose how movement in each physical direction is routed:
+Choose how movement in each physical direction is routed with a `ScrollDragMode`:
+
+- `none`: the scrollable keeps control.
+- `scrollFirst`: the scrollable moves first, then the detector takes over at its boundary.
+- `dragFirst`: the detector takes over before the scrollable moves.
+- `boundaryStart`: the detector takes over at the boundary only when the gesture also began there.
 
 ```dart
 ScrollDragDetector(
@@ -37,10 +40,8 @@ ScrollDragDetector(
 )
 ```
 
-Use `ScrollDragMode.scrollFirst` to let the child reach its boundary before
-the surrounding draggable takes over. Use `ScrollDragDetector.legacy` to
-migrate the previous `scrollableCanMoveBack` and
-`onlyDragWhenScrollWasAtTop` configuration without changing conventional
+Use `ScrollDragDetector.legacy` to migrate the previous `scrollableCanMoveBack`
+and `onlyDragWhenScrollWasAtTop` configuration without changing conventional
 sheet behavior.
 
 ### Overriding child scroll behavior
@@ -64,7 +65,7 @@ delegates unchanged when there is no ancestor detector.
 
 --- 
 
-[dart_install_link]: https://dart.dev/get-dart
+[flutter_install_link]: https://docs.flutter.dev/get-started/install
 [mason_link]: https://github.com/felangel/mason
 [melos_link]: https://github.com/invertase/melos
 [lintervention_link]: https://github.com/whynotmake-it/lintervention

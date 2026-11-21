@@ -6,12 +6,16 @@
 
 [![Pub Version](https://img.shields.io/pub/v/stupid_simple_sheet)](https://pub.dev/packages/stupid_simple_sheet)
 [![Coverage](./coverage.svg)](./test/)
-[![lintervention_badge]]([lintervention_link])
+[![lintervention_badge]][lintervention_link]
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 The only Flutter sheet that **seamlessly transitions between scrolling content and sheet dragging** -- with real spring physics.
 
 Put a `ListView`, `CustomScrollView`, `PageView`, or any scrollable inside the sheet. When the user scrolls to the edge, the gesture hands off to the sheet drag automatically. You don't need to worry about stuff like `DraggableScrollableSheet`. Just smooth, physics-driven motion powered by [motor](https://pub.dev/packages/motor).
+
+## Try it out
+
+[Open Example](https://whynotmake-it.github.io/rivership/#/stupid_simple_sheet)
 
 ## Installation
 
@@ -35,7 +39,16 @@ That gives you an iOS 26 glass sheet with spring physics and seamless scroll-to-
 
 ## Important
 
-Content inside the sheet should **not** define any custom `ScrollConfiguration`. The sheet relies on default scroll behavior to detect scroll boundaries and transition between scrolling and dragging.
+The sheet relies on the default scroll behavior to detect scroll boundaries and transition between scrolling and dragging. If content inside the sheet overrides its `ScrollBehavior`, wrap that behavior in `ScrollDragBehavior` (exported by this package) so the handoff keeps working:
+
+```dart
+ScrollConfiguration(
+  behavior: ScrollDragBehavior(
+    parent: const ScrollBehavior().copyWith(scrollbars: false),
+  ),
+  child: YourScrollable(),
+)
+```
 
 ## Cookbook
 
@@ -156,6 +169,25 @@ Navigator.of(context).push(
 > This differs from `draggable: false`, which disables all drag gestures
 > entirely. `PopScope` only prevents the dismiss -- the sheet is still
 > draggable between its snap points.
+
+---
+
+### Drag handoff
+
+`dragHandoff` decides when scrolling content hands its gesture to the sheet.
+`SheetDragHandoff.gestureStart` (the default, like iOS) lets the sheet take over
+only if the content was already at its top edge when the gesture began.
+`SheetDragHandoff.continuous` also lets the sheet take over when the same
+gesture scrolls the content to its top edge.
+
+```dart
+Navigator.of(context).push(
+  StupidSimpleCupertinoSheetRoute(
+    dragHandoff: SheetDragHandoff.continuous,
+    child: YourContent(),
+  ),
+);
+```
 
 ---
 
