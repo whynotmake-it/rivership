@@ -13,6 +13,9 @@ platform.
 - Themed with colors, shape, type, motion and icons, and each component can be
   copied into your app to edit it.
 
+[Open the catalog](https://whynotmake-it.github.io/rivership/#/coil) to try
+every component in your browser.
+
 > Pre-release: coil's API may change before 1.0. It needs Flutter 3.47 or
 > later.
 
@@ -65,7 +68,8 @@ component's library such as `package:coil/button.dart`.
 The pieces they are built from, such as `CoilInteraction`, `CoilFocusRing`,
 `CoilPopover`, `CoilSheetRoute` and `CoilTextFieldCore`, are public in
 `primitives.dart` for building your own. The catalog in [`example/`](example)
-shows every component live.
+shows every component live, and is
+[hosted on the web](https://whynotmake-it.github.io/rivership/#/coil).
 
 ## Theming
 
