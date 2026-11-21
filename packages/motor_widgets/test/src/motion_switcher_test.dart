@@ -31,6 +31,36 @@ class _ChildState extends State<_Child> {
   Widget build(BuildContext context) => const SizedBox(width: 20, height: 20);
 }
 
+/// A button that counts how often it was tapped, in its state.
+class _Button extends StatefulWidget {
+  const _Button({required this.focusNode, super.key});
+
+  final FocusNode focusNode;
+
+  @override
+  State<_Button> createState() => _ButtonState();
+}
+
+class _ButtonState extends State<_Button> {
+  int taps = 0;
+
+  /// The focus node the button finds above itself.
+  FocusNode? above;
+
+  @override
+  Widget build(BuildContext context) {
+    above = Focus.of(context);
+    return Focus(
+      focusNode: widget.focusNode,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => taps++,
+        child: const SizedBox(width: 40, height: 40),
+      ),
+    );
+  }
+}
+
 Widget _child(String label) => _Child(label, key: ValueKey(label));
 
 Widget _switcher(
@@ -552,9 +582,11 @@ void main() {
           immediate(const SizedBox(key: ValueKey(2), width: 100, height: 20)),
         );
         await tester.pump(frame * 3);
-        final size = tester.getSize(find.byType(MotionSizeSwitcher));
+        // The layout that holds the children clips them to the size of the
+        // current one.
+        final size = tester.getSize(find.byType(MotionSwitcher));
         expect(
-          tester.renderObject(find.byType(MotionSizeSwitcher)),
+          tester.renderObject(find.byType(MotionSwitcher)),
           paints..clipRect(rect: Offset.zero & size),
         );
       });
@@ -613,5 +645,94 @@ void main() {
       await tester.pumpAndSettle(frame);
       expect(tester.getSize(find.byType(MotionSizeSwitcher)), Size.zero);
     });
+  });
+
+  testWidgets('a leaving child is inert, and interactive again if it returns '
+      'with its state', (tester) async {
+    final focusA = FocusNode();
+    final focusB = FocusNode();
+    final control = FocusNode();
+    addTearDown(control.dispose);
+    addTearDown(focusA.dispose);
+    addTearDown(focusB.dispose);
+    const a = ValueKey('a');
+    const b = ValueKey('b');
+    // The control the switcher sits in.
+    Widget build(Key key) => Focus(
+      focusNode: control,
+      child: _switcher(
+        _Button(key: key, focusNode: key == a ? focusA : focusB),
+        // Side by side, so each can be tapped on its own.
+        layoutBuilder: (current, previous) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [...previous, ?current],
+        ),
+      ),
+    );
+    int taps(Key key) => tester.state<_ButtonState>(find.byKey(key)).taps;
+
+    await tester.pumpWidget(build(a));
+    await tester.tap(find.byKey(a));
+    expect(taps(a), 1);
+    expect(
+      tester.state<_ButtonState>(find.byKey(a)).above,
+      same(control),
+      reason: 'Focus.of inside a current child finds the control around it',
+    );
+    // Focused when it starts to leave: the focus goes.
+    focusA.requestFocus();
+    await tester.pump();
+    expect(focusA.hasPrimaryFocus, isTrue);
+
+    await tester.pumpWidget(build(b));
+    await tester.pump(frame);
+    expect(find.byKey(a), findsOneWidget, reason: 'still leaving');
+    expect(focusA.hasFocus, isFalse, reason: 'a focused child loses focus');
+    await tester.tap(find.byKey(a), warnIfMissed: false);
+    focusA.requestFocus();
+    await tester.pump();
+    expect(taps(a), 1, reason: 'a leaving button can not be tapped');
+    expect(focusA.hasFocus, isFalse, reason: 'or focused');
+
+    // Back before it has gone: interactive again, and still the same State.
+    await tester.pumpWidget(build(a));
+    await tester.pump(frame);
+    await tester.tap(find.byKey(a));
+    focusA.requestFocus();
+    await tester.pump();
+    expect(taps(a), 2);
+    expect(focusA.hasFocus, isTrue);
+  });
+
+  testWidgets('MotionSizeSwitcher keeps the state of a leaving child while it '
+      'leaves, in both modes', (tester) async {
+    for (final immediateResize in [false, true]) {
+      _Child.created.clear();
+      Widget build(Widget child) => Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: MotionSizeSwitcher(
+            motion: _spring,
+            immediateResize: immediateResize,
+            child: child,
+          ),
+        ),
+      );
+      await tester.pumpWidget(build(_child('a')));
+      final state = tester.state(find.byKey(const ValueKey('a')));
+      await tester.pumpWidget(build(_child('b')));
+      await tester.pump(frame);
+      await tester.pump(frame);
+      expect(find.byKey(const ValueKey('a')), findsOneWidget);
+      expect(
+        tester.state(find.byKey(const ValueKey('a'))),
+        same(state),
+        reason: 'immediateResize: $immediateResize',
+      );
+      expect(_Child.created['a'], 1);
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+    }
   });
 }

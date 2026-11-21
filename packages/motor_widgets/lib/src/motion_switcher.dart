@@ -30,6 +30,16 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 /// The animation's status is [AnimationStatus.forward] while a child enters
 /// and [AnimationStatus.reverse] while it leaves.
 ///
+/// ## Leaving children are inert
+///
+/// A leaving child can't be tapped, focused or read by a screen reader, so a
+/// button that is fading out can't be pressed by mistake. This is done before
+/// [layoutBuilder] sees the children, so every layout builder gets it. A
+/// child that starts leaving keeps its state, and one that comes back while
+/// it is leaving is interactive again. Inside a current child, `Focus.of`
+/// still finds the enclosing control's focus node. Flutter's
+/// [AnimatedSwitcher] doesn't do this.
+///
 /// The first child is shown without a transition.
 ///
 /// ```dart
@@ -112,6 +122,10 @@ class _Entry {
   /// Keeps the child's state while it moves between the current slot and
   /// the leaving list, which a layout builder may put in different parents.
   late final GlobalKey key = GlobalObjectKey(this);
+
+  /// Keeps the content's state when it gains or loses the focus exclusion
+  /// that only a leaving child has. One per entry, which is mounted once.
+  final GlobalKey contentKey = GlobalKey();
 }
 
 class _MotionSwitcherState extends State<MotionSwitcher>
@@ -218,11 +232,27 @@ class _MotionSwitcherState extends State<MotionSwitcher>
   }
 
   void _leave(_Entry entry) {
+    _unfocus(entry);
     entry.leaving = true;
     _leaving.add(entry);
     entry.controller
       ..motion = _exitMotion
       ..animateTo(0);
+  }
+
+  /// Takes the primary focus away if it is inside [entry]'s content. The
+  /// focus exclusion a leaving child gets only unfocuses on a change, and
+  /// the child is mounted under a new one.
+  void _unfocus(_Entry entry) {
+    final content = entry.contentKey.currentContext;
+    final focus = FocusManager.instance.primaryFocus;
+    if (content == null || focus?.context == null) return;
+    var inside = false;
+    focus!.context!.visitAncestorElements((ancestor) {
+      inside = ancestor == content;
+      return !inside;
+    });
+    if (inside) focus.unfocus();
   }
 
   /// Removes [entry] once it has settled at presence 0. An entry that came
@@ -246,11 +276,26 @@ class _MotionSwitcherState extends State<MotionSwitcher>
   }
 
   Widget _build(_Entry entry) {
-    return KeyedSubtree(
-      key: entry.key,
+    // The pointer and semantics wrappers are there for every child at every
+    // moment and only flip their flags. The focus exclusion is only there
+    // while the child leaves: it is a Focus node, and would be what
+    // `Focus.of` finds inside a current child. The content has its own global
+    // key, so it moves between the two shapes instead of remounting.
+    final content = KeyedSubtree(
+      key: entry.contentKey,
       child: entry.transition ??= widget.transitionBuilder(
         entry.widget,
         entry.controller,
+      ),
+    );
+    return KeyedSubtree(
+      key: entry.key,
+      child: IgnorePointer(
+        ignoring: entry.leaving,
+        child: ExcludeSemantics(
+          excluding: entry.leaving,
+          child: entry.leaving ? ExcludeFocus(child: content) : content,
+        ),
       ),
     );
   }
