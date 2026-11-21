@@ -238,7 +238,7 @@ How lit controls look: `CoilThemeData.plasticity`, a `CoilPlasticity(amount:)` f
 Two durations sit next to the springs:
 
 - `minPressDuration` (90 ms): a quick tap still shows its press.
-- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes. Meanwhile the list ignores the pointer and the keys: the highlight stays on the picked row, and nothing else can be picked.
+- `acknowledgeDuration` (300 ms): a picked row stays visible this long before the list closes. Meanwhile the list ignores the pointer and the keys: the highlight stays on the picked row, and nothing else can be picked. The page doesn't wait for it: from the pick, a popover captures nothing outside itself, as if it were already closing. Taps, drags, scrolls, hover and right-clicks outside reach the page at once (a tap doesn't need a second one), focus goes back to where it was when the popover opened, and Escape and back act on the page (`CoilPopupHandle.release`). A sheet stays modal until it closes.
 - `stagger` (60 ms): the delay between siblings that arrive in turn (Reveal). Zero under reduced motion.
 - Spinner lap: 1 s. Skeleton grace: 160 ms. Skeleton pulse: 2 s.
 
@@ -494,7 +494,7 @@ Every component ships with all of these. They're required to call it done.
 - **Search sheets** (the command menu, a dropdown with search, a combobox without a sheet title): no header; the search line takes its place and the close button **ends that line on every platform**, where iOS puts a search bar's Cancel and Material a search bar's trailing action, so the field keeps the full width before it and the button stays concentric with the corner (`CoilSheetCloseSlot`; `CoilSheetPanel.lineTopOf` lines the field's middle up with the corner's center). A combobox with a sheet title keeps the header and puts its field under it.
 - **Optional pinned header row** under the header: for push navigation, a back row ("‹ Parent"). A search field is 44, not autofocused on touch, kept above the keyboard.
 - **Content under the header** lines up with the title: a dialog shown as a sheet pads its body and action bar 16 at the sides (the rows' text inset), 8 under the header line; a settings dialog's title moves into the header next to the close button.
-- A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. At the top there is no line.
+- A scroll-edge hairline (`border`) under the header shows only while content is scrolled beneath it, read from the list's scroll notifications, fading on `fade` / `fadeExit`. A sheet without a header has no such line; a search sheet's search line draws its own.
 - **Sections:** a caption 13/18 semibold muted label, 16 above and 4 below.
 - **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top, unless the footer leads with a summary of what its one action confirms (§13.5, summary footer), as the date picker's does. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
 - **Height:** it hugs its content: a short list makes a short sheet on the bottom edge; a scroll view or long content grows it up to the cap and scrolls inside. Search and command sheets open at the large detent and grow while the keyboard is up.
@@ -841,7 +841,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Search** (`DropdownSearch`): a field band one row high at the top with a hairline below. Typing filters by word prefix, and printable keys typed into the list go to the field. Pointer: autofocused. Touch sheet: not autofocused.
 - **Presentation:** §9.1. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
 - **Motion:** popup blur-fade on the tier's popover tokens (§7.2); highlight `quick`; sub push `standard`.
-- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile), and immediately for actions.
+- **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile, while the page behind already takes it, §7.1), and immediately for actions.
 - **Semantics:** menu, menuItem / menuItemCheckbox / menuItemRadio, `expanded` on the trigger.
 - **Haptic:** iOS `selectionClick` on a pick in a sheet.
 - **Do:** keep it to ≤ 12 items and ≤ 1 submenu level.
@@ -852,7 +852,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Trigger:** like Input (hairline, `controlHeight`, `controlPaddingX`, min width 160) → [icon] value (placeholder muted) → chevron (muted → foreground on hover). Hover is the `hover` fill. While open it holds the `active` fill.
 - **List:** popup rows; a trailing check; selected `active` fill in popovers; check only in sheets; multi-select uses merged blocks plus checks.
 - **Presentation:** pointer popover (max height 300); phone ≤ 8 options touch popover; > 8 options or multi → sheet with the field label as its title. Lists over 12 options add a search row.
-- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input, then closes; the selected fill glides `standard`.
+- **Motion:** the check draws on `fade`; a pick holds `acknowledgeDuration` (300 ms), ignoring input but handing the page back at once (§7.1), then closes; the selected fill glides `standard`.
 - **Keyboard:** the trigger opens on Enter, Space, Up or Down (the list starts on the picked row with the ring). The list has arrows, Home/End, PageUp/PageDown, typeahead, Enter/Space to pick, and Esc/Tab to dismiss. Focus returns to the trigger.
 - **Semantics:** the trigger is a button with `expanded` and its value; the list is a menu; rows are `selected`.
 - **Don't:** use it for fewer than 3 options (use a RadioGroup or Tabs) or for actions (use Dropdown).

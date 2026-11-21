@@ -109,4 +109,13 @@ abstract interface class CoilPopupHandle {
 
   /// Closes the popup with [reason]. Only the first close counts.
   void close(CoilPopupCloseReason reason);
+
+  /// Hands the page back while the popup stays to acknowledge a pick, until
+  /// [close].
+  ///
+  /// A popover stops capturing anything outside itself, as if it were
+  /// already closing (see `CoilPopoverController.release`): the page takes
+  /// taps, scrolls and focus again while the pick lands. A sheet is modal
+  /// and stays so. Does nothing once it's closed.
+  void release();
 }

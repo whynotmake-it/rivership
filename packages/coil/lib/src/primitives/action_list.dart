@@ -204,8 +204,8 @@ class CoilMenuSeparator extends CoilMenuEntry {
 /// Picking an action calls [onClose] with [CoilPopupCloseReason.selected]
 /// and then runs it. Picking a checkable row runs it first and closes after
 /// the theme's `acknowledgeDuration`, so the mark lands before the menu
-/// goes. On the touch tier of [metrics], rows rest at full
-/// strength, since a finger can't hover.
+/// goes; [onAcknowledge] says when that starts. On the touch tier of
+/// [metrics], rows rest at full strength, since a finger can't hover.
 ///
 /// With [search], a field above the rows filters them.
 ///
@@ -225,6 +225,7 @@ class CoilActionList extends StatefulWidget {
     required this.metrics,
     required this.scrollbar,
     super.key,
+    this.onAcknowledge,
     this.surface,
     this.fadeExtent = 32,
     this.highlight,
@@ -259,6 +260,11 @@ class CoilActionList extends StatefulWidget {
 
   /// Called when a pick, Escape or Tab closes the menu.
   final ValueChanged<CoilPopupCloseReason> onClose;
+
+  /// Called when a checkable row's pick, in this list or a submenu, starts
+  /// the acknowledgement; [onClose] follows once it's over. A menu in a
+  /// popup hands the page back here, with [CoilPopupHandle.release].
+  final VoidCallback? onAcknowledge;
 
   /// The row sizes, and the tier that picks the rows' resting emphasis.
   final CoilMetrics metrics;
@@ -308,7 +314,10 @@ class _CoilActionListState extends State<CoilActionList>
   void _freeze() {
     if (_frozen) return;
     setState(() => _frozen = true);
+    // The submenu the pick came from lets go of the page too.
+    if (_sub case final i?) _subControllers[i]?.release();
     _FreezeScope.maybeOf(context)?.call();
+    widget.onAcknowledge?.call();
   }
 
   /// The rows of the touch submenus drilled into, from the top.

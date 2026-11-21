@@ -1,0 +1,14 @@
+name: Setup Flutter
+description: Installs the Flutter version pinned in .fvmrc, with the SDK and pub caches.
+
+runs:
+  using: composite
+  steps:
+    - name: 🐦 Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version-file: .fvmrc
+        cache: true
+        # There is no lockfile, so key the pub cache on every pubspec instead.
+        pub-cache-key: flutter-pub-:os:-:channel:-:version:-:arch:-${{ hashFiles('**/pubspec.yaml') }}
+        pub-cache-path: default
