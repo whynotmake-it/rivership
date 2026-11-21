@@ -372,26 +372,31 @@ class _SpringLabPageState extends State<SpringLabPage>
                   ],
                 ),
                 if (spring)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Presets',
-                        style: CoilTheme.textOf(context).muted.caption,
-                      ),
-                      const SizedBox(width: 8),
-                      for (final (label, preset) in presets)
-                        CoilButton(
-                          onPressed: () => _changed(() {
-                            _durationMs = preset.duration.inMilliseconds
-                                .toDouble();
-                            _bounce = preset.bounce;
-                          }),
-                          variant: .ghost,
-                          size: .compact,
-                          child: Text(label),
+                  // Shrinks, rather than overflows, when even a line of its
+                  // own is too narrow.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Presets',
+                          style: CoilTheme.textOf(context).muted.caption,
                         ),
-                    ],
+                        const SizedBox(width: 8),
+                        for (final (label, preset) in presets)
+                          CoilButton(
+                            onPressed: () => _changed(() {
+                              _durationMs = preset.duration.inMilliseconds
+                                  .toDouble();
+                              _bounce = preset.bounce;
+                            }),
+                            variant: .ghost,
+                            size: .compact,
+                            child: Text(label),
+                          ),
+                      ],
+                    ),
                   ),
               ],
             ),

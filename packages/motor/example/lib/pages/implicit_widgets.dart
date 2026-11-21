@@ -175,7 +175,9 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
                 SizedBox(height: spacing),
                 Flex(
                   direction: wide ? Axis.horizontal : Axis.vertical,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: wide
+                      ? CrossAxisAlignment.start
+                      : CrossAxisAlignment.stretch,
                   spacing: spacing,
                   children: [
                     for (final cell in cells)
@@ -246,47 +248,51 @@ class _Counter extends StatelessWidget {
     final colors = CoilTheme.of(context).colors;
     final radii = CoilTheme.radiiOf(context);
     final text = CoilTheme.textOf(context);
-    return Row(
-      mainAxisSize: .min,
-      spacing: gap,
-      children: [
-        CoilButton.icon(
-          variant: .secondary,
-          size: .compact,
-          semanticLabel: 'Fewer items',
-          icon: const GlyphIcon(Glyph.minus),
-          onPressed: onFewer,
-        ),
-        DecoratedBox(
-          decoration: ShapeDecoration(
-            color: colors.surface(4),
-            shape: RoundedSuperellipseBorder(
-              borderRadius: .circular(radii.item),
-              side: BorderSide(color: colors.border),
-            ),
+    // Scales down rather than overflowing in a narrow cell or at large text.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: .min,
+        spacing: gap,
+        children: [
+          CoilButton.icon(
+            variant: .secondary,
+            size: .compact,
+            semanticLabel: 'Fewer items',
+            icon: const GlyphIcon(Glyph.minus),
+            onPressed: onFewer,
           ),
-          child: Padding(
-            padding: const .symmetric(horizontal: 16, vertical: 10),
-            child: MotionSizeSwitcher(
-              motion: motion,
-              debugLabel: 'Counter pill',
-              child: Text(
-                count == 1 ? '1 item' : '$count items',
-                key: ValueKey(count),
-                maxLines: 1,
-                style: text.body.tabular,
+          DecoratedBox(
+            decoration: ShapeDecoration(
+              color: colors.surface(4),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: .circular(radii.item),
+                side: BorderSide(color: colors.border),
+              ),
+            ),
+            child: Padding(
+              padding: const .symmetric(horizontal: 16, vertical: 10),
+              child: MotionSizeSwitcher(
+                motion: motion,
+                debugLabel: 'Counter pill',
+                child: Text(
+                  count == 1 ? '1 item' : '$count items',
+                  key: ValueKey(count),
+                  maxLines: 1,
+                  style: text.body.tabular,
+                ),
               ),
             ),
           ),
-        ),
-        CoilButton.icon(
-          variant: .secondary,
-          size: .compact,
-          semanticLabel: 'More items',
-          icon: const GlyphIcon(Glyph.plus),
-          onPressed: onMore,
-        ),
-      ],
+          CoilButton.icon(
+            variant: .secondary,
+            size: .compact,
+            semanticLabel: 'More items',
+            icon: const GlyphIcon(Glyph.plus),
+            onPressed: onMore,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -105,18 +105,18 @@ void main() {
   testWidgets('Card stack sends a thrown card under the stack', (tester) async {
     await _open(tester, 'Card stack');
     // A gentle drag springs back and keeps the card on top.
-    await tester.drag(find.text('Clear'), const Offset(30, 0));
+    await tester.drag(find.text('1 of 3'), const Offset(30, 0));
     await _pumpFor(tester, const Duration(seconds: 1));
     expect(topCard(tester), 0);
 
-    await tester.fling(find.text('Clear'), const Offset(200, -40), 2500);
+    await tester.fling(find.text('1 of 3'), const Offset(200, -40), 2500);
     await _pumpFor(tester, const Duration(milliseconds: 60));
     // Still clearing the stack, so it's drawn above the others.
     expect(topCard(tester), 0);
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(topCard(tester), 1);
-    final clear = tester.getCenter(find.text('Clear'));
-    final redirect = tester.getCenter(find.text('Redirect'));
+    final clear = tester.getCenter(find.text('1 of 3'));
+    final redirect = tester.getCenter(find.text('2 of 3'));
     expect((clear - redirect).distance, lessThan(80));
     expect(tester.takeException(), isNull);
   });
