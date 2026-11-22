@@ -9,10 +9,10 @@ import 'package:flutter/widgets.dart';
 
 /// A field that opens a [CoilCalendar] to pick a date.
 ///
-/// The calendar opens in a popover next to the field, or in a sheet on a
-/// phone. The field shows the date with [CoilCalendarLabels.date], or
-/// [placeholder] when there is none. The arrow keys on the field open the
-/// calendar with the keyboard on the picked day.
+/// The calendar opens in a popover next to the field, or on a phone in a
+/// floating panel, centered over the page. The field shows the date with
+/// [CoilCalendarLabels.date], or [placeholder] when there is none. The arrow
+/// keys on the field open the calendar with the keyboard on the picked day.
 ///
 /// - **Popover:** what's picked applies at once. The field's label
 ///   follows every day and time picked, and closing the popover (a tap
@@ -20,14 +20,16 @@ import 'package:flutter/widgets.dart';
 ///   cancel, as in iOS's compact picker, macOS's and MUI's desktop
 ///   pickers. Picking a day closes a date-only popover; with time it stays
 ///   open for the time.
-/// - **Sheet:** what's picked is a draft until the pinned **Done**
-///   ([CoilCalendarLabels.confirm]) confirms it; every other way out (the
-///   close button, the scrim, a drag down, back, Escape) leaves [value] as
-///   it was. A sheet takes a whole screen and hides the field. The footer
-///   names what Done will confirm on its leading side
+/// - **Floating panel or sheet:** what's picked is a draft until the
+///   pinned **Done** ([CoilCalendarLabels.confirm]) confirms it; every other
+///   way out (the close button, the scrim, a swipe away, back, Escape)
+///   leaves [value] as it was. The panel hugs the calendar and is swiped
+///   away sideways, so the calendar's vertical scroll is its own; a sheet
+///   (pinned with [presentation]) takes a whole screen and is dragged down.
+///   The footer names what Done will confirm on its leading side
 ///   ([CoilCalendarLabels.summary]), so the draft stays readable however
-///   far the calendar has paged or zoomed.
-/// - **Keyboard:** Enter is done: it confirms a sheet's draft and closes
+///   far the calendar has scrolled or zoomed.
+/// - **Keyboard:** Enter is done: it confirms a draft and closes
 ///   a popover (on the grid, it picks the focused day first); Space only
 ///   picks; Escape closes.
 ///
@@ -35,9 +37,9 @@ import 'package:flutter/widgets.dart';
 /// In a short, wide window (a phone in landscape) they sit beside the
 /// calendar instead.
 ///
-/// The popover is as wide as the calendar's seven cells. A sheet's
-/// calendar fills the sheet up to days 30 % bigger than their natural
-/// size, and centers in a wider one: days are always square. Either
+/// The popover is as wide as the calendar's seven cells. A panel's or
+/// sheet's calendar fills it up to days 30 % bigger than their natural
+/// size, and centers in a wider one: days are always square. Any of them
 /// scrolls when the window is too short for it.
 class CoilDatePicker extends StatefulWidget {
   /// Creates a date picker.
@@ -67,8 +69,8 @@ class CoilDatePicker extends StatefulWidget {
   /// The picked date, or null.
   final DateTime? value;
 
-  /// Called with each date a popover applies, or the one a sheet's Done
-  /// confirms. Null disables the picker.
+  /// Called with each date a popover applies, or the one the Done of a
+  /// panel or sheet confirms. Null disables the picker.
   final ValueChanged<DateTime>? onChanged;
 
   /// Shown, muted, in the field when no date is picked. Usually a [Text].
@@ -92,17 +94,17 @@ class CoilDatePicker extends StatefulWidget {
   /// Whether a time of day is picked too, in two columns under the
   /// calendar. The popover then stays open after a day is picked, for the
   /// time; every pick still applies at once, and closing it is done. Only
-  /// the sheet has a Done button.
+  /// the panel and the sheet have a Done button.
   final bool withTime;
 
   /// The minute step of the time columns.
   final int minuteInterval;
 
   /// Month and weekday names, how the field shows a date, and the label
-  /// of the sheet's Done button.
+  /// of the Done button.
   final CoilCalendarLabels labels;
 
-  /// A heading for the sheet presentation.
+  /// A heading for the floating panel and sheet presentations.
   final Widget? sheetTitle;
 
   /// Pins the presentation. Null decides per open.
@@ -136,8 +138,8 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
   final _states = WidgetStatesController();
 
   /// What the open calendar has picked. Each open starts it from
-  /// [CoilDatePicker.value]. A popover reports it as it changes; a sheet
-  /// holds it until Done, its footer following it.
+  /// [CoilDatePicker.value]. A popover reports it as it changes; a panel
+  /// or sheet holds it until Done, its footer following it.
   final _draft = ValueNotifier<DateTime?>(null);
 
   /// Whether the open calendar is a popover, which applies picks at once.
@@ -359,6 +361,9 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
           child: content,
         );
       },
+      // A phone's picker floats in the middle of the page, hugging the
+      // calendar.
+      floatingAnchor: CoilModalAnchor.center,
       // The content builds its own panel, with the footer that confirms.
       sheet: (context, content) => content,
       child: ListenableBuilder(

@@ -58,8 +58,8 @@ class CoilOverlayTraits {
 }
 
 /// Opens [content] from [child]: anchored to it in a [CoilPopover], in a
-/// sheet, or in a top-anchored floating panel, as [presentationOf] decides
-/// each time it opens.
+/// sheet, or in a floating panel (top-anchored, or centered by
+/// [floatingAnchor]), as [presentationOf] decides each time it opens.
 ///
 /// [controller] opens and closes it; its `open()` resolves with why it
 /// closed. The popover is a descendant of this widget, so its content
@@ -89,6 +89,7 @@ class CoilAdaptivePopup extends StatefulWidget {
     this.maxHeight = double.infinity,
     this.takeFocus = true,
     this.motion,
+    this.floatingAnchor = CoilModalAnchor.top,
   });
 
   /// Opens and closes the popup.
@@ -127,6 +128,12 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// Motion tokens for the popup's enter and exit, instead of the theme's.
   final CoilMotion? motion;
 
+  /// Where a floating panel sits: under the top safe area (the default,
+  /// for search lists, so the field stays put) or centered in the room
+  /// above the keyboard (a date picker). Either hugs its content. A popover
+  /// or a sheet ignores it.
+  final CoilModalAnchor floatingAnchor;
+
   /// The most rows a phone shows in an anchored touch popover.
   static const shortMenuMaxItems = 8;
 
@@ -161,15 +168,17 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// menus, context menus and selects with at most [shortMenuMaxItems] rows,
   /// no search, single selection and at most one submenu level. Anything
   /// with a search field (a combobox, a menu with search) is a floating
-  /// panel, whose height stays put while the results change. The other
-  /// cases that need room are sheets: longer lists, multi-select, deep
-  /// submenus and date/time pickers.
+  /// panel, whose height stays put while the results change. A date/time
+  /// picker is a floating panel too, centered and hugging its calendar. The
+  /// other cases that need room are sheets: longer lists, multi-select and
+  /// deep submenus.
   static CoilPresentation phonePresentation(CoilOverlayTraits traits) {
-    if (traits.kind == CoilOverlayKind.combobox || traits.hasSearch) {
+    if (traits.kind == CoilOverlayKind.combobox ||
+        traits.kind == CoilOverlayKind.dateTime ||
+        traits.hasSearch) {
       return CoilPresentation.floating;
     }
     final needsRoom =
-        traits.kind == CoilOverlayKind.dateTime ||
         traits.multiSelect ||
         traits.submenuDepth > 1 ||
         traits.itemCount > shortMenuMaxItems;
@@ -281,7 +290,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
       CoilPresentation.floating => CoilModalRoute<CoilPopupCloseReason>(
         context: context,
         presentation: CoilModalPresentation.floating,
-        anchor: CoilModalAnchor.top,
+        anchor: widget.floatingAnchor,
         motion: widget.motion,
         // A swipe, back and Esc dismiss it; the TapRegion reports a tap on
         // the scrim first, with its own reason.

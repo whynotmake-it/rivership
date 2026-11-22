@@ -87,43 +87,54 @@ class CoilTimeColumns extends StatelessWidget {
               ),
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _Column(
-                label: hourLabel,
-                count: 24,
-                index: value.hour,
-                extent: extent,
-                width: width,
-                motion: motion,
-                text: (i) => i.toString().padLeft(2, '0'),
-                onChanged: onChanged == null
-                    ? null
-                    : (i) => onChanged((hour: i, minute: value.minute)),
+          // On the narrowest windows (a floating panel's margins take 16 of
+          // 240) the columns shrink with their numbers, as the days do.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox(
+              height: extent * visibleRows,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _Column(
+                    label: hourLabel,
+                    count: 24,
+                    index: value.hour,
+                    extent: extent,
+                    width: width,
+                    motion: motion,
+                    text: (i) => i.toString().padLeft(2, '0'),
+                    onChanged: onChanged == null
+                        ? null
+                        : (i) => onChanged((hour: i, minute: value.minute)),
+                  ),
+                  ExcludeSemantics(
+                    child: Text(
+                      ':',
+                      style: text.body.tabular.copyWith(
+                        fontWeight: text.emphasis,
+                      ),
+                    ),
+                  ),
+                  _Column(
+                    label: minuteLabel,
+                    count: minuteSteps,
+                    index: value.minute ~/ minuteInterval,
+                    extent: extent,
+                    width: width,
+                    motion: motion,
+                    text: (i) =>
+                        (i * minuteInterval).toString().padLeft(2, '0'),
+                    onChanged: onChanged == null
+                        ? null
+                        : (i) => onChanged((
+                            hour: value.hour,
+                            minute: i * minuteInterval,
+                          )),
+                  ),
+                ],
               ),
-              ExcludeSemantics(
-                child: Text(
-                  ':',
-                  style: text.body.tabular.copyWith(fontWeight: text.emphasis),
-                ),
-              ),
-              _Column(
-                label: minuteLabel,
-                count: minuteSteps,
-                index: value.minute ~/ minuteInterval,
-                extent: extent,
-                width: width,
-                motion: motion,
-                text: (i) => (i * minuteInterval).toString().padLeft(2, '0'),
-                onChanged: onChanged == null
-                    ? null
-                    : (i) => onChanged((
-                        hour: value.hour,
-                        minute: i * minuteInterval,
-                      )),
-              ),
-            ],
+            ),
           ),
         ],
       ),

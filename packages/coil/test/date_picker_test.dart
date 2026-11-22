@@ -76,13 +76,60 @@ void main() {
     expect(Focus.of(tester.element(find.text('Pick a date'))).hasFocus, isTrue);
   });
 
-  testWidgets('on a phone the calendar opens in a sheet', (tester) async {
+  testWidgets('on a phone the picker floats mid-page: months scroll without '
+      'closing it, Done reports the pick, a swipe sideways cancels', (
+    tester,
+  ) async {
     useScreen(tester, TestScreen.phone);
-    await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
-    await tester.tap(find.text('Pick a date'));
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        home: _ConfirmDemo(initial: DateTime(2026, 11, 14)),
+      ),
+    );
+    await tester.tap(find.byType(CoilDatePicker));
     await tester.pumpAndSettle();
-    expect(find.byType(CoilSheetPanel), findsOneWidget);
-    expect(find.byType(CoilCalendar), findsOneWidget);
+
+    // A panel centered in the room the window leaves, hugging its content
+    // rather than filling the room, as a sheet would.
+    final panel = tester.getRect(find.byType(CoilSheetPanel));
+    final window = TestScreen.phone.size;
+    final room = Rect.fromLTRB(
+      0,
+      TestScreen.phone.padding.top,
+      window.width,
+      window.height - TestScreen.phone.padding.bottom,
+    );
+    expect(panel.center.dy, moreOrLessEquals(room.center.dy, epsilon: 1));
+    expect(panel.height, lessThan(room.height - 100));
+    expect(panel.left, greaterThan(room.left));
+    expect(panel.right, lessThan(room.right));
+
+    // Scrolling the months vertically is the calendar's, not the panel's.
+    await tester.fling(_grid(), const Offset(0, -200), 600);
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+    expect(tester.getRect(find.byType(CoilSheetPanel)), panel);
+
+    // A pick is a draft until Done.
+    await tester.tap(find.text('20').first);
+    await tester.pumpAndSettle();
+    expect(_changes(tester), isEmpty);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSheetPanel), findsNothing);
+    expect(_changes(tester), [DateTime(2026, 12, 20)]);
+
+    // A swipe sideways, from the calendar, throws the panel away without
+    // reporting what was picked.
+    await tester.tap(find.byType(CoilDatePicker));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('22').first);
+    await tester.pumpAndSettle();
+    await tester.fling(_grid(), const Offset(300, 0), 2000);
+    await tester.pumpAndSettle();
+    expect(find.byType(CoilSheetPanel), findsNothing);
+    expect(_changes(tester), [DateTime(2026, 12, 20)]);
   });
 
   timeTests();
@@ -146,6 +193,14 @@ void timeTests() {
   });
 }
 
+/// The calendar's days: its scroll view of weeks.
+Finder _grid() => find
+    .descendant(
+      of: find.byType(CoilCalendar),
+      matching: find.byType(CustomScrollView),
+    )
+    .first;
+
 /// A phone-sized window of [size] (logical), touch tier.
 void _useWindow(WidgetTester tester, Size size, {double scale = 1}) {
   tester.view
@@ -180,7 +235,7 @@ void sizingTests() {
     await tester.pumpAndSettle();
     // A day's cell: its column, which takes its taps.
     final days = find.descendant(
-      of: find.byType(PageView),
+      of: _grid(),
       matching: find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_Day',
       ),
@@ -219,7 +274,7 @@ void sizingTests() {
     await tester.tap(find.byType(CoilDatePicker));
     await tester.pumpAndSettle();
     final sheet = tester.getRect(find.byType(CoilSheetPanel));
-    final grid = tester.getRect(find.byType(PageView));
+    final grid = tester.getRect(_grid());
     final time = tester.getRect(find.byType(CoilTimeColumns));
     // Days 30 % past the 44 touch cell at most, so the 560 sheet doesn't
     // stretch them; the time band spans the days, inside the calendar's
@@ -263,11 +318,22 @@ void sizingTests() {
                 matching: find.byType(SingleChildScrollView),
               )
               .first;
-          await tester.drag(scroll, const Offset(0, -600));
+          // The calendar scrolls its own months, so the content is dragged
+          // by its edge, in its padding.
+          await tester.dragFrom(
+            tester.getTopLeft(scroll) + const Offset(2, 40),
+            const Offset(0, -600),
+          );
           await tester.pumpAndSettle();
           final viewport = tester.getRect(scroll);
+          // The last of the six rows' days (the grid builds the rest of
+          // the month too, scrolled out of view).
+          final lastDay = find.descendant(
+            of: _grid(),
+            matching: find.byType(CoilHoverItem),
+          );
           expect(
-            tester.getRect(find.text('6').last).bottom,
+            tester.getRect(lastDay.at(41)).bottom,
             lessThanOrEqualTo(viewport.bottom),
           );
         },
@@ -360,6 +426,9 @@ void sheetGestureTests() {
                 // hands routes a `ScrollConfiguration.copyWith` behavior,
                 // which the sheet's drag detector swaps during a drag.
                 wrappedScrollBehavior: true,
+                // A phone's default is the floating panel, which a
+                // sideways drag dismisses.
+                presentation: CoilPresentation.sheet,
                 home: withTime ? const _TimeDemo() : const _Demo(),
               ),
             );
@@ -379,7 +448,7 @@ void sheetGestureTests() {
               expect(find.byType(CoilSheetPanel), findsOneWidget);
             }
 
-            final grid = find.byType(PageView);
+            final grid = _grid();
             await drag(grid, const Offset(-200, 0));
             await drag(grid, const Offset(200, 0));
             await drag(grid, const Offset(0, -200));
@@ -480,7 +549,7 @@ bool _isSelected(WidgetTester tester, String day) =>
         .getSemantics(
           find
               .descendant(
-                of: find.byType(PageView),
+                of: _grid(),
                 matching: find.text(day),
               )
               .first,
@@ -638,14 +707,14 @@ void confirmTests() {
 
     await tester.tap(find.bySemanticsLabel('November 2026'));
     await tester.pumpAndSettle();
-    // The years page on in the sheet, which stays.
+    // The years scroll on in the sheet, which stays.
     final years = find.descendant(
       of: find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == 'CalendarMonthView',
       ),
-      matching: find.byType(PageView),
+      matching: find.byType(CustomScrollView),
     );
-    await tester.fling(years, const Offset(-200, 0), 1000);
+    await tester.fling(years, const Offset(0, -200), 600);
     await tester.pumpAndSettle();
     expect(find.byType(CoilSheetPanel), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('March 2027'));
@@ -661,8 +730,8 @@ void confirmTests() {
 }
 
 void monthViewSheetTests() {
-  testWidgets('in a sheet, a drag down on the months moves the sheet, and '
-      'the footer names the draft', (tester) async {
+  testWidgets('in a sheet, the months scroll under the finger without moving '
+      'the sheet, and the footer names the draft', (tester) async {
     await _openConfirmDemo(tester, presentation: .sheet);
     // A draft pick, then out to the months and two years back.
     await tester.tap(find.text('20').first);
@@ -673,24 +742,25 @@ void monthViewSheetTests() {
       of: find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == 'CalendarMonthView',
       ),
-      matching: find.byType(PageView),
+      matching: find.byType(CustomScrollView),
     );
+    final sheet = find.byType(CoilSheetPanel);
+    final top = tester.getRect(sheet).top;
     for (var i = 0; i < 2; i++) {
-      await tester.fling(years, const Offset(250, 0), 1000);
+      await tester.fling(years, const Offset(0, 250), 600);
       await tester.pumpAndSettle();
     }
     expect(find.text('2024'), findsOneWidget);
+    expect(tester.getRect(sheet).top, top);
 
-    // A slow drag down on the months takes the sheet with the finger.
-    final sheet = find.byType(CoilSheetPanel);
-    final top = tester.getRect(sheet).top;
+    // A slow drag down on the months scrolls them, not the sheet; let go
+    // after a pause and they settle on the year they're closest to.
     final gesture = await tester.startGesture(tester.getCenter(years));
     for (var i = 0; i < 12; i++) {
       await gesture.moveBy(const Offset(0, 8));
       await tester.pump(const Duration(milliseconds: 16));
     }
-    expect(tester.getRect(sheet).top, greaterThan(top));
-    // Let go after a pause: it springs back, on the same year.
+    expect(tester.getRect(sheet).top, top);
     await tester.pump(const Duration(milliseconds: 300));
     await gesture.up();
     await tester.pumpAndSettle();
