@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:coil/coil.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +34,15 @@ class _DemoState extends State<_Demo> {
 }
 
 void main() {
+  // These read 24-hour times; the clock follows the platform, which the
+  // 12-hour default is lifted from for each test.
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized()
+            .platformDispatcher
+            .alwaysUse24HourFormatTestValue =
+        true;
+  });
+
   testWidgets('opens a calendar, and a picked day closes it and shows', (
     tester,
   ) async {
@@ -53,6 +63,7 @@ void main() {
         const CoilCalendarLabels().dateLabel(
           DateTime(now.year, now.month, 15),
           withTime: false,
+          use24HourFormat: true,
         ),
       ),
       findsOneWidget,
@@ -134,6 +145,7 @@ void main() {
 
   timeTests();
   sizingTests();
+  landscapeTests();
   sheetGestureTests();
   confirmTests();
   monthViewSheetTests();
@@ -202,11 +214,21 @@ Finder _grid() => find
     .first;
 
 /// A phone-sized window of [size] (logical), touch tier.
-void _useWindow(WidgetTester tester, Size size, {double scale = 1}) {
+void _useWindow(
+  WidgetTester tester,
+  Size size, {
+  double scale = 1,
+  EdgeInsets safeArea = EdgeInsets.zero,
+}) {
   tester.view
     ..devicePixelRatio = 2
     ..physicalSize = size * 2
-    ..padding = FakeViewPadding.zero;
+    ..padding = FakeViewPadding(
+      left: safeArea.left * 2,
+      top: safeArea.top * 2,
+      right: safeArea.right * 2,
+      bottom: safeArea.bottom * 2,
+    );
   tester.platformDispatcher.textScaleFactorTestValue = scale;
   addTearDown(tester.view.reset);
   addTearDown(tester.platformDispatcher.clearAllTestValues);
@@ -287,7 +309,7 @@ void sizingTests() {
     expect(grid.height, moreOrLessEquals((grid.width - 6) * 6 / 7, epsilon: 6));
   });
 
-  for (final presentation in CoilPresentation.values) {
+  for (final presentation in const [CoilPresentation.popover]) {
     for (final scale in const [1.0, 2.0]) {
       testWidgets(
         'a short landscape phone fits date and time in a '
@@ -303,11 +325,12 @@ void sizingTests() {
           );
           await tester.tap(find.byType(CoilDatePicker));
           await tester.pumpAndSettle();
-          // No overflow (the test fails on one); the time sits beside the
-          // calendar, and the content scrolls to its last week.
+          // No overflow (the test fails on one); a popover types the time
+          // in a field under the calendar, and the content scrolls to its
+          // last week.
           final calendar = tester.getRect(find.byType(CoilCalendar));
-          final time = tester.getRect(find.byType(CoilTimeColumns));
-          expect(time.left, greaterThan(calendar.right));
+          final time = tester.getRect(find.byType(CoilTimeField));
+          expect(time.top, greaterThan(calendar.bottom));
           final scroll = find
               .descendant(
                 of: find.byType(
@@ -351,7 +374,7 @@ void sizingTests() {
     await tester.tap(find.byType(CoilDatePicker));
     await tester.pumpAndSettle();
     final calendar = tester.getRect(find.byType(CoilCalendar));
-    final time = tester.getRect(find.byType(CoilTimeColumns));
+    final time = tester.getRect(find.byType(CoilTimeField));
     expect(time.top, greaterThan(calendar.bottom));
   });
 
@@ -482,9 +505,16 @@ void sheetGestureTests() {
 
 /// A picker that records every value it's handed.
 class _ConfirmDemo extends StatefulWidget {
-  const _ConfirmDemo({this.withTime = false, this.initial});
+  const _ConfirmDemo({
+    this.withTime = false,
+    this.initial,
+    this.title = true,
+  });
 
   final bool withTime;
+
+  /// Whether the picker has a sheet title.
+  final bool title;
   final DateTime? initial;
 
   @override
@@ -503,7 +533,7 @@ class _ConfirmDemoState extends State<_ConfirmDemo> {
       child: CoilDatePicker(
         value: value,
         withTime: widget.withTime,
-        sheetTitle: const Text('Due'),
+        sheetTitle: widget.title ? const Text('Due') : null,
         onChanged: (v) => setState(() {
           value = v;
           changes.add(v);
@@ -666,9 +696,9 @@ void confirmTests() {
       await tester.pumpAndSettle();
       expect(find.byType(CoilCalendar), findsOneWidget);
       expect(find.text('November 20, 2026, 09:30'), findsOneWidget);
-      // Tab from the grid to the hour column and step it.
+      // Tab from the grid to the time field's hour and step it up.
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pumpAndSettle();
       expect(find.text('November 20, 2026, 10:30'), findsOneWidget);
       expect(_changes(tester), [
@@ -824,5 +854,259 @@ void monthViewSheetTests() {
     expect(find.byType(CoilSheetPanel), findsNothing);
     expect(_changes(tester), [DateTime(2025, 3, 17, 10, 30)]);
     expect(find.text('March 17, 2025, 10:30'), findsOneWidget);
+  });
+}
+
+/// Landscape phones: logical size and safe area.
+const _landscapePhones = {
+  'iPhone SE': (Size(667, 375), EdgeInsets.zero),
+  'iPhone 15': (Size(852, 393), EdgeInsets.fromLTRB(59, 0, 59, 21)),
+  'iPhone 15 Pro Max': (Size(932, 430), EdgeInsets.fromLTRB(59, 0, 59, 21)),
+  'small Android': (Size(640, 360), EdgeInsets.only(top: 24)),
+  'large Android': (Size(915, 412), EdgeInsets.only(top: 24)),
+  'Galaxy A50': (Size(891, 411), EdgeInsets.only(top: 24)),
+};
+
+/// The vertical scrollables that aren't the calendar's weeks or the time
+/// columns: what would make the picker itself scroll.
+Iterable<ScrollableState> _panelScrollables(WidgetTester tester) => tester
+    .stateList<ScrollableState>(find.byType(Scrollable))
+    .where(
+      (state) =>
+          state.widget.axis == Axis.vertical &&
+          find
+              .ancestor(
+                of: find.byWidget(state.widget),
+                matching: find.byWidgetPredicate(
+                  (widget) =>
+                      widget is CoilCalendar || widget is CoilTimeColumns,
+                ),
+              )
+              .evaluate()
+              .isEmpty,
+    );
+
+/// The first paragraph under [element].
+RenderParagraph? _paragraphIn(Element element) {
+  RenderParagraph? found;
+  void visit(Element element) {
+    final render = element.renderObject;
+    if (render is RenderParagraph) {
+      found ??= render;
+      return;
+    }
+    element.visitChildren(visit);
+  }
+
+  visit(element);
+  return found;
+}
+
+void landscapeTests() {
+  testWidgets('a landscape phone shows the whole picker without scrolling', (
+    tester,
+  ) async {
+    for (final MapEntry(key: name, value: (size, safeArea))
+        in _landscapePhones.entries) {
+      for (final scale in const [1.0, 1.3]) {
+        for (final (withTime, title) in [
+          (false, false),
+          (true, false),
+          (true, true),
+          (false, true),
+        ]) {
+          final where =
+              '$name, text scale $scale, '
+              '${withTime ? 'date and time' : 'date'}'
+              '${title ? ' with a title' : ''}';
+          _useWindow(tester, size, scale: scale, safeArea: safeArea);
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpWidget(
+            testApp(
+              tier: CoilTier.touch,
+              presentation: CoilPresentation.floating,
+              home: _ConfirmDemo(
+                withTime: withTime,
+                title: title,
+                initial: DateTime(2026, 11, 14, 9, 30),
+              ),
+            ),
+          );
+          await tester.tap(find.byType(CoilDatePicker));
+          await tester.pumpAndSettle();
+
+          // The time at full size: its hour column as tall as when it
+          // stands alone.
+          if (withTime && scale == 1.0) {
+            final shown = tester
+                .getSize(find.byType(ListWheelScrollView).first)
+                .height;
+            await tester.pumpWidget(const SizedBox());
+            await tester.pumpWidget(
+              testApp(
+                tier: CoilTier.touch,
+                home: Center(
+                  child: CoilTimeColumns(
+                    value: (hour: 9, minute: 30),
+                    onChanged: (_) {},
+                  ),
+                ),
+              ),
+            );
+            final natural = tester
+                .getSize(find.byType(ListWheelScrollView).first)
+                .height;
+            expect(
+              shown,
+              moreOrLessEquals(natural, epsilon: 0.5),
+              reason: 'the time is not shrunk ($where)',
+            );
+            await tester.pumpWidget(const SizedBox());
+            await tester.pumpWidget(
+              testApp(
+                tier: CoilTier.touch,
+                presentation: CoilPresentation.floating,
+                home: _ConfirmDemo(
+                  withTime: withTime,
+                  title: title,
+                  initial: DateTime(2026, 11, 14, 9, 30),
+                ),
+              ),
+            );
+            await tester.tap(find.byType(CoilDatePicker));
+            await tester.pumpAndSettle();
+          }
+
+          final panel = tester.getRect(
+            find
+                .ancestor(
+                  of: find.byType(CoilCalendar),
+                  matching: find.byType(CoilSurface),
+                )
+                .first,
+          );
+          final window = Rect.fromLTRB(
+            safeArea.left,
+            safeArea.top,
+            size.width - safeArea.right,
+            size.height - safeArea.bottom,
+          );
+          expect(
+            window.contains(panel.topLeft) &&
+                window.contains(panel.bottomRight),
+            isTrue,
+            reason: 'the panel is in the safe area ($where)',
+          );
+
+          // The parts: the calendar, the time, the summary, Done and the
+          // close button each in the panel, none on another.
+          final summary = find.byWidgetPredicate(
+            (widget) => widget is Text && (widget.data ?? '').contains('2026'),
+          );
+          final summaryTexts = summary
+              .hitTestable()
+              .evaluate()
+              .where(
+                (element) =>
+                    element.findAncestorWidgetOfExactType<CoilCalendar>() ==
+                        null &&
+                    element.findAncestorWidgetOfExactType<CoilDatePicker>() ==
+                        null,
+              )
+              .toList();
+          expect(summaryTexts, hasLength(1), reason: 'the summary ($where)');
+          final summaryBox =
+              summaryTexts.single.findRenderObject()! as RenderBox;
+          final paragraph = _paragraphIn(summaryTexts.single)!;
+          expect(
+            paragraph.didExceedMaxLines,
+            isFalse,
+            reason: 'the summary is whole ($where)',
+          );
+          final parts = {
+            'calendar': tester.getRect(find.byType(CoilCalendar)),
+            'summary': summaryBox.localToGlobal(Offset.zero) & summaryBox.size,
+            'Done': tester.getRect(find.widgetWithText(CoilButton, 'Done')),
+            'close': tester.getRect(find.byType(CoilSheetCloseButton)),
+            if (withTime) 'time': tester.getRect(find.byType(CoilTimeColumns)),
+            if (title) 'title': tester.getRect(find.text('Due')),
+          };
+          for (final MapEntry(key: part, value: rect) in parts.entries) {
+            expect(
+              panel.inflate(0.5).contains(rect.topLeft) &&
+                  panel.inflate(0.5).contains(rect.bottomRight),
+              isTrue,
+              reason: '$part is inside the panel ($where): $rect in $panel',
+            );
+            for (final other in parts.entries) {
+              if (other.key.compareTo(part) <= 0) continue;
+              // The time's top row is faded out: the title may stand
+              // over it, but not over the rows that show.
+              Rect shown(String name, Rect box) =>
+                  name == 'time' && (part == 'title' || other.key == 'title')
+                  ? Rect.fromLTRB(
+                      box.left,
+                      box.top + box.height / 5,
+                      box.right,
+                      box.bottom,
+                    )
+                  : box.deflate(0.5);
+              expect(
+                shown(part, rect).overlaps(shown(other.key, other.value)),
+                isFalse,
+                reason: '$part and ${other.key} apart ($where)',
+              );
+            }
+          }
+
+          // Every visible day is whole: inside the grid, not cut by an
+          // edge.
+          final grid = tester.getRect(_grid());
+          final days = find
+              .descendant(of: _grid(), matching: find.byType(Text))
+              .evaluate()
+              .map((element) => tester.getRect(find.byWidget(element.widget)))
+              .where((rect) => grid.contains(rect.center));
+          expect(days, isNotEmpty);
+          for (final day in days) {
+            expect(
+              grid.inflate(0.5).contains(day.topLeft) &&
+                  grid.inflate(0.5).contains(day.bottomRight),
+              isTrue,
+              reason: 'a day is whole ($where): $day in $grid',
+            );
+          }
+
+          // Neighboring days in a row don't touch.
+          final rows = <double, List<Rect>>{};
+          for (final day in days) {
+            rows.putIfAbsent(day.center.dy.roundToDouble(), () => []).add(day);
+          }
+          for (final row in rows.values) {
+            row.sort((a, b) => a.left.compareTo(b.left));
+            for (var i = 1; i < row.length; i++) {
+              expect(
+                row[i].left - row[i - 1].right,
+                greaterThan(0),
+                reason: 'days apart ($where)',
+              );
+            }
+          }
+
+          // The picker itself doesn't scroll.
+          for (final scrollable in _panelScrollables(tester)) {
+            expect(
+              scrollable.position.maxScrollExtent,
+              0,
+              reason: 'nothing scrolls ($where)',
+            );
+          }
+
+          await tester.tap(find.widgetWithText(CoilButton, 'Done'));
+          await tester.pumpAndSettle();
+          expect(find.byType(CoilCalendar), findsNothing);
+        }
+      }
+    }
   });
 }

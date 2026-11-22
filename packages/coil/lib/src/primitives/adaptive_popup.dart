@@ -154,12 +154,18 @@ class CoilAdaptivePopup extends StatefulWidget {
     if (CoilAdaptiveScope.maybePresentationOf(context) case final pinned?) {
       return pinned;
     }
-    final touch = CoilTheme.tierOf(context) == CoilTier.touch;
-    final compact = MediaQuery.sizeOf(context).width < compactWidth;
-    return touch && compact
+    return isPhone(context)
         ? phonePresentation(traits)
         : CoilPresentation.popover;
   }
+
+  /// Whether [context] is a phone, held either way: the touch tier in a
+  /// window whose shorter side is under [compactWidth]. A phone in
+  /// landscape is wide but short, and still a phone; an iPad in a narrow
+  /// split view is one too.
+  static bool isPhone(BuildContext context) =>
+      CoilTheme.tierOf(context) == CoilTier.touch &&
+      MediaQuery.sizeOf(context).shortestSide < compactWidth;
 
   /// The hybrid phone rule.
   ///

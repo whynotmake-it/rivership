@@ -38,6 +38,7 @@ class CoilCalendarLabels {
     this.chooseMonthLabel = 'Choose a month and year',
     this.showDaysLabel = _showDaysLabel,
     this.confirm = const Text('Done'),
+    this.time = const Text('Time'),
     this.summary = _summary,
     this.summaryLabel = _summaryLabel,
     this.previousYearLabel = 'Previous year',
@@ -46,14 +47,25 @@ class CoilCalendarLabels {
 
   /// What a date picker's Done will confirm, on the leading side of its
   /// footer, like "Fri, Nov 22, 2019", with the time when the picker picks
-  /// one ("Fri, Nov 22, 2019, 09:30"). It names the draft, so it stays
+  /// one ("Fri, Nov 22, 2019, 9:30 AM"). It names the draft, so it stays
   /// readable however far the calendar has scrolled or zoomed;
-  /// [summaryLabel] announces it.
-  final Widget Function(DateTime value, {required bool withTime}) summary;
+  /// [summaryLabel] announces it. `use24HourFormat` is the locale's clock,
+  /// as `MediaQuery.alwaysUse24HourFormatOf` says.
+  final Widget Function(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  })
+  summary;
 
   /// [summary] for screen readers, like "Selected: Friday, November 22,
   /// 2019".
-  final String Function(DateTime value, {required bool withTime}) summaryLabel;
+  final String Function(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  })
+  summaryLabel;
 
   /// The previous-year button's label in the month view, for screen
   /// readers.
@@ -100,15 +112,29 @@ class CoilCalendarLabels {
   /// pick at once, with or without a time.
   final Widget confirm;
 
+  /// The label beside a date picker's typed time field in a popover,
+  /// "Time". Screen readers skip it: the field names itself.
+  final Widget time;
+
   /// A weekday's column heading, like "Mo", from [DateTime.weekday].
   final Widget Function(int weekday) weekday;
 
   /// A picked date in a date picker's trigger, like "November 14, 2026",
   /// with the time when the picker picks one.
-  final Widget Function(DateTime value, {required bool withTime}) date;
+  final Widget Function(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  })
+  date;
 
   /// [date] for screen readers.
-  final String Function(DateTime value, {required bool withTime}) dateLabel;
+  final String Function(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  })
+  dateLabel;
 
   /// A day's name for screen readers, like "Saturday, November 14, 2026".
   final String Function(DateTime day) dayLabel;
@@ -144,32 +170,76 @@ class CoilCalendarLabels {
   static String _showDaysLabel(DateTime month) =>
       'Back to the days of ${_monthLabel(month)}';
 
-  static Widget _summary(DateTime value, {required bool withTime}) {
+  static Widget _summary(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  }) {
     final date =
         '${_weekdays[value.weekday - 1].substring(0, 3)}, '
         '${_months[value.month - 1].substring(0, 3)} ${value.day}, '
         '${value.year}';
-    return Text(withTime ? '$date, ${_time(value)}' : date);
+    if (!withTime) return Text(date);
+    final time = _time(
+      value.hour,
+      value.minute,
+      use24HourFormat: use24HourFormat,
+    );
+    return Text('$date, $time');
   }
 
-  static String _summaryLabel(DateTime value, {required bool withTime}) {
+  static String _summaryLabel(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  }) {
     final day = 'Selected: ${_dayLabel(value)}';
-    return withTime ? '$day, ${_time(value)}' : day;
+    if (!withTime) return day;
+    final time = _time(
+      value.hour,
+      value.minute,
+      use24HourFormat: use24HourFormat,
+    );
+    return '$day, $time';
   }
 
-  static String _time(DateTime value) =>
-      '${value.hour.toString().padLeft(2, '0')}:'
-      '${value.minute.toString().padLeft(2, '0')}';
+  static String _time(
+    int hour,
+    int minute, {
+    required bool use24HourFormat,
+  }) {
+    final minutes = minute.toString().padLeft(2, '0');
+    if (use24HourFormat) return '${hour.toString().padLeft(2, '0')}:$minutes';
+    final clock = hour % 12 == 0 ? 12 : hour % 12;
+    // A no-break space: a wrapping summary never leaves AM or PM alone on
+    // a line of its own.
+    return '$clock:$minutes\u00A0${hour < 12 ? 'AM' : 'PM'}';
+  }
 
   static Widget _weekday(int weekday) =>
       Text(_weekdays[weekday - 1].substring(0, 2));
 
-  static Widget _date(DateTime value, {required bool withTime}) =>
-      Text(_dateLabel(value, withTime: withTime));
+  static Widget _date(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  }) => Text(
+    _dateLabel(value, withTime: withTime, use24HourFormat: use24HourFormat),
+  );
 
-  static String _dateLabel(DateTime value, {required bool withTime}) {
+  static String _dateLabel(
+    DateTime value, {
+    required bool withTime,
+    required bool use24HourFormat,
+  }) {
     final date = '${_months[value.month - 1]} ${value.day}, ${value.year}';
-    return withTime ? '$date, ${_time(value)}' : date;
+    if (!withTime) return date;
+    final time = _time(
+      value.hour,
+      value.minute,
+      use24HourFormat: use24HourFormat,
+    );
+    return '$date, $time';
   }
 
   static String _dayLabel(DateTime day) =>
@@ -299,6 +369,46 @@ class CoilCalendarWidth extends StatelessWidget {
       natural: widths.natural,
       max: widths.max,
       child: child,
+    );
+  }
+}
+
+/// Sizes a [CoilCalendar] from the [height] it has: wide enough that its
+/// caption, weekday row and six weeks are exactly [height] tall, so the
+/// days (always square) are as big as that room allows. The width follows
+/// from the rows: as wide as square days of that height need, or wider,
+/// up to the days' natural side, where the parent allows; the days stay
+/// square, centered in their cells.
+///
+/// For a window that is short and wide (a phone in landscape), where the
+/// width is plentiful and the height isn't.
+class CoilCalendarHeight extends StatelessWidget {
+  /// Sizes [child] to [height].
+  const CoilCalendarHeight({
+    required this.height,
+    required this.child,
+    super.key,
+  });
+
+  /// The height the calendar fills.
+  final double height;
+
+  /// The calendar.
+  final Widget child;
+
+  /// The narrowest a day gets, as a share of its natural side.
+  static const minCellScale = 0.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final widths = calendarWidths(context);
+    return CalendarHeightBox(
+      height: height,
+      natural: widths.natural,
+      inset: widths.inset,
+      minCell: widths.cell * minCellScale,
+      max: widths.max,
+      child: CalendarFillsHeight(child: child),
     );
   }
 }
@@ -751,89 +861,96 @@ class _CoilCalendarState extends State<CoilCalendar> {
       ),
     );
 
+    // Given its height (CalendarHeightBox), the weeks share what the
+    // caption and the weekday row leave.
+    final fill = CalendarFillsHeight.of(context);
+    Widget grow(Widget child) => fill ? Expanded(child: child) : child;
     final days = Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: metrics.gap,
       children: [
         weekdays,
-        Shortcuts(
-          shortcuts: {
-            SingleActivator(
-              rtl
-                  ? LogicalKeyboardKey.arrowRight
-                  : LogicalKeyboardKey.arrowLeft,
-            ): const _DaysIntent(
-              -1,
-            ),
-            SingleActivator(
-              rtl
-                  ? LogicalKeyboardKey.arrowLeft
-                  : LogicalKeyboardKey.arrowRight,
-            ): const _DaysIntent(
-              1,
-            ),
-            const SingleActivator(LogicalKeyboardKey.arrowUp):
-                const _DaysIntent(-7),
-            const SingleActivator(LogicalKeyboardKey.arrowDown):
-                const _DaysIntent(7),
-            const SingleActivator(LogicalKeyboardKey.home):
-                const _WeekEdgeIntent(last: false),
-            const SingleActivator(LogicalKeyboardKey.end):
-                const _WeekEdgeIntent(last: true),
-            const SingleActivator(LogicalKeyboardKey.pageUp):
-                const _MonthsIntent(-1),
-            const SingleActivator(LogicalKeyboardKey.pageDown):
-                const _MonthsIntent(1),
-            const SingleActivator(LogicalKeyboardKey.pageUp, shift: true):
-                const _MonthsIntent(-12),
-            const SingleActivator(LogicalKeyboardKey.pageDown, shift: true):
-                const _MonthsIntent(12),
-            const SingleActivator(LogicalKeyboardKey.enter):
-                const _SubmitIntent(),
-            const SingleActivator(LogicalKeyboardKey.numpadEnter):
-                const _SubmitIntent(),
-            const SingleActivator(LogicalKeyboardKey.space):
-                const ActivateIntent(),
-          },
-          child: Actions(
-            actions: {
-              _DaysIntent: CallbackAction<_DaysIntent>(
-                onInvoke: (intent) => _moveDays(intent.days),
+        grow(
+          Shortcuts(
+            shortcuts: {
+              SingleActivator(
+                rtl
+                    ? LogicalKeyboardKey.arrowRight
+                    : LogicalKeyboardKey.arrowLeft,
+              ): const _DaysIntent(
+                -1,
               ),
-              _WeekEdgeIntent: CallbackAction<_WeekEdgeIntent>(
-                onInvoke: (intent) {
-                  final fromStart =
-                      (_current.weekday - widget.firstDayOfWeek) % 7;
-                  _moveDays(intent.last ? 6 - fromStart : -fromStart);
-                  return null;
-                },
+              SingleActivator(
+                rtl
+                    ? LogicalKeyboardKey.arrowLeft
+                    : LogicalKeyboardKey.arrowRight,
+              ): const _DaysIntent(
+                1,
               ),
-              _MonthsIntent: CallbackAction<_MonthsIntent>(
-                onInvoke: (intent) => _moveMonths(intent.months),
-              ),
-              _SubmitIntent: CallbackAction<_SubmitIntent>(
-                onInvoke: (_) => _pickCurrent(submit: true),
-              ),
-              ActivateIntent: CallbackAction<ActivateIntent>(
-                onInvoke: (_) => _pickCurrent(),
-              ),
+              const SingleActivator(LogicalKeyboardKey.arrowUp):
+                  const _DaysIntent(-7),
+              const SingleActivator(LogicalKeyboardKey.arrowDown):
+                  const _DaysIntent(7),
+              const SingleActivator(LogicalKeyboardKey.home):
+                  const _WeekEdgeIntent(last: false),
+              const SingleActivator(LogicalKeyboardKey.end):
+                  const _WeekEdgeIntent(last: true),
+              const SingleActivator(LogicalKeyboardKey.pageUp):
+                  const _MonthsIntent(-1),
+              const SingleActivator(LogicalKeyboardKey.pageDown):
+                  const _MonthsIntent(1),
+              const SingleActivator(LogicalKeyboardKey.pageUp, shift: true):
+                  const _MonthsIntent(-12),
+              const SingleActivator(LogicalKeyboardKey.pageDown, shift: true):
+                  const _MonthsIntent(12),
+              const SingleActivator(LogicalKeyboardKey.enter):
+                  const _SubmitIntent(),
+              const SingleActivator(LogicalKeyboardKey.numpadEnter):
+                  const _SubmitIntent(),
+              const SingleActivator(LogicalKeyboardKey.space):
+                  const ActivateIntent(),
             },
-            child: Focus(
-              focusNode: _focus,
-              autofocus: widget.autofocus,
-              canRequestFocus: widget.onSelected != null,
-              onFocusChange: (focused) {
-                // The ring shows where the keyboard is; it starts on the
-                // selected day.
-                if (focused &&
-                    _active.index == null &&
-                    CoilInputModality.instance.value == CoilModality.keyboard) {
-                  _moveTo(_current);
-                }
-                setState(() {});
+            child: Actions(
+              actions: {
+                _DaysIntent: CallbackAction<_DaysIntent>(
+                  onInvoke: (intent) => _moveDays(intent.days),
+                ),
+                _WeekEdgeIntent: CallbackAction<_WeekEdgeIntent>(
+                  onInvoke: (intent) {
+                    final fromStart =
+                        (_current.weekday - widget.firstDayOfWeek) % 7;
+                    _moveDays(intent.last ? 6 - fromStart : -fromStart);
+                    return null;
+                  },
+                ),
+                _MonthsIntent: CallbackAction<_MonthsIntent>(
+                  onInvoke: (intent) => _moveMonths(intent.months),
+                ),
+                _SubmitIntent: CallbackAction<_SubmitIntent>(
+                  onInvoke: (_) => _pickCurrent(submit: true),
+                ),
+                ActivateIntent: CallbackAction<ActivateIntent>(
+                  onInvoke: (_) => _pickCurrent(),
+                ),
               },
-              child: Semantics(container: true, child: pager),
+              child: Focus(
+                focusNode: _focus,
+                autofocus: widget.autofocus,
+                canRequestFocus: widget.onSelected != null,
+                onFocusChange: (focused) {
+                  // The ring shows where the keyboard is; it starts on the
+                  // selected day.
+                  if (focused &&
+                      _active.index == null &&
+                      CoilInputModality.instance.value ==
+                          CoilModality.keyboard) {
+                    _moveTo(_current);
+                  }
+                  setState(() {});
+                },
+                child: Semantics(container: true, child: pager),
+              ),
             ),
           ),
         ),
@@ -849,39 +966,41 @@ class _CoilCalendarState extends State<CoilCalendar> {
       skipTraversal: true,
       child: CoilCalendarWidth(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: metrics.gap,
           children: [
             header,
-            _CalendarZoom(
-              open: _monthsOpen,
-              motion: widget.motion,
-              days: days,
-              months: (context) => CalendarMonthView(
-                key: _monthsView,
-                month: _month,
-                selected: widget.selected,
-                firstMonth: switch (widget.firstDate) {
-                  final first? => _monthOf(first),
-                  null => null,
-                },
-                lastMonth: switch (widget.lastDate) {
-                  final last? => _monthOf(last),
-                  null => null,
-                },
-                monthName: labels.monthName,
-                monthLabel: labels.monthLabel,
-                inset: inset,
-                focusNode: _monthsFocus,
+            grow(
+              _CalendarZoom(
+                open: _monthsOpen,
                 motion: widget.motion,
-                onPicked: _pickMonth,
-                onShown: (month) {
-                  if (month != _monthsTitle) {
-                    setState(() => _monthsTitle = month);
-                  }
-                },
-                onClose: () => _pickMonth(_monthsTitle),
+                days: days,
+                months: (context) => CalendarMonthView(
+                  key: _monthsView,
+                  month: _month,
+                  selected: widget.selected,
+                  firstMonth: switch (widget.firstDate) {
+                    final first? => _monthOf(first),
+                    null => null,
+                  },
+                  lastMonth: switch (widget.lastDate) {
+                    final last? => _monthOf(last),
+                    null => null,
+                  },
+                  monthName: labels.monthName,
+                  monthLabel: labels.monthLabel,
+                  inset: inset,
+                  focusNode: _monthsFocus,
+                  motion: widget.motion,
+                  onPicked: _pickMonth,
+                  onShown: (month) {
+                    if (month != _monthsTitle) {
+                      setState(() => _monthsTitle = month);
+                    }
+                  },
+                  onClose: () => _pickMonth(_monthsTitle),
+                ),
               ),
             ),
           ],
@@ -1081,25 +1200,34 @@ class _DayState extends State<_Day> {
         onTap: widget.onPressed,
         excludeFromSemantics: true,
         child: Center(
-          child: SizedBox.square(
-            dimension: widget.extent,
-            child: CoilHoverItem(
-              index: widget.index,
-              enabled: enabled,
-              child: Opacity(
-                opacity: enabled ? 1 : metrics.disabledOpacity,
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '${widget.day.day}',
-                      maxLines: 1,
-                      softWrap: false,
-                      style: text.body.tabular.copyWith(
-                        fontWeight: widget.today || widget.selected
-                            ? text.emphasis
-                            : text.body.fontWeight,
-                        color: color,
+          // A square of the natural side, or of the cell's smaller side
+          // (the rows of a calendar sized from its height are shorter than
+          // its columns are wide).
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: widget.extent,
+              maxHeight: widget.extent,
+            ),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: CoilHoverItem(
+                index: widget.index,
+                enabled: enabled,
+                child: Opacity(
+                  opacity: enabled ? 1 : metrics.disabledOpacity,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${widget.day.day}',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: text.body.tabular.copyWith(
+                          fontWeight: widget.today || widget.selected
+                              ? text.emphasis
+                              : text.body.fontWeight,
+                          color: color,
+                        ),
                       ),
                     ),
                   ),

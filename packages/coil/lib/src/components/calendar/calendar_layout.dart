@@ -593,7 +593,13 @@ class RenderCalendarGridBox extends RenderProxyBox {
     final width = constraints.hasBoundedWidth
         ? constraints.maxWidth
         : constraints.constrainWidth(_naturalWidth);
-    return constraints.constrain(Size(width, _heightFor(width)));
+    // A calendar given its height (CalendarHeightBox) fills it: its rows
+    // share it, and its days stay square in the middle of cells that are
+    // wider than they are tall.
+    final height = constraints.hasTightHeight
+        ? constraints.maxHeight
+        : _heightFor(width);
+    return constraints.constrain(Size(width, height));
   }
 
   @override
@@ -756,5 +762,204 @@ class RenderCalendarWidthBox extends RenderShiftedBox {
       (size.width - child.size.width) / 2,
       (size.height - child.size.height) / 2,
     );
+  }
+}
+
+/// Tells a `CoilCalendar` below it that it is given its height (by a
+/// [CalendarHeightBox]) and fills it, its rows sharing what the caption and
+/// weekday row leave, instead of being as tall as square cells make it.
+class CalendarFillsHeight extends InheritedWidget {
+  /// Marks [child]'s calendar as sized from its height.
+  const CalendarFillsHeight({required super.child, super.key});
+
+  /// Whether the calendar at [context] is sized from its height.
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<CalendarFillsHeight>() != null;
+
+  @override
+  bool updateShouldNotify(CalendarFillsHeight oldWidget) => false;
+}
+
+/// Sizes a calendar from the [height] it has: its caption, weekday row and
+/// six weeks fill exactly [height] (and a little more only where the days
+/// would otherwise get smaller than [minCell]).
+///
+/// Its width follows from the rows. Where the width is plentiful the
+/// columns are wider than the rows are tall, up to a day's natural side
+/// ([natural] is seven of them and the insets), but never more than the
+/// parent allows; the days themselves stay square, centered in their
+/// cells. Past [max] the days stop growing.
+///
+/// A phone in landscape has height to spare for nothing, and width to
+/// spare for the time beside the calendar: the calendar takes the height
+/// and as much width as the rest leaves it.
+class CalendarHeightBox extends SingleChildRenderObjectWidget {
+  /// Sizes [child] to [height].
+  const CalendarHeightBox({
+    required this.height,
+    required this.natural,
+    required this.inset,
+    required this.minCell,
+    required this.max,
+    super.key,
+    super.child,
+  });
+
+  /// The height the calendar fills.
+  final double height;
+
+  /// The width of seven days of their natural side, with the insets.
+  final double natural;
+
+  /// The room for the focus ring on each side.
+  final double inset;
+
+  /// The smallest a row gets before the box is taller than [height].
+  final double minCell;
+
+  /// The widest the calendar grows.
+  final double max;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      RenderCalendarHeightBox(height, natural, inset, minCell, max);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderCalendarHeightBox renderObject,
+  ) => renderObject
+    ..height = height
+    ..natural = natural
+    ..inset = inset
+    ..minCell = minCell
+    ..max = max;
+}
+
+/// The render object of a [CalendarHeightBox].
+class RenderCalendarHeightBox extends RenderShiftedBox {
+  /// Creates the box filling [height] with a calendar.
+  RenderCalendarHeightBox(
+    this._height,
+    this._natural,
+    this._inset,
+    this._minCell,
+    this._max,
+  ) : super(null);
+
+  double _height;
+  double _natural;
+  double _inset;
+  double _minCell;
+  double _max;
+
+  /// The height the calendar fills.
+  double get height => _height;
+  set height(double value) {
+    if (value == _height) return;
+    _height = value;
+    markNeedsLayout();
+  }
+
+  /// The width of seven natural days with the insets.
+  double get natural => _natural;
+  set natural(double value) {
+    if (value == _natural) return;
+    _natural = value;
+    markNeedsLayout();
+  }
+
+  /// The room for the focus ring on each side.
+  double get inset => _inset;
+  set inset(double value) {
+    if (value == _inset) return;
+    _inset = value;
+    markNeedsLayout();
+  }
+
+  /// The smallest a row gets.
+  double get minCell => _minCell;
+  set minCell(double value) {
+    if (value == _minCell) return;
+    _minCell = value;
+    markNeedsLayout();
+  }
+
+  /// The widest the calendar grows.
+  double get max => _max;
+  set max(double value) {
+    if (value == _max) return;
+    _max = value;
+    markNeedsLayout();
+  }
+
+  /// A row's height when the calendar is [height] tall: what the caption
+  /// and weekday row leave, measured on the child, over six.
+  double _row() {
+    final child = this.child;
+    if (child == null) return minCell;
+    final measured = child.getMaxIntrinsicHeight(natural);
+    final chrome = measured - (natural - inset * 2) * 6 / 7;
+    return math.max(minCell, (height - chrome) / 6);
+  }
+
+  /// The height the box takes: [height], or more where rows hit [minCell].
+  double _boxHeight(double row) {
+    final child = this.child;
+    if (child == null) return height;
+    final measured = child.getMaxIntrinsicHeight(natural);
+    final chrome = measured - (natural - inset * 2) * 6 / 7;
+    return math.max(height, chrome + row * 6);
+  }
+
+  /// The width: square days of the row's height, or wider columns where
+  /// [available] allows, up to the natural side.
+  double _width(double row, double available) {
+    final square = (row * 7 + inset * 2).clamp(0.0, max);
+    final wide = math.min(available, math.max(natural, square));
+    return math.max(square, wide);
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      _width(_row(), double.negativeInfinity);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      _width(_row(), double.negativeInfinity);
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _boxHeight(_row());
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _boxHeight(_row());
+
+  BoxConstraints _childConstraints(BoxConstraints constraints) {
+    final row = _row();
+    return BoxConstraints.tightFor(
+      width: _width(row, constraints.maxWidth),
+      height: _boxHeight(row),
+    );
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final child = this.child;
+    if (child == null) return constraints.smallest;
+    return constraints.constrain(
+      child.getDryLayout(_childConstraints(constraints)),
+    );
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    child.layout(_childConstraints(constraints), parentUsesSize: true);
+    size = constraints.constrain(child.size);
+    (child.parentData! as BoxParentData).offset = Offset.zero;
   }
 }

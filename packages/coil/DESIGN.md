@@ -361,13 +361,13 @@ The presentation is decided **when an overlay opens**. An open overlay never mor
 
 1. The component's `presentation:` override.
 2. `CoilAdaptiveScope(presentation:)`.
-3. **Touch tier and window width < 600 → the phone rule:**
+3. **Touch tier and the window's shorter side < 600 (a phone either way up) → the phone rule:**
    - **floating panel** (§13.6, swiped away sideways) if the overlay is a combobox or the command menu, or has search: top-anchored, and its height doesn't follow the results, so the field never jumps; or a date/time picker: centered, hugging its calendar;
    - **sheet** if it is multi-select, has submenus nested 2 or more levels deep, or has more than 8 items;
    - otherwise an **anchored touch popover**.
 4. Otherwise a popover.
 
-The decision uses window width, not the platform: an iPad in a 320-wide split view is a phone.
+The decision uses the window's size, not the platform: an iPad in a 320-wide split view is a phone, and so is a phone held in landscape, wide but short.
 
 ### 9.2 Platform conventions
 
@@ -449,7 +449,7 @@ Every component ships with all of these. They're required to call it done.
 - **Errors** say what to do: "Enter an email address like ada@example.com". No "Invalid input".
 - **Descriptions** are one sentence, without "This field…".
 - **Empty states** say what's missing and offer the next action: "No results for 'xyz'" plus a "Clear search" action.
-- **Times and dates** use the locale (`intl`), 12/24 h from `MediaQuery.alwaysUse24HourFormat`. Ranges use an en dash ("Nov 13 – 15").
+- **Times and dates** use the locale (`intl`), 12/24 h from `MediaQuery.alwaysUse24HourFormat`. The default text is "2:30 PM" (no leading zero, a no-break space so AM / PM never wraps alone, uppercase) or "14:30"; `CoilCalendarLabels` summary and date callbacks get `use24HourFormat`. Ranges use an en dash ("Nov 13 – 15").
 - Keep labels short enough to fit 160 at body size. If a label truncates, the full text must be reachable another way (menu, semantics).
 
 ## 13. Shared anatomy
@@ -1129,16 +1129,25 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### DatePicker
 
 - **Trigger:** like a Select trigger: [calendar icon] label ("Wed Nov 13", "Nov 13 – 15", placeholder muted), plus an optional clear ×. Width is stable: reserved for the widest label in the locale.
-- **Sizing:** the popover hugs the calendar's seven cells, not the field's width (`CoilAdaptivePopup.minWidth: 0`); a floating panel's or sheet's calendar fills its width up to days 30 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. All scroll when the window is too short, by their edge: the calendar's own vertical drag scrolls its months. On the touch tier, in a short, wide window (wider than tall and under 600 tall: a phone in landscape) the time columns sit beside the calendar instead of under it. A short desktop window keeps them under it and scrolls.
-- **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); time fields as compact Combobox inputs (typed, 15-minute list).
-- **Phone (touch, < 600): a centered floating panel (§13.6, `CoilModalAnchor.center`) built for the thumb.** It hugs its content in the middle of the room the window leaves, swiped away sideways (which cancels), over the scrim; the calendar's vertical scroll and the time columns' own drags don't dismiss it. A sheet is still available (`presentation: sheet`), with the same content.
+- **Sizing:** the popover hugs the calendar's seven cells, not the field's width (`CoilAdaptivePopup.minWidth: 0`); a floating panel's or sheet's calendar fills its width up to days 30 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. A popover and a portrait panel or sheet scroll when the window is too short, by their edge: the calendar's own vertical drag scrolls its months. A short desktop window keeps the time under the calendar and scrolls.
+  - **Landscape phone** (touch tier, wider than tall and under 600 tall, in a floating panel or sheet): nothing scrolls. The panel lays out sideways: the calendar leads, with its rows sized from the **height** the panel has (caption, weekday row and six weeks exactly fill it; smaller than the 44 touch cell, never past the calendar's own maximum) and its columns as wide as the column beside it allows, up to the natural cell, so the numbers don't crowd (the day's fill stays a square of the row height, centered in its cell), and a column follows with the time columns in the middle and the summary footer at the bottom (summary on the leading side and Done on the trailing side, or the summary above Done when it needs more than two lines beside it; with no time, the footer alone, bottom-aligned). The days start on the panel's 16 text inset and the footer ends on it. With no title, the close button sits in the column's top corner, concentric with the panel's corner, and the caption row is centered on it (no header line, which would cost height); a time that reaches that corner keeps clear of it, shrinking before it overlaps. A `sheetTitle` drops the header line too: it leads on the close button's line at the top of the column (one line, ellipsized), so a titled panel's days are as large as an untitled one's. Text so large that the column outgrows the height falls back to scrolling the panel's body.
+- **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); the time is a `CoilTimeField`, typed in segments (below); no list.
+- **Phone (touch, the window's shorter side < 600, either way up): a centered floating panel (§13.6, `CoilModalAnchor.center`) built for the thumb.** It hugs its content in the middle of the room the window leaves, swiped away sideways (which cancels), over the scrim; the calendar's vertical scroll and the time columns' own drags don't dismiss it. A sheet is still available (`presentation: sheet`), with the same content.
   - Caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **vertical scrolling** that lands on a month, fixed 6 rows.
   - Presets: a horizontally scrolling chip row (Today, Tomorrow, Next week…).
   - Time: chips ("Start 11:00", "End 12:45"). Tapping one pushes the **time page** inside the sheet on `standard`, with a "‹ Date" back row.
     - The time page is **two snap columns** (hours | minutes in the minute step), flat rows: a line of body text in tabular figures and the tier's gap (28 pointer, 34 touch at 1×, grown with the text scale), **five visible**. The rows fade out toward the top and bottom over two rows (the scroll edge fade). A selection band in `active` with the day cells' radius sits across the center; the center row and the colon are foreground semibold and the others are muted. The columns are a day and a half wide each.
     - The columns snap on `standard` with the fling velocity. No 3D wheel.
-    - A duration caption ("1 h 45 min") sits under the end column. "Type a time" opens a numeric field (opt-in).
+    - **12 / 24 h** follow the locale (`MediaQuery.alwaysUse24HourFormatOf`): 00–23, or 1–12 and a short, non-looping **AM / PM** column after the minutes, in the same look and snapping.
+    - **Tap a number** above or below the band and it glides into the band on the same `standard` spring (the wheel's rows tick as they pass, as for a drag). A tap that only stops a fling is not a tap on a row.
+    - **Tap the picked number, or the band, to type** (the iOS 17 time picker): a hidden number input takes focus and the number pad opens. The digits fill the hour then the minute ("1", "4", "3", "0" is 14:30; on a 12-hour clock AM / PM stays), the columns glide to what's typed, and the focus ring shows on the band while the pad is up. Done on the keyboard, a tap on another row, or a tap outside ends it. A minute typed between steps lands on the nearest one.
+    - A duration caption ("1 h 45 min") sits under the end column.
+    - **Keyboard** (each column is a tab stop): Up / Down step (as in a list, Down goes to the larger value), Page Up / Page Down step 6 hours or 15 minutes, Home / End go to the first and last value, Left / Right move between the columns (mirrored in RTL). Digits type into the column with a two-digit buffer and a one-second pause ("1" then "4" is 14; a digit that can't start a two-digit number, like "7" for an hour, is whole at once); "a" / "p" set AM / PM.
   - Footer: a summary footer (§13.5) pinned as the panel's footer (`CoilSheetPanel.footer`, 16 from the sides): the draft on the leading side, **Done** (primary, `CoilCalendarLabels.confirm`) at its own width on the trailing side. Clear (ghost) joins Done in range mode, before it.
+- **Time field (`CoilTimeField`, pointer and tablets with a keyboard):** a hairline field in the Input's look (control height, padding, border darkening on focus, hover fill; no ring) reading like typed text, "14:30" or "2:30 PM": tabular segments that hug their digits, the colon's own spacing between them and a word space before AM / PM. It keeps the width of the widest time ("23:59", "12:59 PM") with its text on the Input's text inset, so nothing moves as the hour gains a digit. One tab stop; the focused segment gets the `active` fill, painted 2 around its text without moving it. In the popover it sits under the calendar on the days' trailing edge, with a muted "Time" label (`CoilCalendarLabels.time`, skipped by screen readers) on the leading edge.
+  - Click a segment to select it; Tab comes in at the hour. Left / Right or ":" move between segments (mirrored in RTL). Up / Down step with wrapping and no carry; Page Up / Page Down step 6 hours or 15 minutes; Home / End go to the first and last value; a scroll wheel over the focused segment steps it.
+  - Digits type into the segment and move on by themselves: an hour waits for a second digit unless it can't take one ("3"–"9" on a 24-hour clock, "2"–"9" on a 12-hour one), minutes move on after two digits (to AM / PM on a 12-hour clock). Backspace forgets the digits typed so far; a pause of a second does the same. "a" / "p" set AM / PM. Paste takes "1430", "14:30", "2:30 pm", "2:30PM" and ignores anything else.
+  - Arrows and Page keys step the minute by `minuteInterval` (from a minute between steps to the next step in that direction); a typed or pasted minute is kept exact.
 - **Footer summary:** in the panel (or sheet), the footer's leading side names the **draft** Done will confirm, not the last confirmed value, so the selection stays readable however far the calendar has paged or zoomed, and follows every pick and every turn of a time column. `CoilCalendarLabels.summary` shows it, `summaryLabel` names it for screen readers:
   - date: "Fri, Nov 22, 2019" ("Selected: Friday, November 22, 2019");
   - with time: "Fri, Nov 22, 2019, 14:30";
@@ -1151,7 +1160,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **Popover with time: each pick applies at once and the popover stays open**; a tap outside, Escape or Enter closes it with what's picked. The field's label follows every day and every turn of a time column, so it is the summary. No Done, no Cancel.
   - In the panel, Done is disabled until something is picked. Enter anywhere in the popup confirms (on the grid it picks the focused day first); Space only picks; Escape closes (in the month view it returns to the days first): a panel or sheet without its draft, a popover with what it applied.
 - **Keyboard:** as Calendar, plus Enter to confirm and Escape to close. Esc restores the previous range. Hardware keyboards on iPad get the typed time field.
-- **Semantics:** the snap columns are adjustable (VoiceOver swipe up/down changes the hour).
+- **Semantics:** the snap columns are adjustable and named ("Hour", "Minute", "AM/PM"), with the column's own value ("2", "30", "PM"); VoiceOver swipe up/down steps it. The time field is a group ("Time") of the same adjustable segments, each with increase and decrease actions.
 
 #### InputMessage (chat composer)
 
