@@ -718,4 +718,111 @@ void main() {
       expect(results, [null]);
     });
   });
+
+  group('floating, opened from a trigger', () {
+    /// Opens a floating panel from a button at [alignment], passing the
+    /// button's rect as the origin unless [withOrigin] is false, and stops
+    /// a few frames into the entrance.
+    Future<void> openFrom(
+      WidgetTester tester,
+      Alignment alignment, {
+      bool withOrigin = true,
+    }) async {
+      useScreen(tester, TestScreen.phone);
+      await tester.pumpWidget(
+        testApp(
+          tier: CoilTier.touch,
+          home: Align(
+            alignment: alignment,
+            child: Builder(
+              builder: (context) => CoilButton(
+                onPressed: () => showCoilModal<void>(
+                  context: context,
+                  presentation: CoilModalPresentation.floating,
+                  anchor: CoilModalAnchor.top,
+                  origin: withOrigin ? CoilModalRoute.originOf(context) : null,
+                  builder: (context) => const _Content(),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    Rect panel(WidgetTester tester) => tester.getRect(find.byType(CoilSurface));
+
+    /// Where the panel rests when it has no origin.
+    Future<Rect> restingPlace(WidgetTester tester) async {
+      await openFrom(tester, Alignment.center, withOrigin: false);
+      await tester.pumpAndSettle();
+      final rest = panel(tester);
+      await tester.pumpWidget(const SizedBox());
+      return rest;
+    }
+
+    testWidgets("it grows in from the trigger's side, settles exactly where "
+        'it would without one, and heads back there on close', (
+      tester,
+    ) async {
+      final rest = await restingPlace(tester);
+      for (final (alignment, side) in [
+        (Alignment.bottomRight, const Offset(1, 1)),
+        (Alignment.topLeft, const Offset(-1, -1)),
+      ]) {
+        bool towardTrigger(Rect rect) =>
+            (rect.center.dx - rest.center.dx).sign == side.dx &&
+            (rect.center.dy - rest.center.dy).sign == side.dy &&
+            rect.width < rest.width;
+
+        await openFrom(tester, alignment);
+        expect(towardTrigger(panel(tester)), isTrue, reason: '$alignment');
+        await tester.pumpAndSettle();
+        expect(panel(tester), rest, reason: '$alignment');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        expect(towardTrigger(panel(tester)), isTrue, reason: '$alignment');
+        await tester.pumpAndSettle();
+        expect(find.text('Content'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('a panel swiped away keeps flying the way it was thrown and '
+        'bends toward its trigger; with reduced motion it only fades', (
+      tester,
+    ) async {
+      final rest = await restingPlace(tester);
+      await openFrom(tester, Alignment.bottomRight);
+      await tester.pumpAndSettle();
+      // Thrown left, away from a trigger at the bottom right.
+      await tester.fling(find.byType(CoilSurface), const Offset(-300, 0), 1500);
+      await tester.pump();
+      var thrown = panel(tester);
+      for (var frame = 0; frame < 6; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final next = panel(tester);
+        expect(next.center.dx, lessThan(thrown.center.dx));
+        thrown = next;
+      }
+      expect(thrown.center.dy, greaterThan(rest.center.dy));
+      await tester.pumpAndSettle();
+      expect(find.text('Content'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await openFrom(tester, Alignment.bottomRight);
+      expect(panel(tester), rest);
+    });
+  });
 }
