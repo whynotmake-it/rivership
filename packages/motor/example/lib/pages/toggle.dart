@@ -20,6 +20,11 @@ class TogglePage extends StatefulWidget {
 const _width = 136.0;
 const _height = 76.0;
 const _knob = 64.0;
+
+/// How far past an end a drag can pull the thumb, as a share of its
+/// travel; the asymptote of the rubber band.
+const _resistance = .2;
+
 const _travel = _width - _knob - 12;
 
 class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
@@ -97,11 +102,18 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
     ]);
   }
 
+  /// Where the finger would put the thumb, before resistance past the ends.
+  double? _finger;
+
   void _drag(DragUpdateDetails details) {
-    final thumb = (_toggle.value(_thumb) + details.delta.dx / _travel).clamp(
-      -.15,
-      1.15,
-    );
+    final finger = _finger =
+        (_finger ?? _toggle.value(_thumb)) + details.delta.dx / _travel;
+    // Past either end the thumb resists the finger more and more softly.
+    final thumb = finger > 1
+        ? 1 + rubberBand(finger - 1, limit: _resistance)
+        : finger < 0
+        ? -rubberBand(-finger, limit: _resistance)
+        : finger;
     _code.value =
         '// Dragging: set() follows your finger and tracks its speed.\n'
         'toggle.set([thumb.value(${thumb.toStringAsFixed(2)})]);';
@@ -109,6 +121,7 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
   }
 
   void _release(DragEndDetails _) {
+    _finger = null;
     final speed = _toggle.velocity(_thumb);
     final thumb = _toggle.value(_thumb);
     _switch(
@@ -200,7 +213,10 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
               onTapDown: (_) => _press(true),
               onTapCancel: () => _press(false),
               onTap: () => _switch(!_on),
-              onHorizontalDragStart: (_) => _press(true),
+              onHorizontalDragStart: (_) {
+                _finger = null;
+                _press(true);
+              },
               onHorizontalDragUpdate: _drag,
               onHorizontalDragEnd: _release,
               // Lost to a scroll or a tap: let go of the squish.
@@ -261,10 +277,12 @@ class _Switch extends StatelessWidget {
     final radii = CoilTheme.radiiOf(context);
     final at = thumb.clamp(0.0, 1.0);
     final width = _knob + 18 * squish;
-    // Past either end the whole switch stretches toward that edge and
-    // narrows to keep its area, by 7% at most.
-    final over = (thumb - at).clamp(-.2, .2);
-    final stretch = 1 + over.abs() * .35;
+    // Past either end, by a drag or a spring's overshoot, the whole switch
+    // stretches toward that edge and narrows to keep its area. The stretch
+    // keeps growing with the overshoot, ever more softly, so a bouncy
+    // spring never hits a wall.
+    final over = thumb - at;
+    final stretch = 1 + rubberBand(over.abs() * .35, limit: .1);
     return Transform(
       alignment: over > 0 ? .centerLeft : .centerRight,
       transform: Matrix4.diagonal3Values(stretch, 1 / stretch, 1),
