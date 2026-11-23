@@ -54,8 +54,9 @@ class _ButtonPageState extends State<ButtonPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Button',
     summary:
-        'Hover with a mouse, press with a finger, Tab to see the focus ring. '
-        'Pressing shrinks the fill 1 px per side; nothing scales.',
+        'Buttons respond to a mouse, a finger and the keyboard alike. When '
+        'you press one, its fill draws in by a pixel on each side, and the '
+        'focus ring appears only when you move to it with Tab.',
     hero: const _ReleaseCard(),
     usage: '''
 CoilButton(
@@ -63,29 +64,6 @@ CoilButton(
   onPressed: publish,
   child: Text(published ? 'Published' : 'Publish'),
 )''',
-    notes: const [
-      CatalogNote(
-        'Keyboard',
-        'Enter or Space activates. The focus ring shows only while the '
-            'keyboard was the last input.',
-      ),
-      CatalogNote(
-        'Touch',
-        'Touch buttons are 44 tall. A compact touch button draws at 36 but '
-            'still takes a 44 hit target.',
-      ),
-      CatalogNote(
-        'Motion',
-        'When the label or an icon changes, the width springs to fit and the '
-            'label cross-fades. Loading swaps the leading icon for a spinner '
-            'in place.',
-      ),
-      CatalogNote(
-        'Accessibility',
-        'An icon-only button needs a semanticLabel. Loading reads as '
-            '"Loading" and stays at full strength; disabled drops to 50 %.',
-      ),
-    ],
     children: [
       DemoSection(
         title: 'Playground',
@@ -129,7 +107,8 @@ CoilButton(
       DemoSection(
         title: 'Variants',
         description:
-            'One primary per view. Destructive is a tint, never solid red.',
+            'Use one primary button per view. A destructive action gets a '
+            'red tint rather than a solid red fill.',
         child: DemoWrap(
           children: [
             for (final variant in CoilButtonVariant.values)
@@ -143,7 +122,9 @@ CoilButton(
       ),
       DemoSection(
         title: 'Compact',
-        description: 'One step denser, for toolbars and filter bars.',
+        description:
+            'The compact size is one step denser, for toolbars and filter '
+            'bars.',
         child: DemoWrap(
           children: [
             for (final variant in CoilButtonVariant.values)
@@ -228,7 +209,7 @@ enum _Phase { draft, publishing, published }
 
 class _ReleaseCardState extends State<_ReleaseCard> {
   var _phase = _Phase.draft;
-  var _starred = false;
+  var _liked = false;
   Timer? _timer;
 
   @override
@@ -254,6 +235,7 @@ class _ReleaseCardState extends State<_ReleaseCard> {
     final text = CoilTheme.textOf(context);
     final gap = CoilTheme.metricsOf(context).buttonGap;
     final published = _phase == _Phase.published;
+    final foreground = CoilTheme.of(context).colors.foreground;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -297,12 +279,23 @@ class _ReleaseCardState extends State<_ReleaseCard> {
               onPressed: () {},
               child: const Text('Preview'),
             ),
-            CoilButton.icon(
+            // The label and the heart change together: the count
+            // cross-fades while the button springs to its new width, and
+            // the heart fills on its own spring.
+            CoilButton(
               variant: CoilButtonVariant.ghost,
-              semanticLabel: _starred ? 'Unstar' : 'Star',
-              selected: _starred,
-              icon: const CatalogIcon(Glyph.star),
-              onPressed: () => setState(() => _starred = !_starred),
+              semanticLabel: _liked ? 'Unlike, 25 likes' : 'Like, 24 likes',
+              // Liked, the heart and the count take the foreground color
+              // instead of the ghost's muted rest.
+              leading: IconTheme.merge(
+                data: IconThemeData(color: _liked ? foreground : null),
+                child: HeartGlyph(filled: _liked),
+              ),
+              onPressed: () => setState(() => _liked = !_liked),
+              child: Text(
+                _liked ? '25' : '24',
+                style: _liked ? TextStyle(color: foreground) : null,
+              ),
             ),
           ],
         ),
