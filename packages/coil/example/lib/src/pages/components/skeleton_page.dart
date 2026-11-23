@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
-import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
@@ -11,7 +10,9 @@ const skeletonEntry = CatalogEntry(
   slug: 'skeleton',
   title: 'Skeleton',
   group: CatalogGroup.leafControls,
-  summary: 'Placeholders that appear after a grace period and pulse.',
+  summary:
+      'Placeholders in the shape of loading content, and a switcher that '
+      'swaps them for it.',
   page: SkeletonPage.new,
 );
 
@@ -29,8 +30,10 @@ class _SkeletonPageState extends State<SkeletonPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Skeleton',
     summary:
-        'Placeholders in the shape of what is loading. They wait 160 ms, so '
-        'a fast load never flashes, and they never shimmer.',
+        'A skeleton holds the place of content that is still loading, and '
+        'CoilSkeletonSwitcher swaps it for the real content. The switcher '
+        'cross-fades the two in the same space, so the layout never jumps, '
+        'and it keeps a fast first load from flashing a skeleton at all.',
     hero: const _FeedCard(),
     usage: '''
 CoilSkeletonSwitcher(
@@ -44,27 +47,34 @@ CoilSkeletonSwitcher(
     notes: const [
       CatalogNote(
         'Motion',
-        'A skeleton fades in after the 160 ms grace, then pulses between '
-            'full and half opacity every 2 s. Reduced motion keeps the fade '
-            'and drops the pulse.',
+        'A skeleton that appears first waits out a 160 ms grace period and '
+            'then fades in, while one that replaces content already on screen '
+            'appears at once, because waiting would leave the space empty. '
+            'Once it is visible it pulses between full and half opacity every '
+            '2 s, and reduced motion keeps the fades and drops the pulse.',
       ),
       CatalogNote(
         'Screen readers',
-        'The blocks are skipped. The loading region announces its '
-            'semanticLabel as a live region.',
+        'The individual blocks are skipped, and the loading region '
+            'announces its semanticLabel as a live region.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Match the final layout’s line count and widths. Text lines vary '
-            'between 55 and 82 % of the width, like real text.',
+        'Match the line count and widths of the final layout so that nothing '
+            'moves when the content arrives, and let CoilSkeletonSwitcher do '
+            'the swap rather than replacing one widget with the other '
+            'yourself. Text lines vary between 55 and 82 % of the width, as '
+            'real text does, and a skeleton never shimmers.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Building blocks',
         description:
-            'A block takes any size; text lines follow the line height of '
-            'the text they stand in for.',
+            'A skeleton is built from blocks: CoilSkeleton takes any size, '
+            'and a text line is as tall as the line of text it stands in for. '
+            'Arrange them the way the loaded layout is arranged and hand the '
+            'result to a switcher.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -87,8 +97,8 @@ CoilSkeletonSwitcher(
   );
 }
 
-/// A post that loads: Reload shows its skeleton for a moment, then the two
-/// cross-fade in a single cell, so the card never collapses.
+/// A post that loads, on three buttons: two first loads (one under the grace
+/// period, one over it) and a reload of content that is already on screen.
 class _FeedCard extends StatefulWidget {
   const _FeedCard();
 
@@ -97,8 +107,16 @@ class _FeedCard extends StatefulWidget {
 }
 
 class _FeedCardState extends State<_FeedCard> {
-  var _loading = false;
+  /// Changing it mounts a fresh switcher, which is a first load again.
+  var _generation = 0;
+  var _loading = true;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _finishAfter(const Duration(seconds: 2));
+  }
 
   @override
   void dispose() {
@@ -106,39 +124,76 @@ class _FeedCardState extends State<_FeedCard> {
     super.dispose();
   }
 
-  void _reload() {
+  void _finishAfter(Duration delay) {
     _timer?.cancel();
-    setState(() => _loading = true);
-    _timer = Timer(const Duration(milliseconds: 2400), () {
+    _timer = Timer(delay, () {
       if (mounted) setState(() => _loading = false);
     });
   }
 
+  void _firstLoad(Duration delay) {
+    setState(() {
+      _generation++;
+      _loading = true;
+    });
+    _finishAfter(delay);
+  }
+
+  void _reload() {
+    setState(() => _loading = true);
+    _finishAfter(const Duration(seconds: 2));
+  }
+
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      CoilSkeletonSwitcher(
-        loading: _loading,
-        skeleton: const CoilSkeletonRegion(
-          semanticLabel: 'Loading post',
-          child: _PostSkeleton(),
-        ),
-        child: const _Post(),
-      ),
-      const SizedBox(height: 20),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: CoilButton(
-          variant: CoilButtonVariant.secondary,
-          leading: const CatalogIcon(Glyph.rotate),
+  Widget build(BuildContext context) {
+    final gap = CoilTheme.metricsOf(context).buttonGap;
+    final text = CoilTheme.textOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CoilSkeletonSwitcher(
+          key: ValueKey(_generation),
           loading: _loading,
-          onPressed: _loading ? null : _reload,
-          child: const Text('Reload'),
+          skeleton: const CoilSkeletonRegion(
+            semanticLabel: 'Loading post',
+            child: _PostSkeleton(),
+          ),
+          child: const _Post(),
         ),
-      ),
-    ],
-  );
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            CoilButton(
+              variant: CoilButtonVariant.secondary,
+              onPressed: () => _firstLoad(const Duration(milliseconds: 100)),
+              child: const Text('First load, 100 ms'),
+            ),
+            CoilButton(
+              variant: CoilButtonVariant.secondary,
+              onPressed: () => _firstLoad(const Duration(seconds: 2)),
+              child: const Text('First load, 2 s'),
+            ),
+            CoilButton(
+              variant: CoilButtonVariant.ghost,
+              onPressed: _reload,
+              child: const Text('Reload'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Both first loads start from an empty card: the 100 ms one finishes '
+          'inside the 160 ms grace period, so no skeleton ever appears, while '
+          'the 2 s one waits the grace out and fades its skeleton in. Reload '
+          'replaces a post that is already on screen, so the skeleton takes '
+          'over from it at once.',
+          style: text.muted.caption,
+        ),
+      ],
+    );
+  }
 }
 
 class _PostSkeleton extends StatelessWidget {

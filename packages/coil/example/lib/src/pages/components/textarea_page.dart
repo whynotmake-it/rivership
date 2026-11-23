@@ -8,7 +8,9 @@ const textareaEntry = CatalogEntry(
   slug: 'textarea',
   title: 'Textarea',
   group: CatalogGroup.leafControls,
-  summary: 'CoilInput.multiline: grows from 3 lines to 10, then scrolls.',
+  summary:
+      'A multi-line input that grows from three lines to ten, then '
+      'scrolls.',
   page: TextareaPage.new,
 );
 
@@ -29,8 +31,9 @@ class _TextareaPageState extends State<TextareaPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Textarea',
     summary:
-        'The same input, for more than a line: CoilInput.multiline starts '
-        'three lines tall and grows with what you type.',
+        'CoilInput.multiline is the same input for more than one line. It '
+        'starts three lines tall and grows as you type, up to ten lines, '
+        'after which the text scrolls inside it.',
     hero: const _FeedbackForm(),
     usage: r'''
 CoilField(
@@ -45,31 +48,33 @@ CoilField(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Return inserts a newline. Sending is up to the form: a composer '
-            'decides which key does it.',
+        'Return inserts a newline, so the surrounding form decides which '
+            'key sends, as a message composer does.',
       ),
       CatalogNote(
         'Motion',
-        'Growth is instant, because an animated height jitters while '
-            'you type. Colors still fade.',
+        'The height changes instantly, because animating it would make the '
+            'text jitter while you type, but the colors still fade.',
       ),
       CatalogNote(
         'Touch',
-        'Past maxLines (10 by default) the text scrolls inside the field '
-            'instead of growing the page. The field scrolls itself clear of '
-            'the keyboard.',
+        'Past maxLines (10 by default) the text scrolls inside the input '
+            'instead of growing the page, and the input scrolls itself clear '
+            'of the keyboard.',
       ),
       CatalogNote(
         'Accessibility',
-        'Pair it with a Field label, never a placeholder alone. The '
-            'count and the error are part of the Field, so they are read '
-            'with it.',
+        'Pair it with a field label rather than relying on a placeholder '
+            'alone. The count and the error belong to the field, so a screen '
+            'reader announces them with the input.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
-        description: 'Type past the last line to watch it grow, then scroll.',
+        description:
+            'Type past the last line to watch the input grow, and past the '
+            'maximum to see it scroll.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

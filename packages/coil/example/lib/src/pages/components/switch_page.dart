@@ -9,7 +9,7 @@ const switchEntry = CatalogEntry(
   slug: 'switch',
   title: 'Switch',
   group: CatalogGroup.leafControls,
-  summary: 'Drag, flick or tap; the thumb squishes and stretches.',
+  summary: 'A setting that applies as soon as you flip it, by tap or by drag.',
   page: SwitchPage.new,
 );
 
@@ -29,8 +29,9 @@ class _SwitchPageState extends State<SwitchPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Switch',
     summary:
-        'For a setting that applies the moment you flip it. Tap, or drag '
-        'the thumb and let go: where it would land decides.',
+        'A switch is for a setting that applies the moment you flip it. You '
+        'can tap it, or drag the thumb and let go, and the side it is closest '
+        'to decides the result.',
     hero: const _NotificationSettings(),
     usage: '''
 CoilField(
@@ -44,27 +45,30 @@ CoilField(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Space or Enter toggles. The focus ring sits 2 px outside the track.',
+        'Space and Enter both toggle the switch, and the focus ring sits '
+            '2 px outside the track.',
       ),
       CatalogNote(
         'Pointer',
-        'Hovering grows the thumb by 2; pressing widens it. Dragging past '
-            'either end stretches the track a little.',
+        'Hovering grows the thumb by 2 and pressing widens it, and dragging '
+            'past either end stretches the track a little.',
       ),
       CatalogNote(
         'Touch',
-        'The track is larger on touch, and a labeled switch takes the '
-            'whole row as its target. iOS gets a selection click when a '
-            'drag flips it.',
+        'The track is larger on touch, and a switch with a label takes the '
+            'whole row as its target. On iOS a drag that flips the switch '
+            'also plays a selection click.',
       ),
       CatalogNote(
         'Screen readers',
-        'Reads as a toggle with its label. Without a visible label, give '
-            'it a semanticLabel.',
+        'A switch is read as a toggle together with its label, so give it a '
+            'semanticLabel when it has no visible label.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Don’t use it in a form that needs Submit; that is a checkbox.',
+        'A choice that is only saved when the form is submitted is better '
+            'as a checkbox, because a switch implies the change has already '
+            'taken effect.',
       ),
     ],
     children: [
@@ -112,8 +116,9 @@ CoilField(
       DemoSection(
         title: 'Custom motion',
         description:
-            'The thumb, squish and tint each follow a theme spring. '
-            'motions: replaces one; here the thumb gets a bounce of 0.4.',
+            'The thumb, the squish and the tint each follow a spring from '
+            'the theme, and motions replaces any of them. Here the thumb '
+            'gets a bounce of 0.4.',
         child: CoilSwitch(
           value: _bouncy,
           onChanged: (v) => setState(() => _bouncy = v),
@@ -152,7 +157,7 @@ class _NotificationSettingsState extends State<_NotificationSettings> {
       if (_digest) 'the weekly digest',
     ];
     final summary = !_enabled
-        ? 'Notifications are off. Nothing will reach you.'
+        ? 'Notifications are off, so nothing will reach you.'
         : kinds.isEmpty
         ? 'Notifications are on, but every kind is off.'
         : 'You will hear about ${_join(kinds)}'
@@ -181,7 +186,7 @@ class _NotificationSettingsState extends State<_NotificationSettings> {
           children: [
             row(
               'Allow notifications',
-              'Turn everything off at once.',
+              'Turns every kind of notification on or off at once.',
               value: _enabled,
               onChanged: (v) => setState(() => _enabled = v),
             ),
@@ -208,7 +213,7 @@ class _NotificationSettingsState extends State<_NotificationSettings> {
             ),
             row(
               'Play a sound',
-              'A short chime for each one.',
+              'A short chime for each notification.',
               value: _enabled && _sound,
               onChanged: (v) => setState(() => _sound = v),
               nested: true,

@@ -9,7 +9,7 @@ const checkboxEntry = CatalogEntry(
   slug: 'checkbox',
   title: 'Checkbox',
   group: CatalogGroup.leafControls,
-  summary: 'A bare tick when checked, a dash when mixed.',
+  summary: 'An independent on/off choice with a tick, or a dash when mixed.',
   page: CheckboxPage.new,
 );
 
@@ -29,8 +29,9 @@ class _CheckboxPageState extends State<CheckboxPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Checkbox',
     summary:
-        'An independent on/off choice in a form, with a visible label. A '
-        'setting that applies at once is a Switch.',
+        'A checkbox is an independent on/off choice in a form, shown with a '
+        'visible label. A setting that takes effect the moment it changes is '
+        'better served by a switch.',
     hero: const _FileList(),
     usage: '''
 CoilField(
@@ -44,28 +45,32 @@ CoilField(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Space toggles. Enter toggles only inside a choice card.',
+        'Space toggles the checkbox, and Enter does so only inside a choice '
+            'card.',
       ),
       CatalogNote(
         'Touch',
-        'The box is 20 on touch with a 44 hit target. Tapping the label '
-            'inside a Field toggles it too.',
+        'On touch the box is 20 wide with a 44 hit target, and tapping the '
+            'label inside a field toggles it as well.',
       ),
       CatalogNote(
         'Motion',
-        'The tick draws on and retracts. Changing between tick and dash '
-            'retracts one and draws the other. Reduced motion lands at once.',
+        'The tick draws on and retracts, and changing between tick and dash '
+            'retracts one before drawing the other. With reduced motion the '
+            'new state appears at once.',
       ),
       CatalogNote(
         'Screen readers',
-        'Reads as checked, unchecked or mixed, with the Field’s label. '
-            'A bare checkbox needs a semanticLabel.',
+        'A checkbox is read as checked, unchecked or mixed together with '
+            'its field’s label, and a checkbox outside a field needs a '
+            'semanticLabel of its own.',
       ),
     ],
     children: [
       DemoSection(
         title: 'In a form',
-        description: 'Submit without accepting the terms to see the error.',
+        description:
+            'Submit the form without accepting the terms to see the error.',
         child: DemoColumn(
           children: [
             CoilField(
@@ -103,7 +108,9 @@ CoilField(
       ),
       const DemoSection(
         title: 'States',
-        description: 'Regular and compact. Tristate adds the mixed dash.',
+        description:
+            'Each state in the regular and compact sizes, with the mixed dash '
+            'that a tristate checkbox adds.',
         child: _StatesTable(),
       ),
     ],
