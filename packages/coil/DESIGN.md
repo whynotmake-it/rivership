@@ -618,7 +618,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
 - **Motion** (tracks `CoilSwitchTrack.thumb` / `.squish` / `.tint`):
   - thumb on `standard`, squish on `quick`, tint on `fade`;
-  - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
+  - dragging sets the thumb directly and may go past either end, and so may a bouncy spring, stretching the track with rubber-band resistance (`coilRubberBand`: it keeps growing ever more softly toward 0.15 of the travel, with no hard stop);
   - release decides by `x + v · 0.1 s` and animates with the release velocity.
 - **Keyboard:** Space or Enter toggles. The focus ring sits 2 px outside the track, as every ring does (§13.4).
 - **Semantics:** `toggled`, label.
