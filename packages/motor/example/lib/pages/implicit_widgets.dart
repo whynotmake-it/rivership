@@ -289,8 +289,13 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
                   motion: theme.fade,
                   sizeMotion: motion,
                   immediateResize: true,
+                  // Labels hang from the icon's edge, so a shrinking box
+                  // only trims a leaving label's end while it fades.
+                  alignment: AlignmentDirectional.centerStart,
                   debugLabel: 'Status pill',
-                  transitionBuilder: CoilBlurFade.transition(),
+                  transitionBuilder: CoilBlurFade.transition(
+                    alignment: AlignmentDirectional.centerStart,
+                  ),
                   child: statusLabel(status, _status),
                 ),
               ),
@@ -309,6 +314,7 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
               '// motor_widgets: switches at once, resizes during the fade.\n'
               'MotionSizeSwitcher(\n'
               '  immediateResize: true,\n'
+              '  alignment: AlignmentDirectional.centerStart,\n'
               '  sizeMotion: $call,\n'
               '  motion: fade,\n'
               '  transitionBuilder: CoilBlurFade.transition(),\n'
