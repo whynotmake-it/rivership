@@ -297,7 +297,7 @@ class CoilActionList extends StatefulWidget {
 }
 
 class _CoilActionListState extends State<CoilActionList>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   final _active = CoilActiveItemController();
   final _query = TextEditingController();
   final _scroll = ScrollController();
