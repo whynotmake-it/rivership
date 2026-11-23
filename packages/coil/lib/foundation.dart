@@ -12,6 +12,7 @@ export 'src/foundation/input_modality.dart';
 export 'src/foundation/metrics.dart';
 export 'src/foundation/motion.dart';
 export 'src/foundation/option.dart';
+export 'src/foundation/plain_text.dart';
 export 'src/foundation/plasticity.dart';
 export 'src/foundation/shape.dart';
 export 'src/foundation/style.dart';

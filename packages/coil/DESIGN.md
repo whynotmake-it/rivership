@@ -323,7 +323,7 @@ Lists keep an **active item** separate from focus and hover (like `aria-activede
 - Enter, Space and the soft keyboard's Search key act on it;
 - in search and combobox lists, completed taps move it too.
 
-**Typeahead:** a 1 s buffer, prefix-matched on each item's `searchText`, searching from the active item and skipping disabled rows.
+**Typeahead:** a 1 s buffer, prefix-matched on each item's `searchText`, searching from the active item and skipping disabled rows. `searchText` defaults to the plain text of a `Text` label, so a row only sets it when its label is another widget.
 
 ### 8.4 Merged selection
 
@@ -983,7 +983,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - assistant: no bubble, full width, aligned to the start.
 - **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
-- **Semantics:** each message is a container labeled with sender and time.
+- **Semantics:** each message is a container labeled with sender and time. An action's icon-only button is named by its `semanticLabel`, which defaults to the plain text of a `Text` label, so only a label that isn't text sets one.
 
 #### Reveal
 

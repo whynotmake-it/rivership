@@ -61,7 +61,9 @@ void main() {
           if (field == null || owner == null || owner.startsWith('_')) {
             continue;
           }
-          final name = field.group(2)!;
+          // A private field backs a getter of the same name, which is the
+          // public API the rule is about (`_searchText` → `searchText`).
+          final name = field.group(2)!.replaceFirst(RegExp('^_'), '');
           final key = '$path $owner.$name';
           if (_namedForItsJob(name) || _allowed.containsKey(key)) {
             continue;
