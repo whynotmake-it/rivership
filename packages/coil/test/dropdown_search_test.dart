@@ -112,7 +112,7 @@ void main() {
     expect(find.text('Copy'), findsOneWidget);
   });
 
-  testWidgets('on a phone a menu with search opens as a sheet', (
+  testWidgets('on a phone a menu with search opens as a floating panel', (
     tester,
   ) async {
     useScreen(tester, TestScreen.phone);
