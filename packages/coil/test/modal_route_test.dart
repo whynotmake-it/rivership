@@ -510,7 +510,11 @@ void main() {
   group('floating', () {
     Future<List<Object?>> open(
       WidgetTester tester, {
-      Axis? dismissAxis = Axis.horizontal,
+      Set<AxisDirection> dismissDirections = const {
+        AxisDirection.left,
+        AxisDirection.right,
+        AxisDirection.down,
+      },
       bool dismissible = true,
       FocusNode? trigger,
       Widget content = const _Content(),
@@ -530,7 +534,7 @@ void main() {
                       context: context,
                       presentation: CoilModalPresentation.floating,
                       anchor: CoilModalAnchor.top,
-                      dismissAxis: dismissAxis,
+                      dismissDirections: dismissDirections,
                       dismissible: dismissible,
                       builder: (context) => content,
                     ),
@@ -606,14 +610,13 @@ void main() {
       expect(squeezed.bottom, lessThan(window.height / 2));
     });
 
-    testWidgets('a swipe along its axis throws it away, and only along it', (
-      tester,
-    ) async {
+    testWidgets('a swipe in an allowed direction throws it away, and only '
+        'that one', (tester) async {
       final trigger = FocusNode();
       addTearDown(trigger.dispose);
       final results = await open(
         tester,
-        dismissAxis: Axis.vertical,
+        dismissDirections: {AxisDirection.up},
         trigger: trigger,
       );
       final rest = tester.getRect(find.byType(CoilSurface));
@@ -633,8 +636,9 @@ void main() {
       expect(trigger.hasFocus, isTrue);
     });
 
-    testWidgets('a swipe either way closes a horizontal one, and no axis '
-        'means no swipe', (tester) async {
+    testWidgets('a swipe either way sideways closes it by default', (
+      tester,
+    ) async {
       final results = await open(tester);
       await swipe(tester, const Offset(300, 0));
       expect(find.text('Content'), findsNothing);
@@ -646,11 +650,44 @@ void main() {
       expect(results, [null, null]);
     });
 
-    testWidgets('with no axis a swipe does nothing', (tester) async {
-      await open(tester, dismissAxis: null);
+    testWidgets('with no directions a swipe does nothing', (tester) async {
+      await open(tester, dismissDirections: const {});
       await swipe(tester, const Offset(-300, 0));
       await swipe(tester, const Offset(0, 300));
       expect(find.text('Content'), findsOneWidget);
+    });
+
+    testWidgets('a down-only panel is thrown away downward, not sideways, and '
+        'drags up give a little and spring back', (tester) async {
+      final results = await open(
+        tester,
+        dismissDirections: {AxisDirection.down},
+      );
+      final rest = tester.getRect(find.byType(CoilSurface));
+      await swipe(tester, const Offset(-300, 0));
+      await swipe(tester, const Offset(300, 0));
+      expect(find.text('Content'), findsOneWidget);
+      expect(tester.getRect(find.byType(CoilSurface)), rest);
+
+      // Against the allowed direction it gives, but less than the finger,
+      // and even a fling doesn't throw it away.
+      final finger = await tester.startGesture(
+        tester.getCenter(find.byType(CoilSurface)),
+      );
+      await finger.moveBy(const Offset(0, -100));
+      await tester.pump();
+      final given = rest.top - tester.getRect(find.byType(CoilSurface)).top;
+      expect(given, greaterThan(0));
+      expect(given, lessThan(100));
+      await finger.up();
+      await tester.pumpAndSettle();
+      await swipe(tester, const Offset(0, -400));
+      expect(find.text('Content'), findsOneWidget);
+      expect(tester.getRect(find.byType(CoilSurface)), rest);
+
+      await swipe(tester, const Offset(0, 300));
+      expect(find.text('Content'), findsNothing);
+      expect(results, [null]);
     });
 
     testWidgets('a swipe that a PopScope vetoes springs back', (tester) async {
@@ -799,22 +836,38 @@ void main() {
       tester,
     ) async {
       final rest = await restingPlace(tester);
-      await openFrom(tester, Alignment.bottomRight);
-      await tester.pumpAndSettle();
-      // Thrown left, away from a trigger at the bottom right.
-      await tester.fling(find.byType(CoilSurface), const Offset(-300, 0), 1500);
-      await tester.pump();
-      var thrown = panel(tester);
-      for (var frame = 0; frame < 6; frame++) {
-        await tester.pump(const Duration(milliseconds: 16));
-        final next = panel(tester);
-        expect(next.center.dx, lessThan(thrown.center.dx));
-        thrown = next;
+      // Thrown left, away from a trigger at the bottom right; and down,
+      // past a trigger at the top left.
+      for (final (alignment, fling, toward) in [
+        (Alignment.bottomRight, const Offset(-300, 0), const Offset(0, 1)),
+        (Alignment.topLeft, const Offset(0, 300), const Offset(-1, 0)),
+      ]) {
+        await openFrom(tester, alignment);
+        await tester.pumpAndSettle();
+        await tester.fling(find.byType(CoilSurface), fling, 1500);
+        await tester.pump();
+        var thrown = panel(tester);
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final next = panel(tester);
+          final moved = next.center - thrown.center;
+          expect(
+            moved.dx * fling.dx + moved.dy * fling.dy,
+            greaterThan(0),
+            reason: '$alignment',
+          );
+          thrown = next;
+        }
+        final bent = thrown.center - rest.center;
+        expect(
+          bent.dx * toward.dx + bent.dy * toward.dy,
+          greaterThan(0),
+          reason: '$alignment',
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Content'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
       }
-      expect(thrown.center.dy, greaterThan(rest.center.dy));
-      await tester.pumpAndSettle();
-      expect(find.text('Content'), findsNothing);
-      await tester.pumpWidget(const SizedBox());
 
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);

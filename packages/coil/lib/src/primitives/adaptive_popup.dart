@@ -295,8 +295,9 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
         anchor: CoilModalAnchor.top,
         origin: origin,
         motion: widget.motion,
-        // A swipe, back and Esc dismiss it; the TapRegion reports a tap on
-        // the scrim first, with its own reason.
+        // A swipe (sideways or down, the route's default), back and Esc
+        // dismiss it; the TapRegion reports a tap on the scrim first, with
+        // its own reason.
         builder: (_) => content,
       ),
       _ => CoilSheetRoute<CoilPopupCloseReason>(
