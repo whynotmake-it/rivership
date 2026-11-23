@@ -2587,6 +2587,69 @@ void main() {
       },
     );
   });
+
+  group('dragging content shorter than the sheet', () {
+    final routes = <String, Route<void> Function(Widget)>{
+      'glass': (child) => StupidSimpleGlassSheetRoute<void>(child: child),
+      'cupertino': (child) =>
+          StupidSimpleCupertinoSheetRoute<void>(child: child),
+      'plain': (child) =>
+          StupidSimpleSheetRoute<void>(child: SheetBackground(child: child)),
+    };
+
+    for (final entry in routes.entries) {
+      testWidgets('${entry.key} sheet follows the pointer one-to-one', (
+        tester,
+      ) async {
+        const contentKey = Key('short-content');
+        await tester.pumpWidget(
+          CupertinoApp(
+            home: Builder(
+              builder: (context) => CupertinoButton(
+                onPressed: () => Navigator.of(context).push(
+                  entry.value(
+                    const SizedBox(
+                      key: contentKey,
+                      height: 300,
+                      width: double.infinity,
+                      child: ColoredBox(color: Colors.red),
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+
+        final contentFinder = find.byKey(contentKey);
+        final gesture = await tester.startGesture(
+          tester.getCenter(contentFinder),
+        );
+        // Get past the touch slop so the drag has started.
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+
+        final topBefore = tester.getRect(contentFinder).top;
+        var pointerDistance = 0.0;
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(0, 10));
+          pointerDistance += 10;
+          await tester.pump();
+          expect(
+            tester.getRect(contentFinder).top - topBefore,
+            moreOrLessEquals(pointerDistance, epsilon: 1),
+          );
+        }
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(contentFinder, findsOneWidget);
+      });
+    }
+  });
 }
 
 class _FixedSnapPhysics extends RelativeSnapPhysics {
