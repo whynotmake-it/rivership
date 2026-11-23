@@ -1,9 +1,14 @@
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 
-/// The example's colors, matching motor_devtools: zinc neutrals and one
-/// blue-violet accent, for light and dark mode.
+/// The colors the demos draw with, read from the coil theme so they follow
+/// light and dark, high contrast and any brand an app gives coil.
+///
+/// coil spends color only on meaning, and so do the demos: the thing in
+/// motion is [text] on a neutral stage, and [accent] (coil's brand) marks
+/// the one thing a demo wants you to watch, such as a spring's trace.
 @immutable
 class Palette {
   const Palette._({
@@ -21,25 +26,50 @@ class Palette {
     required this.accentSoft,
   });
 
-  /// The page background.
+  /// The palette for [colors].
+  factory Palette.from(CoilColors colors) => Palette._(
+    canvas: colors.background,
+    surface: colors.surface(4),
+    inset: colors.surface(3),
+    control: colors.muted,
+    border: colors.border,
+    borderStrong: colors.foreground.withValues(alpha: 0.2),
+    text: colors.foreground,
+    textSecondary: colors.mutedForeground,
+    textTertiary: colors.mutedForeground.withValues(alpha: 0.7),
+    accent: colors.brand,
+    onAccent: const Color(0xFFFFFFFF),
+    accentSoft: colors.brand.withValues(alpha: 0.16),
+  );
+
+  /// The page behind the stages.
   final Color canvas;
 
-  /// Cards and panels.
+  /// Things placed on a stage: cards, panels, a phone's screen.
   final Color surface;
 
-  /// Recessed areas, like the stage a demo plays on.
+  /// The stage a demo plays on.
   final Color inset;
 
-  /// Resting fill of controls.
+  /// Resting fill of neutral shapes, such as an empty track.
   final Color control;
 
+  /// Hairlines.
   final Color border;
+
+  /// Hairlines that need to stand out from [border].
   final Color borderStrong;
+
+  /// Text, and the thing in motion.
   final Color text;
+
+  /// Secondary text.
   final Color textSecondary;
+
+  /// Labels and axes that sit back.
   final Color textTertiary;
 
-  /// The one color with character. Use it sparingly.
+  /// coil's brand color: the one thing a demo wants you to watch.
   final Color accent;
 
   /// Text and icons on [accent].
@@ -48,72 +78,15 @@ class Palette {
   /// A quiet tint of [accent].
   final Color accentSoft;
 
-  static const light = Palette._(
-    canvas: Color(0xFFF4F4F5),
-    surface: Color(0xFFFFFFFF),
-    inset: Color(0xFFFAFAFA),
-    control: Color(0xFFE9E9EC),
-    border: Color(0xFFE4E4E7),
-    borderStrong: Color(0xFFD4D4D8),
-    text: Color(0xFF18181B),
-    textSecondary: Color(0xFF52525B),
-    textTertiary: Color(0xFFA1A1AA),
-    accent: Color(0xFF3D63DD),
-    onAccent: Color(0xFFFFFFFF),
-    accentSoft: Color(0xFFE3E9FB),
-  );
-
-  static const dark = Palette._(
-    canvas: Color(0xFF111113),
-    surface: Color(0xFF1C1C1F),
-    inset: Color(0xFF161618),
-    control: Color(0xFF28282C),
-    border: Color(0xFF2A2A2E),
-    borderStrong: Color(0xFF3F3F46),
-    text: Color(0xFFFAFAFA),
-    textSecondary: Color(0xFFA1A1AA),
-    textTertiary: Color(0xFF71717A),
-    accent: Color(0xFF8AA4FF),
-    onAccent: Color(0xFF111113),
-    accentSoft: Color(0xFF1E2544),
-  );
-
-  /// The palette for the platform brightness.
+  /// The palette at [context].
   static Palette of(BuildContext context) =>
-      MediaQuery.platformBrightnessOf(context) == .dark ? dark : light;
+      Palette.from(CoilTheme.of(context).colors);
 }
-
-/// Corner radius of surfaces and controls. Square: the rounded shapes are the
-/// things being animated.
-const radius = 0.0;
 
 /// A strong ease-out, for things that enter or respond.
 const easeOut = Cubic(.23, 1, .32, 1);
 
-/// Archivo at a given weight and width. Both are variable-font axes, so they
-/// are set as variations as well as [FontWeight].
-TextStyle archivo(
-  double size, {
-  double weight = 400,
-  double width = 100,
-  double? height,
-  double spacing = 0,
-  Color? color,
-}) => TextStyle(
-  fontFamily: 'Archivo',
-  fontSize: size,
-  fontWeight: FontWeight.lerp(
-    FontWeight.w100,
-    FontWeight.w900,
-    ((weight - 100) / 800).clamp(0, 1),
-  ),
-  fontVariations: [FontVariation.weight(weight), FontVariation.width(width)],
-  height: height,
-  letterSpacing: spacing,
-  color: color,
-);
-
-/// JetBrains Mono, for labels, numbers and code.
+/// JetBrains Mono, for code, numbers on a live readout and timeline lanes.
 TextStyle mono(
   double size, {
   double weight = 440,
@@ -123,32 +96,12 @@ TextStyle mono(
 }) => TextStyle(
   fontFamily: 'JetBrains Mono',
   fontSize: size,
+  fontWeight: FontWeight(weight.round()),
   fontVariations: [FontVariation.weight(weight)],
   letterSpacing: spacing,
   height: height,
   color: color,
 );
-
-/// The example's type scale, resolved against a palette.
-extension TypeScaleTools on Palette {
-  /// Page titles.
-  TextStyle get display =>
-      archivo(40, weight: 400, height: 1.05, spacing: -1.4, color: text);
-
-  /// Card and section titles.
-  TextStyle get title =>
-      archivo(17, weight: 500, height: 1.25, spacing: -.2, color: text);
-
-  /// Body copy.
-  TextStyle get body =>
-      archivo(15, height: 1.5, spacing: -.05, color: textSecondary);
-
-  /// Small print.
-  TextStyle get caption => archivo(12.5, height: 1.35, color: textTertiary);
-
-  /// Code.
-  TextStyle get code => mono(12.5, height: 1.45, color: textSecondary);
-}
 
 /// Blurs [child] by [sigma] on each axis. Skips the filter when it is too
 /// small to see.

@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
+import 'package:coil/coil.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/main.dart' as example;
+import 'package:motor_example/widgets/icons.dart';
 
 Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
   for (var t = Duration.zero; t < duration; t += frame) {
@@ -31,27 +33,29 @@ int _faceUpCards(WidgetTester tester) => find
 
 void main() {
   test('every chapter has a route', () {
+    // One shell route holds the sidebar; the pages are its children.
+    final pages = example.motorRoutes.single.children!;
     expect(
-      example.motorRoutes.map((route) => route.name),
+      pages.map((route) => route.name),
       containsAll(chapters.map((chapter) => chapter.title)),
     );
-    expect(example.motorRoutes, hasLength(chapters.length + 1));
+    expect(pages, hasLength(chapters.length + 1));
   });
 
   testWidgets('Retarget follows a change of mind', (tester) async {
     await _open(tester, 'Retarget');
-    await tester.tap(find.text('YEAR'));
+    final stage = find.byKey(const ValueKey('retarget stage'));
+    final origin = tester.getTopLeft(stage);
+    await tester.tapAt(origin + const Offset(300, 100));
     await _pumpFor(tester, const Duration(milliseconds: 120));
-    await tester.tap(find.text('WEEK'));
-    await _pumpFor(tester, const Duration(milliseconds: 120));
-    await tester.tap(find.text('CURVE'));
-    await tester.tap(find.text('MONTH'));
+    const second = Offset(90, 260);
+    await tester.tapAt(origin + second);
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
-    // The month's page has come to rest centred on the 430 px wide page.
-    final month = tester.getCenter(find.text('248k'));
-    expect(month.dx, closeTo(430 / 2, 1));
-    expect(find.text('steps this month'), findsOneWidget);
+    for (final dot in ['spring dot', 'curve dot']) {
+      final center = tester.getCenter(find.byKey(ValueKey(dot)));
+      expect((center - (origin + second)).distance, lessThan(1));
+    }
   });
 
   testWidgets('Toggle switches by tap and by a dragged release', (
@@ -77,9 +81,12 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 1));
     expect(thumb(), closeTo(0, 1e-3));
 
-    await tester.tap(find.byIcon(CupertinoIcons.heart));
+    await tester.tap(find.byIcon(Glyph.heart.rest));
     await _pumpFor(tester, const Duration(seconds: 1));
-    expect(find.byIcon(CupertinoIcons.heart_fill), findsOneWidget);
+    final heart = tester.widget(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == '_Heart'),
+    );
+    expect((heart as dynamic).liked, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -98,18 +105,18 @@ void main() {
   testWidgets('Card stack sends a thrown card under the stack', (tester) async {
     await _open(tester, 'Card stack');
     // A gentle drag springs back and keeps the card on top.
-    await tester.drag(find.text('Clear'), const Offset(30, 0));
+    await tester.drag(find.text('1 of 3'), const Offset(30, 0));
     await _pumpFor(tester, const Duration(seconds: 1));
     expect(topCard(tester), 0);
 
-    await tester.fling(find.text('Clear'), const Offset(200, -40), 2500);
+    await tester.fling(find.text('1 of 3'), const Offset(200, -40), 2500);
     await _pumpFor(tester, const Duration(milliseconds: 60));
     // Still clearing the stack, so it's drawn above the others.
     expect(topCard(tester), 0);
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(topCard(tester), 1);
-    final clear = tester.getCenter(find.text('Clear'));
-    final redirect = tester.getCenter(find.text('Redirect'));
+    final clear = tester.getCenter(find.text('1 of 3'));
+    final redirect = tester.getCenter(find.text('2 of 3'));
     expect((clear - redirect).distance, lessThan(80));
     expect(tester.takeException(), isNull);
   });
@@ -121,7 +128,7 @@ void main() {
       dynamic island() => tester.widget(
         find.byWidgetPredicate((w) => w.runtimeType.toString() == '_Island'),
       );
-      await tester.tap(find.text('PING'));
+      await tester.tap(find.text('Ping'));
       for (var t = Duration.zero; t < const Duration(seconds: 3); t += frame) {
         await tester.pump(frame);
         final Size size = island().size;
@@ -138,13 +145,13 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // A second ping while the first is still showing.
-      await tester.tap(find.text('PING'));
+      await tester.tap(find.text('Ping'));
       await _pumpFor(tester, const Duration(milliseconds: 800));
       expect(
         tester.getSize(find.text('motor 2.0 is here')).width,
         greaterThan(0),
       );
-      await tester.tap(find.text('PING'));
+      await tester.tap(find.text('Ping'));
       await _pumpFor(tester, const Duration(seconds: 4));
       expect(tester.takeException(), isNull);
     },
@@ -158,7 +165,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(_faceUpCards(tester), 3);
 
-    await tester.tap(find.text('ON LANDING'));
+    await tester.tap(find.text('On landing').last);
     await _pumpFor(tester, const Duration(milliseconds: 800));
     expect(_faceUpCards(tester), greaterThan(0));
     expect(_faceUpCards(tester), lessThan(3));
@@ -167,20 +174,20 @@ void main() {
 
   testWidgets('Phases jumps between phases and autoplays', (tester) async {
     await _open(tester, 'Phases');
-    await tester.tap(find.text('FULL'));
+    await tester.tap(find.text('Full').last);
     await _pumpFor(tester, const Duration(milliseconds: 200));
-    await tester.tap(find.text('CARD'));
+    await tester.tap(find.text('Card').last);
     await _pumpFor(tester, const Duration(seconds: 2));
-    await tester.tap(find.text('AUTOPLAY'));
+    await tester.tap(find.text('Autoplay'));
     await _pumpFor(tester, const Duration(seconds: 6));
-    await tester.tap(find.text('STOP'));
+    await tester.tap(find.text('Autoplay'));
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
   });
 
   // The artwork is always inside the player: 40 px wide in mini, 104 in
   // card and 272 in full.
-  final artwork = find.byIcon(CupertinoIcons.music_note_2);
+  final artwork = find.byIcon(Glyph.music.rest);
   double note(WidgetTester tester) => tester.getSize(artwork).width;
 
   testWidgets('Phases survives being dragged and flung far past its ends', (
@@ -192,7 +199,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(note(tester), closeTo(40, .5));
 
-    await tester.tap(find.text('FULL'));
+    await tester.tap(find.text('Full').last);
     await _pumpFor(tester, const Duration(seconds: 1));
     expect(note(tester), closeTo(272, .5));
     await tester.fling(artwork, const Offset(0, -500), 8000);
@@ -217,11 +224,11 @@ void main() {
 
   testWidgets('Phases hands a drag back to autoplay', (tester) async {
     await _open(tester, 'Phases');
-    await tester.tap(find.text('AUTOPLAY'));
+    await tester.tap(find.text('Autoplay'));
     await _pumpFor(tester, const Duration(milliseconds: 400));
     await tester.fling(artwork, const Offset(0, 420), 600);
     await tester.pump();
-    expect(find.text('STOP'), findsOneWidget);
+    expect(tester.widget<CoilSwitch>(find.byType(CoilSwitch)).value, isTrue);
     await _pumpFor(tester, const Duration(milliseconds: 600));
     // Landed in full, and autoplay heads back from there.
     expect(note(tester), closeTo(272, 1));
@@ -232,14 +239,14 @@ void main() {
       smallest = math.min(smallest, note(tester));
     }
     expect(smallest, closeTo(40, 1));
-    await tester.tap(find.text('STOP'));
+    await tester.tap(find.text('Autoplay'));
     await _pumpFor(tester, const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('Scrub pauses, scrubs and resumes to the end', (tester) async {
     await _open(tester, 'Scrub');
-    await tester.tap(find.text('SEND'));
+    await tester.tap(find.text('Send'));
     await _pumpFor(tester, const Duration(milliseconds: 300));
     final scrubber = tester.getRect(
       find
@@ -286,7 +293,7 @@ void _scrollWinsOverScrubberTest() {
     final slider = find.bySemanticsLabel('Playback position');
     await tester.ensureVisible(slider);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('SEND'));
+    await tester.tap(find.text('Send'));
     await _pumpFor(tester, const Duration(milliseconds: 300));
     // Press the scrubber, then scroll the page: the scroll wins.
     final gesture = await tester.startGesture(tester.getCenter(slider));

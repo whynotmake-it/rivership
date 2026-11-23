@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
+import 'package:motor_example/widgets/icons.dart';
 import 'package:motor_example/widgets/live_timeline.dart';
 import 'package:motor_example/widgets/style.dart';
 
@@ -217,6 +219,7 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 64),
           Semantics(
+            button: true,
             label: 'Like',
             toggled: _liked,
             child: GestureDetector(
@@ -254,7 +257,8 @@ class _Switch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
+    final radii = CoilTheme.radiiOf(context);
     final at = thumb.clamp(0.0, 1.0);
     final width = _knob + 18 * squish;
     // Past either end the whole switch stretches toward that edge and
@@ -268,9 +272,11 @@ class _Switch extends StatelessWidget {
         width: _width,
         height: _height,
         padding: const .all(6),
-        decoration: BoxDecoration(
-          color: Color.lerp(p.control, p.accent, tint.clamp(0, 1)),
-          borderRadius: .circular(_height / 2),
+        decoration: ShapeDecoration(
+          color: Color.lerp(colors.accent, colors.foreground, tint.clamp(0, 1)),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: .circular(radii.item * 2),
+          ),
         ),
         child: Stack(
           clipBehavior: .none,
@@ -280,25 +286,29 @@ class _Switch extends StatelessWidget {
               top: 0,
               width: width,
               height: _knob,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: p.surface,
-                  borderRadius: .circular(_knob / 2),
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: colors.surface(4),
+                  shadows: colors.shadow(2),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: .circular(radii.item * 2 - 6),
+                    side: BorderSide(color: colors.border),
+                  ),
                 ),
                 child: Stack(
                   alignment: .center,
                   children: [
                     _Icon(
-                      CupertinoIcons.sun_max_fill,
+                      Glyph.sun,
                       shown: 1 - at,
                       turn: -at,
-                      color: p.textSecondary,
+                      color: colors.mutedForeground,
                     ),
                     _Icon(
-                      CupertinoIcons.moon_fill,
+                      Glyph.moon,
                       shown: at,
                       turn: 1 - at,
-                      color: p.accent,
+                      color: colors.foreground,
                     ),
                   ],
                 ),
@@ -320,7 +330,7 @@ class _Icon extends StatelessWidget {
     required this.color,
   });
 
-  final IconData icon;
+  final Glyph icon;
   final double shown;
 
   /// How far it is turned away, from -1 to 1, a quarter turn at most.
@@ -338,7 +348,10 @@ class _Icon extends StatelessWidget {
           scale: .6 + .4 * shown,
           child: Blur(
             sigma: Offset(blur, blur),
-            child: Icon(icon, size: 26, color: color),
+            child: IconTheme(
+              data: IconThemeData(color: color),
+              child: GlyphIcon(icon, size: 26),
+            ),
           ),
         ),
       ),
@@ -355,7 +368,7 @@ class _Heart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
     return SizedBox.square(
       dimension: 96,
       child: Stack(
@@ -365,18 +378,22 @@ class _Heart extends StatelessWidget {
             for (var i = 0; i < 8; i++)
               Transform.translate(
                 offset: .fromDirection(i / 8 * 2 * math.pi, 22 + burst * 22),
-                child: Container(
-                  width: 5,
-                  height: 5,
-                  color: p.accent.withValues(alpha: 1 - burst),
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: const CircleBorder(),
+                    color: colors.brand.withValues(alpha: 1 - burst),
+                  ),
+                  child: const SizedBox.square(dimension: 5),
                 ),
               ),
           Transform.scale(
             scale: scale,
-            child: Icon(
-              liked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-              size: 44,
-              color: liked ? p.accent : p.textTertiary,
+            // Lucide has no filled heart: liked is the brand colour.
+            child: IconTheme(
+              data: IconThemeData(
+                color: liked ? colors.brand : colors.mutedForeground,
+              ),
+              child: const GlyphIcon(Glyph.heart, size: 44),
             ),
           ),
         ],
