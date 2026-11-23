@@ -1009,6 +1009,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### ScrollArea
 
+- **Composition:** it wraps the consumer's own scrollable (a `ListView`, `CustomScrollView`, `SingleChildScrollView`, ...) and never builds one. With no controller given, it provides one through `PrimaryScrollController` on every platform, along its axis, so a child with no controller of its own scrolls with it; given one, the child takes the same. A debug assert names the fix when the child doesn't attach.
 - **Physics:** the app's ambient `ScrollBehavior` decides physics, overscroll and drag devices (§9.2); the area only replaces its scrollbar with coil's.
 - **Edge fades (`CoilScrollEdgeFade`):** each edge fades in as content scrolls away from it, up to 32, following the scroll direction (RTL, reversed lists). The amount springs on `fade`. The ramp is eased, not linear, so it has no visible start or end. Over a known solid background the fade is painted in that color on top; elsewhere it masks the content, which costs an offscreen layer.
 - **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later. The hide is `RawScrollbar`'s timed fade over the `fade` token's duration, not a spring: `RawScrollbar` owns that animation and exposes no way to drive it.
