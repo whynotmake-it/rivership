@@ -188,7 +188,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      testApp(tier: CoilTier.pointer, home: const _MultiDemo(options: fruits)),
+      testApp(
+        tier: CoilTier.pointer,
+        home: const _MultiDemo(options: fruits),
+      ),
     );
     await click(find.byType(EditableText), frames: 2);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
@@ -232,16 +235,17 @@ void main() {
 }
 
 class _MultiDemo extends StatefulWidget {
-  const _MultiDemo({this.options = _fruit});
+  const _MultiDemo({this.options = _fruit, this.initial = const {}});
 
   final List<CoilOption<String>> options;
+  final Set<String> initial;
 
   @override
   State<_MultiDemo> createState() => _MultiDemoState();
 }
 
 class _MultiDemoState extends State<_MultiDemo> {
-  Set<String> values = {};
+  late Set<String> values = widget.initial;
 
   @override
   Widget build(BuildContext context) => Align(
@@ -299,5 +303,68 @@ void multiTests() {
     await tester.tap(find.bySemanticsLabel('Remove Apple'));
     await tester.pumpAndSettle();
     expect(_values(tester), isEmpty);
+  });
+
+  testWidgets('a press on the field opens the list, Tab focus does not, and '
+      'a leading chip sits evenly inset', (tester) async {
+    useScreen(tester, TestScreen.desktop);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    final list = find.byType(CoilPopoverSurface);
+    for (final direction in TextDirection.values) {
+      await tester.pumpWidget(
+        KeyedSubtree(
+          key: ValueKey(direction),
+          child: testApp(
+            tier: CoilTier.pointer,
+            home: Directionality(
+              textDirection: direction,
+              child: const _MultiDemo(initial: {'apple'}),
+            ),
+          ),
+        ),
+      );
+      final node = tester
+          .widget<EditableText>(find.byType(EditableText))
+          .focusNode;
+
+      // Tab reaches the field without opening the list.
+      for (var i = 0; i < 4 && !node.hasFocus; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+      }
+      expect(node.hasFocus, isTrue);
+      expect(list, findsNothing);
+
+      // The chip leads the field as far in from its leading edge as from
+      // its top.
+      final field = tester.getRect(find.byType(CoilTextFieldCore));
+      final chip = tester.getRect(
+        find
+            .ancestor(of: find.text('Apple'), matching: find.byType(SizedBox))
+            .first,
+      );
+      final leading = direction == TextDirection.ltr
+          ? chip.left - field.left
+          : field.right - chip.right;
+      expect(leading, moreOrLessEquals(chip.top - field.top, epsilon: 0.5));
+      expect(
+        chip.top - field.top,
+        moreOrLessEquals(field.bottom - chip.bottom),
+      );
+
+      // A click on the field opens the list, and another keeps it open.
+      for (var i = 0; i < 2; i++) {
+        await mouse.moveTo(field.center);
+        await mouse.down(field.center);
+        await tester.pump(const Duration(milliseconds: 50));
+        await mouse.up();
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: list, matching: find.text('Banana')),
+          findsOneWidget,
+        );
+      }
+    }
   });
 }

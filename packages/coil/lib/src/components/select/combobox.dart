@@ -16,8 +16,9 @@ import 'package:flutter/widgets.dart';
 /// A text field that filters a list of [options] as the user types, to
 /// pick one.
 ///
-/// Typing opens the list and narrows it to options whose
-/// [CoilOption.searchText] contains the text;
+/// A click or tap on the field opens the list (the chevron toggles it;
+/// focus alone doesn't). Typing opens it too and narrows it to options
+/// whose [CoilOption.searchText] contains the text;
 /// the first match is active. The arrows move through the matches and
 /// Enter picks one, while focus stays in the field. An Enter that only
 /// commits an IME composition picks nothing. Escape closes the list, and
@@ -377,6 +378,21 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     );
   }
 
+  /// The chevron opens the list, focusing the field, or closes it.
+  void _toggle() {
+    if (!_enabled) return;
+    if (_popup.isOpen) {
+      _popup.close();
+      return;
+    }
+    if (_focus.canRequestFocus) _focus.requestFocus();
+    _open();
+  }
+
+  /// The field's chevron: a press on it toggles the list, where a press on
+  /// the rest of the field only opens it.
+  Widget _chevron() => _Chevron(onTap: _enabled ? _toggle : null);
+
   void _onChanged(String text) {
     _query.value = text;
     _open();
@@ -491,8 +507,9 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       textInputAction: TextInputAction.search,
       onChanged: _onChanged,
       onSubmitted: (_) => _pickActive(),
+      onTap: inSheet ? null : _open,
       shortcuts: _shortcuts,
-      trailing: inSheet ? null : const CoilIcon(CoilIconRole.chevronDown),
+      trailing: inSheet ? null : _chevron(),
     ),
   );
 
@@ -528,12 +545,13 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
         // A pick takes the placeholder's place, as the picked label does in
         // the single field.
         placeholder: picked.isEmpty ? widget.placeholder : null,
-        trailing: const CoilIcon(CoilIconRole.chevronDown),
+        trailing: _chevron(),
         size: widget.size,
         motion: widget.motion,
         shortcuts: _shortcuts,
         onChanged: _onChanged,
         onSubmitted: (_) => _pickActive(),
+        onTap: _open,
         chips: [
           for (final option in picked)
             _Chip(
@@ -824,4 +842,34 @@ class _Chip extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The field's chevron, which toggles the list when pressed.
+class _Chevron extends StatefulWidget {
+  const _Chevron({required this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  State<_Chevron> createState() => _ChevronState();
+}
+
+class _ChevronState extends State<_Chevron> {
+  final _states = WidgetStatesController();
+
+  @override
+  void dispose() {
+    _states.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => CoilInteractionDetector(
+    states: _states,
+    enabled: widget.onTap != null,
+    onTap: widget.onTap,
+    // The field says whether it's expanded, and the arrows open it.
+    excludeFromSemantics: true,
+    child: const CoilIcon(CoilIconRole.chevronDown),
+  );
 }

@@ -108,6 +108,7 @@ class CoilTextFieldCore extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.onEditingComplete,
+    this.onTap,
     this.shortcuts = const <ShortcutActivator, Intent>{},
     this.actions = const <Type, Action<Intent>>{},
     this.decorationBuilder,
@@ -227,6 +228,11 @@ class CoilTextFieldCore extends StatefulWidget {
   /// Called when the user finishes editing, before [onSubmitted].
   final VoidCallback? onEditingComplete;
 
+  /// Called when a pointer or a finger taps the field, after the tap places
+  /// the caret, never when focus arrives some other way (Tab). Like
+  /// `TextField.onTap`, the second tap of a double tap doesn't call it.
+  final VoidCallback? onTap;
+
   /// Keys mapped to intents, disabled while an IME composition is in
   /// progress. See the class docs.
   final Map<ShortcutActivator, Intent> shortcuts;
@@ -267,9 +273,7 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
   FocusNode get _focusNode =>
       widget.focusNode ?? (_ownFocusNode ??= FocusNode());
 
-  late final _selectionGestures = TextSelectionGestureDetectorBuilder(
-    delegate: this,
-  );
+  late final _selectionGestures = _SelectionGestures(this);
 
   /// One composing-aware action per intent type in
   /// [CoilTextFieldCore.shortcuts].
@@ -761,4 +765,17 @@ class _PlatformText {
   final Offset? cursorOffset;
   final bool isApple;
   final bool isDesktop;
+}
+
+/// The text field's selection gestures, which report a tap to
+/// [CoilTextFieldCore.onTap].
+class _SelectionGestures extends TextSelectionGestureDetectorBuilder {
+  _SelectionGestures(this._state) : super(delegate: _state);
+
+  final _CoilTextFieldCoreState _state;
+
+  @override
+  void onUserTap() {
+    if (_state.widget.enabled) _state.widget.onTap?.call();
+  }
 }

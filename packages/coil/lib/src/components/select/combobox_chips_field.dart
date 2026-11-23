@@ -46,6 +46,7 @@ class ComboboxChipsField extends StatefulWidget {
     this.trailing,
     this.onChanged,
     this.onSubmitted,
+    this.onTap,
     this.size,
     this.motion,
   });
@@ -76,6 +77,9 @@ class ComboboxChipsField extends StatefulWidget {
 
   /// Called when the keyboard's action button submits.
   final ValueChanged<String>? onSubmitted;
+
+  /// Called when a pointer or a finger taps the field.
+  final VoidCallback? onTap;
 
   /// Pins the field's size step.
   final CoilSize? size;
@@ -295,6 +299,7 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
             scrollPadding: const EdgeInsets.all(16),
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
+            onTap: widget.onTap,
             shortcuts: widget.shortcuts,
             decorationBuilder: decorate,
           ),

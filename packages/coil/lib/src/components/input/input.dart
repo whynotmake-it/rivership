@@ -60,6 +60,7 @@ class CoilInput extends StatefulWidget {
     this.autofillHints,
     this.onChanged,
     this.onSubmitted,
+    this.onTap,
     this.shortcuts = const {},
     this.size,
     this.statesController,
@@ -99,6 +100,7 @@ class CoilInput extends StatefulWidget {
     this.inputFormatters,
     this.autofillHints,
     this.onChanged,
+    this.onTap,
     this.shortcuts = const {},
     this.size,
     this.statesController,
@@ -199,6 +201,10 @@ class CoilInput extends StatefulWidget {
   /// Called when the keyboard's action button submits a single-line input.
   /// Never called for a Return that only commits an IME composition.
   final ValueChanged<String>? onSubmitted;
+
+  /// Called when a pointer or a finger taps the input, never when focus
+  /// arrives some other way (Tab); see [CoilTextFieldCore.onTap].
+  final VoidCallback? onTap;
 
   /// Keys mapped to intents for the field's owner, such as arrows that move
   /// a list's active row. They are off while an IME composes, so Enter
@@ -456,6 +462,7 @@ class _CoilInputState extends State<CoilInput> {
               maxLines: widget.maxLines,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
+              onTap: widget.onTap,
               shortcuts: widget.shortcuts,
               decorationBuilder: decorate,
             ),
