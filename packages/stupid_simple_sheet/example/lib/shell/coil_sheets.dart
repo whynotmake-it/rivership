@@ -4,10 +4,11 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
 /// A [CoilSheetRoute] that also takes the sheet's behavior settings.
 ///
-/// `CoilSheetRoute` hides [snappingConfig], [dragHandoff] and
-/// [dismissalMode] behind the defaults of `StupidSimpleSheetRoute`. The
-/// sheet reads them through getters, so overriding the getters is enough.
-/// The content sits in a touch-tier scope, as a sheet always is.
+/// `CoilSheetRoute` hides [snappingConfig], [dragHandoff],
+/// [dismissalMode] and [draggable] behind the defaults of
+/// `StupidSimpleSheetRoute`. The sheet reads them through getters, so
+/// overriding the getters is enough. The content sits in a touch-tier
+/// scope, as a sheet always is.
 class DemoSheetRoute<T> extends CoilSheetRoute<T> {
   /// Creates a coil sheet that opens and snaps to [snappingConfig].
   DemoSheetRoute({
@@ -20,9 +21,11 @@ class DemoSheetRoute<T> extends CoilSheetRoute<T> {
     SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
     SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
     DismissalMode dismissalMode = DismissalMode.slide,
+    bool draggable = true,
   }) : _snappingConfig = snappingConfig,
        _dragHandoff = dragHandoff,
        _dismissalMode = dismissalMode,
+       _draggable = draggable,
        super(
          context: context,
          // A sheet is a touch surface whatever the tier: its buttons, fields
@@ -37,6 +40,7 @@ class DemoSheetRoute<T> extends CoilSheetRoute<T> {
   final SheetSnappingConfig _snappingConfig;
   final SheetDragHandoff _dragHandoff;
   final DismissalMode _dismissalMode;
+  final bool _draggable;
 
   @override
   SheetSnappingConfig get snappingConfig => _snappingConfig;
@@ -46,4 +50,7 @@ class DemoSheetRoute<T> extends CoilSheetRoute<T> {
 
   @override
   DismissalMode get dismissalMode => _dismissalMode;
+
+  @override
+  bool get draggable => _draggable;
 }

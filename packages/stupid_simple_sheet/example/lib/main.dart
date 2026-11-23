@@ -1,10 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:stupid_simple_sheet_example/demos/detents_demo.dart';
-import 'package:stupid_simple_sheet_example/demos/keyboard_demo.dart';
-import 'package:stupid_simple_sheet_example/demos/nested_navigation_demo.dart';
-import 'package:stupid_simple_sheet_example/demos/route_styles_demo.dart';
-import 'package:stupid_simple_sheet_example/demos/scroll_handoff_demo.dart';
+import 'package:stupid_simple_sheet_example/playground/playground_page.dart';
 import 'package:stupid_simple_sheet_example/shell/home_page.dart';
 import 'package:stupid_simple_sheet_example/shell/sheet_example_theme.dart';
 
@@ -33,15 +29,7 @@ final stupidSimpleSheetRoutes = buildStupidSimpleSheetRoutes();
 /// it the logo is decorative.
 List<AutoRoute> buildStupidSimpleSheetRoutes({VoidCallback? onHome}) => [
   _page('sheet:home', '', (_) => SheetHomePage(onHome: onHome)),
-  _page('sheet:detents', 'detents', (_) => const DetentsDemo()),
-  _page('sheet:handoff', 'scroll-handoff', (_) => const ScrollHandoffDemo()),
-  _page(
-    'sheet:nested',
-    'nested-navigation',
-    (_) => const NestedNavigationDemo(),
-  ),
-  _page('sheet:keyboard', 'keyboard', (_) => const KeyboardDemo()),
-  _page('sheet:styles', 'route-styles', (_) => const RouteStylesDemo()),
+  _page('sheet:playground', 'playground', (_) => const PlaygroundPage()),
 ];
 
 final _router = RootStackRouter.build(

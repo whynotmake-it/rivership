@@ -47,7 +47,7 @@ Each recipe below is a self-contained pattern you can copy into your project. Fu
 
 The modern iOS sheet style with liquid glass blur. Glass sheets stack seamlessly -- only the first sheet blurs the backdrop.
 
-> [Full example](./example/lib/demos/route_styles_demo.dart)
+> [Full example](./example/lib/capabilities/route_capabilities.dart)
 
  ![Glass Sheet](doc/glass.gif)
 
@@ -65,7 +65,7 @@ Navigator.of(context).push(
 
 The classic iOS modal sheet with push-back transitions on the route behind.
 
-> [Full example](./example/lib/demos/route_styles_demo.dart)
+> [Full example](./example/lib/capabilities/route_capabilities.dart)
 
 ![Cupertino Sheet](doc/cupertino.gif)
 
@@ -122,6 +122,8 @@ StupidSimpleCupertinoSheetRoute(
 
 A sheet that can only be closed programmatically. Useful for confirmation dialogs or critical flows.
 
+> [Full example](./example/lib/capabilities/dismissal_capabilities.dart)
+
 ```dart
 Navigator.of(context).push(
   StupidSimpleCupertinoSheetRoute(
@@ -162,7 +164,7 @@ Navigator.of(context).push(
 A sheet that snaps to specific positions. Combine `SheetSnappingConfig` with
 `initialSnap` to control where the sheet opens.
 
-> [Full example](./example/lib/demos/detents_demo.dart)
+> [Full example](./example/lib/capabilities/snapping_capabilities.dart)
 
 ```dart
 Navigator.of(context).push(
@@ -211,7 +213,7 @@ sliding down. Because `ShrinkTransition` pins content to the **bottom**, any
 footer stays visible as the sheet shrinks -- perfect for share sheets, action
 bars, or confirmation buttons.
 
-> [Full example](./example/lib/demos/route_styles_demo.dart)
+> [Full example](./example/lib/capabilities/dismissal_capabilities.dart)
 
 ![Shrink Sheet](doc/shrink.gif)
 
@@ -255,7 +257,7 @@ top, so bottom-aligned content (footers, buttons) remains on screen the longest.
 A small floating card that sizes to fit its content. Use
 `originateAboveBottomViewInset` to keep the sheet above the keyboard at all times.
 
-> [Full example](./example/lib/demos/keyboard_demo.dart)
+> [Full example](./example/lib/capabilities/size_capabilities.dart)
 
 ![Resizing Sheet](doc/resizing.gif)
 
