@@ -86,6 +86,8 @@ class _DragAndDropPageState extends State<DragAndDropPage> {
                 }),
                 builder: (context, drop) => Column(
                   mainAxisSize: .min,
+                  // Rows and the drop well span the list's width.
+                  crossAxisAlignment: .stretch,
                   children: [
                     for (final item in _items) ...[
                       if (drop?.before == item)
@@ -209,7 +211,8 @@ class _Well extends StatelessWidget {
             side: BorderSide(color: colors.border),
           ),
         ),
-        child: const SizedBox(height: 44),
+        // As wide as a row, whatever the column around it does.
+        child: const SizedBox(height: 44, width: double.infinity),
       ),
     );
   }

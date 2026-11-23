@@ -91,17 +91,31 @@ class _CodeBlockState extends State<CodeBlock> {
           PositionedDirectional(
             top: top,
             end: top,
-            child: ValueListenableBuilder(
-              valueListenable: _copy,
-              builder: (context, status, _) => CoilButton.icon(
-                variant: CoilButtonVariant.ghost,
-                size: CoilSize.compact,
-                semanticLabel: 'Copy code',
-                onPressed: () => _copy.copy(widget.code, context: context),
-                icon: CoilCopySwitcher(
-                  status: status,
-                  builder: (context, status) => GlyphIcon(
-                    status == CoilCopyStatus.copied ? Glyph.check : Glyph.copy,
+            // Code scrolls sideways under the button, so it sits on the
+            // block's own fill.
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: colors.muted,
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(
+                    CoilTheme.radiiOf(context).item,
+                  ),
+                ),
+              ),
+              child: ValueListenableBuilder(
+                valueListenable: _copy,
+                builder: (context, status, _) => CoilButton.icon(
+                  variant: CoilButtonVariant.ghost,
+                  size: CoilSize.compact,
+                  semanticLabel: 'Copy code',
+                  onPressed: () => _copy.copy(widget.code, context: context),
+                  icon: CoilCopySwitcher(
+                    status: status,
+                    builder: (context, status) => GlyphIcon(
+                      status == CoilCopyStatus.copied
+                          ? Glyph.check
+                          : Glyph.copy,
+                    ),
                   ),
                 ),
               ),
