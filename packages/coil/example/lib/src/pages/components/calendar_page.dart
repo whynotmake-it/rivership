@@ -8,7 +8,9 @@ const calendarEntry = CatalogEntry(
   slug: 'calendar',
   title: 'Calendar',
   group: CatalogGroup.shellAndComposites,
-  summary: 'A month grid with a gliding selection and full keyboard.',
+  summary:
+      'A month grid where the selection glides to the day you pick, and the '
+      'whole month is reachable from the keyboard.',
   page: CalendarPage.new,
 );
 
@@ -61,8 +63,9 @@ class _CalendarPageState extends State<CalendarPage> {
     return CatalogPage(
       title: 'Calendar',
       summary:
-          'Pick a day and whatever hangs off it updates. Swipe or use the '
-          'arrows to page months; tap the month to jump across years.',
+          'Pick a day and everything that depends on it updates. You can '
+          'swipe or use the arrows to page through months, and tapping the '
+          'month name zooms out so you can jump across years.',
       hero: const _Booking(),
       usage: '''
 CoilCalendar(
@@ -74,36 +77,37 @@ CoilCalendar(
       notes: const [
         CatalogNote(
           'Keyboard',
-          'One tab stop: arrows move a day or a week, Home and End go to '
-              'the week’s ends, PageUp and PageDown change the month and '
-              'with Shift the year. Enter picks and submits; Space only '
-              'picks.',
+          'The grid takes a single tab stop. The arrow keys move by a day or '
+              'a week, Home and End go to the ends of the week, and PageUp '
+              'and PageDown change the month, or the year with Shift held. '
+              'Enter picks the day and submits, while Space only picks it.',
         ),
         CatalogNote(
           'Touch',
-          'Swipe to page months; the page follows the finger and keeps '
-              'the fling. Each day takes the tap on its whole cell, and '
-              'days stay square at any width.',
+          'Swiping pages through the months, following your finger and '
+              'keeping the momentum of a fling. Every day takes the tap on '
+              'its whole cell, and the cells stay square at any width.',
         ),
         CatalogNote(
           'Motion',
-          'The title zooms out to a year of months and back on standard. '
-              'The calendar is always six rows, so its height never jumps '
-              'between months.',
+          'The title zooms out to a year of months and back on the standard '
+              'spring. The grid always draws six rows, so its height never '
+              'jumps as you move between months.',
         ),
         CatalogNote(
           'Accessibility',
-          'Cells carry full-date labels, previous and next month are '
-              'actions, and the title is a button announced as '
-              '"November 2026".',
+          'Each cell is labelled with its full date, the previous and next '
+              'month are exposed as actions, and the title is a button that '
+              'reads as "November 2026".',
         ),
       ],
       children: [
         DemoSection(
           title: 'Playground',
           description:
-              'Disabled days and the pickable window come from the app; '
-              'the calendar only draws them.',
+              'The app decides which days are disabled and how far the '
+              'pickable window reaches, and the calendar only draws what it '
+              'is given.',
           controls: DemoControls(
             children: [
               DemoControl.toggle(

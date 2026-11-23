@@ -8,7 +8,9 @@ const askUserQuestionsEntry = CatalogEntry(
   slug: 'ask-user-questions',
   title: 'AskUserQuestions',
   group: CatalogGroup.shellAndComposites,
-  summary: "An assistant's questions, one at a time.",
+  summary:
+      'A card an assistant uses to ask what it needs to know, one question at '
+      'a time.',
   page: AskUserQuestionsPage.new,
 );
 
@@ -101,9 +103,10 @@ class _AskUserQuestionsPageState extends State<AskUserQuestionsPage> {
     return CatalogPage(
       title: 'AskUserQuestions',
       summary:
-          'An agent asks before it starts: one question at a time, with Back '
-          'and Skip. On a pointer the number keys pick rows; touch hides '
-          'them and uses 44 pt rows.',
+          'An agent asks what it needs before it starts, one question at a '
+          'time, and you can go back or skip a question. On a pointer the '
+          'number keys pick the rows, while on touch the numbers are hidden '
+          'and the rows grow to 44.',
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 16,
@@ -176,32 +179,35 @@ CoilAskUserQuestions<String>(
       notes: const [
         CatalogNote(
           'Keyboard',
-          '1 to 9 pick rows, Up and Down move, Enter picks, Escape goes '
-              'back and Ctrl or ⌘ with Enter continues.',
+          'The keys 1 to 9 pick the matching row, Up and Down move between '
+              'rows and Enter picks the active one. Escape goes back a '
+              'question, and Ctrl or ⌘ with Enter continues.',
         ),
         CatalogNote(
           'Touch',
-          'No number keys or submit arrow. Rows are 44 tall and show the '
-              'press fill; a tap never pulls focus, so the keyboard stays '
-              'down until a field is tapped.',
+          'The number keys and the submit arrow are hidden, and rows are 44 '
+              'tall with a fill while pressed. Picking a row never takes '
+              'focus, so the keyboard stays down until you tap a field.',
         ),
         CatalogNote(
           'Motion',
-          'Between questions the card’s height springs on standard while '
-              'the old question fades out and the new one fades in.',
+          'Moving to the next question springs the card to its new height on '
+              'the standard spring, while the old question fades out and the '
+              'new one fades in.',
         ),
         CatalogNote(
           'Accessibility',
-          'A rejected typed answer shows its message under the field in a '
-              'live region and the field turns invalid.',
+          'When a typed answer is rejected, the field is marked invalid and '
+              'its message appears underneath in a live region, so a screen '
+              'reader reads it out as it arrives.',
         ),
       ],
       children: const [
         DemoSection(
-          title: 'Compact, keys at the start',
+          title: 'Compact, with the keys at the start',
           description:
-              'One step denser for a narrow panel; the number sits before '
-              'the label.',
+              'A step denser for a narrow panel, with each number sitting '
+              'before its label instead of after it.',
           child: CoilAskUserQuestions<String>(
             size: CoilSize.compact,
             questions: [

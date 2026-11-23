@@ -9,7 +9,9 @@ const datePickerEntry = CatalogEntry(
   slug: 'date-picker',
   title: 'DatePicker',
   group: CatalogGroup.shellAndComposites,
-  summary: 'A field that opens a calendar, with an optional time.',
+  summary:
+      'A field that opens a calendar to pick a date, and a time alongside it '
+      'when you need one.',
   page: DatePickerPage.new,
 );
 
@@ -70,9 +72,9 @@ class _DatePickerPageState extends State<DatePickerPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'DatePicker',
     summary:
-        'A popover next to the field on a pointer, a sheet on a phone. A '
-        'day alone commits on the tap; with a time, Done confirms in the '
-        'sheet.',
+        'The calendar opens in a popover next to the field on a pointer and '
+        'as a sheet on a phone. Picking a day commits straight away, and '
+        'when a time comes with it the sheet waits for Done.',
     hero: const _TaskForm(),
     usage: '''
 CoilField(
@@ -87,25 +89,28 @@ CoilField(
     notes: const [
       CatalogNote(
         'Pointer',
-        'The popover hugs the calendar’s seven cells. A date alone commits '
-            'and closes on the tap; with a time every pick applies at once '
-            'and Enter or a tap outside closes it.',
+        'The popover is only as wide as the calendar’s seven cells. A date on '
+            'its own commits and closes the popover as you tap it, while with '
+            'a time every pick applies right away and Enter or a tap outside '
+            'closes it.',
       ),
       CatalogNote(
         'Touch',
-        'On a phone it opens a sheet with a footer that names the draft '
-            'and a pinned Done. The close button, the scrim, a drag down and '
-            'back all cancel.',
+        'On a phone it opens a sheet whose footer names the date you have '
+            'drafted so far and keeps Done pinned in view. The close button, '
+            'the scrim, a drag downwards and the back gesture all cancel.',
       ),
       CatalogNote(
         'Keyboard',
-        'As the calendar, plus Enter to confirm and Escape to close; Space '
-            'only picks.',
+        'Everything the calendar supports works here, and on top of that '
+            'Enter confirms the pick, Escape closes without changing the '
+            'value and Space picks a day without closing.',
       ),
       CatalogNote(
         'Accessibility',
-        'The time columns are adjustable: swipe up or down to change the '
-            'hour or minute.',
+        'The hour and minute columns are announced as adjustable, so a screen '
+            'reader user can swipe up or down to change the time instead of '
+            'scrolling the wheel.',
       ),
     ],
     children: [

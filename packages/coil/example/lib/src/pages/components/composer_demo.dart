@@ -1,6 +1,7 @@
 // What the composer examples share: a few files to attach, and the
 // thumbnails that show them.
 import 'package:coil/coil.dart';
+import 'package:coil_example/src/widgets/catalog_asset.dart';
 import 'package:flutter/widgets.dart';
 
 /// A file a person can attach in the examples.
@@ -13,7 +14,7 @@ class DemoFile {
 }
 
 const demoFiles = [
-  DemoFile('dunes.jpg', image: AssetImage('assets/images/dunes.jpg')),
+  DemoFile('dunes.jpg', image: CatalogAsset('assets/images/dunes.jpg')),
   DemoFile('brief.pdf'),
   DemoFile('notes.md'),
   DemoFile('budget.xlsx'),

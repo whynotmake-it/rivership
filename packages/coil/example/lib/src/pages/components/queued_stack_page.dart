@@ -12,7 +12,9 @@ const queuedStackEntry = CatalogEntry(
   slug: 'queued-stack',
   title: 'QueuedStack',
   group: CatalogGroup.shellAndComposites,
-  summary: 'Messages sent during a reply wait in a pile above the composer.',
+  summary:
+      'A pile above the composer that holds the messages you send while the '
+      'assistant is still replying.',
   page: QueuedStackPage.new,
 );
 
@@ -23,9 +25,10 @@ class QueuedStackPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'QueuedStack',
     summary:
-        'Send while the assistant is replying and the message waits in a '
-        'pile above the composer. Hover the pile, or tap it on touch, to '
-        'fan it out, then drag to reorder.',
+        'Send something while the assistant is replying and the message '
+        'waits in a pile above the composer. Hovering the pile, or tapping it '
+        'on touch, fans it out so you can reorder, edit or remove what is '
+        'still waiting.',
     hero: _Chat(),
     usage: '''
 CoilQueuedStack(
@@ -37,31 +40,34 @@ CoilQueuedStack(
     notes: [
       CatalogNote(
         'Pointer',
-        'Hover or keyboard focus inside fans the pile out. A card shows '
-            'its actions on hover, a double click edits, and a fanned-out '
-            'card drags to reorder.',
+        'Hovering the pile or moving focus into it fans the cards out. A card '
+            'reveals its actions on hover, a double click edits it, and once '
+            'the pile is fanned out you can drag a card to reorder it.',
       ),
       CatalogNote(
         'Touch',
-        'A tap fans the pile out and pins it open; the start gutter becomes '
-            'a collapse button while two or more messages wait. Actions '
-            'always show.',
+        'A tap fans the pile out and keeps it open, and while two or more '
+            'messages wait the gutter at the start turns into a collapse '
+            'button. Each card shows its actions all the time on touch.',
       ),
       CatalogNote(
         'Keyboard',
-        'Each card is a tab stop, front first. Enter or F2 edits, Delete '
-            'removes, Alt+Up and Alt+Down move the card.',
+        'Each card is its own tab stop, starting with the one at the front. '
+            'Enter or F2 edits the card, Delete removes it, and Alt+Up and '
+            'Alt+Down move it through the queue.',
       ),
       CatalogNote(
         'Motion',
-        'The pile folds and fans on standard. A message queued behind the '
-            'folded pile makes it recoil 7 px on gentle.',
+        'The pile folds and fans out on the standard spring, and a message '
+            'that lands behind a folded pile makes it recoil by 7 pixels on '
+            'the gentle spring.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Give the stack a bounded height and the transcript as child: it '
-            'adds the pile’s height to the transcript’s bottom padding so '
-            'the last message stays clear.',
+        'Give the stack a bounded height and pass the transcript as its '
+            'child, because it adds the pile’s height to the transcript’s '
+            'bottom padding so the last message never ends up underneath '
+            'it.',
       ),
     ],
     children: [_Pile()],
@@ -380,8 +386,9 @@ class _PileState extends State<_Pile> {
   Widget build(BuildContext context) => DemoSection(
     title: 'The pile on its own',
     description:
-        'Folded, two cards peek 12 behind the front one; the rest fade out. '
-        'Hover to fan it into a list.',
+        'While the pile is folded, two cards peek 12 pixels out behind the '
+        'front one and the rest fade away. Hover it to fan the whole queue '
+        'into a list.',
     controls: DemoControls(
       children: [
         DemoControl.choice(
