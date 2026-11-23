@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -116,6 +118,63 @@ void main() {
         reason: 'inset: $inset, keyboard: $keyboard',
       );
     }
+    tester.view.resetViewInsets();
+  });
+
+  testWidgets('nothing in a sheet pads for the keyboard, not even for the '
+      'frame the keyboard rises in', (tester) async {
+    const ratio = 2.0;
+    const screen = Size(390, 844);
+    tester.view
+      ..devicePixelRatio = ratio
+      ..physicalSize = screen * ratio;
+    addTearDown(tester.view.reset);
+    final overlaps = <double>[];
+    late BuildContext home;
+    await tester.pumpWidget(
+      WidgetsApp(
+        color: const Color(0xFF000000),
+        builder: (context, navigator) => CoilTheme(
+          data: CoilThemeData.light.copyWith(tier: CoilTier.touch),
+          child: navigator!,
+        ),
+        onGenerateRoute: (settings) => PageRouteBuilder<void>(
+          pageBuilder: (context, _, _) => Builder(
+            builder: (context) {
+              home = context;
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      ),
+    );
+    unawaited(
+      Navigator.of(home).push(
+        CoilSheetRoute<void>(
+          context: home,
+          child: SizedBox(
+            height: 300,
+            child: CoilKeyboardOverlap(
+              builder: (context, overlap, _) {
+                overlaps.add(overlap);
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    overlaps.clear();
+
+    // The keyboard rises over a few frames; the sheet rides on it.
+    for (final keyboard in [100.0, 200.0, 300.0]) {
+      tester.view.viewInsets = FakeViewPadding(bottom: keyboard * ratio);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.pumpAndSettle();
+    expect(overlaps, isNotEmpty);
+    expect(overlaps, everyElement(0));
     tester.view.resetViewInsets();
   });
 
