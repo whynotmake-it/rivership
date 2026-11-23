@@ -16,6 +16,19 @@ import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
+// What [CoilSheetRoute] takes to configure its sheet, so that
+// `package:coil/coil.dart` is all a consumer imports.
+export 'package:stupid_simple_sheet/stupid_simple_sheet.dart'
+    show
+        DismissalMode,
+        FlingSnapPhysics,
+        FrictionSnapPhysics,
+        RouteSnapshotMode,
+        SheetDragHandoff,
+        SheetSnappingConfig,
+        SnapPhysics,
+        StupidSimpleSheetController;
+
 /// coil's sheet: a `stupid_simple_sheet` route (drag to dismiss, scroll
 /// handoff, keyboard insets) with coil's own surface, corner and scrim.
 ///
@@ -43,12 +56,49 @@ import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 ///
 /// Put a [CoilSheetPanel] in it for an optional title, a pinned footer and
 /// the safe area.
+///
+/// The sheet's behavior is configurable: [snappingConfig] adds resting
+/// stops, [dragHandoff] decides when a scroll view hands its drag to the
+/// sheet, [dismissalMode] how it leaves, [draggable] whether it follows
+/// the finger, and [backgroundSnapshotMode] whether the page below is
+/// snapshotted. Every default is coil's own behavior. To move the sheet
+/// from code, read a [StupidSimpleSheetController] with
+/// `StupidSimpleSheetController.maybeOf(context)` inside [child].
 class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   /// Creates a sheet route showing [child] (usually a [CoilSheetPanel]).
   ///
   /// With [barrierDismissible] false, tapping the scrim and pressing Esc
   /// don't close it; dragging and back still do unless [child] blocks them
   /// with a `PopScope`.
+  ///
+  /// [snappingConfig] sets the stops the sheet rests at, as fractions of
+  /// its open height (`SheetSnappingConfig([0.5, 1.0], initialSnap: 0.5)`
+  /// opens at half and lets a drag settle at half or full); the 0 stop
+  /// that closes it is implicit. It defaults to
+  /// [SheetSnappingConfig.full]: one stop, fully open.
+  ///
+  /// [dragHandoff] decides when scrolling content hands its drag to the
+  /// sheet: [SheetDragHandoff.gestureStart] (the default) only when the
+  /// content was already at its top as the drag began,
+  /// [SheetDragHandoff.continuous] also after the same drag scrolls it to
+  /// the top.
+  ///
+  /// [dismissalMode] is how it leaves: [DismissalMode.slide] (the default)
+  /// moves it down off the screen, [DismissalMode.shrink] shrinks it from
+  /// the top, so a pinned [CoilSheetPanel.footer] stays on screen at a
+  /// lower stop.
+  ///
+  /// With [draggable] false the sheet doesn't follow the finger, so
+  /// dragging neither moves nor closes it and scrolling content scrolls
+  /// alone. It defaults to true.
+  ///
+  /// [backgroundSnapshotMode] controls whether the page below is
+  /// rasterized while the sheet covers it, to save repainting it. It
+  /// defaults to [RouteSnapshotMode.never].
+  ///
+  /// With [callNavigatorUserGestureMethods] true, a drag calls the
+  /// navigator's `didStartUserGesture` and `didStopUserGesture`, which its
+  /// observers (and hero animations) listen to. It defaults to false.
   CoilSheetRoute({
     required BuildContext context,
     required Widget child,
@@ -56,6 +106,12 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
     super.barrierLabel,
     CoilMotion? motion,
     super.settings,
+    super.snappingConfig,
+    super.dragHandoff,
+    super.dismissalMode,
+    super.draggable,
+    super.backgroundSnapshotMode,
+    super.callNavigatorUserGestureMethods,
   }) : backgroundColor = CoilTheme.of(context).colors.surface(
          math.min(CoilSurface.levelOf(context) + CoilSurface.popoverOffset, 8),
        ),
