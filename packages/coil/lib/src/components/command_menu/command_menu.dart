@@ -14,7 +14,9 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// The arrows move through the matching rows and Enter runs one; picking a
 /// row closes the menu, then runs its action. Escape or a tap outside
 /// closes it. It opens near the top of a large window, with a [footer] of
-/// key hints, and as a floating panel on a phone.
+/// key hints, and as a floating panel on a phone. Opened from a button,
+/// pass the button's rect as [origin] (`CoilModalRoute.originOf` with the
+/// button's context) and the floating panel shows it came from there.
 ///
 /// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
 /// the app's own, mapped in `Shortcuts` near the app's root (or registered
@@ -76,10 +78,12 @@ Future<void> showCoilCommandMenu({
   Widget empty = const Text('No results'),
   Widget? footer = const CoilCommandMenuFooter(),
   CoilMotion? motion,
+  Rect? origin,
 }) => showCoilModal<void>(
   context: context,
   presentation: CoilCommandMenu.presentationOf(context),
   anchor: CoilModalAnchor.top,
+  origin: origin,
   motion: motion,
   builder: (context) => CoilCommandMenu(
     entries: entries,
