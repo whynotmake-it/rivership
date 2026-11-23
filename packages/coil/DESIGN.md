@@ -266,6 +266,7 @@ Named holds that aren't tokens:
   Under reduced motion the room and the size jump and the content only fades. `Motion.instant` on the component's track turns either off.
 - **Height collapses** (Accordion, groups, ThinkingSteps, Banner rows) animate a 0..1 height factor on `standard`. Opacity leads on `fade`, so content dissolves instead of being sliced. A child resizing inside an open region is instant.
 - **No idle tickers.** Nothing animates at rest. The loops are spinners, the Skeleton pulse and the ThinkingIndicator's word cycle. Reduced motion stops the first two and turns the word cycle into a crossfade.
+- **Frame rate is the app's call.** Springs tick every frame by default. Wrap coil components in a `TickerRateScope` (e.g. `TickerRate.fps(30)`) to run all of coil's motion at a fixed rate, saving frame work on 120 Hz screens and for low-priority motion. Reduced motion still applies.
 
 ### 7.3 Customizing
 

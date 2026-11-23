@@ -433,7 +433,7 @@ class CoilDrawer extends StatefulWidget {
 }
 
 class _CoilDrawerState extends State<CoilDrawer>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   /// Where the content is: 0 covers both panels, 1 shows [CoilDrawer.start]
   /// and -1 [CoilDrawer.end], in fractions of the panel width.
   late final _position =
