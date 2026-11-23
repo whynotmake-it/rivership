@@ -132,6 +132,7 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final textStyle = look.textStyle!;
     final radius = BorderRadius.circular(look.radius!);
+    final radii = CoilTheme.radiiOf(context);
     final invalid = CoilFieldScope.maybeOf(context)?.invalid ?? false;
     final lineHeight = textStyle.lineHeight;
     // A row is as tall as a chip once there is one, so the padding that
@@ -140,6 +141,18 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
         ? lineHeight
         : math.max(lineHeight, comboboxChipExtent(metrics));
     final padY = math.max(0, (look.minHeight! - rowExtent) / 2).toDouble();
+    // A leading chip sits as far from the field's leading edge as from its
+    // top and bottom, concentric with its corner; text first keeps the
+    // text's padding, and so does text on a row of its own after chips.
+    final chipsFirst = widget.chips.isNotEmpty;
+    final padStart = chipsFirst ? padY : metrics.controlPaddingX;
+    final chipRadius = radii.container <= radii.item
+        // `sharp` nests square: chips keep the item radius.
+        ? radii.item
+        : CoilShape.nested(
+            math.min(look.radius!, look.minHeight! / 2),
+            padY,
+          );
 
     Motion colorMotion(CoilInputTrack<Object> track) => CoilTheme.trackMotionOf(
       context,
@@ -201,9 +214,11 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
       },
       // Every edge measure loses the 1 px border it sits inside.
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: metrics.controlPaddingX - 1,
-          vertical: math.max(0, padY - 1),
+        padding: EdgeInsetsDirectional.only(
+          start: math.max(0, padStart - 1),
+          end: metrics.controlPaddingX - 1,
+          top: math.max(0, padY - 1),
+          bottom: math.max(0, padY - 1),
         ),
         // The height springs as a chip wraps onto a new row; a window
         // resize that rewraps the chips snaps (MotionSize).
@@ -216,13 +231,17 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
             spacing: metrics.gap,
             children: [
               Expanded(
-                child: ComboboxChipsRun(
-                  spacing: metrics.size == CoilSize.compact ? 4 : 6,
-                  runSpacing: metrics.size == CoilSize.compact ? 4 : 6,
-                  // Below this the text starts a row of its own.
-                  minFieldExtent: lineHeight * 1.5,
-                  rowExtent: rowExtent,
-                  children: [...widget.chips, field],
+                child: ComboboxChipScope(
+                  radius: chipRadius,
+                  child: ComboboxChipsRun(
+                    spacing: metrics.size == CoilSize.compact ? 4 : 6,
+                    runSpacing: metrics.size == CoilSize.compact ? 4 : 6,
+                    // Below this the text starts a row of its own.
+                    minFieldExtent: lineHeight * 1.5,
+                    rowExtent: rowExtent,
+                    fieldIndent: metrics.controlPaddingX - padStart,
+                    children: [...widget.chips, field],
+                  ),
                 ),
               ),
               if (widget.trailing case final trailing?)
@@ -285,13 +304,34 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
   }
 }
 
+/// The corner radius of the chips in a [ComboboxChipsField].
+class ComboboxChipScope extends InheritedWidget {
+  /// Gives the chips below a corner radius.
+  const ComboboxChipScope({
+    required this.radius,
+    required super.child,
+    super.key,
+  });
+
+  /// The chips' corner radius.
+  final double radius;
+
+  /// The radius of the chips in the field around [context], if any.
+  static double? radiusOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ComboboxChipScope>()?.radius;
+
+  @override
+  bool updateShouldNotify(ComboboxChipScope oldWidget) =>
+      oldWidget.radius != radius;
+}
+
 /// Lays chips out in runs and gives the text the rest of the last run.
 ///
 /// The children are the chips in order, then the text. A chip that doesn't
 /// fit the row starts a new one; the text follows the last chip and takes
 /// the width that's left, unless less than [minFieldExtent] is left, when it
-/// starts a row of its own. Every run is at least [rowExtent] tall and its
-/// children center in it.
+/// starts a row of its own, [fieldIndent] in from its start. Every run is
+/// at least [rowExtent] tall and its children center in it.
 class ComboboxChipsRun extends MultiChildRenderObjectWidget {
   /// Creates the run layout.
   const ComboboxChipsRun({
@@ -301,7 +341,11 @@ class ComboboxChipsRun extends MultiChildRenderObjectWidget {
     required this.rowExtent,
     required super.children,
     super.key,
+    this.fieldIndent = 0,
   });
+
+  /// How far in the text starts when it starts a row of its own.
+  final double fieldIndent;
 
   /// The gap between two children on a row.
   final double spacing;
@@ -322,6 +366,7 @@ class ComboboxChipsRun extends MultiChildRenderObjectWidget {
         runSpacing: runSpacing,
         minFieldExtent: minFieldExtent,
         rowExtent: rowExtent,
+        fieldIndent: fieldIndent,
         textDirection: Directionality.of(context),
       );
 
@@ -335,6 +380,7 @@ class ComboboxChipsRun extends MultiChildRenderObjectWidget {
       ..runSpacing = runSpacing
       ..minFieldExtent = minFieldExtent
       ..rowExtent = rowExtent
+      ..fieldIndent = fieldIndent
       ..textDirection = Directionality.of(context);
   }
 }
@@ -354,7 +400,9 @@ class RenderComboboxChipsRun extends RenderBox
     required double minFieldExtent,
     required double rowExtent,
     required TextDirection textDirection,
-  }) : _spacing = spacing,
+    double fieldIndent = 0,
+  }) : _fieldIndent = fieldIndent,
+       _spacing = spacing,
        _runSpacing = runSpacing,
        _minFieldExtent = minFieldExtent,
        _rowExtent = rowExtent,
@@ -397,6 +445,16 @@ class RenderComboboxChipsRun extends RenderBox
   set rowExtent(double value) {
     if (value == _rowExtent) return;
     _rowExtent = value;
+    markNeedsLayout();
+  }
+
+  double _fieldIndent;
+
+  /// How far in the text starts when it starts a row of its own.
+  double get fieldIndent => _fieldIndent;
+  set fieldIndent(double value) {
+    if (value == _fieldIndent) return;
+    _fieldIndent = value;
     markNeedsLayout();
   }
 
@@ -508,13 +566,13 @@ class RenderComboboxChipsRun extends RenderBox
 
     // The text takes the rest of the last run, or a run of its own when too
     // little is left of it.
-    final used = runs.last.isEmpty ? 0.0 : x + spacing;
+    final used = runs.last.isEmpty ? fieldIndent : x + spacing;
     var fieldWidth = bounded
         ? math.max(0, maxWidth - used).toDouble()
         : minFieldExtent;
     if (bounded && fieldWidth < minFieldExtent && runs.last.isNotEmpty) {
       runs.add([]);
-      fieldWidth = maxWidth;
+      fieldWidth = math.max(0, maxWidth - fieldIndent).toDouble();
     }
     final fieldSize = layoutChild(
       field,
@@ -533,8 +591,12 @@ class RenderComboboxChipsRun extends RenderBox
         runExtent = math.max(runExtent, size.height);
         runWidth += size.width + spacing;
       }
-      width = math.max(width, math.max(0, runWidth - spacing));
-      var runX = 0.0;
+      // Text alone on its row starts [fieldIndent] in.
+      final indent = run.length == 1 && run.first.$1 == field
+          ? fieldIndent
+          : 0.0;
+      width = math.max(width, math.max(0, indent + runWidth - spacing));
+      var runX = indent;
       for (final (child, size) in run) {
         offsets.add((child, Offset(runX, y + (runExtent - size.height) / 2)));
         runX += size.width + spacing;

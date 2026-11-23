@@ -770,8 +770,10 @@ class _Chip extends StatelessWidget {
         decoration: ShapeDecoration(
           color: colors.muted,
           shape: RoundedSuperellipseBorder(
+            // Concentric with the field's corner (ComboboxChipsField).
             borderRadius: BorderRadius.circular(
-              theme.shape.radii(metrics.tier).item,
+              ComboboxChipScope.radiusOf(context) ??
+                  theme.shape.radii(metrics.tier).item,
             ),
           ),
         ),
