@@ -58,37 +58,35 @@ class CatalogPage extends StatelessWidget {
             child: MediaQuery.removePadding(
               context: context,
               removeTop: true,
-              // Pads its end by however much the keyboard covers it, so the
-              // last field on a page can scroll above the keyboard while the
-              // page keeps drawing behind it.
-              child: CoilScrollArea(
-                keyboardInset: true,
+              child: ListView(
                 padding: EdgeInsetsDirectional.fromSTEB(
                   gutter + padding.left,
                   8,
                   gutter + padding.right,
                   gutter + padding.bottom,
                 ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: CatalogLayout.maxContentWidth,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (summary != null) ...[
-                          Text(summary, style: text.muted.subtitle),
-                          SizedBox(height: sectionGap),
+                children: [
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: CatalogLayout.maxContentWidth,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (summary != null) ...[
+                            Text(summary, style: text.muted.subtitle),
+                            SizedBox(height: sectionGap),
+                          ],
+                          for (final (i, child) in children.indexed) ...[
+                            if (i > 0) SizedBox(height: sectionGap),
+                            child,
+                          ],
                         ],
-                        for (final (i, child) in children.indexed) ...[
-                          if (i > 0) SizedBox(height: sectionGap),
-                          child,
-                        ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
