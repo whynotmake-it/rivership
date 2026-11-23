@@ -210,11 +210,23 @@ void multiTests() {
     expect(_values(tester), {'apple', 'banana'});
     expect(find.bySemanticsLabel('Remove Apple'), findsOneWidget);
 
+    // Both picks show as chips inside the field, before the query text: each
+    // chip's box sits within the editable text's field bounds and ahead of
+    // the caret.
+    final field = tester.getRect(find.byType(EditableText));
+    for (final label in ['Apple', 'Banana']) {
+      final chip = tester.getRect(find.bySemanticsLabel('Remove $label'));
+      expect(field.top, lessThanOrEqualTo(chip.center.dy));
+      expect(field.bottom, greaterThanOrEqualTo(chip.center.dy));
+      expect(chip.left, lessThan(field.left));
+    }
+
     // Backspace in the empty field removes the last chip.
     await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
     await tester.pumpAndSettle();
     expect(_values(tester), {'apple'});
 
+    // A tap on a chip's remove button removes that one.
     await tester.tap(find.bySemanticsLabel('Remove Apple'));
     await tester.pumpAndSettle();
     expect(_values(tester), isEmpty);

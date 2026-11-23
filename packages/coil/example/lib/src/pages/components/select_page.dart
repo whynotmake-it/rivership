@@ -9,7 +9,7 @@ const selectEntry = CatalogEntry(
   slug: 'select',
   title: 'Select',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'Select and MultiSelect: a popover, or a sheet on phones.',
+  summary: 'Pick one option or several from a list, in a popover or a sheet.',
   page: SelectPage.new,
 );
 
@@ -71,9 +71,9 @@ class _SelectPageState extends State<SelectPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Select',
     summary:
-        'Pick one value, or several with MultiSelect. A popover where there '
-        'is room; on a touch phone, long, searchable or multiple lists '
-        'open as a sheet.',
+        'Select picks one option and MultiSelect picks several. The list '
+        'opens as a popover where there is room, and on a touch phone a '
+        'long list or a multiple choice opens as a sheet instead.',
     hero: const _InviteForm(),
     usage: '''
 CoilField(
@@ -91,36 +91,41 @@ CoilField(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Enter, Space, Up or Down on the trigger opens the list on the '
-            'picked row. Arrows, Home, End, PageUp and PageDown move; type '
-            'to jump to a row; Enter or Space picks; Esc or Tab dismisses.',
+        'Enter, Space or the up and down arrows open the list on the picked '
+            'row. From there the arrows, Home, End, PageUp and PageDown move '
+            'between rows, typing jumps to a match, Enter or Space picks, '
+            'and Esc or Tab dismisses the list.',
       ),
       CatalogNote(
         'Pointer',
-        'A popover up to 300 tall. Lists over 12 options add a search row. '
-            'The picked row keeps an active fill that glides between rows.',
+        'The popover is at most 300 logical pixels tall, and a list of more '
+            'than 12 options adds a search row. The active row’s fill '
+            'glides from one row to the next as you move.',
       ),
       CatalogNote(
         'Touch',
-        'Up to 8 single-choice options stay in an anchored popover. More '
-            'than 8, or any MultiSelect, open a sheet titled with the '
-            'field’s label.',
+        'A single choice of up to 8 options stays in a popover anchored to '
+            'the field. Longer lists and every MultiSelect open a sheet '
+            'titled with the field’s label.',
       ),
       CatalogNote(
         'Motion',
-        'A pick holds for 300 ms so the check can draw, then closes. The '
-            'page behind already takes input during that hold.',
+        'After a pick the list stays open for 300 ms so the check mark can '
+            'draw, and then it closes. The page behind it already accepts '
+            'input during that moment.',
       ),
       CatalogNote(
         "Do / Don't",
-        'Fewer than 3 options want a RadioGroup or Tabs, and actions want '
-            'a Dropdown.',
+        'For fewer than 3 options a RadioGroup or Tabs is usually a better '
+            'fit, and a list of actions belongs in a Dropdown.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Long list',
-        description: 'More than 8 rows: a sheet on a touch phone.',
+        description:
+            'With more than 8 options the list opens as a sheet on a touch '
+            'phone.',
         child: CoilField(
           label: const Text('Country'),
           child: CoilSelect<String>(
@@ -138,7 +143,8 @@ CoilField(
       DemoSection(
         title: 'MultiSelect',
         description:
-            'Picked rows merge into one block. Always a sheet on phones.',
+            'Picked rows merge into a single block, and on a touch phone the '
+            'list always opens as a sheet.',
         child: CoilField(
           label: const Text('Labels'),
           child: CoilMultiSelect<String>(
@@ -174,7 +180,9 @@ CoilField(
       ),
       DemoSection(
         title: 'Playground',
-        description: 'presentation: overrides the phone rule.',
+        description:
+            'Setting presentation overrides the default choice between '
+            'popover and sheet.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

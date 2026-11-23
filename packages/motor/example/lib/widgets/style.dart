@@ -161,3 +161,11 @@ Offset motionBlur(Offset velocity) => Offset(
   (velocity.dx.abs() * .002).clamp(0, 4),
   (velocity.dy.abs() * .002).clamp(0, 4),
 );
+
+/// Rubber-band resistance for [overshoot] past an edge: it follows 1:1 at
+/// first, then ever more softly, approaching [limit] without reaching it,
+/// as iOS does at a scroll view's edge. There is no wall to hit.
+double rubberBand(double overshoot, {required double limit}) {
+  if (overshoot <= 0) return 0;
+  return limit * (1 - 1 / (1 + overshoot / limit));
+}

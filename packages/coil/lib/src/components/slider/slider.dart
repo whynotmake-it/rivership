@@ -196,6 +196,10 @@ class CoilSlider extends StatelessWidget {
   /// Builds the value for the value text and the bubbles, styled by the
   /// slider's text style. The default is a [Text] with up to two decimals
   /// and no trailing zeros, with a `.` decimal mark; it isn't localized.
+  ///
+  /// The value text keeps the width of the widest value it can show, so it
+  /// never moves the track: with up to 50 stops that is every stop, and
+  /// beyond that only the ends and the current value.
   final Widget Function(BuildContext context, double value)? valueBuilder;
 
   /// The value as screen readers announce it. Defaults to the same plain

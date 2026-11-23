@@ -12,7 +12,9 @@ const inputMessageEntry = CatalogEntry(
   slug: 'input-message',
   title: 'InputMessage',
   group: CatalogGroup.shellAndComposites,
-  summary: 'A chat composer: Enter sends; on touch, Return is a new line.',
+  summary:
+      'A chat composer where Enter sends the message, and on touch Return '
+      'starts a new line instead.',
   page: InputMessagePage.new,
 );
 
@@ -33,9 +35,9 @@ class _InputMessagePageState extends State<InputMessagePage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'InputMessage',
     summary:
-        'Enter sends and Shift+Enter breaks the line; on touch Return is a '
-        'new line and the button sends. While a reply streams the button '
-        'stops it.',
+        'Enter sends the message and Shift+Enter breaks the line, while on '
+        'touch Return starts a new line and the button sends. The same '
+        'button stops the answer while a reply is streaming in.',
     hero: const _Conversation(),
     usage: '''
 CoilInputMessage(
@@ -50,23 +52,26 @@ CoilInputMessage(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Enter sends, Shift+Enter inserts a newline, and Up in an empty '
-            'field recalls the last message.',
+        'Enter sends the message and Shift+Enter inserts a newline. Pressing '
+            'Up in an empty field brings back the last message you sent.',
       ),
       CatalogNote(
         'Touch',
-        'Return inserts a newline and Send is the button. The tile × is '
-            'always visible and takes a 44 hit target.',
+        'Return inserts a newline, so sending goes through the button. The '
+            'remove button on an attachment tile is always visible and takes '
+            'a 44 pixel hit target.',
       ),
       CatalogNote(
         'Motion',
-        'The attachment tray opens with height on standard and opacity on '
-            'fade. The send button morphs between send, stop and queue.',
+        'The attachment tray grows in height on the standard spring and '
+            'fades its contents in, and the send button morphs between its '
+            'send, stop and queue shapes.',
       ),
       CatalogNote(
         'Accessibility',
-        'The field is a multiline text field labeled "Message". The send '
-            'button’s label follows its mode: Send, Stop or Queue message.',
+        'The field is announced as a multiline text field labelled '
+            '"Message", and the button’s label follows whatever it currently '
+            'does, so it reads as Send, Stop or Queue message.',
       ),
     ],
     children: [
@@ -239,7 +244,7 @@ class _ConversationState extends State<_Conversation> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 400,
+    height: 320,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 12,

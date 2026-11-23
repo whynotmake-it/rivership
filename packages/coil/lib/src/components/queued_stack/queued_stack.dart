@@ -74,17 +74,32 @@ class CoilQueuedMessage {
   /// Creates a queued message.
   const CoilQueuedMessage({
     required this.id,
-    required this.semanticLabel,
     this.child,
     this.attachments = const [],
-  });
+    String? semanticLabel,
+  }) // The field is null when the message names the card.
+    // ignore: prefer_initializing_formals
+    : _semanticLabel = semanticLabel;
 
   /// Identifies the message across rebuilds, so it keeps its card while the
   /// queue changes.
   final Object id;
 
   /// The message as screen readers hear it, usually its text.
-  final String semanticLabel;
+  ///
+  /// Defaults to the text of [child] when it is a [Text]. Set it when the
+  /// message is another widget.
+  String get semanticLabel {
+    final name = _semanticLabel ?? plainTextOf(child);
+    assert(
+      name != null,
+      'Set semanticLabel: the card needs a name, and child is not a Text '
+      'to take one from.',
+    );
+    return name ?? '';
+  }
+
+  final String? _semanticLabel;
 
   /// The message text, usually a [Text]. The card styles it in the subtitle
   /// role and keeps it to one line with an ellipsis.

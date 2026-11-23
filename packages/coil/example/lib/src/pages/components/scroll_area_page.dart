@@ -8,7 +8,7 @@ const scrollAreaEntry = CatalogEntry(
   slug: 'scroll-area',
   title: 'ScrollArea',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'A scroller with a slim thumb and edges that fade.',
+  summary: 'A region that scrolls, with a slim scrollbar and fading edges.',
   page: ScrollAreaPage.new,
 );
 
@@ -101,8 +101,8 @@ class _ScrollAreaPageState extends State<ScrollAreaPage> {
     return CatalogPage(
       title: 'ScrollArea',
       summary:
-          'A region that scrolls the way the app does, with a slim scrollbar '
-          'and edges that fade where there is more.',
+          'A region that scrolls the way the rest of the app does, with a '
+          'slim scrollbar and edges that fade where there is more to see.',
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -157,25 +157,26 @@ CoilScrollArea(
       notes: const [
         CatalogNote(
           'Pointer',
-          'The 4 wide scrollbar widens to 6 on hover and hides 600 ms after '
-              'scrolling stops. Edges fade in over up to 32 as content '
-              'scrolls away.',
+          'The scrollbar is 4 wide, widens to 6 on hover and hides 600 ms '
+              'after scrolling stops. The edges fade in over up to 32 as '
+              'content scrolls out of view.',
         ),
         CatalogNote(
           'Touch',
-          'A thin overlay bar shows only while scrolling and cannot be '
-              'grabbed. Physics and drag devices come from the ambient '
-              'ScrollBehavior.',
+          'A thin overlay bar shows only while you scroll and cannot be '
+              'grabbed, and the physics and drag devices come from the '
+              'ambient ScrollBehavior.',
         ),
         CatalogNote(
           'Keyboard',
-          'A region that scrolls is a tab stop. Arrows scroll a line, Page '
-              'Up and Down a page, Home and End jump to the ends.',
+          'A region that scrolls is a tab stop, where the arrows scroll a '
+              'line, Page Up and Page Down a page, and Home and End jump to '
+              'the ends.',
         ),
         CatalogNote(
           "Do / Don't",
-          'Do not nest scroll areas on the same axis. Wrap a list you '
-              'already have with CoilScrollArea.scrollable and share its '
+          'Do not nest two scroll areas on the same axis. If you already have '
+              'a list, wrap it with CoilScrollArea.scrollable and share its '
               'controller.',
         ),
       ],

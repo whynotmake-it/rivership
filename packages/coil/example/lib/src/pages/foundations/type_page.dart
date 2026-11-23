@@ -7,7 +7,9 @@ const typeEntry = CatalogEntry(
   slug: 'type',
   title: 'Type',
   group: CatalogGroup.foundations,
-  summary: 'Seven roles per tier, on any font: Allo, Inter or your own.',
+  summary:
+      'Seven text roles per tier, set in whichever font you choose, such as '
+      'Allo or Inter.',
   page: TypePage.new,
 );
 

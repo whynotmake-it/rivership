@@ -12,7 +12,9 @@ const toggleGroupEntry = CatalogEntry(
   slug: 'toggle-group',
   title: 'ToggleGroup',
   group: CatalogGroup.groupedControls,
-  summary: 'A segmented row for multi-select formatting.',
+  summary:
+      'A row of segments that toggle independently, for things like text '
+      'formatting.',
   page: ToggleGroupPage.new,
 );
 
@@ -23,8 +25,31 @@ class ToggleGroupPage extends StatefulWidget {
   State<ToggleGroupPage> createState() => _ToggleGroupPageState();
 }
 
+/// How a segment labels itself in the playground.
+enum _Shape {
+  label('Label'),
+  both('Icon and label'),
+  icon('Icon only');
+
+  const _Shape(this.name);
+
+  final String name;
+}
+
+enum _Channel {
+  email('Email', Glyph.mail),
+  push('Push', Glyph.bell),
+  sms('SMS', Glyph.message);
+
+  const _Channel(this.label, this.glyph);
+
+  final String label;
+  final Glyph glyph;
+}
+
 class _ToggleGroupPageState extends State<ToggleGroupPage> {
-  var _channels = {'email', 'push'};
+  var _channels = {_Channel.email, _Channel.push};
+  var _shape = _Shape.both;
   var _compact = false;
   var _disabled = false;
 
@@ -34,80 +59,142 @@ class _ToggleGroupPageState extends State<ToggleGroupPage> {
     return CatalogPage(
       title: 'ToggleGroup',
       summary:
-          'Independent on/off segments in one row; adjacent selected ones '
-          'merge into a block. For a single choice, use Tabs or a '
-          'RadioGroup.',
+          'A row of segments that each turn on and off on their own, where '
+          'selected neighbours merge into one block. For picking a single '
+          'option, use Tabs or a RadioGroup instead.',
       hero: const _NoteEditor(),
       usage: '''
-CoilToggleGroup<String>(
+CoilToggleGroup<Format>(
   values: formats,
   onChanged: (values) => setState(() => formats = values),
   options: const [
-    CoilOption(value: 'bold', label: Icon(LucideIcons.bold)),
-    CoilOption(value: 'italic', label: Icon(LucideIcons.italic)),
-    CoilOption(value: 'underline', label: Icon(LucideIcons.underline)),
+    CoilOption(
+      value: Format.bold,
+      label: Icon(LucideIcons.bold),
+      semanticLabel: 'Bold',
+    ),
+    CoilOption(
+      value: Format.italic,
+      label: Icon(LucideIcons.italic),
+      semanticLabel: 'Italic',
+    ),
   ],
 )''',
       notes: const [
         CatalogNote(
           'Keyboard',
-          'Roving focus: Left and Right move, Space toggles. In the editor '
-              'above, Ctrl or Cmd with B, I and U do the same.',
+          'The group takes one tab stop and focus roves inside it, so Left '
+              'and Right move between segments and Space toggles the focused '
+              'one. The editor above also binds Ctrl or Cmd with B, I and U.',
         ),
         CatalogNote(
           'Motion',
-          'Selected segments merge and split on the standard spring. A '
-              'segment whose label changes cross-fades and springs to its '
+          'Selected segments merge and split on the standard spring, and a '
+              'segment whose label changes cross-fades while springing to its '
               'new width.',
         ),
         CatalogNote(
           'Accessibility',
-          'Each segment is a toggle button with a selected state. An '
-              'icon-only segment needs a semanticLabel.',
+          'Each segment is announced as a toggle button with a selected '
+              'state, so an icon-only segment needs a semanticLabel on its '
+              'option to be named.',
         ),
         CatalogNote(
           'Do / Don’t',
-          'Do use it for formatting and other independent switches. '
-              'Don’t use it for one choice among several.',
+          'It fits formatting and other switches that can be on at the same '
+              'time. When only one option can apply, use Tabs or a '
+              'RadioGroup.',
         ),
       ],
       children: [
-        DemoSection(
-          title: 'Playground',
-          controls: DemoControls(
-            children: [
-              DemoControl.toggle(
-                label: 'Compact',
-                value: _compact,
-                onChanged: (v) => setState(() => _compact = v),
-              ),
-              DemoControl.toggle(
-                label: 'Disabled',
-                value: _disabled,
-                onChanged: (v) => setState(() => _disabled = v),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Notify me by', style: text.muted.caption),
-              const SizedBox(height: 6),
-              CoilToggleGroup<String>(
-                size: _compact ? CoilSize.compact : null,
-                semanticLabel: 'Notify me by',
-                values: _channels,
-                onChanged: _disabled
-                    ? null
-                    : (values) => setState(() => _channels = values),
-                options: const [
-                  CoilOption(value: 'email', label: Text('Email')),
-                  CoilOption(value: 'push', label: Text('Push')),
-                  CoilOption(value: 'sms', label: Text('SMS')),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DemoSection(
+              title: 'Playground',
+              description:
+                  'A segment shows whatever widget you give it as a label, so '
+                  'it can carry text, an icon, or an icon beside its text.',
+              controls: DemoControls(
+                children: [
+                  DemoControl.choice(
+                    label: 'Segments',
+                    value: _shape,
+                    values: _Shape.values,
+                    labelOf: (v) => v.name,
+                    onChanged: (v) => setState(() => _shape = v),
+                  ),
+                  DemoControl.toggle(
+                    label: 'Compact',
+                    value: _compact,
+                    onChanged: (v) => setState(() => _compact = v),
+                  ),
+                  DemoControl.toggle(
+                    label: 'Disabled',
+                    value: _disabled,
+                    onChanged: (v) => setState(() => _disabled = v),
+                  ),
                 ],
               ),
-            ],
-          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Notify me by', style: text.muted.caption),
+                  const SizedBox(height: 6),
+                  CoilToggleGroup<_Channel>(
+                    size: _compact ? CoilSize.compact : null,
+                    semanticLabel: 'Notify me by',
+                    values: _channels,
+                    onChanged: _disabled
+                        ? null
+                        : (values) => setState(() => _channels = values),
+                    options: [
+                      for (final channel in _Channel.values)
+                        CoilOption(
+                          value: channel,
+                          // An icon alone says nothing to a screen reader.
+                          semanticLabel: _shape == _Shape.icon
+                              ? channel.label
+                              : null,
+                          label: switch (_shape) {
+                            _Shape.label => Text(channel.label),
+                            _Shape.icon => CatalogIcon(channel.glyph),
+                            _Shape.both => Row(
+                              mainAxisSize: MainAxisSize.min,
+                              spacing: CoilTheme.metricsOf(context).gap,
+                              children: [
+                                CatalogIcon(channel.glyph),
+                                Text(channel.label),
+                              ],
+                            ),
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const UsageSnippet(
+              code: '''
+// An icon alone: semanticLabel names the segment.
+CoilOption(
+  value: Channel.email,
+  label: Icon(LucideIcons.mail),
+  semanticLabel: 'Email',
+)
+
+// An icon beside its label: a label is any widget.
+CoilOption(
+  value: Channel.email,
+  label: Row(
+    mainAxisSize: MainAxisSize.min,
+    spacing: 8,
+    children: [Icon(LucideIcons.mail), Text('Email')],
+  ),
+)''',
+            ),
+          ],
         ),
       ],
     );
@@ -368,10 +455,8 @@ class _NoteEditorState extends State<_NoteEditor> {
                 for (final format in _Format.values)
                   CoilOption(
                     value: format,
-                    label: CatalogIcon(
-                      format.glyph,
-                      semanticLabel: format.label,
-                    ),
+                    semanticLabel: format.label,
+                    label: CatalogIcon(format.glyph),
                   ),
               ],
             ),

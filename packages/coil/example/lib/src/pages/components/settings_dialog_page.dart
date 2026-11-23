@@ -10,7 +10,9 @@ const settingsDialogEntry = CatalogEntry(
   slug: 'settings-dialog',
   title: 'SettingsDialog',
   group: CatalogGroup.shellAndComposites,
-  summary: 'A sidebar of sections beside the setting rows, in a dialog.',
+  summary:
+      'A dialog that puts a sidebar of sections next to the setting rows for '
+      'the section you picked.',
   page: SettingsDialogPage.new,
 );
 
@@ -67,9 +69,9 @@ class _SettingsDialogPageState extends State<SettingsDialogPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'SettingsDialog',
     summary:
-        'A sidebar that never folds beside the setting rows, in an xl '
-        'dialog. Below 600 wide a select picks the section; on a phone it '
-        'opens as a sheet.',
+        'An xl dialog with the setting rows next to a sidebar of sections '
+        'that never folds. Below 600 wide a select takes over from the '
+        'sidebar, and on a phone the whole thing opens as a sheet.',
     hero: _AppBar(prefs: _prefs, onOpen: _open),
     usage: '''
 showCoilSettingsDialog<String>(
@@ -99,35 +101,37 @@ showCoilSettingsDialog<String>(
     notes: const [
       CatalogNote(
         'Touch',
-        'On a phone it opens as a sheet: the title moves into the sheet '
-            'header beside its one close button, and a select under it '
+        'On a phone it opens as a sheet, where the title moves into the sheet '
+            'header next to the single close button and a select underneath '
             'picks the section.',
       ),
       CatalogNote(
         'Pointer',
-        'The sections sit in a static sidebar, 208 wide, with no rail, '
-            'shortcut or drawer. The panel keeps its heading and '
-            'description while its body scrolls.',
+        'The sections sit in a static sidebar 208 wide, so there is no rail, '
+            'shortcut or drawer here. The panel keeps its heading and '
+            'description in place while its body scrolls.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Put one control in each row. A toggle row is one tap target; a '
-            'select, slider or button responds only on the control.',
+        'Put a single control in each row. A whole toggle row is one tap '
+            'target, while a row with a select, slider or button responds only '
+            'on the control itself.',
       ),
       CatalogNote(
         'Accessibility',
-        'The title names the route, the close button sits in the corner, '
-            'and a toggle row reads as one node: its label, description '
-            'and state.',
+        'The title names the route and the close button sits in the corner. A '
+            'toggle row reads as a single node, so a screen reader announces '
+            'its label, description and state together.',
       ),
     ],
     children: [
       DemoSection(
         title: 'The panel on its own',
         description:
-            'CoilSettingsDialog is a plain widget: put it in a '
-            'CoilModalPage, or inline as here. Resize the window under 600 '
-            'to see the select take over.',
+            'CoilSettingsDialog is a plain widget, so you can put it in a '
+            'CoilModalPage or inline in a page as it is here. Resize the '
+            'window below 600 to watch the select take over from the '
+            'sidebar.',
         child: CoilSettingsDialog<String>(
           title: const Text('Settings'),
           initialSection: 'notifications',

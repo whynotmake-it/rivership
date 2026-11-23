@@ -10,7 +10,7 @@ const dropdownEntry = CatalogEntry(
   slug: 'dropdown',
   title: 'Dropdown',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'Action menus with marks, shortcuts, submenus and search.',
+  summary: 'A menu of actions, with marks, shortcuts, submenus and search.',
   page: DropdownPage.new,
 );
 
@@ -55,21 +55,15 @@ class _DropdownPageState extends State<DropdownPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Dropdown',
     summary:
-        'A menu of actions from any trigger. Hover a submenu row to open it; '
-        'on touch, submenus replace the rows.',
+        'A dropdown opens a menu of actions from any trigger you build. '
+        'Hovering a submenu row opens it beside the menu, and on touch a '
+        'submenu drills in and replaces the rows.',
     hero: const _DocumentToolbar(),
     usage: '''
 CoilDropdown(
   entries: [
-    CoilAction(
-      label: const Text('Duplicate'),
-      shortcut: CoilKbd('⌘D'),
-      onPressed: duplicate,
-    ),
-    CoilSubmenu(
-      label: const Text('Move to'),
-      entries: projectActions,
-    ),
+    CoilAction(label: const Text('Duplicate'), onPressed: duplicate),
+    CoilSubmenu(label: const Text('Move to'), entries: projectActions),
     const CoilMenuSeparator(),
     CoilAction(
       label: const Text('Move to trash'),
@@ -77,45 +71,42 @@ CoilDropdown(
       onPressed: trash,
     ),
   ],
-  builder: (context, menu) => CoilButton.icon(
-    variant: CoilButtonVariant.ghost,
-    semanticLabel: 'More',
-    icon: const Icon(LucideIcons.ellipsis),
-    onPressed: menu.open,
-  ),
+  builder: (context, menu) => MoreButton(onPressed: menu.open),
 )''',
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Arrows loop and skip disabled rows; Home, End and typeahead jump. '
-            'Enter or Space activates, Right opens a submenu, Left or Esc '
-            'closes one level and Tab closes all.',
+        'The arrow keys loop through the rows and skip disabled ones, while '
+            'Home, End and typing jump straight to a row. Enter or Space '
+            'runs a row, Right opens a submenu, Left or Esc closes one level '
+            'and Tab closes the whole menu.',
       ),
       CatalogNote(
         'Pointer',
-        'A submenu opens after 100 ms of hover, with a safe triangle so the '
-            'pointer can cut across other rows on the way. The highlight '
-            'glides between rows.',
+        'A submenu opens after 100 ms of hover, and a safe triangle lets '
+            'the pointer cut across other rows on its way there without '
+            'closing it. The highlight glides from row to row.',
       ),
       CatalogNote(
         'Touch',
-        'A short menu stays anchored. Search, more than 8 rows or nested '
-            'submenus open a sheet. Tapping a submenu drills in place with a '
-            'back row.',
+        'A short menu stays anchored to its trigger, while a menu with '
+            'search, more than 8 rows or nested submenus opens as a sheet. '
+            'Tapping a submenu there drills in and leaves a row to go back.',
       ),
       CatalogNote(
         'Motion',
-        'Checkable rows hold for 300 ms so the mark can be seen before the '
-            'menu closes; actions close at once. The page behind takes input '
-            'during that hold.',
+        'A checkable row stays visible for 300 ms so its mark can be seen '
+            'before the menu closes, while a plain action closes at once. '
+            'The page behind already accepts input during that moment.',
       ),
     ],
     children: [
       DemoSection(
         title: 'With search',
         description:
-            'Typing filters by word prefix. Pointer menus focus the field; a '
-            'sheet on a phone does not, so the keyboard stays down.',
+            'Typing filters the rows by word prefix. A pointer menu focuses '
+            'the search field right away, while a sheet on a phone leaves it '
+            'unfocused so the keyboard stays down.',
         child: Row(
           children: [
             CoilDropdown(
@@ -154,8 +145,9 @@ CoilDropdown(
       DemoSection(
         title: 'Presentation',
         description:
-            'Decided when the menu opens. Pin it, or leave it to the '
-            'window: a sheet on a phone when the menu has search.',
+            'The menu decides between a popover and a sheet when it opens, '
+            'based on the window; set presentation to pin it to one of the '
+            'two.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

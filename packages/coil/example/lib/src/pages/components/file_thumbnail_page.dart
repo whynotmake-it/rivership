@@ -12,7 +12,9 @@ const fileThumbnailEntry = CatalogEntry(
   slug: 'file-thumbnail',
   title: 'FileThumbnail',
   group: CatalogGroup.shellAndComposites,
-  summary: 'A square preview, or the file type, with an optional remove.',
+  summary:
+      'A square preview of an attached file that falls back to the file type, '
+      'and can offer a remove button.',
   page: FileThumbnailPage.new,
 );
 
@@ -32,8 +34,9 @@ class _FileThumbnailPageState extends State<FileThumbnailPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'FileThumbnail',
     summary:
-        'A square preview that fills with the image and falls back to the '
-        'file type while it loads or when there is nothing to draw.',
+        'A square tile that fills with the file’s preview image, and shows '
+        'the file type instead while the image loads or when there is no '
+        'preview to draw.',
     hero: const _Attachments(),
     usage: '''
 CoilFileThumbnail(
@@ -45,23 +48,24 @@ CoilFileThumbnail(
     notes: const [
       CatalogNote(
         'Touch',
-        'The remove badge is always visible. It is drawn small but takes a '
-            '44 hit target.',
+        'The remove badge stays visible rather than waiting for a hover, and '
+            'although it is drawn small it takes a 44 pixel hit target.',
       ),
       CatalogNote(
         'Motion',
-        'The thumbnail has none of its own; an image fades in on fade once '
-            'it has loaded, over the file type.',
+        'The tile animates nothing by itself; once the image has loaded it '
+            'fades in over the file type on the fade spring.',
       ),
       CatalogNote(
         'Accessibility',
-        'An image is labeled with the file name. A thumbnail still loading '
-            'announces "Loading preview".',
+        'A tile with an image is labelled with the file’s name, and one that '
+            'is still waiting for its image announces "Loading preview".',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Render previews that need an engine, such as a PDF page or a video '
-            'frame, in the app and pass the result as image.',
+        'Previews that need rendering, such as a page of a PDF or a frame of '
+            'a video, belong in the app: render them there and pass the '
+            'result as image.',
       ),
     ],
     children: [
@@ -103,8 +107,8 @@ CoilFileThumbnail(
       const DemoSection(
         title: 'Still loading',
         description:
-            'Until the image arrives, the tile keeps its file type and a '
-            'spinner.',
+            'Until the image arrives the tile keeps showing the file type '
+            'next to a spinner.',
         child: DemoWrap(
           children: [
             CoilFileThumbnail(

@@ -5,6 +5,7 @@ import 'package:coil/src/foundation/icons.dart';
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
+import 'package:coil/src/foundation/plain_text.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/active_item.dart';
@@ -60,7 +61,7 @@ class CoilAction extends CoilMenuEntry {
   /// Creates an action.
   const CoilAction({
     required this.label,
-    this.searchText,
+    String? searchText,
     this.semanticLabel,
     this.leading,
     this.shortcut,
@@ -68,15 +69,20 @@ class CoilAction extends CoilMenuEntry {
     this.tone = CoilActionTone.normal,
     this.mark = CoilActionMark.none,
     this.selected = false,
-  });
+  }) // The field is null when the label is the row's text.
+    // ignore: prefer_initializing_formals
+    : _searchText = searchText;
 
   /// What the row shows, usually a [Text]. The row styles it and screen
   /// readers read it.
   final Widget label;
 
-  /// The row as plain text: typeahead and a search field match it. Without
-  /// it, they skip the row.
-  final String? searchText;
+  /// The row as plain text: typeahead and a search field match it.
+  ///
+  /// Defaults to the text of [label] when it is a [Text]. Set it when the
+  /// label is another widget; without any text, they skip the row.
+  String? get searchText => _searchText ?? plainTextOf(label);
+  final String? _searchText;
 
   /// Names the action where it shows as an icon only, such as a sidebar
   /// row's action button.
@@ -112,17 +118,22 @@ class CoilSubmenu extends CoilMenuEntry {
   const CoilSubmenu({
     required this.label,
     required this.entries,
-    this.searchText,
+    String? searchText,
     this.semanticLabel,
     this.leading,
-  });
+  }) // The field is null when the label is the row's text.
+    // ignore: prefer_initializing_formals
+    : _searchText = searchText;
 
   /// What the row shows, usually a [Text]; also the back row's label in a
   /// touch submenu.
   final Widget label;
 
   /// The row as plain text: typeahead and a search field match it.
-  final String? searchText;
+  ///
+  /// Defaults to the text of [label] when it is a [Text].
+  String? get searchText => _searchText ?? plainTextOf(label);
+  final String? _searchText;
 
   /// Names the submenu where it shows as an icon only, such as a sidebar
   /// row's action button.

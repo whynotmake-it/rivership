@@ -7,7 +7,9 @@ const spacingEntry = CatalogEntry(
   slug: 'spacing',
   title: 'Spacing and sizes',
   group: CatalogGroup.foundations,
-  summary: 'The CoilMetrics ladder for pointer and touch, regular and compact.',
+  summary:
+      'The CoilMetrics ladder across pointer and touch, in regular and '
+      'compact.',
   page: SpacingPage.new,
 );
 
@@ -53,27 +55,27 @@ class SpacingPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'Spacing and sizes',
     summary:
-        'Heights are minimums: they grow with text. Gaps and paddings '
-        "don't scale.",
+        'Control heights are minimums that grow with the text, while the gaps '
+        "and paddings stay fixed.",
     children: [
       DemoSection(
         title: 'Control heights',
         description:
-            'Pointer, pointer compact, touch and touch compact, '
-            'drawn to scale.',
+            'The four steps, pointer and touch in regular and compact, drawn '
+            'to scale.',
         child: _Heights(),
       ),
       DemoSection(
         title: 'The ladder',
         description:
-            'CoilMetrics per tier and size step. The current tier is '
-            'highlighted. Popup rows line up with triggers: controlPaddingX = '
-            'popupInset + itemPaddingX.',
+            'Every CoilMetrics value for each tier and size step, with the '
+            'current tier highlighted. Popup rows line up with their triggers '
+            'because controlPaddingX equals popupInset plus itemPaddingX.',
         child: _Ladder(),
       ),
       DemoSection(
         title: 'Spacing scale',
-        description: 'Every spacing value comes from this set.',
+        description: 'Every spacing value in coil comes from this one set.',
         child: _Scale(),
       ),
     ],

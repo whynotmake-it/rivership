@@ -9,7 +9,9 @@ const dataTableEntry = CatalogEntry(
   slug: 'data-table',
   title: 'DataTable',
   group: CatalogGroup.shellAndComposites,
-  summary: 'Search, sort, select and page, on a headless controller.',
+  summary:
+      'A table whose search, sorting, selection and paging all live in a '
+      'headless controller.',
   page: DataTablePage.new,
 );
 
@@ -193,8 +195,9 @@ class _DataTablePageState extends State<DataTablePage> {
     return CatalogPage(
       title: 'DataTable',
       summary:
-          'The controller holds search, sort, selection and the page; the '
-          'table only shows it. Try searching for “admin”.',
+          'The controller keeps the search, the sort, the selection and the '
+          'current page, and the table simply shows whatever it holds. Try '
+          'searching for “admin” to see it narrow down.',
       hero: LayoutBuilder(
         builder: (context, constraints) => constraints.maxWidth >= 560
             ? table
@@ -223,26 +226,28 @@ CoilDataTable<Member>(
       notes: const [
         CatalogNote(
           'Keyboard',
-          'Arrows move the active row, Space selects and Shift extends. '
-              'Enter opens, Ctrl or ⌘ with A selects all, Escape clears, and '
-              'Shift+F10 opens the row’s actions.',
+          'The arrow keys move the active row, Space selects it and Shift '
+              'extends the selection. Enter opens a row, Ctrl or ⌘ with A '
+              'selects every row, Escape clears the selection and Shift+F10 '
+              'opens the row’s actions.',
         ),
         CatalogNote(
           'Touch',
-          'Rows are 44 tall, row actions open from the ⋯ button or a long '
-              'press, and a selection shows an action bar above the safe '
-              'area.',
+          'Rows are 44 tall, and a row’s actions open from its ⋯ button or a '
+              'long press. Once something is selected, an action bar appears '
+              'above the safe area.',
         ),
         CatalogNote(
           'Pointer',
-          'Search is an icon that springs open to a 224 field. A header '
-              'menu sorts ascending or descending, and the row highlight '
-              'glides.',
+          'Search starts as an icon and springs open into a 224 wide field. '
+              'Each header has a menu that sorts ascending or descending, and '
+              'the highlight glides to the row under the pointer.',
         ),
         CatalogNote(
           'Accessibility',
-          'Table roles throughout: the header announces its sort state '
-              'and a picked row is selected.',
+          'The table, its headers, rows and cells all carry table semantics, '
+              'so a header announces the direction it is sorted in and a '
+              'picked row is announced as selected.',
         ),
       ],
       children: const [],

@@ -9,8 +9,8 @@ const sliderEntry = CatalogEntry(
   title: 'Slider',
   group: CatalogGroup.groupedControls,
   summary:
-      'One value or a range: scrubber, pips or pill, steps, typed values '
-      'and tooltips. Drags never coast.',
+      'Sets a value or a range by tapping or dragging, with optional steps '
+      'and a typed value.',
   page: SliderPage.new,
 );
 
@@ -59,49 +59,56 @@ class _SliderPageState extends State<SliderPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Slider',
     summary:
-        'Tap to jump, drag to set. A mouse previews the value under the '
-        'pointer; a finger gets a bubble above the thumb.',
+        'Tapping the track jumps to that value and dragging the thumb sets '
+        'it. With a mouse the value under the pointer is previewed, and on '
+        'touch a bubble above the thumb shows the value you are setting.',
     hero: const _ClipSettings(),
     usage: r'''
+// Written to one width, so the value never moves the track.
+String speedLabel(double v) => '${v.toStringAsFixed(2)}×';
+
 CoilSlider(
   label: const Text('Playback speed'),
   variant: CoilSliderVariant.pillPips,
   steps: const [0.5, 0.75, 1, 1.25, 1.5, 2],
   value: speed,
-  valueBuilder: (_, v) => Text('$v×'),
+  valueBuilder: (_, v) => Text(speedLabel(v)),
   onChanged: (v) => setState(() => speed = v),
 )''',
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Arrows step by one step, a step list walks the list. PageUp, '
-            'PageDown and Shift+arrow move 10 %; Home and End jump to the '
-            'ends. A range is two tab stops.',
+        'The arrow keys move by one division, or to the next entry of a '
+            'step list. Page Up, Page Down and Shift with an arrow move by '
+            'ten percent, and Home and End jump to the ends. A range slider '
+            'takes one tab stop per thumb.',
       ),
       CatalogNote(
         'Pointer',
-        'Hovering shows a preview bar and the value under the pointer. '
-            'Click or tap an editable value, or press Enter, to type one; '
-            'Enter applies it snapped to a step, Esc cancels.',
+        'Hovering shows a preview bar with the value under the pointer. An '
+            'editable value opens for typing when you click it or press '
+            'Enter; Enter then applies it snapped to the nearest step and '
+            'Esc cancels.',
       ),
       CatalogNote(
         'Touch',
-        'No preview. A bubble sits 8 above the track under your finger '
-            'and springs onto the thumb on release. A stepped slider ticks '
-            'a haptic per step moved.',
+        'Touch has no preview, so a bubble follows your finger just above '
+            'the track and springs onto the thumb when you let go. A stepped '
+            'slider plays a haptic tick for each step you cross.',
       ),
       CatalogNote(
         'Screen readers',
-        'An adjustable slider with increase and decrease actions. Pass '
-            'semanticFormatter so it reads "1.25×", not "1.25".',
+        'The slider is announced as adjustable with increase and decrease '
+            'actions. Pass semanticFormatter so the value is read the way it '
+            'is shown, for example “1.25×” rather than “1.25”.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
         description:
-            'Row styles draw the label and value inside the track; the pill '
-            'puts them either side.',
+            'The row styles draw the label and value inside the track, while '
+            'the pill styles put them on either side of it.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -146,8 +153,9 @@ CoilSlider(
       DemoSection(
         title: 'Range',
         description:
-            'Two thumbs that never cross. A tap or a drag moves the nearest '
-            'one; Tab moves between them.',
+            'A range has two thumbs that never cross each other. A tap or a '
+            'drag moves whichever thumb is nearest, and Tab moves between '
+            'them.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -197,8 +205,13 @@ class _ClipSettingsState extends State<_ClipSettings> {
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
   static const _length = 150.0;
 
-  static String _speedName(double v) =>
-      '${v == v.roundToDouble() ? v.round() : v}×';
+  // Every speed is written to the same width, so the value never changes
+  // the width of the pill and the snap points stay put as it moves.
+  static String _speedName(double v) => '${v.toStringAsFixed(2)}×';
+
+  // Read out the way people say it: "1×", not "1.00×".
+  static String _speedSpoken(double v) =>
+      '${v == v.roundToDouble() ? v.round() : v}× speed';
 
   static String _percent(double v) => '${(v * 100).round()} %';
 
@@ -234,7 +247,7 @@ class _ClipSettingsState extends State<_ClipSettings> {
               steps: _speeds,
               value: _speed,
               valueBuilder: (_, v) => Text(_speedName(v)),
-              semanticFormatter: _speedName,
+              semanticFormatter: _speedSpoken,
               onChanged: (v) => setState(() => _speed = v),
             ),
             CoilSlider(

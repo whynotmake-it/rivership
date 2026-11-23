@@ -98,9 +98,10 @@ class _Hero extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'coil is a Flutter design system for pointer and touch. '
-                'Everything below is live: hover it, press it, drag it, '
-                'and tab through it.',
+                'coil is a design system for pointer and touch, with every '
+                'bit of motion driven by a spring. Everything on these pages '
+                'is live, so you can hover, press, drag and tab through any '
+                'of it.',
                 style: text.muted.subtitle,
               ),
               const SizedBox(height: 20),
@@ -182,8 +183,8 @@ class _Index extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Each one has the component in every state, with notes on '
-          'keyboard, touch and screen readers.',
+          'Each page shows its component in every state and ends with notes '
+          'on keyboard, touch and screen readers.',
           style: text.muted.body,
         ),
         const SizedBox(height: 16),

@@ -9,7 +9,7 @@ const tabsEntry = CatalogEntry(
   slug: 'tabs',
   title: 'Tabs',
   group: CatalogGroup.groupedControls,
-  summary: 'A selected pill that springs between peer views.',
+  summary: 'Switches between a handful of peer views with a sliding pill.',
   page: TabsPage.new,
 );
 
@@ -24,9 +24,9 @@ enum _Pane {
 }
 
 enum _Content {
-  text('Text'),
-  icons('Icons and text'),
-  selected('Selected label only');
+  text('Label'),
+  icons('Icon and label'),
+  selected('Icon, selected label');
 
   const _Content(this.label);
 
@@ -62,8 +62,8 @@ class _TabsPageState extends State<TabsPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Tabs',
     summary:
-        'Two to six peer views behind one selected pill that springs from '
-        'tab to tab.',
+        'Switches between two and six peer views, with a selected pill that '
+        'springs from tab to tab as the view changes.',
     hero: const _ProjectPanel(),
     usage: '''
 CoilTabs<Pane>(
@@ -78,76 +78,111 @@ CoilTabs<Pane>(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Roving focus: arrows move focus, Enter or Space selects, Home and '
-            'End jump. Selection is manual, so arrowing past a tab does not '
-            'switch the view.',
+        'The row takes one tab stop and focus roves inside it: the arrow '
+            'keys move focus, Enter or Space selects, and Home and End jump '
+            'to the ends. Selection is manual, so arrowing past a tab does '
+            'not switch the view.',
       ),
       CatalogNote(
         'Pointer',
-        'Hovering grows a lighter pill out of the selected one and glides '
-            'back on leave. Touch has no hover pill.',
+        'Hovering grows a lighter pill out of the selected one and glides it '
+            'back when the pointer leaves. On touch there is no hover pill.',
       ),
       CatalogNote(
         'Motion',
-        'The selected pill springs on the standard track. When labels show '
-            'only on the selected tab, the label width springs open on the '
+        'The selected pill springs along the standard track, and when only '
+            'the selected tab shows its label, that label springs open on the '
             'quick track.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Do use it for 2 to 6 peer views. Don’t use it to move '
-            'between the pages of a flow.',
+        'It suits 2 to 6 views that sit at the same level. For stepping '
+            'through the pages of a flow, use navigation instead.',
       ),
     ],
     children: [
-      DemoSection(
-        title: 'Playground',
-        description:
-            'With only the selected label showing, the others keep their '
-            'icon.',
-        controls: DemoControls(
-          children: [
-            DemoControl.choice(
-              label: 'Content',
-              value: _content,
-              values: _Content.values,
-              labelOf: (v) => v.label,
-              onChanged: (v) => setState(() => _content = v),
-            ),
-            DemoControl.toggle(
-              label: 'Compact',
-              value: _compact,
-              onChanged: (v) => setState(() => _compact = v),
-            ),
-          ],
-        ),
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: CoilTabs<_View>(
-            size: _compact ? CoilSize.compact : null,
-            value: _view,
-            labels: _content == _Content.selected
-                ? CoilTabLabels.selected
-                : CoilTabLabels.always,
-            onChanged: (value) => setState(() => _view = value),
-            tabs: [
-              for (final view in _View.values)
-                CoilTab(
-                  value: view,
-                  label: Text(view.label),
-                  icon: _content == _Content.text
-                      ? null
-                      : CatalogIcon(view.glyph),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DemoSection(
+            title: 'Playground',
+            description:
+                'A tab can show a label, an icon with its label, or, with '
+                'labels set to selected, its icon alone until it is picked.',
+            controls: DemoControls(
+              children: [
+                DemoControl.choice(
+                  label: 'Tabs',
+                  value: _content,
+                  values: _Content.values,
+                  labelOf: (v) => v.label,
+                  onChanged: (v) => setState(() => _content = v),
                 ),
-            ],
+                DemoControl.toggle(
+                  label: 'Compact',
+                  value: _compact,
+                  onChanged: (v) => setState(() => _compact = v),
+                ),
+              ],
+            ),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: CoilTabs<_View>(
+                size: _compact ? CoilSize.compact : null,
+                value: _view,
+                labels: _content == _Content.selected
+                    ? CoilTabLabels.selected
+                    : CoilTabLabels.always,
+                onChanged: (value) => setState(() => _view = value),
+                tabs: [
+                  for (final view in _View.values)
+                    CoilTab(
+                      value: view,
+                      label: Text(view.label),
+                      // Names a tab that shows its icon alone.
+                      semanticLabel: view.label,
+                      icon: _content == _Content.text
+                          ? null
+                          : CatalogIcon(view.glyph),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          const UsageSnippet(
+            code: '''
+// always shows every label; selected leaves the
+// unselected tabs their icon alone and springs the
+// label open on the one you pick.
+CoilTabs<View>(
+  value: view,
+  labels: CoilTabLabels.selected,
+  onChanged: (value) => setState(() => view = value),
+  tabs: const [
+    CoilTab(
+      value: View.inbox,
+      label: Text('Inbox'),
+      icon: Icon(LucideIcons.inbox),
+      semanticLabel: 'Inbox',
+    ),
+    CoilTab(
+      value: View.calendar,
+      label: Text('Calendar'),
+      icon: Icon(LucideIcons.calendarDays),
+      semanticLabel: 'Calendar',
+    ),
+  ],
+)''',
+          ),
+        ],
       ),
       DemoSection(
         title: 'Overflow',
         description:
-            "Tabs that don't fit scroll, with fading edges. The selected "
-            'tab and the keyboard-focused tab scroll into view.',
+            'When the tabs do not all fit, the row scrolls with fading edges, '
+            'and both the selected tab and the keyboard-focused tab are '
+            'scrolled into view.',
         child: CoilTabs<String>(
           value: _month,
           onChanged: (value) => setState(() => _month = value),

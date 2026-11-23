@@ -8,7 +8,7 @@ const comboboxEntry = CatalogEntry(
   slug: 'combobox',
   title: 'Combobox',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'Type to filter, then pick one or several; IME-safe Enter.',
+  summary: 'A field you type into to filter a long list, then pick from it.',
   page: ComboboxPage.new,
 );
 
@@ -87,8 +87,9 @@ class _ComboboxPageState extends State<ComboboxPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Combobox',
     summary:
-        'A field you type into to find a value in a long list. Focus stays '
-        'in the field while the arrows move through the matches.',
+        'A combobox is a text field you type into to find a value in a long '
+        'list. Focus stays in the field while the arrow keys move through '
+        'the matches, so you can keep typing to narrow them further.',
     hero: const _IssuePanel(),
     usage: '''
 CoilField(
@@ -106,38 +107,42 @@ CoilField(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Typing filters and resets the active row to the first match. '
-            'Up and Down move it, Enter picks it (never mid-composition in '
-            'an IME) and Esc clears the text, then closes.',
+        'Typing filters the list and moves the active row back to the first '
+            'match. Up and Down move it from there and Enter picks it, '
+            'though never while an input method is still composing, and Esc '
+            'first clears the text and then closes the list.',
       ),
       CatalogNote(
         'Multiple',
-        'Chips wrap inside the field and the field springs taller. '
-            'Backspace on empty text removes the last chip; Left and Right '
-            'move between chips.',
+        'With MultiCombobox the picked values become chips that wrap inside '
+            'the field as it springs taller. Backspace on empty text removes '
+            'the last chip, and Left and Right move between them.',
       ),
       CatalogNote(
         'Touch',
-        'On a phone it opens a full-height sheet with the field focused '
-            'and the keyboard up. Chips sit above the field and a multiple '
-            'combobox has Done in the header.',
+        'On a phone the list opens as a full-height sheet with the field '
+            'focused and the keyboard up. The chips sit above the field, and '
+            'a multiple combobox gets a Done button in the header.',
       ),
       CatalogNote(
         'Screen readers',
-        'A combobox text field with expanded state and a live result '
-            'count. The chips are a toolbar labeled "Selected".',
+        'The field is announced as a combobox with its expanded state and a '
+            'live count of the matches, and the chips form a toolbar labeled '
+            '"Selected".',
       ),
       CatalogNote(
         "Do / Don't",
-        'Use it for long or open-ended lists; a Select suits fewer than '
-            'about a dozen. Never complete inline over what was typed.',
+        'Reach for a combobox when the list is long or open-ended, and for '
+            'a Select when it holds fewer than about a dozen options. Never '
+            'complete a value inline over what someone has typed.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Single value',
         description:
-            'Type to narrow the list, then pick a match with Enter or a tap.',
+            'Type to narrow the list, then pick a match with Enter or a tap; '
+            'setting presentation pins the list to a popover or a sheet.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

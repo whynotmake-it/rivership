@@ -39,8 +39,8 @@ class _InputCopyPageState extends State<InputCopyPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'InputCopy',
     summary:
-        'A read-only value with a copy action. The feedback is inline on '
-        'every platform: a check, or "Copied", for 2 s.',
+        'Shows a read-only value next to a copy action, and confirms a copy '
+        'inline for a couple of seconds on every platform.',
     hero: const _DeveloperKeys(),
     usage: '''
 CoilField(
@@ -51,30 +51,34 @@ CoilField(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Enter or Space copies. A tap on the field’s label copies too.',
+        'Enter or Space copies the value while the action has focus, and '
+            'clicking the field’s label copies it too.',
       ),
       CatalogNote(
         'Motion',
-        'The icon swaps to a check, or an × if the clipboard refused. '
-            'A button springs between the real widths of "Copy" and '
-            '"Copied". Copying again only restarts the 2 s.',
+        'The icon swaps to a check, or to a cross if the clipboard refused, '
+            'and a button springs between the widths of “Copy” and “Copied”. '
+            'Copying again just restarts the confirmation.',
       ),
       CatalogNote(
         'Accessibility',
-        'A button named Copy plus the field label, with the full text as '
-            'its value. It announces "Copied" or "Copy failed".',
+        'The action is a button named after the field it copies, carrying '
+            'the full text as its value, and it announces “Copied” or “Copy '
+            'failed” when pressed.',
       ),
       CatalogNote(
         'Pointer',
-        'Hovering marks the value with a faint brand tint and turns the '
-            'action foreground. A tooltip is optional, never the only '
-            'feedback.',
+        'Hovering tints the value and brings the action to full strength. A '
+            'tooltip can explain the action, but it is never the only '
+            'feedback a copy gives.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
-        description: 'The value truncates; the action is always visible.',
+        description:
+            'A value that is too long to fit is truncated, and the action '
+            'stays visible at the end of the field.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

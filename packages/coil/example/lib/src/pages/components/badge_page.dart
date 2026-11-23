@@ -9,7 +9,7 @@ const badgeEntry = CatalogEntry(
   slug: 'badge',
   title: 'Badge',
   group: CatalogGroup.leafControls,
-  summary: 'Status and categories: solid, dot and ghost, in 18 colors.',
+  summary: 'A small label for a status or a category, in 18 colors.',
   page: BadgePage.new,
 );
 
@@ -29,8 +29,8 @@ class _BadgePageState extends State<BadgePage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Badge',
     summary:
-        'A short, quiet label for status or a category. A badge is never '
-        'interactive, so it stays the same size on touch.',
+        'A badge is a short, quiet label for a status or a category. It is '
+        'never interactive, so it keeps the same size on touch.',
     hero: const _ServiceStatus(),
     usage: '''
 CoilBadge(
@@ -41,23 +41,23 @@ CoilBadge(
     notes: const [
       CatalogNote(
         'Motion',
-        'When the label changes, the old one cross-fades into the new while '
-            'the badge springs to its new width.',
+        'When the label changes, the old text cross-fades into the new text '
+            'while the badge springs to its new width.',
       ),
       CatalogNote(
         'Touch',
-        'No touch bump: a badge is 24 tall (20 compact) on every tier, '
-            'because nothing about it can be pressed.',
+        'A badge is 24 tall (20 when compact) on every tier, since there is '
+            'nothing to press and so no need for a larger touch target.',
       ),
       CatalogNote(
         'Screen readers',
-        'A badge reads as its label. The dot is skipped, so say the status '
-            'in words, not only in color.',
+        'A badge is read as its label and the dot is skipped, so put the '
+            'status into words rather than relying on color alone.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Use it for status and categories. For something tappable, use a '
-            'secondary button.',
+        'Use a badge to show a status or a category, and reach for a '
+            'secondary button when the label needs to be tapped.',
       ),
     ],
     children: [

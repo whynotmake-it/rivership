@@ -131,7 +131,7 @@ class CoilSidebarItem {
   /// a [CoilAction] (its `leading` is the icon, its label the tooltip) or a
   /// [CoilSubmenu], whose button opens its entries, usually the last, an
   /// overflow ⋯. Each button is named by the entry's `semanticLabel`, else
-  /// its `searchText`; give every action one.
+  /// its `searchText`, which is the plain text of a [Text] label.
   ///
   /// The same entries open as a context menu on a right-click, and on a
   /// long press on touch, where only the last action shows (all of them

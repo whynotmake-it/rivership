@@ -21,11 +21,14 @@ const catalogPhoneBreakpoint = 600.0;
 /// frame. Uses the settings of an enclosing [CatalogSettingsScope], or owns
 /// a set when mounted inside another app.
 class CatalogShell extends StatefulWidget {
-  const CatalogShell({super.key, this.onHome});
+  const CatalogShell({super.key, this.onHome, this.onOpenPackage});
 
   /// Takes the host app back to its landing page, when the catalog is
   /// mounted inside another app. See [CatalogHome].
   final VoidCallback? onHome;
+
+  /// Opens another package's example in the host app. See [CatalogHome].
+  final ValueChanged<String>? onOpenPackage;
 
   @override
   State<CatalogShell> createState() => _CatalogShellState();
@@ -80,7 +83,11 @@ class _CatalogShellState extends State<CatalogShell> {
       );
     }
     final environment = CatalogEnvironment(
-      child: CatalogHome(onHome: widget.onHome, child: chrome),
+      child: CatalogHome(
+        onHome: widget.onHome,
+        onOpenPackage: widget.onOpenPackage,
+        child: chrome,
+      ),
     );
     if (CatalogSettingsScope.maybeOf(context) != null) return environment;
     return CatalogSettingsScope(
@@ -128,18 +135,34 @@ class _ChromeRoute extends PageRoute<void> {
   Duration get transitionDuration => Duration.zero;
 }
 
-/// The way back to the host app's landing page, when the catalog is
-/// mounted inside another app: pressing the coil wordmark calls [onHome].
+/// The host app's hooks, when the catalog is mounted inside another app:
+/// pressing the coil wordmark calls [onHome], and links to another
+/// package's example call [onOpenPackage] with its pub name.
 class CatalogHome extends InheritedWidget {
-  const CatalogHome({required this.onHome, required super.child, super.key});
+  const CatalogHome({
+    required this.onHome,
+    required super.child,
+    super.key,
+    this.onOpenPackage,
+  });
 
   final VoidCallback? onHome;
+  final ValueChanged<String>? onOpenPackage;
 
   static VoidCallback? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<CatalogHome>()?.onHome;
 
+  /// Opens [package]'s example in the host app, or null when no host can.
+  static VoidCallback? openPackageOf(BuildContext context, String package) {
+    final open = context
+        .dependOnInheritedWidgetOfExactType<CatalogHome>()
+        ?.onOpenPackage;
+    return open == null ? null : () => open(package);
+  }
+
   @override
-  bool updateShouldNotify(CatalogHome oldWidget) => onHome != oldWidget.onHome;
+  bool updateShouldNotify(CatalogHome oldWidget) =>
+      onHome != oldWidget.onHome || onOpenPackage != oldWidget.onOpenPackage;
 }
 
 /// [child] as a link back to all packages when the catalog has a

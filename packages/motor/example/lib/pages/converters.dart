@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
+import 'package:motor_example/widgets/grab_detector.dart';
 import 'package:motor_example/widgets/style.dart';
 
 /// A converter splits a value into numbers and springs each one on its own:
@@ -259,11 +260,11 @@ class _OffsetDemoState extends State<_OffsetDemo>
                     child: child!,
                   );
                 },
-                child: GestureDetector(
-                  onPanStart: _dragStart,
-                  onPanUpdate: _dragUpdate,
-                  onPanEnd: _dragEnd,
-                  onPanCancel: () => _dragging = false,
+                child: GrabDetector(
+                  onStart: _dragStart,
+                  onUpdate: _dragUpdate,
+                  onEnd: _dragEnd,
+                  onCancel: () => _dragging = false,
                   child: MouseRegion(
                     cursor: SystemMouseCursors.grab,
                     child: DecoratedBox(
@@ -537,20 +538,22 @@ class _AngleDemoState extends State<_AngleDemo> with TickerProviderStateMixin {
           children: [
             GestureDetector(
               onTapDown: (details) => _aim(details.localPosition),
-              onPanStart: (details) => _aim(details.localPosition),
-              onPanUpdate: (details) => _aim(details.localPosition),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: ListenableBuilder(
-                  listenable: _controller,
-                  builder: (context, _) => CustomPaint(
-                    size: const Size.square(_dial),
-                    painter: _DialPainter(
-                      angle: _controller.value,
-                      target: target,
-                      line: colors.border,
-                      needle: colors.foreground,
-                      marker: colors.brand,
+              child: GrabDetector(
+                onStart: (details) => _aim(details.localPosition),
+                onUpdate: (details) => _aim(details.localPosition),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: ListenableBuilder(
+                    listenable: _controller,
+                    builder: (context, _) => CustomPaint(
+                      size: const Size.square(_dial),
+                      painter: _DialPainter(
+                        angle: _controller.value,
+                        target: target,
+                        line: colors.border,
+                        needle: colors.foreground,
+                        marker: colors.brand,
+                      ),
                     ),
                   ),
                 ),

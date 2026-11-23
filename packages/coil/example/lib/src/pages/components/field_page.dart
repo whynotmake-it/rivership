@@ -11,8 +11,8 @@ const fieldEntry = CatalogEntry(
   title: 'Field',
   group: CatalogGroup.groupedControls,
   summary:
-      'Label, description and error around one control; FieldSet groups; '
-      'choice cards.',
+      'Wraps a control with its label, description and error, with field '
+      'sets and choice cards for groups.',
   page: FieldPage.new,
 );
 
@@ -37,8 +37,9 @@ class _FieldPageState extends State<FieldPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Field',
     summary:
-        'One control per field. Label, description and error join the '
-        "control's semantics, so a screen reader reads them with its role.",
+        'A field wraps a single control with its label, description and '
+        'error, and a screen reader announces all of them together with the '
+        'control.',
     hero: const _WorkspaceForm(),
     usage: '''
 CoilField(
@@ -55,33 +56,36 @@ CoilField(
     notes: const [
       CatalogNote(
         'Screen readers',
-        'Label, description and error are read with the control, in that '
-            'order, along with its role and value. The error is a live '
-            'region, so it is announced when it appears.',
+        'A screen reader reads the label, description and error together '
+            'with the control, along with its role and value. The error is a '
+            'live region, so it is announced as soon as it appears.',
       ),
       CatalogNote(
         'Pointer',
-        'Tapping a label runs its control: a text field takes focus, a '
-            'switch or checkbox toggles. In a horizontal row, a tap anywhere '
-            'in the row toggles a checkbox, switch or radio.',
+        'Tapping a label activates its control, so a text field takes focus '
+            'and a switch or checkbox toggles. In a horizontal row, a tap '
+            'anywhere in the row toggles a checkbox, switch or radio.',
       ),
       CatalogNote(
         'Motion',
-        'An error or description springs its own height open and the fields '
-            'below glide down with it. Reduced motion jumps and fades.',
+        'When an error or description appears, it springs open and the '
+            'fields below glide down with it. With reduced motion it fades in '
+            'without moving anything.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Do put one control in each Field and group several in a FieldSet. '
-            'Don’t use a placeholder as the label.',
+        'Put one control in each field and group related fields in a '
+            'field set. A placeholder is a hint for the input and does not '
+            'replace the label.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
         description:
-            'Responsive is stacked below 448 of width and side by side '
-            'above.',
+            'The auto orientation stacks the label above the control when the '
+            'field is narrower than 448 and puts them side by side when it is '
+            'wider.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -148,7 +152,9 @@ CoilField(
       ),
       DemoSection(
         title: 'FieldSet and separator',
-        description: 'A legend heads a group of fields; a separator splits it.',
+        description:
+            'A field set puts a legend and description above a group of '
+            'fields, and a separator splits the group into parts.',
         child: CoilFieldSet(
           legend: const Text('Email notifications'),
           description: const Text('Choose what we send you.'),
@@ -181,8 +187,8 @@ CoilField(
       DemoSection(
         title: 'Choice card',
         description:
-            'The whole card is the target. Keyboard focus rings the card, '
-            'not the checkbox.',
+            'The whole card is the target, and keyboard focus rings the card '
+            'instead of the checkbox inside it.',
         child: CoilFieldGroup(
           children: [
             CoilChoiceCard(
@@ -209,8 +215,9 @@ CoilField(
       DemoSection(
         title: 'Radio choice card',
         description:
-            'One choice from cards: a CoilRadio per card in a '
-            'CoilRadioGroup.custom. Arrows move the selection.',
+            'For a single choice, put a CoilRadio in each card and wrap the '
+            'cards in a CoilRadioGroup.custom, so the arrow keys move the '
+            'selection between them.',
         child: CoilRadioGroup<String>.custom(
           value: _tier,
           onChanged: (v) => setState(() => _tier = v),

@@ -1,3 +1,4 @@
+import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// An action on a `CoilChatMessage`, such as Copy or Retry.
@@ -11,7 +12,6 @@ import 'package:flutter/widgets.dart';
 /// ```dart
 /// CoilChatMessageAction(
 ///   label: const Text('Copy'),
-///   semanticLabel: 'Copy',
 ///   icon: CoilCopyGlyph.listening(controller: copy),
 ///   onPressed: () => copy.copy(text, context: context),
 /// )
@@ -21,16 +21,34 @@ class CoilChatMessageAction {
   /// Creates an action.
   const CoilChatMessageAction({
     required this.label,
-    required this.semanticLabel,
     required this.icon,
     required this.onPressed,
-  });
+    String? semanticLabel,
+  }) // The field is null when the label names the action.
+    // ignore: prefer_initializing_formals
+    : _semanticLabel = semanticLabel;
 
   /// The long-press menu row's text, usually a [Text].
+  ///
+  /// The meta-row button shows only the [icon], so this is a widget the
+  /// menu row can style, not arbitrary content.
   final Widget label;
 
   /// Names the icon-only button for screen readers.
-  final String semanticLabel;
+  ///
+  /// Defaults to the text of [label] when it is a [Text]. Set it when the
+  /// label is another widget.
+  String get semanticLabel {
+    final name = _semanticLabel ?? plainTextOf(label);
+    assert(
+      name != null,
+      'Set semanticLabel: the icon-only button needs a name, and label is '
+      'not a Text to take one from.',
+    );
+    return name ?? '';
+  }
+
+  final String? _semanticLabel;
 
   /// The button's icon, styled through [IconTheme].
   final Widget icon;

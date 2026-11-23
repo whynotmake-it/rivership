@@ -6,18 +6,14 @@ import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
-import 'package:lucide_icons_flutter/lucide_icons_300.dart';
-import 'package:lucide_icons_flutter/lucide_icons_400.dart';
 
 const chatMessageEntry = CatalogEntry(
   slug: 'chat-message',
   title: 'ChatMessage',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'User bubbles and assistant replies, with actions.',
+  summary: 'A bubble for the person, plain text for the assistant.',
   page: ChatMessagePage.new,
 );
-
-const _retryGlyph = Glyph(LucideIcons300.refreshCw, LucideIcons400.refreshCw);
 
 const _question = 'Can you summarize the design review?';
 
@@ -86,9 +82,9 @@ class _ChatMessagePageState extends State<ChatMessagePage> {
     return CatalogPage(
       title: 'ChatMessage',
       summary:
-          'Messages in a transcript: a bubble for the person, plain text for '
-          'the assistant. Actions show on hover, or with a long press on '
-          'touch.',
+          'Messages in a transcript, as a bubble for the person and plain '
+          'text for the assistant. Their actions appear on hover, or after a '
+          'long press on touch.',
       hero: const _Conversation(),
       usage: '''
 CoilChatMessage(
@@ -108,25 +104,26 @@ CoilChatMessage(
       notes: const [
         CatalogNote(
           'Pointer',
-          'The meta row shows on hover or when an action has keyboard focus.',
+          'The meta row appears on hover, and stays while one of its actions '
+              'has keyboard focus.',
         ),
         CatalogNote(
           'Touch',
-          'The meta row is always visible. A long press opens the same '
+          'The meta row is always visible, and a long press opens the same '
               'actions as a menu.',
         ),
         CatalogNote(
           'Motion',
-          'A new message fades in, rising 8 and growing from 0.96 out of '
-              'its sender corner on standard; earlier ones slide to make '
-              'room. Use entrance none for messages already in the '
-              'transcript.',
+          'A new message fades in, rising 8 and growing from 0.96 out of its '
+              'sender corner on standard, while the ones above it slide to '
+              'make room. Use an entrance of none for messages that were '
+              'already in the transcript.',
         ),
         CatalogNote(
           'Accessibility',
-          'Each message is one container labelled with its sender and time. '
-              'Copy uses the shared copy feedback, so its icon turns into a '
-              'check.',
+          'Each message is a single container labelled with its sender and '
+              'time, and Copy uses the shared copy feedback, so its icon '
+              'turns into a check.',
         ),
       ],
       children: [
@@ -322,7 +319,7 @@ class _ConversationState extends State<_Conversation> {
               CoilChatMessageAction(
                 label: const Text('Retry'),
                 semanticLabel: 'Retry',
-                icon: const CatalogIcon(_retryGlyph),
+                icon: const CatalogIcon(Glyph.refresh),
                 onPressed: _retry,
               ),
             ],

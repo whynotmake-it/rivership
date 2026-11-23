@@ -278,6 +278,52 @@ void main() {
   });
 
   _scrollWinsOverScrubberTest();
+
+  testWidgets('Drag and drop shows the held row once and lands it', (
+    tester,
+  ) async {
+    await _open(tester, 'Drag and drop');
+    await _pumpFor(tester, const Duration(milliseconds: 500));
+    const labels = ['Springs', 'Curves', 'Tracks', 'Phases', 'Converters'];
+    List<String> order() =>
+        ([...labels]..sort(
+              (a, b) => tester
+                  .getTopLeft(find.text(a))
+                  .dy
+                  .compareTo(tester.getTopLeft(find.text(b)).dy),
+            ))
+            .toList();
+    expect(order(), labels);
+
+    final first = tester.getCenter(find.text('Springs'));
+    final restingTop = tester.getTopLeft(find.text('Springs')).dy;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Tracks')),
+    );
+    // On a touch screen a drag starts with a press and hold.
+    await tester.pump(const Duration(milliseconds: 600));
+    var at = tester.getCenter(find.text('Tracks'));
+    final step = (first - at - const Offset(0, 24)) / 12;
+    for (var i = 0; i < 12; i++) {
+      at += step;
+      await gesture.moveTo(at);
+      await tester.pump(frame);
+    }
+    await _pumpFor(tester, const Duration(milliseconds: 600));
+    // One card: the held row follows the pointer, its old place is gone.
+    expect(find.text('Tracks'), findsOneWidget);
+    // A gap opened above Springs, and the held row hovers over it.
+    expect(tester.getTopLeft(find.text('Springs')).dy, greaterThan(restingTop));
+    expect(
+      tester.getTopLeft(find.text('Springs')).dy,
+      greaterThan(tester.getTopLeft(find.text('Tracks')).dy),
+    );
+    await gesture.up();
+    await _pumpFor(tester, const Duration(seconds: 3));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Tracks'), findsOneWidget);
+    expect(order(), ['Tracks', 'Springs', 'Curves', 'Phases', 'Converters']);
+  });
 }
 
 void _scrollWinsOverScrubberTest() {

@@ -11,8 +11,8 @@ const sidebarEntry = CatalogEntry(
   title: 'Sidebar',
   group: CatalogGroup.shellAndComposites,
   summary:
-      'Resizes, folds away and peeks back; on phones, the page slides aside '
-      'to reveal it.',
+      'A navigation sidebar you can resize, fold away and peek at again; on a '
+      'phone the page slides aside to reveal it.',
   page: SidebarPage.new,
 );
 
@@ -43,9 +43,9 @@ class _SidebarPageState extends State<SidebarPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Sidebar',
     summary:
-        'Drag its edge to resize, press [ to fold it and rest the pointer on '
-        'the edge to peek. On a phone the page slides aside to reveal it '
-        'from behind.',
+        'Drag its edge to resize the sidebar, press [ to fold it and rest the '
+        'pointer on the edge to peek at it. On a phone the page slides aside '
+        'to reveal the sidebar behind it.',
     hero: const _Shell(),
     usage: '''
 CoilSidebarScaffold(
@@ -75,35 +75,35 @@ CoilSidebarScaffold(
     notes: const [
       CatalogNote(
         'Keyboard',
-        '[ folds the sidebar, ] when it sits on the right; ⌘B or Ctrl+B '
-            'too, never while typing in a field. Arrows roam the rows, Right '
-            'and Left open and close sub-trees.',
+        '[ folds the sidebar (] when it sits on the right), and so do ⌘B and '
+            'Ctrl+B, except while you are typing in a field. The arrow keys '
+            'move between rows, and Right and Left open and close sub-trees.',
       ),
       CatalogNote(
         'Pointer',
-        'Drag the rail to resize between 160 and 360; 56 past the minimum '
-            'folds it. There is no icon-only rail on purpose: peek brings the '
-            'real sidebar back instead.',
+        'Drag the rail to resize the sidebar between 160 and 360, and drag 56 '
+            'past the minimum to fold it. There is no icon-only rail, because '
+            'peeking brings back the real sidebar instead.',
       ),
       CatalogNote(
         'Touch',
-        'Below 768 the sidebar is a drawer. On touch the page slides aside '
-            'to reveal it from behind; drag the page sideways anywhere. A row '
-            'shows only its last action, and a long press opens them all.',
+        'Below 768 the sidebar becomes a drawer, and the page slides aside to '
+            'reveal it when you drag the page sideways anywhere. A row shows '
+            'only its last action on touch, and a long press opens them all.',
       ),
       CatalogNote(
         'Accessibility',
         'A labeled sidebar is a navigation landmark and the active row is '
-            'selected. While the drawer is open the page is hidden from '
-            'screen readers except for its dismiss action.',
+            'announced as selected. While the drawer is open, screen readers '
+            'skip the page except for its dismiss action.',
       ),
     ],
     children: [
       const DemoSection(
         title: 'Navigation depth',
         description:
-            'A section opens its pages, and the current page is lit beside '
-            'its section.',
+            'A section opens to show its pages, and the current page is '
+            'highlighted next to its section.',
         padding: 0,
         child: _Frame(
           child: _RailOnly(
@@ -117,9 +117,9 @@ CoilSidebarScaffold(
       const DemoSection(
         title: 'Actions and badges',
         description:
-            'Up to three actions per row show on hover, only the last on '
-            'touch; the badge keeps the last slot. The section label has its '
-            'own.',
+            'A row shows up to three actions on hover but only the last one on '
+            'touch, and a badge keeps the last slot. The section label can '
+            'have actions of its own.',
         padding: 0,
         child: _Frame(
           child: _RailOnly(
@@ -133,8 +133,8 @@ CoilSidebarScaffold(
       DemoSection(
         title: 'Header and footer',
         description:
-            'Stacked, every part gets its own row and actions are menu rows. '
-            'Horizontal packs them into 24 icon buttons.',
+            'Stacked gives every part its own row and turns actions into menu '
+            'rows, while horizontal packs them into 24 pixel icon buttons.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -154,8 +154,9 @@ CoilSidebarScaffold(
       DemoSection(
         title: 'Callouts',
         description:
-            'Hover fans an inline pile out into a list; dismissing one '
-            'brings the next. Banners never fan.',
+            'Hovering an inline pile fans it out into a list, and dismissing '
+            'one brings the next to the front. Banners stay stacked and do '
+            'not fan out.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -178,9 +179,9 @@ CoilSidebarScaffold(
       const DemoSection(
         title: 'Both sides on a phone',
         description:
-            'Two nested scaffolds, one sidebar per side. Drag the page '
-            'sideways anywhere: the cards scroll first and hand over at '
-            'their ends.',
+            'Two nested scaffolds give a sidebar on each side. Drag the page '
+            'sideways anywhere; the cards scroll first and hand the drag over '
+            'when they reach their ends.',
         child: _PhoneFrame(),
       ),
     ],

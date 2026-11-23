@@ -10,7 +10,7 @@ const tooltipEntry = CatalogEntry(
   slug: 'tooltip',
   title: 'Tooltip',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'Names icon-only controls on hover, focus or Android long-press.',
+  summary: 'Names icon-only controls on hover, focus or a long press.',
   page: TooltipPage.new,
 );
 
@@ -29,8 +29,9 @@ class _TooltipPageState extends State<TooltipPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Tooltip',
     summary:
-        'Names a control that has no label. In a group, one bubble glides '
-        'from button to button instead of closing and reopening.',
+        'A tooltip names a control that has no visible label. Inside a '
+        'group, a single bubble glides from one button to the next instead '
+        'of closing and reopening.',
     hero: const _EditorToolbar(),
     usage: '''
 CoilTooltipGroup(
@@ -53,35 +54,38 @@ CoilTooltipGroup(
     notes: const [
       CatalogNote(
         'Pointer',
-        'The bubble opens after 200 ms of hover and closes on leave, '
-            'blur, Esc or pointer-down. Within 300 ms of another closing it '
-            'opens at once.',
+        'The bubble opens after the pointer has hovered for 200 ms and '
+            'closes when it leaves, on blur, on Esc or on pointer down. If '
+            'another tooltip closed within the last 300 ms, it opens at once.',
       ),
       CatalogNote(
         'Keyboard',
-        'Keyboard focus shows it immediately, so Tab through a toolbar '
-            'reads out each button.',
+        'Keyboard focus shows the bubble immediately, so tabbing through a '
+            'toolbar names each button as it is reached.',
       ),
       CatalogNote(
         'Touch',
-        'On Android a long press on an icon-only button shows it above the '
-            'finger and never fires the button. iOS shows none by default, '
-            'and an element with a context menu opens the menu instead.',
+        'On Android a long press on an icon-only button shows the bubble '
+            'above the finger without firing the button. iOS shows none by '
+            'default, and an element with a context menu opens the menu '
+            'instead.',
       ),
       CatalogNote(
         'Screen readers',
-        'The label is also exposed as the trigger’s tooltip semantics.',
+        'The message is also exposed as the tooltip semantics of the '
+            'trigger.',
       ),
       CatalogNote(
         "Do / Don't",
-        'Tooltip icon-only controls. Never put required information in one, '
-            'and never tooltip a button that already has a label.',
+        'Use tooltips for icon-only controls, and skip them on buttons that '
+            'already have a label. Required information should never live '
+            'only in a tooltip.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
-        description: 'Hover or focus the button.',
+        description: 'Hover over the button or focus it with the keyboard.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

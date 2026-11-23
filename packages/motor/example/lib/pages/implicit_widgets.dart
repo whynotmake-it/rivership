@@ -3,11 +3,13 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
+import 'package:motor_example/widgets/code_block.dart';
 import 'package:motor_example/widgets/icons.dart';
 import 'package:motor_example/widgets/style.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// Spring versions of Flutter's implicit animation widgets.
+/// Spring versions of Flutter's implicit animation widgets, side by side
+/// with the originals.
 class ImplicitWidgetsPage extends StatefulWidget {
   const ImplicitWidgetsPage({super.key});
 
@@ -27,165 +29,587 @@ enum _Feel {
   final Motion motion;
 }
 
-enum _Example { sizeSwitcher, container, size }
+typedef _Status = ({Glyph glyph, String label});
 
-const _counts = [1, 12, 128, 1280];
+const _statuses = <_Status>[
+  (glyph: Glyph.check, label: 'Saved'),
+  (glyph: Glyph.cloudUpload, label: 'Uploading 3 files'),
+  (glyph: Glyph.cloudOff, label: "Can't reach the server. Retrying"),
+];
 
 class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
-  final _code = ValueNotifier('');
-
   var _feel = _Feel.smooth;
-  var _example = _Example.sizeSwitcher;
-  var _countIndex = 0;
+  var _end = false;
+  var _status = 0;
+  var _count = 0;
+  var _direction = 1;
   var _expanded = false;
-  var _more = false;
+  var _turned = false;
+  var _pressed = false;
+  var _visible = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _updateCode();
-  }
-
-  @override
-  void dispose() {
-    _code.dispose();
-    super.dispose();
-  }
-
-  void _updateCode() {
-    final motion = '.${_feel.call}()';
-    _code.value = switch (_example) {
-      _Example.sizeSwitcher =>
-        '// The label cross-fades and the width springs.\n'
-            'MotionSizeSwitcher(\n'
-            '  motion: $motion,\n'
-            '  child: Text(\n'
-            "    '${_label(_counts[_countIndex])}',\n"
-            '    key: ValueKey(${_counts[_countIndex]}),\n'
-            '  ),\n'
-            ')',
-      _Example.container =>
-        '// Each property springs on its own track.\n'
-            'MotionContainer(\n'
-            '  motion: $motion,\n'
-            '  width: ${_expanded ? 128 : 64},\n'
-            '  height: 64,\n'
-            '  decoration: BoxDecoration(\n'
-            '    color: ${_expanded ? 'foreground' : 'accent'},\n'
-            '    borderRadius: .circular(${_expanded ? 'container' : 'item'}),\n'
-            '  ),\n'
-            ')',
-      _Example.size =>
-        '// Follows its child\'s size, with velocity.\n'
-            'MotionSize(\n'
-            '  motion: $motion,\n'
-            '  alignment: .topLeft,\n'
-            '  child: ${_more ? 'paragraph' : 'SizedBox(width: .infinity)'},\n'
-            ')',
-    };
-  }
-
-  void _touch(_Example example, VoidCallback change) {
-    setState(() {
-      _example = example;
-      change();
-    });
-    _updateCode();
-  }
-
-  static String _label(int count) => count == 1 ? '1 item' : '$count items';
+  /// Slides each number in from the direction of the change and the old one
+  /// out the other way, driven by the same presence the fade uses.
+  late final AnimatedSwitcherTransitionBuilder _slide = (child, presence) {
+    return ListenableBuilder(
+      listenable: presence,
+      child: child,
+      builder: (context, child) {
+        final entering = presence.status != AnimationStatus.reverse;
+        final p = presence.value;
+        final away = (1 - p) * (entering ? _direction : -_direction);
+        return FractionalTranslation(
+          translation: Offset(0, away * 0.6),
+          child: Opacity(opacity: p.clamp(0.0, 1.0), child: child),
+        );
+      },
+    );
+  };
 
   @override
   Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
     final gap = CoilTheme.metricsOf(context).gap;
+    final theme = CoilTheme.motionOf(context);
     final motion = _feel.motion;
-    // Under 900 the stage can be under 600 wide, where the cells stack.
-    final stacked = MediaQuery.sizeOf(context).width < 900;
-    return ChapterPage(
-      chapter: chapterNamed('Implicit widgets'),
+    final call = '.${_feel.call}()';
+    final colors = CoilTheme.of(context).colors;
+    final radii = CoilTheme.radiiOf(context);
+    final status = _statuses[_status];
+    final nextStatus = () => setState(() {
+      _status = (_status + 1) % _statuses.length;
+    });
+    final flip = () => setState(() => _end = !_end);
+    final alignment = _end ? Alignment.centerRight : Alignment.centerLeft;
+
+    Widget section({
+      required String title,
+      required String caption,
+      required Widget stage,
+      required String code,
+    }) {
+      return Column(
+        crossAxisAlignment: .stretch,
+        children: [
+          Text(title, style: text.subtitle.copyWith(fontWeight: text.emphasis)),
+          const SizedBox(height: 4),
+          Text(caption, style: text.muted.caption),
+          const SizedBox(height: 12),
+          DemoStage(child: stage),
+          SizedBox(height: gap),
+          CodeBlock(code),
+        ],
+      );
+    }
+
+    Widget dot(Color color) => DecoratedBox(
+      decoration: ShapeDecoration(color: color, shape: const CircleBorder()),
+      child: const SizedBox.square(dimension: 28),
+    );
+
+    Widget track({required Widget dot}) => GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: flip,
+      child: SizedBox(
+        height: 44,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ColoredBox(
+              color: colors.border,
+              child: const SizedBox(height: 1, width: double.infinity),
+            ),
+            dot,
+          ],
+        ),
+      ),
+    );
+
+    Widget pill(Widget switcher) => DecoratedBox(
+      decoration: ShapeDecoration(
+        color: colors.surface(4),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: .circular(999),
+          side: BorderSide(color: colors.border),
+        ),
+      ),
+      child: Padding(
+        padding: const .symmetric(horizontal: 14, vertical: 8),
+        child: switcher,
+      ),
+    );
+
+    Widget statusLabel(_Status status, int index) => Row(
+      key: ValueKey(index),
+      mainAxisSize: .min,
+      children: [
+        GlyphIcon(status.glyph, size: 16),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            status.label,
+            style: text.body.copyWith(color: colors.foreground),
+          ),
+        ),
+      ],
+    );
+
+    Widget tile({required Widget child}) => DecoratedBox(
+      decoration: ShapeDecoration(
+        color: colors.surface(4),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: .circular(radii.item),
+          side: BorderSide(color: colors.border),
+        ),
+      ),
+      child: SizedBox.square(dimension: 48, child: Center(child: child)),
+    );
+
+    Widget helper(String name, String hint, Widget demo) => Column(
+      crossAxisAlignment: .center,
+      children: [
+        SizedBox(height: 56, child: Center(child: demo)),
+        const SizedBox(height: 8),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          style: mono(text.caption.fontSize ?? 12, color: colors.foreground),
+        ),
+        Text(hint, textAlign: TextAlign.center, style: text.muted.caption),
+      ],
+    );
+
+    return GalleryPage(
+      title: chapterNamed('Implicit widgets').title,
       lead:
           'motor_widgets has spring versions of Flutter\'s implicit animation '
-          'widgets. Tap quickly: a change mid-flight keeps its velocity '
-          'instead of starting over.',
-      code: _code,
-      stageHeight: stacked ? 740 : 300,
-      stage: LayoutBuilder(
-        builder: (context, constraints) {
-          const inset = 16.0;
-          const spacing = 24.0;
-          final wide = constraints.maxWidth >= 600;
-          final cells = [
-            _Cell(
-              label: 'MotionSizeSwitcher',
-              example: _Counter(
-                motion: motion,
-                count: _counts[_countIndex],
-                gap: gap,
-                onFewer: _countIndex == 0
-                    ? null
-                    : () => _touch(_Example.sizeSwitcher, () => _countIndex--),
-                onMore: _countIndex == _counts.length - 1
-                    ? null
-                    : () => _touch(_Example.sizeSwitcher, () => _countIndex++),
-              ),
+          'widgets. Change a value while it is still moving and compare: a '
+          'spring keeps the speed it has instead of starting over.',
+      children: [
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: CoilTabs<_Feel>(
+            value: _feel,
+            onChanged: (feel) => setState(() => _feel = feel),
+            tabs: [
+              for (final feel in _Feel.values)
+                CoilTab(value: feel, label: Text(feel.label)),
+            ],
+          ),
+        ),
+        section(
+          title: 'Interrupt it',
+          caption:
+              'Tap Switch side again before the dots arrive. Flutter\'s '
+              'starts its curve over from a standstill; the spring turns '
+              'around with the speed it has.',
+          stage: _Comparison(
+            control: CoilButton(
+              variant: .secondary,
+              size: .compact,
+              leading: const GlyphIcon(Glyph.repeat),
+              onPressed: flip,
+              child: const Text('Switch side'),
             ),
-            _Cell(
-              label: 'MotionContainer',
-              example: _Square(
-                motion: motion,
-                expanded: _expanded,
-                onToggle: () =>
-                    _touch(_Example.container, () => _expanded = !_expanded),
-              ),
-              control: CoilButton(
-                variant: .secondary,
-                size: .compact,
-                onPressed: () =>
-                    _touch(_Example.container, () => _expanded = !_expanded),
-                child: const Text('Toggle'),
-              ),
-            ),
-            _Cell(
-              label: 'MotionSize',
-              example: _Reveal(motion: motion, open: _more),
-              control: CoilButton(
-                variant: .secondary,
-                size: .compact,
-                onPressed: () => _touch(_Example.size, () => _more = !_more),
-                child: Text(_more ? 'Show less' : 'Show more'),
-              ),
-            ),
-          ];
-          return SingleChildScrollView(
-            padding: const .all(inset),
-            child: Column(
-              crossAxisAlignment: .start,
-              children: [
-                CoilTabs<_Feel>(
-                  value: _feel,
-                  onChanged: (feel) {
-                    setState(() => _feel = feel);
-                    _updateCode();
-                  },
-                  tabs: [
-                    for (final feel in _Feel.values)
-                      CoilTab(value: feel, label: Text(feel.label)),
-                  ],
+            flutter: _Side(
+              name: 'AnimatedAlign',
+              kind: 'Flutter',
+              child: track(
+                dot: AnimatedAlign(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                  alignment: alignment,
+                  child: dot(colors.mutedForeground),
                 ),
-                SizedBox(height: spacing),
-                Flex(
-                  direction: wide ? Axis.horizontal : Axis.vertical,
-                  crossAxisAlignment: wide
-                      ? CrossAxisAlignment.start
-                      : CrossAxisAlignment.stretch,
-                  spacing: spacing,
-                  children: [
-                    for (final cell in cells)
-                      if (wide) Expanded(child: cell) else cell,
-                  ],
+              ),
+            ),
+            motor: _Side(
+              name: 'MotionAlign',
+              kind: 'motor_widgets',
+              child: track(
+                dot: MotionAlign(
+                  motion: motion,
+                  debugLabel: 'Dot',
+                  alignment: alignment,
+                  child: dot(colors.brand),
+                ),
+              ),
+            ),
+          ),
+          code:
+              '// Flutter: a new 500 ms curve on every change.\n'
+              'AnimatedAlign(\n'
+              '  duration: .new(milliseconds: 500),\n'
+              '  curve: Curves.easeInOut,\n'
+              '  alignment: ${_end ? '.centerRight' : '.centerLeft'},\n'
+              '  child: dot,\n'
+              ')\n'
+              '\n'
+              '// motor_widgets: the spring keeps its velocity.\n'
+              'MotionAlign(\n'
+              '  motion: $call,\n'
+              '  alignment: ${_end ? '.centerRight' : '.centerLeft'},\n'
+              '  child: dot,\n'
+              ')',
+        ),
+        section(
+          title: 'Size switcher',
+          caption:
+              'Tap Next status quickly. Flutter\'s box keeps the larger size '
+              'until the old label has faded out, then shrinks. '
+              'MotionSizeSwitcher resizes as the labels cross-fade and keeps '
+              'its speed when you tap again.',
+          stage: _Comparison(
+            control: CoilButton(
+              variant: .secondary,
+              size: .compact,
+              leading: const GlyphIcon(Glyph.arrowRight),
+              onPressed: nextStatus,
+              child: const Text('Next status'),
+            ),
+            flutter: _Side(
+              name: 'AnimatedSize + AnimatedSwitcher',
+              kind: 'Flutter',
+              child: pill(
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: statusLabel(status, _status),
+                  ),
+                ),
+              ),
+            ),
+            motor: _Side(
+              name: 'MotionSizeSwitcher',
+              kind: 'motor_widgets',
+              child: pill(
+                MotionSizeSwitcher(
+                  motion: theme.fade,
+                  sizeMotion: motion,
+                  immediateResize: true,
+                  // Labels hang from the icon's edge, so a shrinking box
+                  // only trims a leaving label's end while it fades.
+                  alignment: AlignmentDirectional.centerStart,
+                  debugLabel: 'Status pill',
+                  transitionBuilder: CoilBlurFade.transition(
+                    alignment: AlignmentDirectional.centerStart,
+                  ),
+                  child: statusLabel(status, _status),
+                ),
+              ),
+            ),
+          ),
+          code:
+              '// Flutter: fades, and the size follows the stack.\n'
+              'AnimatedSize(\n'
+              '  duration: .new(milliseconds: 300),\n'
+              '  child: AnimatedSwitcher(\n'
+              '    duration: .new(milliseconds: 300),\n'
+              '    child: Label(key: ValueKey(status)),\n'
+              '  ),\n'
+              ')\n'
+              '\n'
+              '// motor_widgets: switches at once, resizes during the fade.\n'
+              'MotionSizeSwitcher(\n'
+              '  immediateResize: true,\n'
+              '  alignment: AlignmentDirectional.centerStart,\n'
+              '  sizeMotion: $call,\n'
+              '  motion: fade,\n'
+              '  transitionBuilder: CoilBlurFade.transition(),\n'
+              '  child: Label(key: ValueKey(status)),\n'
+              ')',
+        ),
+        section(
+          title: 'Counter',
+          caption:
+              'Tap − or + quickly. Each number slides in from the direction '
+              'of the change while the old one leaves, and a fast tap '
+              'carries the motion on instead of restarting it.',
+          stage: Padding(
+            padding: const .all(16),
+            child: Center(
+              child: Row(
+                mainAxisSize: .min,
+                spacing: 16,
+                children: [
+                  CoilButton.icon(
+                    variant: .secondary,
+                    size: .compact,
+                    semanticLabel: 'Decrease',
+                    icon: const GlyphIcon(Glyph.minus),
+                    onPressed: () => setState(() {
+                      _direction = -1;
+                      _count--;
+                    }),
+                  ),
+                  SizedBox(
+                    width: 96,
+                    child: ClipRect(
+                      child: MotionSwitcher(
+                        motion: motion,
+                        debugLabel: 'Counter',
+                        transitionBuilder: _slide,
+                        child: FittedBox(
+                          key: ValueKey(_count),
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '$_count',
+                            maxLines: 1,
+                            style: text.display.tabular,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  CoilButton.icon(
+                    variant: .secondary,
+                    size: .compact,
+                    semanticLabel: 'Increase',
+                    icon: const GlyphIcon(Glyph.plus),
+                    onPressed: () => setState(() {
+                      _direction = 1;
+                      _count++;
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          code:
+              'MotionSwitcher(\n'
+              '  motion: $call,\n'
+              '  transitionBuilder: slideAndFade,\n'
+              '  child: Text(\n'
+              "    '$_count',\n"
+              '    key: ValueKey($_count),\n'
+              '  ),\n'
+              ')',
+        ),
+        section(
+          title: 'One spring per property',
+          caption:
+              'Toggle twice quickly: the size and the color each keep their '
+              'own spring.',
+          stage: Padding(
+            padding: const .all(16),
+            child: Column(
+              mainAxisSize: .min,
+              crossAxisAlignment: .stretch,
+              children: [
+                SizedBox(
+                  height: 112,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _expanded = !_expanded),
+                      child: MotionContainer(
+                        motion: motion,
+                        motions: {
+                          MotionContainerTrack.color: theme.fade,
+                          MotionContainerTrack.minWidth: const .bouncySpring(),
+                          MotionContainerTrack.maxWidth: const .bouncySpring(),
+                          MotionContainerTrack.minHeight: const .bouncySpring(),
+                          MotionContainerTrack.maxHeight: const .bouncySpring(),
+                        },
+                        debugLabel: 'Square',
+                        width: _expanded ? 160 : 64,
+                        height: _expanded ? 96 : 64,
+                        decoration: BoxDecoration(
+                          color: _expanded ? colors.foreground : colors.accent,
+                          borderRadius: .circular(
+                            _expanded ? radii.container : radii.item,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: CoilButton(
+                    variant: .secondary,
+                    size: .compact,
+                    leading: const GlyphIcon(Glyph.move),
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    child: Text(_expanded ? 'Shrink' : 'Expand'),
+                  ),
                 ),
               ],
             ),
+          ),
+          code:
+              'MotionContainer(\n'
+              '  motion: $call,\n'
+              '  motions: {\n'
+              '    .color: fade,\n'
+              '    .minWidth: .bouncySpring(),\n'
+              '    .maxWidth: .bouncySpring(),\n'
+              '    .minHeight: .bouncySpring(),\n'
+              '    .maxHeight: .bouncySpring(),\n'
+              '  },\n'
+              '  width: ${_expanded ? 160 : 64},\n'
+              '  height: ${_expanded ? 96 : 64},\n'
+              '  decoration: BoxDecoration(\n'
+              '    color: ${_expanded ? 'foreground' : 'accent'},\n'
+              '    borderRadius: .circular(${_expanded ? 'container' : 'item'}),\n'
+              '  ),\n'
+              ')',
+        ),
+        section(
+          title: 'Small helpers',
+          caption:
+              'Tap the chevron and the dot, press and hold the tile. Each '
+              'one retargets mid-flight without a controller.',
+          stage: Padding(
+            padding: const .all(16),
+            child: Row(
+              crossAxisAlignment: .start,
+              spacing: 8,
+              children: [
+                Expanded(
+                  child: helper(
+                    'MotionRotation',
+                    'Tap',
+                    GestureDetector(
+                      onTap: () => setState(() => _turned = !_turned),
+                      child: tile(
+                        child: MotionRotation(
+                          turns: _turned ? 0.5 : 0,
+                          motion: motion,
+                          debugLabel: 'Chevron',
+                          child: const GlyphIcon(Glyph.chevronDown, size: 20),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: helper(
+                    'MotionScale',
+                    'Press and hold',
+                    GestureDetector(
+                      onTapDown: (_) => setState(() => _pressed = true),
+                      onTapUp: (_) => setState(() => _pressed = false),
+                      onTapCancel: () => setState(() => _pressed = false),
+                      child: MotionScale(
+                        scale: _pressed ? 0.8 : 1,
+                        motion: motion,
+                        debugLabel: 'Tile',
+                        child: tile(child: dot(colors.foreground)),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: helper(
+                    'MotionOpacity',
+                    'Tap',
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _visible = !_visible),
+                      child: SizedBox.square(
+                        dimension: 48,
+                        child: Center(
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              DecoratedBox(
+                                decoration: ShapeDecoration(
+                                  shape: CircleBorder(
+                                    side: BorderSide(color: colors.border),
+                                  ),
+                                ),
+                                child: const SizedBox.square(dimension: 28),
+                              ),
+                              MotionOpacity(
+                                opacity: _visible ? 1 : 0,
+                                motion: motion,
+                                debugLabel: 'Dot',
+                                child: dot(colors.brand),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          code:
+              'MotionRotation(\n'
+              '  motion: $call,\n'
+              '  turns: ${_turned ? 0.5 : 0},\n'
+              '  child: chevron,\n'
+              ')\n'
+              '\n'
+              'MotionScale(\n'
+              '  motion: $call,\n'
+              '  scale: ${_pressed ? 0.8 : 1},\n'
+              '  child: tile,\n'
+              ')\n'
+              '\n'
+              'MotionOpacity(\n'
+              '  motion: $call,\n'
+              '  opacity: ${_visible ? 1 : 0},\n'
+              '  child: dot,\n'
+              ')',
+        ),
+        NextChapter(next: chapterNamed('Implicit widgets').next!),
+      ],
+    );
+  }
+}
+
+/// Two demos side by side on a stage of 560 or more, stacked below it, with
+/// the one control under both.
+class _Comparison extends StatelessWidget {
+  const _Comparison({
+    required this.flutter,
+    required this.motor,
+    required this.control,
+  });
+
+  final Widget flutter;
+  final Widget motor;
+  final Widget control;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    return Padding(
+      padding: const .all(16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 560;
+          return Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: .stretch,
+            children: [
+              if (wide)
+                Row(
+                  crossAxisAlignment: .start,
+                  spacing: 24,
+                  children: [
+                    Expanded(child: flutter),
+                    Expanded(child: motor),
+                  ],
+                )
+              else ...[
+                flutter,
+                const SizedBox(height: 12),
+                ColoredBox(
+                  color: colors.border,
+                  child: const SizedBox(height: 1),
+                ),
+                const SizedBox(height: 12),
+                motor,
+              ],
+              const SizedBox(height: 16),
+              Center(child: control),
+            ],
           );
         },
       ),
@@ -193,165 +617,32 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
   }
 }
 
-/// A demo: the widget's name at the top, the example centered in a fixed
-/// area, and its control centered under it.
-class _Cell extends StatelessWidget {
-  const _Cell({required this.label, required this.example, this.control});
+/// One half of a comparison: the widget's name and where it comes from at
+/// the top, the demo centered under them.
+class _Side extends StatelessWidget {
+  const _Side({required this.name, required this.kind, required this.child});
 
-  /// The height every example is centered in.
-  static const exampleHeight = 120.0;
-
-  final String label;
-  final Widget example;
-
-  /// Under the example; the counter's buttons are part of the example.
-  final Widget? control;
+  final String name;
+  final String kind;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
     final colors = CoilTheme.of(context).colors;
-    final gap = CoilTheme.metricsOf(context).gap;
     return Column(
       crossAxisAlignment: .stretch,
       children: [
-        Text(label, style: mono(11, color: colors.mutedForeground)),
-        SizedBox(
-          height: exampleHeight,
-          child: ClipRect(child: Center(child: example)),
+        Text(
+          name,
+          style: mono(text.caption.fontSize ?? 12, color: colors.foreground),
         ),
-        if (control case final control?) ...[
-          SizedBox(height: gap),
-          Center(child: control),
-        ],
+        Text(kind, style: text.muted.caption),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 72),
+          child: Center(child: child),
+        ),
       ],
-    );
-  }
-}
-
-class _Counter extends StatelessWidget {
-  const _Counter({
-    required this.motion,
-    required this.count,
-    required this.gap,
-    required this.onFewer,
-    required this.onMore,
-  });
-
-  final Motion motion;
-  final int count;
-  final double gap;
-  final VoidCallback? onFewer;
-  final VoidCallback? onMore;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
-    final radii = CoilTheme.radiiOf(context);
-    final text = CoilTheme.textOf(context);
-    // Scales down rather than overflowing in a narrow cell or at large text.
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: .min,
-        spacing: gap,
-        children: [
-          CoilButton.icon(
-            variant: .secondary,
-            size: .compact,
-            semanticLabel: 'Fewer items',
-            icon: const GlyphIcon(Glyph.minus),
-            onPressed: onFewer,
-          ),
-          DecoratedBox(
-            decoration: ShapeDecoration(
-              color: colors.surface(4),
-              shape: RoundedSuperellipseBorder(
-                borderRadius: .circular(radii.item),
-                side: BorderSide(color: colors.border),
-              ),
-            ),
-            child: Padding(
-              padding: const .symmetric(horizontal: 16, vertical: 10),
-              child: MotionSizeSwitcher(
-                motion: motion,
-                debugLabel: 'Counter pill',
-                child: Text(
-                  count == 1 ? '1 item' : '$count items',
-                  key: ValueKey(count),
-                  maxLines: 1,
-                  style: text.body.tabular,
-                ),
-              ),
-            ),
-          ),
-          CoilButton.icon(
-            variant: .secondary,
-            size: .compact,
-            semanticLabel: 'More items',
-            icon: const GlyphIcon(Glyph.plus),
-            onPressed: onMore,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Square extends StatelessWidget {
-  const _Square({
-    required this.motion,
-    required this.expanded,
-    required this.onToggle,
-  });
-
-  final Motion motion;
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
-    final radii = CoilTheme.radiiOf(context);
-    return GestureDetector(
-      onTap: onToggle,
-      child: MotionContainer(
-        motion: motion,
-        debugLabel: 'Square',
-        width: expanded ? 128 : 64,
-        height: 64,
-        // A BoxDecoration's color and radius spring; other decorations change
-        // at once.
-        decoration: BoxDecoration(
-          color: expanded ? colors.foreground : colors.accent,
-          borderRadius: .circular(expanded ? radii.container : radii.item),
-        ),
-      ),
-    );
-  }
-}
-
-class _Reveal extends StatelessWidget {
-  const _Reveal({required this.motion, required this.open});
-
-  final Motion motion;
-  final bool open;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = CoilTheme.textOf(context);
-    return MotionSize(
-      motion: motion,
-      debugLabel: 'Paragraph size',
-      alignment: .topCenter,
-      child: Text(
-        open
-            ? 'MotionSize springs to its child\'s size. When its '
-                  'constraints change, it follows at once, so a resized '
-                  'window never lags.'
-            : 'MotionSize springs to its child\'s size.',
-        textAlign: TextAlign.center,
-        style: text.muted.body,
-      ),
     );
   }
 }

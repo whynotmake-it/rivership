@@ -7,9 +7,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_example/main.dart' as example;
 
-Future<RootStackRouter> _pumpApp(WidgetTester tester) async {
+Future<RootStackRouter> _pumpApp(
+  WidgetTester tester, {
+  Size size = const Size(430, 1800),
+  List<AutoRoute>? routes,
+}) async {
   tester.view
-    ..physicalSize = const Size(430, 1800)
+    ..physicalSize = size
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   // A fresh router per test; the app's top-level `router` is shared.
@@ -19,7 +23,7 @@ Future<RootStackRouter> _pumpApp(WidgetTester tester) async {
         name: 'Home',
         path: '/',
         type: const RouteType.cupertino(),
-        children: example.motorRoutes,
+        children: routes ?? example.motorRoutes,
       ),
     ],
   );
@@ -71,5 +75,51 @@ void main() {
     expect(pages(), ['Phases']);
     expect(find.text('Autoplay'), findsOneWidget);
     semantics.dispose();
+  });
+
+  // On a phone the page scrolls and the sidebar is a drawer; neither may
+  // take a drag that starts on something you can pick up.
+  for (final (direction, step) in const [
+    ('up', Offset(0, -12)),
+    ('sideways', Offset(12, 0)),
+  ]) {
+    testWidgets('on a phone, a drag $direction moves the card, not the page', (
+      tester,
+    ) async {
+      final router = await _pumpApp(tester, size: const Size(390, 844));
+      unawaited(router.navigate(const NamedRoute('Card stack')));
+      await tester.pumpAndSettle();
+      final card = find.text('1 of 3');
+      final lead = find.textContaining('flies clear of the stack');
+      final cardAt = tester.getCenter(card);
+      final leadAt = tester.getTopLeft(lead);
+
+      final drag = await tester.startGesture(cardAt);
+      for (var i = 0; i < 10; i++) {
+        await drag.moveBy(step);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // The card followed the finger the whole way.
+      expect((tester.getCenter(card) - cardAt).distance, greaterThan(100));
+      expect(tester.getTopLeft(lead), leadAt);
+      await drag.up();
+      await tester.pumpAndSettle();
+      expect(find.text('Overview').hitTestable(), findsNothing);
+    });
+  }
+
+  testWidgets('with onHome, the logo leads back to the app around it', (
+    tester,
+  ) async {
+    var home = 0;
+    await _pumpApp(
+      tester,
+      size: const Size(1000, 800),
+      routes: example.motorRoutesFor(onHome: () => home++),
+    );
+    // The sidebar's "Motor", above the overview's title of the same name.
+    await tester.tap(find.text('Motor').first);
+    await tester.pump();
+    expect(home, 1);
   });
 }

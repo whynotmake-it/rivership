@@ -64,7 +64,21 @@ NamedRouteDef _exampleRoute({
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
-  final router = RootStackRouter.build(
+  // Each example's logo leads back here, so the callbacks need the router.
+  late final RootStackRouter router;
+  void home() => router.navigate(const NamedRoute('Home'));
+  void openPackage(String name) {
+    final path = switch (name) {
+      'motor' => '/motor',
+      'heroine' => '/heroine',
+      'coil' => '/coil',
+      'stupid_simple_sheet' => '/stupid_simple_sheet',
+      _ => null,
+    };
+    if (path != null) router.navigatePath(path);
+  }
+
+  router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
         path: '/',
@@ -75,18 +89,22 @@ void main() async {
       _exampleRoute(
         name: 'Heroine',
         path: '/heroine',
-        children: heroineRoutes,
+        children: heroineRoutesFor(onHome: home),
       ),
       _exampleRoute(
         name: 'Motor',
         path: '/motor',
-        children: motorRoutes,
+        children: motorRoutesFor(onHome: home),
       ),
-      coilCatalogRoute(path: '/coil'),
+      coilCatalogRoute(
+        path: '/coil',
+        onHome: home,
+        onOpenPackage: openPackage,
+      ),
       _exampleRoute(
         name: 'Stupid Simple Sheet',
         path: '/stupid_simple_sheet',
-        children: stupidSimpleSheetRoutes,
+        children: buildStupidSimpleSheetRoutes(onHome: home),
       ),
     ],
   );

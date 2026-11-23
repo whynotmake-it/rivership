@@ -8,7 +8,7 @@ const tableEntry = CatalogEntry(
   slug: 'table',
   title: 'Table',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Rows to select or open, one tab stop with arrow keys.',
+  summary: 'Rows you can select or open, with the keyboard or a tap.',
   page: TablePage.new,
 );
 
@@ -59,7 +59,7 @@ class _TablePageState extends State<TablePage> {
   var _selected = <String>{};
   var _sortKey = _SortKey.invoice;
   var _direction = CoilSortDirection.ascending;
-  String _message = 'Press Enter, or tap a row, to open it.';
+  String _message = 'Tap a row, or select it and press Enter, to open it.';
 
   var _size = CoilSize.regular;
   var _selectable = true;
@@ -197,8 +197,9 @@ class _TablePageState extends State<TablePage> {
     return CatalogPage(
       title: 'Table',
       summary:
-          'Rows to select or open. The table is one tab stop: arrows move, '
-          'Space selects, Enter opens.',
+          'A table of rows you can select or open. It takes a single tab '
+          'stop: use the arrow keys to move between rows, Space to select one '
+          'and Enter to open it.',
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -260,23 +261,26 @@ CoilTable<String>(
       notes: const [
         CatalogNote(
           'Keyboard',
-          'Tab reaches the table once. Arrows move the active row, Space '
-              'selects, Enter opens, and Left and Right scroll a wide table.',
+          'Tab reaches the table once. From there the up and down arrows move '
+              'the active row, Space selects it and Enter opens it, while '
+              'Left and Right scroll a table that is wider than its box.',
         ),
         CatalogNote(
           'Touch',
-          'With onRowActivated a tap opens the row, so give selection its '
-              'own checkbox column. Without it, a tap toggles selection.',
+          'When you pass onRowActivated a tap opens the row, so selection '
+              'needs its own checkbox column. Without it, a tap toggles '
+              'selection.',
         ),
         CatalogNote(
           'Pointer',
-          'The row highlight glides on quick. Selected rows merge into one '
-              'block on standard.',
+          'The row highlight glides on the quick spring, and selected rows '
+              'next to each other merge into one block on standard.',
         ),
         CatalogNote(
           'Accessibility',
-          'Table, row and cell roles with column headers. A sorted header '
-              'announces its direction. Rows must be distinct values.',
+          'Rows and cells carry table semantics along with their column '
+              'headers, a sorted header announces its direction, and the '
+              'values you pass as rows have to be distinct.',
         ),
       ],
       children: [
@@ -284,7 +288,7 @@ CoilTable<String>(
           title: 'Playground',
           description:
               'Columns that do not fit scroll sideways, and the edges fade '
-              'where there is more.',
+              'wherever there is more to see.',
           controls: DemoControls(
             children: [
               DemoControl.choice(

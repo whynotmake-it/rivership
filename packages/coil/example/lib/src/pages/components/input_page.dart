@@ -10,7 +10,9 @@ const inputEntry = CatalogEntry(
   slug: 'input',
   title: 'Input',
   group: CatalogGroup.leafControls,
-  summary: 'Single-line text with native editing, slots and validation.',
+  summary:
+      'Single-line text that edits like the platform’s own fields, with '
+      'slots and validation.',
   page: InputPage.new,
 );
 
@@ -49,8 +51,9 @@ class _InputPageState extends State<InputPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Input',
     summary:
-        'Single-line text that edits like the platform’s own: its selection, '
-        'magnifier and edit menu. Pair it with a Field label.',
+        'An input edits single-line text the way the platform’s own fields '
+        'do, with the same selection, magnifier and edit menu. Pair it with a '
+        'field so that it has a label.',
     hero: const _SignInForm(),
     usage: '''
 CoilField(
@@ -67,30 +70,31 @@ CoilField(
     notes: const [
       CatalogNote(
         'Focus',
-        'A field has no focus ring. Its border darkens instead, however it '
-            'was focused.',
+        'An input has no focus ring, and its border darkens instead, '
+            'whichever way it received focus.',
       ),
       CatalogNote(
         'Pointer',
         'Selection, the context menu and the shortcuts are the platform’s '
-            'own: double-click selects a word, and the menu offers copy and '
-            'paste.',
+            'own, so a double-click selects a word and the menu offers copy '
+            'and paste.',
       ),
       CatalogNote(
         'Touch',
-        'The platform draws its own handles, magnifier and edit menu. The '
-            'field scrolls itself 16 px clear of the keyboard.',
+        'The platform draws its own handles, magnifier and edit menu, and '
+            'the input scrolls itself 16 px clear of the keyboard.',
       ),
       CatalogNote(
         'Keyboard',
-        'Return runs onSubmitted, except while it commits an IME '
+        'Return runs onSubmitted, except while it is committing an IME '
             'composition, when it only commits. Set keyboardType, '
-            'textInputAction and autofillHints per field.',
+            'textInputAction and autofillHints for each input.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'A placeholder is a hint, not the label. Slots hold an icon, a '
-            'unit or a compact button without growing the field.',
+        'A placeholder is a hint and should not stand in for the label. The '
+            'slots can hold an icon, a unit or a compact button without '
+            'making the input any taller.',
       ),
     ],
     children: [
@@ -139,13 +143,13 @@ CoilField(
       DemoSection(
         title: 'Slots and formatting',
         description:
-            'A short slot sits inline. Formatters and keyboard types keep '
-            'the wrong characters out.',
+            'A short slot sits inline with the text, and formatters and '
+            'keyboard types keep unwanted characters out.',
         child: DemoColumn(
           children: [
             CoilField(
               label: const Text('Amount'),
-              description: const Text('Digits only.'),
+              description: const Text('Digits only'),
               child: CoilInput(
                 placeholder: const Text('0'),
                 keyboardType: TextInputType.number,
@@ -155,7 +159,7 @@ CoilField(
             ),
             CoilField(
               label: const Text('Search'),
-              description: const Text('Press Return to search.'),
+              description: const Text('Press Return to search'),
               child: CoilInput(
                 placeholder: const Text('Search members'),
                 leading: const CatalogIcon(Glyph.search),
@@ -243,7 +247,7 @@ class _SignInFormState extends State<_SignInForm> {
             ),
             CoilField(
               label: const Text('Password'),
-              description: const Text('At least 12 characters.'),
+              description: const Text('At least 12 characters'),
               invalid: _passwordError != null,
               error: _passwordError == null ? null : Text(_passwordError!),
               child: CoilInput(

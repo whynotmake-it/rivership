@@ -8,7 +8,9 @@ const checkboxGroupEntry = CatalogEntry(
   slug: 'checkbox-group',
   title: 'CheckboxGroup',
   group: CatalogGroup.groupedControls,
-  summary: 'Checked rows merge into one block; it splits when you uncheck.',
+  summary:
+      'A list of checkable rows where neighbouring checked rows merge '
+      'into one block.',
   page: CheckboxGroupPage.new,
 );
 
@@ -41,8 +43,9 @@ class _CheckboxGroupPageState extends State<CheckboxGroupPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'CheckboxGroup',
     summary:
-        'Check the row between two runs to watch them merge; uncheck the '
-        'middle of a run to watch it split. Each row is a tab stop.',
+        'Checked rows that sit next to each other merge into one block, and '
+        'unchecking a row in the middle splits the block again. Each row '
+        'takes its own tab stop.',
     hero: const _NotificationChannels(),
     usage: '''
 CoilCheckboxGroup<String>(
@@ -57,31 +60,32 @@ CoilCheckboxGroup<String>(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Every row is a tab stop. Up and Down move with wrapping, Home and '
-            'End jump, Space or Enter toggles.',
+        'Every row takes a tab stop. Up and Down move between rows and wrap '
+            'around at the ends, Home and End jump to the first and last '
+            'row, and Space or Enter toggles the focused one.',
       ),
       CatalogNote(
         'Touch',
-        'A press fills the row; selection is the merged blocks. Rows are '
-            'full width, so the whole row is the hit target.',
+        'Pressing a row fills it, and rows span the full width, so the '
+            'whole row is the touch target.',
       ),
       CatalogNote(
         'Screen readers',
-        'A labeled group of checkable rows. Give the group a semanticLabel '
-            'or wrap it in a FieldSet with a legend.',
+        'Screen readers announce a group of checkable rows, so give the '
+            'group a semanticLabel or wrap it in a field set with a legend.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Do use it for 2 to 10 related options. Don’t use it for '
-            'mutually exclusive ones; that is a RadioGroup.',
+        'It suits 2 to 10 related options that can be combined. For '
+            'options that exclude each other, use a RadioGroup instead.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
         description:
-            'Labels wrap and grow their row; a disabled row stays out of '
-            'the tab order.',
+            'Long labels wrap and make their row taller, and a disabled row '
+            'is skipped when tabbing.',
         controls: DemoControls(
           children: [
             DemoControl.toggle(

@@ -24,6 +24,9 @@ dependencies:
   flutter:
     sdk: flutter
   motor: ^1.1.0
+  # Only for the monospace font the code blocks are set in.
+  motor_example:
+    path: ../../motor/example
   stupid_simple_sheet:
     path: ../
 
@@ -42,3 +45,7 @@ flutter:
     - family: Inter
       fonts:
         - asset: packages/coil_example/fonts/inter/InterVariable.ttf
+    # The code blocks' monospace: web has no generic one to fall back on.
+    - family: JetBrains Mono
+      fonts:
+        - asset: packages/motor_example/assets/JetBrainsMono-VariableFont_wght.ttf

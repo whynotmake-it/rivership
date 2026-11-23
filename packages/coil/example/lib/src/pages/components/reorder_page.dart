@@ -13,7 +13,8 @@ const reorderEntry = CatalogEntry(
   slug: 'reorder',
   title: 'Reorder',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Cards make room for a dragged card and fly to their new place.',
+  summary:
+      'Cards that make room for a dragged card and fly to their new place.',
   page: ReorderPage.new,
 );
 
@@ -24,9 +25,9 @@ class ReorderPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'Reorder',
     summary:
-        'Items in a MotionLayoutGroup fly to their new place when their '
-        'order changes. MotionReorderable adds drag and drop on top, and '
-        'scrolling never moves anything on its own.',
+        'Items in a MotionLayoutGroup fly to their new place when their order '
+        'changes, and MotionReorderable adds drag and drop on top. Scrolling '
+        'never moves anything on its own.',
     hero: _BoardHero(),
     usage: '''
 MotionReorderable<Task>(
@@ -53,77 +54,81 @@ MotionReorderable<Task>(
     notes: [
       CatalogNote(
         'Pointer',
-        'Drag a card anywhere over a column: the dragged card collapses and '
-            'a gap opens where it will drop. Near an edge, the column or the '
-            'board scrolls.',
+        'Drag a card anywhere over a column and it collapses while a gap '
+            'opens where it will land. Holding it near an edge scrolls the '
+            'column or the board.',
       ),
       CatalogNote(
         'Touch',
-        'These demos start a drag after a long press, so a swipe still '
-            'scrolls the page (MotionDragStart.longPress). '
-            'MotionDragToScroll scrolls while a card is held at an edge.',
+        'These demos start a drag after a long press, with '
+            'MotionDragStart.longPress, so a swipe still scrolls the page, '
+            'and MotionDragToScroll keeps scrolling while a card is held at '
+            'an edge.',
       ),
       CatalogNote(
         'Motion',
-        'Cards fly to their new place on the standard spring, on both axes. '
-            'A drop with nowhere to land shrinks away.',
+        'Cards fly to their new place on the standard spring, on both axes, '
+            'and a card dropped with nowhere to land shrinks away.',
       ),
       CatalogNote(
         "Do / Don't",
         'Put every list a card can move between in one MotionLayoutGroup, so '
-            'it can fly from one to the other.',
+            'it can fly from one list to another.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Layout group',
         description:
-            'Each card is a MotionLayoutItem. Shuffle, add or remove cards: '
-            'whatever changes place flies there. Tap a card to open it; it '
-            'grows on its own spring, and the cards below follow.',
+            'Each card is a MotionLayoutItem, so when you shuffle, add or '
+            'remove cards, anything that changes place flies there. Tapping a '
+            'card opens it, and it grows on its own spring while the cards '
+            'below follow.',
         child: _LayoutDemo(),
       ),
       DemoSection(
         title: 'Grid',
         description:
-            'A MotionReorderable laid out by a Wrap. Drag a tile to reorder; '
-            'tiles fly on both axes.',
+            'A MotionReorderable laid out by a Wrap: drag a tile to reorder '
+            'it, and the tiles fly on both axes.',
         child: _Grid(),
       ),
       DemoSection(
         title: 'Line',
         description:
-            'The dragged card keeps its room, and a line marks where it will '
-            'go. Nothing moves until the drop.',
+            'The dragged card keeps its room and a line marks where it will '
+            'go, so nothing moves until you drop it.',
         child: _LineDemo(),
       ),
       DemoSection(
         title: 'Drag handle',
         description:
-            'Only the grip starts a drag, so the rest of the card stays free '
-            'for taps and text. The whole card flies.',
+            'Only the grip starts a drag, which leaves the rest of the card '
+            'free for taps and text, and the whole card still flies.',
         child: _HandleDemo(),
       ),
       DemoSection(
         title: 'New from a button',
         description:
-            'Drag the button over the list: the new card shows where it will '
-            'go. On the drop, the button turns into the card.',
+            'Drag the button over the list and the new card shows where it '
+            'will go, and on the drop the button turns into that card.',
         child: _CreateDemo(),
       ),
       DemoSection(
         title: 'Sections',
         description:
             'Two MotionReorderable.sliver sections in one scroll view, with a '
-            'header between them. Drag cards within a section or across.',
+            'header between them. You can drag cards within a section or '
+            'across to the other.',
         child: _SectionsDemo(),
       ),
       DemoSection(
         title: "Flutter's drag and drop",
         description:
-            'A plain Draggable drops into a MotionReorderable, and a card '
-            'drops on a plain DragTarget. Drag the new task into the list, or '
-            'a card onto the trash: with nowhere to land, it shrinks away.',
+            'A plain Draggable drops into a MotionReorderable, and a card can '
+            'drop on a plain DragTarget. Drag the new task into the list, or '
+            'a card onto the trash, where it shrinks away because there is '
+            'nowhere to land.',
         child: _InteropDemo(),
       ),
     ],

@@ -324,7 +324,7 @@ Lists keep an **active item** separate from focus and hover (like `aria-activede
 - Enter, Space and the soft keyboard's Search key act on it;
 - in search and combobox lists, completed taps move it too.
 
-**Typeahead:** a 1 s buffer, prefix-matched on each item's `searchText`, searching from the active item and skipping disabled rows.
+**Typeahead:** a 1 s buffer, prefix-matched on each item's `searchText`, searching from the active item and skipping disabled rows. `searchText` defaults to the plain text of a `Text` label, so a row only sets it when its label is another widget.
 
 ### 8.4 Merged selection
 
@@ -363,7 +363,7 @@ The presentation is decided **when an overlay opens**. An open overlay never mor
 1. The component's `presentation:` override.
 2. `CoilAdaptiveScope(presentation:)`.
 3. **Touch tier and the window's shorter side < 600 (a phone either way up) → the phone rule:**
-   - **floating panel** (§13.6, swiped away sideways) if the overlay is a combobox or the command menu, or has search: top-anchored, and its height doesn't follow the results, so the field never jumps; or a date/time picker: centered, hugging its calendar;
+   - **floating panel** (§13.6, swiped away sideways or down) if the overlay is a combobox or the command menu, or has search: top-anchored, and its height doesn't follow the results, so the field never jumps; or a date/time picker: centered, hugging its calendar;
    - **sheet** if it is multi-select, has submenus nested 2 or more levels deep, or has more than 8 items;
    - otherwise an **anchored touch popover**.
 4. Otherwise a popover.
@@ -386,7 +386,7 @@ coil sets no scroll behavior of its own. Physics, overscroll and which pointers 
 
 Coil never draws Cupertino or Material chrome. Platform pieces come in only where they're genuinely native: the edit menu, selection handles and the keyboard. They're used only inside `CoilTextFieldCore`.
 
-**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold.
+**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold. Page content with its own drags (a map, a canvas, a draggable card) is wrapped in `ExcludeScrollDrag`.
 
 ### 9.2.1 Keyboard shortcuts
 
@@ -399,7 +399,7 @@ coil's keys are Flutter shortcuts: each widget maps keys to an `Intent` in `Shor
 
 ### 9.3 Every overlay
 
-- Dismiss with Esc, a scrim or outside tap, system back, and drag (a sheet down, a floating panel sideways).
+- Dismiss with Esc, a scrim or outside tap, system back, and drag (a sheet down, a floating panel sideways or down).
 - Focus returns to the trigger.
 - The payload survives the exit animation.
 - `open()` resolves once, with a reason.
@@ -506,6 +506,7 @@ Every component ships with all of these. They're required to call it done.
 - **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top, unless the footer leads with a summary of what its one action confirms (§13.5, summary footer), as the date picker's does. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
 - **Height:** it hugs its content: a short list makes a short sheet on the bottom edge; a scroll view or long content grows it up to the cap and scrolls inside. Search and command sheets open at the large detent and grow while the keyboard is up.
 - **Motion:** `gentle` both ways; a dismissing drag hands its fling velocity to it. The scrim fades with the sheet.
+- **Content with its own drags** (a map, a canvas, a draggable card) goes in an `ExcludeScrollDrag` (re-exported by coil), or the sheet's drag takes them.
 - **Scrollables that take their own behavior** (a `PageView`, a `ListWheelScrollView`) use `CoilSheetRoute.scrollBehaviorOf(context)`, so a drag still hands off to the sheet.
 - **Dismiss:** drag down, tap the scrim, system back, Esc.
 - **Rows** are always touch rows, whatever the tier.
@@ -545,10 +546,12 @@ A modal popover: `CoilModalPresentation.floating` (`CoilPresentation.floating` f
   - **Presence:** the panel blur-fades with scale 0.97 → 1 on `gentle`, out on `gentleExit` (`CoilModalTrack.presence`; also the centered and drawer modals' presence). The scrim fades with it. Reduced motion: no blur or scale, and the tokens' instant springs (§7.4).
   - **Settle:** after a released swipe the panel springs back to rest on `standard`, or away on `standardExit` (`CoilModalTrack.settle`), starting with the release velocity; tilt and recede are functions of its offset, so they follow it either way.
   - Springs come from the route's `motions:`, then `CoilModalStyle.motions` (the route's `style:` merged over the theme's entry), then the tokens (§7.3).
-- **Dismiss by swipe** (`dismissAxis`: `horizontal` by default, `vertical`, or null for none; none too when the route isn't dismissible), through `ScrollDragDetector`:
-  - the panel follows the finger 1:1 along the axis, both ways, like a held card: **horizontal** it also tilts with the offset (`x / extent · 0.06` rad), around where the finger took hold (the panel's center when that is unknown), and **both axes** it recedes a little (scale `1 − 0.04 · |x| / extent`). The scrim fades linearly with the distance (`1 − |x| / extent`), because the drag drives the route's own animation (as Cupertino's back swipe does); the panel stays opaque for the first half of the way and fades over the second (`easeIn` over the second half of `1 − presence`, the same through the exit and the spring back), so the scrim leads and the page doesn't show through it mid-drag. The drag doesn't blur or apply the blur-fade's scale;
-  - on release it is thrown away when the point where friction would coast it (`FrictionMotion`, a private constant) is past half the panel's extent along the axis, in the direction of travel: a quick flick, or a slow drag past the middle, goes, and a drag past the middle flicked back toward rest returns. It then keeps its velocity on `standardExit` out to the coasting point or clear of the window, whichever is further, while the route fades out; tilt and recede keep following the offset. Otherwise it springs back on `standard` with the release velocity. A `PopScope` that vetoes the pop sends it back too;
-  - **horizontal:** the result list keeps scrolling vertically as usual, and a horizontal scrollable inside hands over only at its edge. **Vertical:** the list scrolls and the panel takes over only at the list's edge where the gesture began, as a sheet does;
+- **Dismiss by swipe** (`dismissDirections`, a `Set<AxisDirection>`: `{left, right, down}` by default, so sideways like a held card and down like a sheet; any subset of the four, and `{}` for none; none too when the route isn't dismissible), through one `ScrollDragDetector` that serves both axes. The search lists (command menu, combobox, dropdown with search) and every adaptive popup's floating panel use the default, and so does a date picker on a phone:
+  - the panel follows the finger 1:1 toward a direction that dismisses, like a held card: **sideways** it also tilts with the offset (`x / extent · 0.06` rad), around where the finger took hold (the panel's center when that is unknown), and **in every direction** it recedes a little (scale `1 − 0.04 · d / (2 · threshold)`, with the threshold below). A vertical drag doesn't tilt: the tilt is the sideways held-card cue. The scrim fades linearly with the distance (`1 − d / (2 · threshold)`), because the drag drives the route's own animation (as Cupertino's back swipe does); the panel stays opaque for the first half of the way and fades over the second (`easeIn` over the second half of `1 − presence`, the same through the exit and the spring back), so the scrim leads and the page doesn't show through it mid-drag. The drag doesn't blur or apply the blur-fade's scale;
+  - **rubber band:** toward a direction that isn't in the set (up on a panel that only goes down, or the side a sideways set lacks) the panel gives a little and resists more the further it goes (`d · c / (c + |d|)`, with `c` 0.3 of the threshold, about 0.15 of the panel's width, so it never moves further than `c`), without fade or recede, and always springs back on release;
+  - on release it is thrown away when the point where friction would coast it (`FrictionMotion`, a private constant) is past the threshold in the direction of travel and that direction is in the set: a quick flick, or a slow drag past the middle, goes, and a drag past the middle flicked back toward rest returns. The threshold is half the panel's extent along the axis, except vertically, where it is at most half its width too (`min(height, width) / 2`): the search list fills the room down to the keyboard, and a tall panel shouldn't take a half-screen drag. It then keeps its velocity on `standardExit` out to the coasting point or clear of the window, whichever is further, while the route fades out; tilt and recede keep following the offset. Otherwise it springs back on `standard` with the release velocity. A `PopScope` that vetoes the pop sends it back too;
+  - **scrollables:** a direction in the set hands the drag over from a scrollable only when the gesture began at that edge (`boundaryStart`, as a sheet does): a downward drag on a list dismisses only when the list was at its top, and otherwise scrolls it; a direction not in the set leaves the drag with the scrollable. The result list keeps scrolling vertically under a sideways drag, and a horizontal scrollable inside hands over only at its edge. A drag locks to the axis it began on;
+  - **keyboard:** a downward dismiss works with the keyboard up (the search field focused): the panel just moves and fades, and on dismiss the route pops, focus leaves and the keyboard closes;
   - reduced motion: the panel still follows the finger, without tilt or recede, settling back is instant, and a dismissing swipe fades out in place;
   - **Text field:** a swipe that starts on the search text itself goes to the text field's own gesture recognizer on Android (Flutter's drag selection wins a horizontal drag there); on iOS it dismisses. A swipe that starts anywhere else on the panel dismisses on every platform: the rows, the line around the field, the empty area under a short list.
 - **Dismiss otherwise:** the scrim (an adaptive popup reports it as `outsideTap`), Esc, system back and the close button (`Navigator.maybePop`).
@@ -644,7 +647,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
 - **Motion** (tracks `CoilSwitchTrack.thumb` / `.squish` / `.tint`):
   - thumb on `standard`, squish on `quick`, tint on `fade`;
-  - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
+  - dragging sets the thumb directly and may go past either end, and so may a bouncy spring, stretching the track with rubber-band resistance (`coilRubberBand`: it keeps growing ever more softly toward 0.15 of the travel, with no hard stop);
   - release decides by `x + v · 0.1 s` and animates with the release velocity.
 - **Keyboard:** Space or Enter toggles. The focus ring sits 2 px outside the track, as every ring does (§13.4).
 - **Semantics:** `toggled`, label.
@@ -750,7 +753,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### ToggleGroup
 
 - **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
-- **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
+- **Sizes:** segment height `controlHeight`, padding `controlPaddingX` (also next to an icon, unlike a button); the row is `segmentPadding` taller on each side.
+- **Segment content:** [icon] label. An option's `icon` leads the label, `buttonGap` before it, in the label's animated color and at `iconSize`; the width springs cover both. An icon-only segment passes its icon as the label, with a `semanticLabel`.
 - **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
 - **Motion:** merge/split `standard`, highlight `quick`. A segment whose label changes cross-fades it and springs to its new width on `standard` (`CoilToggleGroupTrack.size`); the selection follows.
 - **Keyboard:** roving; Left and Right move; Space toggles.
@@ -839,11 +843,12 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **Phone (touch, < 600):**
     - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, beside the sheet's close button (leading on iOS, trailing elsewhere; it calls `onClose` when the dialog has one, else pops), so the sheet never shows two; and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
     - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
+    - Content in it that needs its own drags (a map, a canvas) goes in an `ExcludeScrollDrag`.
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.
 - **Semantics:** a modal route, `scopesRoute`, title as the route name.
-- **Floating:** a `CoilModalRoute` can also present a dialog as a floating panel (`presentation: floating`, with `anchor` and `dismissAxis`; §13.6). It lays out exactly as in a sheet (header with the title beside the close button, stacked actions, pinned footer).
+- **Floating:** a `CoilModalRoute` can also present a dialog as a floating panel (`presentation: floating`, with `anchor` and `dismissDirections`; §13.6). It lays out exactly as in a sheet (header with the title beside the close button, stacked actions, pinned footer).
 - **Routes:** `showCoilDialog` pushes a `CoilModalRoute`. Apps that use `Navigator.pages` or a router show the same dialog in a `CoilModalPage`, or return a `CoilModalRoute` from the router's custom route builder. Both paths pick the presentation, scrim, focus and back the same way: the route decides it when it's created, and the dialog reads it with `CoilModalRoute.presentationOf`.
 - **Do:** use it for decisions that block the flow.
 - **Don't:** nest dialogs; open a dialog from a sheet on a phone (push inside the sheet instead).
@@ -873,7 +878,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Pointer: open on hover after 100 ms with a safe triangle, or on Right / Enter. Placed 2 px from the parent, with the first row level with the trigger row. Left or Esc closes one level.
   - **Touch: tap to drill.** In a touch popover the submenu *replaces* the parent in place, with a "‹ Parent" back row; the panel height springs and the page slides on `standard`. In a sheet it's the same push.
 - **Search** (`DropdownSearch`): a field band one row high at the top with a hairline below. Typing filters by word prefix, and printable keys typed into the list go to the field. Autofocused on every tier; on a phone the keyboard comes up with the panel.
-- **Presentation:** §9.1. A menu with search opens on a phone as a **floating panel** (§13.6), top-anchored and swiped away sideways, with touch rows and the close button ending the search line. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
+- **Presentation:** §9.1. A menu with search opens on a phone as a **floating panel** (§13.6), top-anchored and swiped away sideways or down, with touch rows and the close button ending the search line. ≤ 8 items, no search and ≤ 1 submenu level stay anchored on phones.
 - **Motion:** popup blur-fade on the tier's popover tokens (§7.2); highlight `quick`; sub push `standard`.
 - **Keyboard:** arrows loop and skip disabled rows; Home and End; typeahead; Enter or Space activates; Esc closes one level; Tab closes all. Activating closes the menu after `acknowledgeDuration` for checkable rows (the whole menu, submenus included, ignores input meanwhile, while the page behind already takes it, §7.1), and immediately for actions.
 - **Semantics:** menu, menuItem / menuItemCheckbox / menuItemRadio, `expanded` on the trigger.
@@ -901,11 +906,11 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### Combobox
 
 - **Anatomy:** an input (field role) with an optional clear button and chevron; a list below (§13.2) with match highlighting (semibold on the matched prefix); an optional "Create '…'" row last; an empty state.
-- **Multi:** chips wrap inside the field before the input. A chip is 24 / 20 / 28 / 24 high, padding 8, caption, `hover` fill, item radius (pill → full). Its remove × is 16 visual with the hit box growing to the chip height (44 on touch). The field height springs on `quick` as chips wrap.
+- **Multi:** the picks sit **inside** the field as chips before the editable text, which takes the rest of their last row and wraps with them (`ComboboxChipsRun` lays a run of chips out, then gives the text what's left of the last run, or a row of its own when too little is). A chip is 24 / 20 / 28 / 24 high — the row the padding centers in the field's height — padding 8, caption, `muted` fill, item radius (pill → full). Its remove × is an icon's size (`iconSize`) with the hit box growing to the chip's full height (never into the next chip). The field grows in height as chips wrap and springs to it on `quick`; a window resize that rewraps snaps. The chevron stays centered on the first row.
 - **Pointer:** the list anchors under the input, at least the input's width, max height 300; the input keeps focus.
-- **Phone:** a **floating panel** (§13.6), top-anchored, swiped away sideways: the trigger stays on the page and the panel has the field. The input is on top, focused, with the keyboard up; the panel's height doesn't follow the results. Chips sit above the input, results below, and Done in the header for multi.
-- **Motion:** chips enter scale 0.9 → 1 + fade on `quick` (growing from the leading edge) and exit on `quickExit`; siblings slide on `standard`; the list blur-fades on the tier's popover tokens (§7.2).
-- **Keyboard:** typing filters and the active item resets to the first match; Up and Down move the active item; Enter picks it (IME-safe); Esc clears, then closes; Backspace on an empty input removes the last chip; Left and Right move between chips.
+- **Phone:** a **floating panel** (§13.6), top-anchored, swiped away sideways or down: the trigger stays on the page and the panel has the field. The input is on top, focused, with the keyboard up; the panel's height doesn't follow the results. Chips sit inside the field before the input, results below, and Done in the header for multi.
+- **Motion:** the field's height springs as a chip wraps or unwraps (`quick`); the list blur-fades on the tier's popover tokens (§7.2).
+- **Keyboard:** typing filters and the active item resets to the first match; Up and Down move the active item; Enter picks it (IME-safe); Esc clears, then closes; Backspace on an empty input removes the last chip.
 - **Semantics:** a combobox textField with `expanded`; rows `selected`; a live result count; the chip toolbar is labeled "Selected".
 - **Do:** use it for long or open-ended option sets.
 - **Don't:** autocomplete inline over the user's typing.
@@ -915,7 +920,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** a search field (subtitle role, a line 48 high on pointer, 52 on touch, `CoilCommandMenu.searchHeightOf`) over a hairline; groups with caption headings; rows (§13.1) with icon, label and trailing shortcut caps; an empty state; in the dialog, a footer with key hints.
 - **Footer** (`CoilCommandMenuFooter`, the `footer:` slot; null for none): a hairline (`border` at 60 %, like the menu's separators), then one line `controlHeight` high (36 pointer, 44 touch) whose text starts on the rows' text edge (`popupInset + itemPaddingX`). Each hint is a caption in `mutedForeground` followed by its key caps (Kbd), `buttonGap` apart (6 / 8); hints sit `gap × 2` apart (16 pointer, 24 touch) on one line, and hints that don't fit are cut at the end. The defaults (`CoilCommandMenuFooter.defaultHints`) are Select ↑ ↓, Run ↵ and Close esc; pass `hints:` to localize or replace them. Screen readers skip it. A phone's floating panel has none.
 - **Pointer:** a centered dialog panel, `min(560, window − 32)` wide, a fifth of the way down the window (top at 20 % of its height), at most `min(440, 76 %)` tall with the search line and footer (`CoilCommandMenu.maxHeight`, `maxHeightFraction`); the list scrolls inside. Opened with ⌘K / Ctrl+K through `Shortcuts`.
-- **Touch phone:** a **floating panel** (§13.6), top-anchored, swiped away sideways (`CoilCommandMenu.presentationOf`, with `anchor: top`), with a stable height, so the field stays put as the results change; the search line ends in the close button (`CoilSheetCloseSlot`). The field is focused (the keyboard is the point). No shortcut caps, no footer. The soft keyboard's Search key runs the active row. The app must provide a visible entry point, since there's no shortcut.
+- **Touch phone:** a **floating panel** (§13.6), top-anchored, swiped away sideways or down (`CoilCommandMenu.presentationOf`, with `anchor: top`), with a stable height, so the field stays put as the results change; the search line ends in the close button (`CoilSheetCloseSlot`). The field is focused (the keyboard is the point). No shortcut caps, no footer. The soft keyboard's Search key runs the active row. The app must provide a visible entry point, since there's no shortcut.
 - **iPad with keyboard:** the dialog, with ⌘ caps and the footer.
 - **Filtering:** per-word prefix/substring matching (not fuzzy); groups with no hits hide.
 - **Motion:** the dialog's panel height springs to the result height on `standard` (the phone's floating panel keeps its height); the highlight on `quick`; keyboard moves scroll the row to the center on `quick`.
@@ -1011,7 +1016,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - assistant: no bubble, full width, aligned to the start.
 - **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
-- **Semantics:** each message is a container labeled with sender and time.
+- **Semantics:** each message is a container labeled with sender and time. An action's icon-only button is named by its `semanticLabel`, which defaults to the plain text of a `Text` label, so only a label that isn't text sets one.
 
 #### Reveal
 
@@ -1134,7 +1139,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Sizing:** the popover hugs the calendar's seven cells, not the field's width (`CoilAdaptivePopup.minWidth: 0`); a floating panel's or sheet's calendar fills its width up to days 30 % past their natural side and centers past it (Calendar § Width); the time columns are as wide as the calendar above them. A popover and a portrait panel or sheet scroll when the window is too short, by their edge: the calendar's own vertical drag scrolls its months. A short desktop window keeps the time under the calendar and scrolls.
   - **Landscape phone** (touch tier, wider than tall and under 600 tall, in a floating panel or sheet): nothing scrolls. The panel lays out sideways: the calendar leads, with its rows sized from the **height** the panel has (caption, weekday row and six weeks exactly fill it; smaller than the 44 touch cell, never past the calendar's own maximum) and its columns as wide as the column beside it allows, up to the natural cell, so the numbers don't crowd (the day's fill stays a square of the row height, centered in its cell), and a column follows with the time columns in the middle and the summary footer at the bottom (summary on the leading side and Done on the trailing side, or the summary above Done when it needs more than two lines beside it; with no time, the footer alone, bottom-aligned). The days start on the panel's 16 text inset and the footer ends on it. With no title, the close button sits in the column's top corner, concentric with the panel's corner, and the caption row is centered on it (no header line, which would cost height); a time that reaches that corner keeps clear of it, shrinking before it overlaps. A `sheetTitle` drops the header line too: it leads on the close button's line at the top of the column (one line, ellipsized), so a titled panel's days are as large as an untitled one's. Text so large that the column outgrows the height falls back to scrolling the panel's body.
 - **Pointer / tablet:** a popover with Calendar; presets in a 152 column on the leading side (below when narrow); the time is a `CoilTimeField`, typed in segments (below); no list.
-- **Phone (touch, the window's shorter side < 600, either way up): a centered floating panel (§13.6, `CoilModalAnchor.center`) built for the thumb.** It hugs its content in the middle of the room the window leaves, swiped away sideways (which cancels), over the scrim; the calendar's vertical scroll and the time columns' own drags don't dismiss it. A sheet is still available (`presentation: sheet`), with the same content.
+- **Phone (touch, the window's shorter side < 600, either way up): a centered floating panel (§13.6, `CoilModalAnchor.center`) built for the thumb.** It hugs its content in the middle of the room the window leaves, swiped away sideways or down (which cancels), over the scrim. The calendar's weeks and the time columns scroll without end, so a drag down on them scrolls them; a drag down from the header, the footer or the gaps dismisses it. A sheet is still available (`presentation: sheet`), with the same content.
   - Caption row (title role; the ▾ opens the month/year grid) → one month, 44 cells, **vertical scrolling** that lands on a month, fixed 6 rows.
   - Presets: a horizontally scrolling chip row (Today, Tomorrow, Next week…).
   - Time: chips ("Start 11:00", "End 12:45"). Tapping one pushes the **time page** inside the sheet on `standard`, with a "‹ Date" back row.
@@ -1157,7 +1162,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - nothing picked: nothing, beside the disabled Done. The field says what to pick; the footer only says what Done would confirm.
   - A popover has **no** footer: it applies each pick at once, so the field under it already shows the selection.
 - **Confirming:** a panel or sheet holds what's picked as a draft until Done; a popover applies each pick at once (`onChanged` per pick), so closing it is done and there is nothing to cancel.
-  - **Panel or sheet (date, or date and time): Done confirms.** The close button, the scrim, a swipe sideways (a drag down for a sheet), back and Escape cancel; reopening starts from the value. It is a modal task, and it already has its close button as the Cancel, so the footer holds the one primary action.
+  - **Panel or sheet (date, or date and time): Done confirms.** The close button, the scrim, a swipe sideways or down, back and Escape cancel; reopening starts from the value. It is a modal task, and it already has its close button as the Cancel, so the footer holds the one primary action.
   - **Popover, date only: a tap on a day confirms and closes**. One tap is the whole answer, so a button would only add a step.
   - **Popover with time: each pick applies at once and the popover stays open**; a tap outside, Escape or Enter closes it with what's picked. The field's label follows every day and every turn of a time column, so it is the summary. No Done, no Cancel.
   - In the panel, Done is disabled until something is picked. Enter anywhere in the popup confirms (on the grid it picks the focused day first); Space only picks; Escape closes (in the month view it returns to the days first): a panel or sheet without its draft, a popover with what it applied.
