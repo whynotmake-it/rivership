@@ -10,7 +10,7 @@ const contextMenuEntry = CatalogEntry(
   slug: 'context-menu',
   title: 'ContextMenu',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'The dropdown at a point: right-click, Shift+F10 or long-press.',
+  summary: 'A menu at a point, from a right-click, Shift+F10 or a long press.',
   page: ContextMenuPage.new,
 );
 
@@ -44,25 +44,20 @@ class ContextMenuPage extends StatelessWidget {
   Widget build(BuildContext context) => CatalogPage(
     title: 'ContextMenu',
     summary:
-        'The dropdown opened at a point. Right-click a file, or long-press '
-        'it on touch; the file lifts under the finger.',
+        'A context menu is a dropdown opened at a point rather than from a '
+        'trigger. Right-click a file to open it, or long-press it on touch, '
+        'where the file lifts under the finger first.',
     hero: const _FileList(),
     usage: '''
 CoilContextMenu(
   entries: [
-    CoilAction(
-      label: const Text('Rename…'),
-      onPressed: () => rename(file),
-    ),
-    CoilAction(
-      label: const Text('Duplicate'),
-      onPressed: () => duplicate(file),
-    ),
+    CoilAction(label: const Text('Rename…'), onPressed: rename),
+    CoilAction(label: const Text('Duplicate'), onPressed: duplicate),
     const CoilMenuSeparator(),
     CoilAction(
       label: const Text('Delete'),
       tone: CoilActionTone.destructive,
-      onPressed: () => delete(file),
+      onPressed: delete,
     ),
   ],
   child: FileRow(file),
@@ -70,33 +65,34 @@ CoilContextMenu(
     notes: const [
       CatalogNote(
         'Pointer',
-        'Right-click, or Control-click on macOS, opens the menu at the '
-            'pointer. The menu is a dropdown, so submenus, search and marks '
-            'all work.',
+        'Right-clicking, or Control-clicking on macOS, opens the menu at '
+            'the pointer. It is the same menu as a dropdown, so submenus, '
+            'search and marks all work inside it.',
       ),
       CatalogNote(
         'Keyboard',
-        'Shift+F10 or the Menu key opens it at the focused element. Arrows, '
-            'typeahead and Esc work as in a dropdown.',
+        'Shift+F10 or the Menu key opens the menu at the focused element, '
+            'and the arrow keys, typing and Esc behave as they do in a '
+            'dropdown.',
       ),
       CatalogNote(
         'Touch',
-        'A 500 ms long press lifts the element (scale 1.02, one level more '
-            'shadow) with a haptic, then opens an anchored menu of up to 8 '
-            'rows, else a sheet.',
+        'A long press of 500 ms lifts the element slightly, with a touch '
+            'more shadow and a haptic, and then opens the menu anchored to '
+            'it; a menu of more than 8 rows opens as a sheet instead.',
       ),
       CatalogNote(
         "Do / Don't",
-        'Never make a context menu the only path to an action. Offer a '
-            'visible More button too, as the rows above do.',
+        'A context menu should never be the only way to reach an action, so '
+            'offer a visible More button as well, the way the rows above do.',
       ),
     ],
     children: [
       DemoSection(
         title: 'On a focused button',
         description:
-            'Any focusable widget works. Tab to the button and press '
-            'Shift+F10.',
+            'Any focusable widget can carry a context menu, so tab to this '
+            'button and press Shift+F10 to open it.',
         child: Align(
           alignment: AlignmentDirectional.centerStart,
           child: CoilContextMenu(
@@ -211,7 +207,7 @@ class _FileListState extends State<_FileList> {
           const SizedBox(height: 16),
           Text('No files', style: text.body),
           const SizedBox(height: 2),
-          Text('Everything was deleted.', style: text.muted.caption),
+          Text('You deleted every file.', style: text.muted.caption),
           const SizedBox(height: 16),
           CoilButton(
             variant: CoilButtonVariant.secondary,

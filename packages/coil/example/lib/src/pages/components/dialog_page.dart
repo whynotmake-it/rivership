@@ -12,7 +12,7 @@ const dialogEntry = CatalogEntry(
   slug: 'dialog',
   title: 'Dialog',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'Confirmations centered everywhere; forms become sheets on phones.',
+  summary: 'A modal panel for confirmations and short forms.',
   page: DialogPage.new,
 );
 
@@ -223,8 +223,9 @@ class _DialogPageState extends State<DialogPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Dialog',
     summary:
-        'A panel over a scrim for decisions that block the flow. A '
-        'confirmation stays centered; a form becomes a sheet on phones.',
+        'A dialog puts a panel over a scrim for decisions that need an '
+        'answer before the user continues. A confirmation stays centered '
+        'on every screen, while a form turns into a sheet on phones.',
     hero: const _ProjectList(),
     usage: '''
 final confirmed = await showCoilDialog<bool>(
@@ -249,31 +250,32 @@ final confirmed = await showCoilDialog<bool>(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Focus is trapped inside and starts on the first field, or on the '
-            'primary button for a confirmation. Esc closes, and focus '
-            'returns to what opened it.',
+        'Focus stays inside the dialog and starts on the first field, or on '
+            'the primary button in a confirmation. Esc closes it and focus '
+            'returns to whatever opened it.',
       ),
       CatalogNote(
         'Touch',
-        'A short confirmation stays centered, with its buttons stacked '
-            'full width. A form on a phone becomes a sheet you can drag '
-            'away, with the actions pinned below.',
+        'A short confirmation stays centered with its buttons stacked at '
+            'full width, while a form on a phone becomes a sheet that can be '
+            'dragged away, with its actions pinned below.',
       ),
       CatalogNote(
         'Motion',
-        'The scrim fades while the panel blur-fades in from 97 % scale. A '
-            'dialog that is not dismissible turns off the scrim tap, back '
-            'and the sheet drag together.',
+        'The scrim fades in while the panel blurs in from 97 % scale. A '
+            'dialog that is not dismissible ignores taps on the scrim, the '
+            'back button and the sheet drag.',
       ),
       CatalogNote(
         'Screen readers',
-        'A modal route that scopes the screen; the title is its name.',
+        'The dialog is a modal route that scopes the screen for assistive '
+            'technology, and its title is read as its name.',
       ),
       CatalogNote(
         "Do / Don't",
-        'Say what happens on the confirm button ("Delete project", never '
-            '"OK"). Never nest dialogs, and on a phone push inside a sheet '
-            'instead of opening a dialog from it.',
+        'Name the outcome on the confirm button, such as "Delete project" '
+            'instead of "OK". Avoid nesting dialogs, and on a phone push a '
+            'page inside a sheet rather than opening a dialog from it.',
       ),
     ],
     children: [
@@ -314,8 +316,8 @@ final confirmed = await showCoilDialog<bool>(
       DemoSection(
         title: 'As a route',
         description:
-            'Declared in the router like a page: its URL opens it, and '
-            'back or the scrim pops it.',
+            'The dialog is declared in the router like a page, so its URL '
+            'opens it and the back button or a tap on the scrim closes it.',
         child: Align(
           alignment: AlignmentDirectional.centerStart,
           child: CoilButton(
@@ -376,7 +378,7 @@ class _ProjectListState extends State<_ProjectList> {
           const SizedBox(height: 16),
           Text('No projects', style: text.body),
           const SizedBox(height: 2),
-          Text('Everything was deleted.', style: text.muted.caption),
+          Text('You deleted every project.', style: text.muted.caption),
           const SizedBox(height: 16),
           CoilButton(
             variant: CoilButtonVariant.secondary,

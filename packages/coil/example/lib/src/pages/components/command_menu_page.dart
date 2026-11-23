@@ -13,7 +13,7 @@ const commandMenuEntry = CatalogEntry(
   slug: 'command-menu',
   title: 'CommandMenu',
   group: CatalogGroup.menusAndOverlays,
-  summary: 'A searchable list of commands in a modal, bound to ⌘K.',
+  summary: 'A searchable list of an app’s commands, usually bound to ⌘K.',
   page: CommandMenuPage.new,
 );
 
@@ -117,58 +117,57 @@ class _CommandMenuPageState extends State<CommandMenuPage> {
           child: CatalogPage(
             title: 'CommandMenu',
             summary:
-                'One search over everything an app can do: go somewhere, '
-                'create something, change a setting.$_pressHint',
+                'The command menu puts one search over everything the app '
+                'can do, from going somewhere to creating something or '
+                'changing a setting.$_pressHint',
             hero: _AppFrame(
               view: _view,
               projects: _projects,
               onOpen: () => unawaited(_open(context)),
             ),
             usage: '''
-Shortcuts(
-  shortcuts: {
-    CharacterActivator('k', meta: true): const OpenIntent(),
-  },
-  child: Actions(
-    actions: {
-      OpenIntent: CallbackAction<OpenIntent>(
-        onInvoke: (_) => showCoilCommandMenu(
-          context: context,
-          entries: entries,
-        ),
-      ),
-    },
-    child: app,
-  ),
-)''',
+await showCoilCommandMenu(
+  context: context,
+  entries: [
+    const CoilMenuLabel(Text('Go to')),
+    CoilAction(label: const Text('Inbox'), onPressed: openInbox),
+    CoilAction(label: const Text('Projects'), onPressed: openProjects),
+    const CoilMenuLabel(Text('Create')),
+    CoilAction(label: const Text('New project'), onPressed: newProject),
+  ],
+);''',
             notes: const [
               CatalogNote(
                 'Keyboard',
-                'Up and Down wrap and skip disabled rows; Enter runs the '
-                    'highlighted command. Esc clears the search, then '
-                    'closes. App-wide keys such as ⌘K belong to the app, in '
-                    'Shortcuts at its root.',
+                'Up and Down wrap around the list and skip disabled rows, '
+                    'and Enter runs the highlighted command. Esc first '
+                    'clears the search and then closes the menu. An '
+                    'app-wide key such as ⌘K belongs to the app itself, in '
+                    'a Shortcuts widget at its root.',
               ),
               CatalogNote(
                 'Filtering',
-                'Matching is per word on each command’s searchText, not '
-                    'fuzzy. Groups with no hits hide.',
+                'Each command is matched word by word against its '
+                    'searchText rather than fuzzily, and a group with no '
+                    'matches is hidden.',
               ),
               CatalogNote(
                 'Touch',
-                'On a phone it opens as a full-height sheet with the field '
-                    'focused, no shortcut caps and no footer. There is no '
-                    'shortcut on touch, so give the app a visible search '
-                    'button, as the header above does.',
+                'On a phone the menu opens as a full-height sheet with the '
+                    'field focused, and the shortcut caps and the footer are '
+                    'dropped. Touch has no keyboard shortcut, so give the '
+                    'app a visible search button like the one in the header '
+                    'above.',
               ),
               CatalogNote(
                 'Motion',
-                'The panel height springs to the number of results as you '
-                    'type, and the highlight glides between rows.',
+                'The panel springs to the height of the current results as '
+                    'you type, and the highlight glides from row to row.',
               ),
               CatalogNote(
                 'Screen readers',
-                'A combobox that announces a live result count.',
+                'The field is announced as a combobox and reports a live '
+                    'count of the matching commands.',
               ),
             ],
             children: const [],
@@ -230,7 +229,7 @@ class _AppFrame extends StatelessWidget {
             ],
           ),
           _View.settings => Text(
-            'Theme, notifications and members.',
+            'Theme, notifications and members live here.',
             style: text.muted.body,
           ),
         },
