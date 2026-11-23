@@ -640,7 +640,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - invalid: `destructive` 50 % (focus wins); disabled: 50 %; read-only: no hover.
 - **Number variant:** two stepper buttons inset 4 (2 compact) at the trailing edge, 28 / 24 / 36 visual (44 hit on touch), radius item − 4, muted → foreground on hover. Long-press repeats with acceleration (400 ms, then every 80 ms, then 40 ms). Up and Down step.
 - **Motion:** border and fill on `fade`.
-- **Platform:** `keyboardType`, `textInputAction`, `autofillHints` and `textCapitalization` per use; autocorrect and suggestions are forced off while obscured; `scrollPadding` clears the keyboard by 16; native selection, magnifier and edit menu.
+- **Platform:** `keyboardType`, `textInputAction`, `autofillHints` and `textCapitalization` per use; autocorrect and suggestions are forced off while obscured; `scrollPadding` clears the keyboard by 16, plus however much the keyboard covers the field's viewport, so a focused field comes up above the keyboard even where the page runs on behind it (as far as the content goes; a `keyboardInset` area gives the last fields room); native selection, magnifier and edit menu.
 - **Enter:** single-line Return is the input action (`onSubmitted`); a Return that commits an IME composition only commits.
 - **Keyboard:** native editing; IME-safe.
 - **Do:** always pair it with a Field label.
@@ -1011,6 +1011,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later. The hide is `RawScrollbar`'s timed fade over the `fade` token's duration, not a spring: `RawScrollbar` owns that animation and exposes no way to drive it.
 - **Touch:** a thin overlay bar in coil's colors (3 wide) that shows only while scrolling and can't be grabbed. Flutter draws no OS scrollbar, so this stands in for it.
 - **Keyboard:** the viewport is focusable when it scrolls; arrows, Page and Home/End scroll; the focus ring is inset 1.
+- **Software keyboard:** nothing shrinks for it; pages draw on behind it, as on iOS. `keyboardInset: true` adds trailing padding equal to how much the keyboard covers this viewport, measured in global coordinates (`CoilKeyboardOverlap`; zero for a viewport that ends above it, as in a sheet riding on the keyboard), so the last field can scroll above it. Off by default: turn it on for the scroll view whose bottom sits under the keyboard, usually the page's.
 - **Don't:** nest scroll areas on the same axis.
 
 ### 14.5 Shell and composites
@@ -1030,7 +1031,6 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **one 24 rhythm:** every action, badge and chevron is a 24 box (16 icon, gap 4), its center 26 from the inner edge, from header to footer; touch hit 44;
   - the phone drawer `min(320, 85 % width)` (`CoilDrawer.maxWidth`, `CoilDrawer.widthFraction`).
 - **Variants:** `sidebar` (a flush column with an edge hairline), `floating` (a surface card inset 8), `inset` (flush rows; the page becomes a raised card with an 8 margin that gives way on the sidebar's side as it opens).
-- **Keyboard:** the scaffold shrinks by the keyboard's height, like Material's `Scaffold`, so a focused field stays in view. Descendants see no inset. `resizeToAvoidBottomInset: false` opts out.
 - **Side:** `start` or `end`, following the text direction. The rail, the drawer, the peek edge and the default key follow it.
 - **Folding:** `offcanvas` slides it off the edge and gives the page its width back; `none` is a static column (no rail, shortcut or drawer), as in the settings dialog. **There is no icon-only rail on purpose:** glyphs alone turn navigation into a quiz, and section labels and actions have nowhere to go. Peek brings the real sidebar back instead.
 - **Header and footer:** stack parts vertically (each on its own row, actions as menu rows) or horizontally (`CoilSidebarBar`: the primary part, then 1–3 icon actions on the 24 rhythm).

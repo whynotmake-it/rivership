@@ -95,9 +95,6 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
 /// opening one closes the other. A `CoilSidebarTrigger` with a `side`
 /// reaches either from the page.
 ///
-/// Like a Material `Scaffold`, it shrinks by the keyboard's height so a
-/// focused field stays in view ([resizeToAvoidBottomInset]).
-///
 /// There is no icon-only rail on purpose: folded means gone, and [peek]
 /// brings the whole sidebar back, labels and all.
 class CoilSidebarScaffold extends StatefulWidget {
@@ -114,7 +111,6 @@ class CoilSidebarScaffold extends StatefulWidget {
     this.rail = const CoilSidebarRail(),
     this.shortcuts,
     this.autofocus = true,
-    this.resizeToAvoidBottomInset = true,
     this.drawerBreakpoint = 768,
     this.minWidth = 160,
     this.maxWidth = 360,
@@ -167,12 +163,6 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// [shortcuts] answer right after launch. A scaffold inside another one
   /// never does; turn it off where several sit side by side.
   final bool autofocus;
-
-  /// Whether the scaffold, sidebar and page alike, shrinks by the keyboard's
-  /// height, so a focused field scrolls into view above it. The inset is
-  /// removed below, so nested scaffolds, sheets and popovers don't count it
-  /// twice. Turn it off to let the keyboard cover the page.
-  final bool resizeToAvoidBottomInset;
 
   /// Below this width, the scaffold's own and not the window's, the
   /// sidebar becomes a drawer.
@@ -498,7 +488,7 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
       metrics,
       platform: CoilTheme.platformOf(context),
     ).merge(CoilTheme.styleOf<CoilSidebarStyle>(context)).merge(widget.style);
-    final scaffold = LayoutBuilder(
+    return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < widget.drawerBreakpoint;
         if (compact != _compact) {
@@ -534,17 +524,6 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
           child: content,
         );
       },
-    );
-    if (!widget.resizeToAvoidBottomInset) return scaffold;
-    return MediaQuery.removeViewInsets(
-      context: context,
-      removeBottom: true,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: scaffold,
-      ),
     );
   }
 

@@ -26,6 +26,7 @@ export 'src/primitives/icon_presence.dart';
 export 'src/primitives/input_slot.dart';
 export 'src/primitives/intents.dart';
 export 'src/primitives/interaction.dart';
+export 'src/primitives/keyboard_overlap.dart';
 export 'src/primitives/layer.dart';
 export 'src/primitives/line_box.dart';
 export 'src/primitives/modal.dart';

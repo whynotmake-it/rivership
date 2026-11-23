@@ -63,6 +63,7 @@ class CoilScrollArea extends StatefulWidget {
     this.controller,
     this.axis = Axis.vertical,
     this.padding,
+    this.keyboardInset = false,
     this.edgeFades = CoilEdgeFades.auto,
     this.scrollbar = CoilScrollbarVisibility.auto,
     this.keyboard = true,
@@ -89,6 +90,7 @@ class CoilScrollArea extends StatefulWidget {
     this.motion,
     this.motions,
   }) : padding = null,
+       keyboardInset = false,
        _wrapsScrollable = true;
 
   /// The content, or the scrollable for [CoilScrollArea.scrollable].
@@ -102,6 +104,20 @@ class CoilScrollArea extends StatefulWidget {
 
   /// Padding inside the scroll view.
   final EdgeInsetsGeometry? padding;
+
+  /// Whether a vertical area adds trailing padding for the software
+  /// keyboard: as much as the keyboard covers this viewport, measured where
+  /// it sits ([CoilKeyboardOverlap]), and none when it ends above the
+  /// keyboard. The viewport keeps its size and its content draws on behind
+  /// the keyboard; the padding lets the end scroll above it.
+  ///
+  /// Turn it on for the scroll view whose bottom sits under the keyboard,
+  /// typically a page's. A focused coil field is revealed above the
+  /// keyboard either way, as far as the content goes; this gives the last
+  /// fields the room. Off by default, so areas in a footer, a popover or a
+  /// sheet (which rides on the keyboard) aren't padded. For
+  /// [CoilScrollArea.scrollable], pad your list with [CoilKeyboardOverlap].
+  final bool keyboardInset;
 
   /// Which edges fade.
   final CoilEdgeFades edgeFades;
@@ -246,19 +262,25 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
     // overscroll and drag devices, and only swaps the scrollbar.
     final ambient = ScrollConfiguration.of(context);
 
+    Widget scrollView(EdgeInsetsGeometry? padding) => SingleChildScrollView(
+      controller: _controller,
+      scrollDirection: widget.axis,
+      padding: padding,
+      // Scrollables in the content keep the app's behavior, scrollbar
+      // included.
+      child: ScrollConfiguration(behavior: ambient, child: widget.child),
+    );
     var scrollable = widget._wrapsScrollable
         ? widget.child
-        : SingleChildScrollView(
-            controller: _controller,
-            scrollDirection: widget.axis,
-            padding: widget.padding,
-            // Scrollables in the content keep the app's behavior, scrollbar
-            // included.
-            child: ScrollConfiguration(
-              behavior: ambient,
-              child: widget.child,
+        : widget.keyboardInset && widget.axis == Axis.vertical
+        ? CoilKeyboardOverlap(
+            builder: (context, overlap, _) => scrollView(
+              (widget.padding ?? EdgeInsets.zero).add(
+                EdgeInsets.only(bottom: overlap),
+              ),
             ),
-          );
+          )
+        : scrollView(widget.padding);
     if (widget.scrollbar == CoilScrollbarVisibility.none) {
       // No bar at all: not coil's, and not the behavior's desktop one
       // either. The content above keeps the ambient behavior.
