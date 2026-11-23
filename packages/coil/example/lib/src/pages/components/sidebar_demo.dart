@@ -179,7 +179,10 @@ class _Avatar extends StatelessWidget {
 
 /// The product's top-level navigation under a collapsible label.
 class WorkspaceGroup extends StatefulWidget {
-  const WorkspaceGroup({super.key});
+  const WorkspaceGroup({super.key, this.onChanged});
+
+  /// Called with the label of the section the user picks.
+  final ValueChanged<String>? onChanged;
 
   @override
   State<WorkspaceGroup> createState() => _WorkspaceGroupState();
@@ -201,7 +204,10 @@ class _WorkspaceGroupState extends State<WorkspaceGroup> {
             label: Text(label),
             leading: CatalogIcon(glyph),
             selected: label == _current,
-            onPressed: () => setState(() => _current = label),
+            onPressed: () {
+              setState(() => _current = label);
+              widget.onChanged?.call(label);
+            },
           ),
       ],
     ),
@@ -390,19 +396,26 @@ class DemoHeader extends StatelessWidget {
   );
 }
 
-/// The page beside the sidebar: a top bar with the trigger and a title.
-class DemoPage extends StatelessWidget {
-  const DemoPage({
+/// The page beside the sidebar: a top bar with the trigger and the title,
+/// then the list for the section picked in the navigation.
+class WorkspacePage extends StatelessWidget {
+  const WorkspacePage({
     super.key,
-    this.title = 'Chat',
+    this.section = 'Chat',
     this.side = CoilSidebarSide.start,
+    this.showTrigger = true,
   });
 
-  final String title;
+  final String section;
   final CoilSidebarSide side;
+
+  /// Whether the top bar carries the trigger; a sidebar that never folds
+  /// has nothing for it to do.
+  final bool showTrigger;
 
   @override
   Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
     final trigger = CoilSidebarTrigger(
       icon: CatalogIcon(
         side == CoilSidebarSide.start ? Glyph.panelLeft : Glyph.panelRight,
@@ -416,17 +429,118 @@ class DemoPage extends StatelessWidget {
           child: Row(
             spacing: 8,
             children: [
-              if (side == CoilSidebarSide.start) trigger,
+              if (showTrigger && side == CoilSidebarSide.start) trigger,
               Expanded(
-                child: Text(
-                  title,
-                  style: CoilTheme.textOf(context).muted.body,
+                child: Padding(
+                  padding: showTrigger
+                      ? EdgeInsets.zero
+                      : const EdgeInsets.only(left: 8),
+                  child: Text(
+                    section,
+                    style: text.body.copyWith(fontWeight: text.emphasis),
+                  ),
                 ),
               ),
-              if (side == CoilSidebarSide.end) trigger,
+              if (showTrigger && side == CoilSidebarSide.end) trigger,
             ],
           ),
         ),
+        Expanded(child: WorkspaceList(section: section)),
+      ],
+    );
+  }
+}
+
+/// The list for the section picked in the navigation.
+class WorkspaceList extends StatelessWidget {
+  const WorkspaceList({required this.section, super.key});
+
+  final String section;
+
+  static const _rows = <String, List<(String, String, String)>>{
+    'Chat': [
+      ('Sidebar API review', 'Can the rail also resize on touch?', '2m'),
+      ('Fix login redirect', 'The callback drops the return path.', '1h'),
+      ('Quarterly roadmap', 'Drafted three themes for Q1.', 'Yesterday'),
+      ('Onboarding emails', 'Shorter subject lines test better.', 'Mon'),
+      ('Pricing page copy', 'Two options for the annual toggle.', 'Nov 12'),
+    ],
+    'Agents': [
+      ('Research assistant', 'Reads sources and drafts briefs.', 'Active'),
+      ('Support triage', 'Routes new tickets to the right queue.', 'Active'),
+      ('Release notes', 'Summarizes merged pull requests.', 'Paused'),
+    ],
+    'Knowledge': [
+      ('Brand guidelines', 'PDF · updated 2 days ago', '12 pages'),
+      ('Support playbook', 'Markdown · updated last week', '38 KB'),
+      ('Pricing FAQ', 'Notion page · synced today', '9 answers'),
+      ('Style guide', 'Markdown · updated Nov 3', '21 KB'),
+    ],
+    'Runs': [
+      ('Support triage', '41 tickets routed in 3.2 s.', 'Succeeded'),
+      ('Research assistant', 'Brief on competitor pricing.', 'Succeeded'),
+      ('Release notes', 'The GitHub token expired.', 'Failed'),
+      ('Support triage', '38 tickets routed in 2.9 s.', 'Succeeded'),
+    ],
+    'Evals': [
+      ('Tone of voice', '120 cases · last run 1h ago', '94 %'),
+      ('Refusals', '60 cases · last run yesterday', '98 %'),
+      ('Tool use', '85 cases · last run yesterday', '81 %'),
+    ],
+  };
+
+  static CoilBadgeColor _color(String value) => switch (value) {
+    'Active' || 'Succeeded' => CoilBadgeColor.green,
+    'Failed' => CoilBadgeColor.red,
+    'Paused' => CoilBadgeColor.gray,
+    _ => CoilBadgeColor.gray,
+  };
+
+  static bool _isStatus(String value) =>
+      const {'Active', 'Paused', 'Succeeded', 'Failed'}.contains(value);
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      children: [
+        for (final (title, line, detail) in _rows[section]!)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              spacing: 12,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.body,
+                      ),
+                      Text(
+                        line,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.muted.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isStatus(detail))
+                  CoilBadge(
+                    variant: CoilBadgeVariant.dot,
+                    color: _color(detail),
+                    child: Text(detail),
+                  )
+                else
+                  Text(detail, style: text.muted.caption),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -509,7 +623,6 @@ class _PhonePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = CoilTheme.textOf(context);
-    final colors = CoilTheme.of(context).colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -540,49 +653,7 @@ class _PhonePage extends StatelessWidget {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Text('Pinned', style: text.muted.caption),
-        ),
-        SizedBox(
-          height: 120,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: 6,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, i) => SizedBox(
-              width: 160,
-              child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  color: colors.muted,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(
-                      CoilTheme.radiiOf(context).container,
-                    ),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Align(
-                    alignment: AlignmentDirectional.bottomStart,
-                    child: Text('Card ${i + 1}', style: text.body),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Drag the page sideways anywhere to reveal a sidebar. The '
-              'cards scroll first and hand over at their ends.',
-              style: text.muted.body,
-            ),
-          ),
-        ),
+        const Expanded(child: WorkspaceList(section: 'Chat')),
       ],
     );
   }

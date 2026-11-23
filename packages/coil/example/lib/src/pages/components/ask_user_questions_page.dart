@@ -1,6 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const askUserQuestionsEntry = CatalogEntry(
@@ -73,7 +74,7 @@ class AskUserQuestionsPage extends StatefulWidget {
 
 class _AskUserQuestionsPageState extends State<AskUserQuestionsPage> {
   final _flow = CoilAskUserQuestionsController<String>();
-  String? _summary;
+  Map<Object, CoilAnswer<String>>? _answers;
 
   @override
   void dispose() {
@@ -81,71 +82,143 @@ class _AskUserQuestionsPageState extends State<AskUserQuestionsPage> {
     super.dispose();
   }
 
-  String _describe(Map<Object, CoilAnswer<String>> answers) => [
-    for (final MapEntry(:key, :value) in answers.entries)
-      '$key: ${value.skipped ? 'skipped' : _picks(value)}',
-  ].join(' · ');
+  static const _labels = {
+    'stack': 'Stack',
+    'platforms': 'Platforms',
+    'tone': 'Tone',
+    'name': 'Project name',
+  };
 
   static String _picks(CoilAnswer<String> answer) => [
     ...answer.values,
-    if (answer.text.isNotEmpty) '"${answer.text}"',
+    if (answer.text.isNotEmpty) answer.text,
   ].join(', ');
 
   @override
-  Widget build(BuildContext context) => CatalogPage(
-    title: 'AskUserQuestions',
-    summary:
-        'Single, multiple and typed answers, with Back and Skip. On pointer '
-        'the number keys pick rows; touch hides them and uses 44 pt rows.',
-    children: [
-      DemoSection(
-        title: 'Four questions',
-        description:
-            'Picking a single option moves on. Keys: 1–9, Up and Down, '
-            'Enter, Escape to go back, Ctrl/⌘+Enter to continue.',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 12,
-          children: [
-            CoilAskUserQuestions<String>(
-              questions: _questions,
-              controller: _flow,
-              onCompleted: (answers) =>
-                  setState(() => _summary = _describe(answers)),
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final answers = _answers;
+    return CatalogPage(
+      title: 'AskUserQuestions',
+      summary:
+          'An agent asks before it starts: one question at a time, with Back '
+          'and Skip. On a pointer the number keys pick rows; touch hides '
+          'them and uses 44 pt rows.',
+      hero: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 16,
+        children: [
+          const CoilChatMessage(
+            sender: CoilChatSender.user,
+            entrance: CoilChatMessageEntrance.none,
+            child: Text('Build me a habit tracker'),
+          ),
+          const CoilChatMessage(
+            sender: CoilChatSender.assistant,
+            entrance: CoilChatMessageEntrance.none,
+            child: Text('Happy to. Four quick questions before I start.'),
+          ),
+          if (answers == null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: CoilAskUserQuestions<String>(
+                questions: _questions,
+                controller: _flow,
+                onCompleted: (a) => setState(() => _answers = a),
+              ),
+            )
+          else ...[
+            CoilChatMessage(
+              sender: CoilChatSender.assistant,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Got it. I am starting with:'),
+                  const SizedBox(height: 8),
+                  for (final MapEntry(:key, :value) in answers.entries)
+                    Text(
+                      '${_labels[key] ?? key}: '
+                      '${value.skipped ? 'skipped' : _picks(value)}',
+                      style: text.muted.body,
+                    ),
+                ],
+              ),
             ),
-            if (_summary case final summary?) ...[
-              Text(summary),
-              CoilButton(
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: CoilButton(
                 variant: CoilButtonVariant.secondary,
                 size: CoilSize.compact,
                 onPressed: () => setState(() {
-                  _summary = null;
+                  _answers = null;
                   _flow.reset();
                 }),
-                child: const Text('Start over'),
+                child: const Text('Ask again'),
               ),
-            ],
-          ],
-        ),
-      ),
-      const DemoSection(
-        title: 'Keys at the start, compact',
-        child: CoilAskUserQuestions<String>(
-          size: CoilSize.compact,
-          questions: [
-            CoilQuestion.multiple(
-              id: 'checks',
-              title: Text('Which checks should run?'),
-              keyPosition: CoilQuestionKeyPosition.start,
-              options: [
-                CoilQuestionOption(value: 'lint', label: Text('Lint')),
-                CoilQuestionOption(value: 'test', label: Text('Unit tests')),
-                CoilQuestionOption(value: 'golden', label: Text('Goldens')),
-              ],
             ),
           ],
-        ),
+        ],
       ),
-    ],
-  );
+      usage: '''
+CoilAskUserQuestions<String>(
+  questions: const [
+    CoilQuestion.single(
+      id: 'stack',
+      title: Text('Which stack should the app use?'),
+      options: [
+        CoilQuestionOption(value: 'flutter', label: Text('Flutter')),
+        CoilQuestionOption(value: 'swift', label: Text('SwiftUI')),
+      ],
+    ),
+  ],
+  onCompleted: (answers) => start(answers),
+)''',
+      notes: const [
+        CatalogNote(
+          'Keyboard',
+          '1 to 9 pick rows, Up and Down move, Enter picks, Escape goes '
+              'back and Ctrl or ⌘ with Enter continues.',
+        ),
+        CatalogNote(
+          'Touch',
+          'No number keys or submit arrow. Rows are 44 tall and show the '
+              'press fill; a tap never pulls focus, so the keyboard stays '
+              'down until a field is tapped.',
+        ),
+        CatalogNote(
+          'Motion',
+          'Between questions the card’s height springs on standard while '
+              'the old question fades out and the new one fades in.',
+        ),
+        CatalogNote(
+          'Accessibility',
+          'A rejected typed answer shows its message under the field in a '
+              'live region and the field turns invalid.',
+        ),
+      ],
+      children: const [
+        DemoSection(
+          title: 'Compact, keys at the start',
+          description:
+              'One step denser for a narrow panel; the number sits before '
+              'the label.',
+          child: CoilAskUserQuestions<String>(
+            size: CoilSize.compact,
+            questions: [
+              CoilQuestion.multiple(
+                id: 'checks',
+                title: Text('Which checks should run?'),
+                keyPosition: CoilQuestionKeyPosition.start,
+                options: [
+                  CoilQuestionOption(value: 'lint', label: Text('Lint')),
+                  CoilQuestionOption(value: 'test', label: Text('Unit tests')),
+                  CoilQuestionOption(value: 'golden', label: Text('Goldens')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
