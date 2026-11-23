@@ -191,6 +191,18 @@ Navigator.of(context).push(
 
 ---
 
+### Content with its own drags
+
+The sheet drag beats a descendant pan, so a map or canvas inside a sheet would
+lose its drags to it. Wrap such content in `ExcludeScrollDrag`; pass `axes` to
+exclude only some directions.
+
+```dart
+ExcludeScrollDrag(child: MapView())
+```
+
+---
+
 ### Snapping sheet (multi-stop)
 
 A sheet that snaps to specific positions. Combine `SheetSnappingConfig` with

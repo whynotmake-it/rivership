@@ -385,7 +385,7 @@ coil sets no scroll behavior of its own. Physics, overscroll and which pointers 
 
 Coil never draws Cupertino or Material chrome. Platform pieces come in only where they're genuinely native: the edit menu, selection handles and the keyboard. They're used only inside `CoilTextFieldCore`.
 
-**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold.
+**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold. Page content with its own drags (a map, a canvas, a draggable card) is wrapped in `ExcludeScrollDrag`.
 
 ### 9.2.1 Keyboard shortcuts
 
@@ -505,6 +505,7 @@ Every component ships with all of these. They're required to call it done.
 - **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top, unless the footer leads with a summary of what its one action confirms (§13.5, summary footer), as the date picker's does. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
 - **Height:** it hugs its content: a short list makes a short sheet on the bottom edge; a scroll view or long content grows it up to the cap and scrolls inside. Search and command sheets open at the large detent and grow while the keyboard is up.
 - **Motion:** `gentle` both ways; a dismissing drag hands its fling velocity to it. The scrim fades with the sheet.
+- **Content with its own drags** (a map, a canvas, a draggable card) goes in an `ExcludeScrollDrag` (re-exported by coil), or the sheet's drag takes them.
 - **Scrollables that take their own behavior** (a `PageView`, a `ListWheelScrollView`) use `CoilSheetRoute.scrollBehaviorOf(context)`, so a drag still hands off to the sheet.
 - **Dismiss:** drag down, tap the scrim, system back, Esc.
 - **Rows** are always touch rows, whatever the tier.
@@ -814,6 +815,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **Phone (touch, < 600):**
     - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, beside the sheet's close button (leading on iOS, trailing elsewhere; it calls `onClose` when the dialog has one, else pops), so the sheet never shows two; and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
     - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
+    - Content in it that needs its own drags (a map, a canvas) goes in an `ExcludeScrollDrag`.
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.

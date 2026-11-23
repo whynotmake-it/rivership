@@ -10,7 +10,7 @@ import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
 export 'package:scroll_drag_detector/scroll_drag_detector.dart'
-    show ScrollDragBehavior;
+    show ExcludeScrollDrag, ScrollDragBehavior;
 
 export 'src/dismissal_mode.dart';
 export 'src/route_snapshot_mode.dart';
