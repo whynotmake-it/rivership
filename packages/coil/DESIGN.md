@@ -723,7 +723,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### ToggleGroup
 
 - **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
-- **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
+- **Sizes:** segment height `controlHeight`, padding `controlPaddingX` (also next to an icon, unlike a button); the row is `segmentPadding` taller on each side.
+- **Segment content:** [icon] label. An option's `icon` leads the label, `buttonGap` before it, in the label's animated color and at `iconSize`; the width springs cover both. An icon-only segment passes its icon as the label, with a `semanticLabel`.
 - **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
 - **Motion:** merge/split `standard`, highlight `quick`. A segment whose label changes cross-fades it and springs to its new width on `standard` (`CoilToggleGroupTrack.size`); the selection follows.
 - **Keyboard:** roving; Left and Right move; Space toggles.
