@@ -92,7 +92,7 @@ class _Hero extends StatelessWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  'Flutter components on springs.',
+                  'Refined components, on springs.',
                   style: text.display,
                 ),
               ),
