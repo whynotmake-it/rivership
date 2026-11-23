@@ -10,7 +10,7 @@ const inputGroupEntry = CatalogEntry(
   slug: 'input-group',
   title: 'InputGroup',
   group: CatalogGroup.groupedControls,
-  summary: 'Labeled inputs sharing one hover scope.',
+  summary: 'A column of labeled inputs that share one hover scope.',
   page: InputGroupPage.new,
 );
 
@@ -29,8 +29,8 @@ class _InputGroupPageState extends State<InputGroupPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'InputGroup',
     summary:
-        'A column of labeled inputs that share one hover scope: with a '
-        'mouse, the field nearest the pointer gets the hover fill.',
+        'A column of labeled inputs that share one hover scope, so with a '
+        'mouse only the field nearest the pointer takes the hover fill.',
     hero: const _ProfileForm(),
     usage: '''
 CoilInputGroup(
@@ -51,25 +51,25 @@ CoilInputGroup(
     notes: const [
       CatalogNote(
         'Pointer',
-        'Only the field nearest the pointer is filled, and the fill never '
-            'glides. Moving between fields swaps it at once.',
+        'Only the field nearest the pointer is filled, and moving between '
+            'fields swaps the fill at once instead of gliding it across.',
       ),
       CatalogNote(
         'Keyboard',
-        'Tab moves between fields in order; focus shows as the field’s '
-            'own border, not as hover. A tap anywhere in a field’s box '
-            'focuses its text.',
+        'Tab moves between the fields in order, and focus shows as the '
+            'field’s own border rather than as a hover fill. A tap anywhere '
+            'in a field’s box puts the caret in its text.',
       ),
       CatalogNote(
         'Touch',
-        'No hover on touch, only focus states, and fields sit 16 apart '
-            'instead of 12.',
+        'There is no hover on touch, so the fields only show focus, and '
+            'they sit a little further apart than on desktop.',
       ),
       CatalogNote(
         'Accessibility',
-        'Errors sit under their own field and are announced with it. A '
-            'button inside one input does not make it taller than its '
-            'neighbors.',
+        'Each error sits under its own field and is announced with it, and '
+            'a button inside one input never makes that field taller than '
+            'its neighbours.',
       ),
     ],
     children: [

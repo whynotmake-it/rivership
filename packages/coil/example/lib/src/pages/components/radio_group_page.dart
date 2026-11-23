@@ -8,7 +8,7 @@ const radioGroupEntry = CatalogEntry(
   slug: 'radio-group',
   title: 'RadioGroup',
   group: CatalogGroup.groupedControls,
-  summary: 'One choice; the selected fill glides between rows.',
+  summary: 'A single choice from a short list of rows.',
   page: RadioGroupPage.new,
 );
 
@@ -29,8 +29,9 @@ class _RadioGroupPageState extends State<RadioGroupPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'RadioGroup',
     summary:
-        'One choice from a short list; the selected fill glides from row to '
-        'row. For more than 7 options, use a Select.',
+        'A radio group lets people pick one option from a short list, and '
+        'the selected fill glides from row to row. For more than 7 options, '
+        'a Select works better.',
     hero: const _ShippingSpeed(),
     usage: '''
 CoilRadioGroup<String>(
@@ -45,24 +46,25 @@ CoilRadioGroup<String>(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'The selected row is the one tab stop. Arrows move and select, '
-            'wrapping at the ends; Home and End jump.',
+        'The selected row takes the group’s single tab stop. The arrow keys '
+            'move and select in one step and wrap around at the ends, while '
+            'Home and End jump to the first and last row.',
       ),
       CatalogNote(
         'Touch',
-        'A press fills the row and selects on release. Disabled rows are '
-            'skipped by arrows and by Tab.',
+        'Pressing a row fills it, and releasing selects it. Disabled rows '
+            'are skipped by the arrow keys and by Tab.',
       ),
       CatalogNote(
         'Accessibility',
-        'Rows are mutually exclusive and report checked. Give the group a '
-            'semanticLabel or a FieldSet legend. Nothing is selected until '
-            'value is non-null.',
+        'Screen readers announce the rows as mutually exclusive and report '
+            'which one is checked, so give the group a semanticLabel or a '
+            'field set legend. Nothing is selected until value is non-null.',
       ),
       CatalogNote(
         'Do / Don’t',
-        'Do use CoilRadioGroup.custom to lay radios out as choice cards. '
-            'Don’t go past 7 options.',
+        'CoilRadioGroup.custom lays the radios out as choice cards when '
+            'rows are too plain. Beyond about 7 options, switch to a Select.',
       ),
     ],
     children: [
