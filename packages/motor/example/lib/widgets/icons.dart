@@ -90,6 +90,18 @@ class Glyph {
   static const repeat = Glyph(LucideIcons300.repeat, LucideIcons400.repeat);
   static const plus = Glyph(LucideIcons300.plus, LucideIcons400.plus);
   static const minus = Glyph(LucideIcons300.minus, LucideIcons400.minus);
+  static const chevronDown = Glyph(
+    LucideIcons300.chevronDown,
+    LucideIcons400.chevronDown,
+  );
+  static const cloudUpload = Glyph(
+    LucideIcons300.cloudUpload,
+    LucideIcons400.cloudUpload,
+  );
+  static const cloudOff = Glyph(
+    LucideIcons300.cloudOff,
+    LucideIcons400.cloudOff,
+  );
   static const slidersHorizontal = Glyph(
     LucideIcons300.slidersHorizontal,
     LucideIcons400.slidersHorizontal,
