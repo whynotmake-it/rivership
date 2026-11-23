@@ -46,12 +46,12 @@ class CoilActionBar extends StatelessWidget {
   final double? spacing;
 
   /// The layout actions at [context] get: [CoilActionBarLayout.stack] in a
-  /// sheet (a [CoilModalRoute] shown as one, or any [CoilSheetRoute], such
-  /// as a popup's) and on the touch tier in a compact window, where a
-  /// centered dialog is phone-sized too; [CoilActionBarLayout.row]
-  /// elsewhere.
+  /// sheet or floating panel (a [CoilModalRoute] shown as one, or any
+  /// [CoilSheetRoute], such as a popup's) and on the touch tier in a compact
+  /// window, where a centered dialog is phone-sized too;
+  /// [CoilActionBarLayout.row] elsewhere.
   static CoilActionBarLayout layoutOf(BuildContext context) =>
-      CoilModalRoute.presentationOf(context) == CoilModalPresentation.sheet ||
+      (CoilModalRoute.presentationOf(context)?.usesSheetPanel ?? false) ||
           ModalRoute.of(context) is CoilSheetRoute ||
           (CoilTheme.tierOf(context) == CoilTier.touch &&
               MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth)
