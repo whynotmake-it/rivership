@@ -122,7 +122,12 @@ void main() async {
             child: Builder(
               builder: (context) => DefaultTextStyle(
                 style: CoilTheme.textOf(context).body,
-                child: child!,
+                // Black behind every route: a page that a sheet pushes back
+                // and scales down shows this around it, never white.
+                child: ColoredBox(
+                  color: const Color(0xFF000000),
+                  child: child,
+                ),
               ),
             ),
           );
