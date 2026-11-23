@@ -124,7 +124,11 @@ class _UsageSnippetState extends State<UsageSnippet> {
       fontSize: text.caption.fontSize! - 0.5,
       height: 20 / (text.caption.fontSize! - 0.5),
       letterSpacing: 0,
-      fontFeatures: const [],
+      // Code shows the characters typed: no `=>` drawn as an arrow.
+      fontFeatures: const [
+        FontFeature.disable('calt'),
+        FontFeature.disable('liga'),
+      ],
       fontVariations: const [FontVariation('wght', 420)],
     );
     return Column(
