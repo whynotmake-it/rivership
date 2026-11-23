@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:coil/foundation.dart';
 import 'package:coil/input.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/select/combobox_chips_field.dart';
 import 'package:coil/src/components/select/option_list.dart';
 import 'package:coil/src/components/select/picked_label.dart';
 import 'package:coil/src/components/select/select_style.dart';
@@ -482,10 +483,10 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
   );
 
   /// The page's field; with [_ComboboxCore.multiple], the picks as chips
-  /// under it, and Backspace in the empty field removes the last.
+  /// inside it before the text, and Backspace in the empty field removes
+  /// the last.
   Widget _pageField() {
-    final field = _field(inSheet: false, focusNode: _focus);
-    if (!widget.multiple) return field;
+    if (!widget.multiple) return _field(inSheet: false, focusNode: _focus);
     final picked = [
       for (final option in widget.options)
         if (widget.picked.contains(option.value)) option,
@@ -498,27 +499,29 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
           enabled: () => _enabled && _text.text.isEmpty && picked.isNotEmpty,
           onInvoke: () => remove(picked.last.value),
         ),
+        CoilDismissIntent: _dismiss,
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: CoilTheme.metricsOf(context).gap,
-        children: [
-          field,
-          if (picked.isNotEmpty)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final option in picked)
-                  _Chip(
-                    label: option.label,
-                    removeLabel:
-                        '${widget.removeLabel} '
-                        '${option.semanticLabel ?? option.searchText ?? ''}',
-                    onRemove: _enabled ? () => remove(option.value) : null,
-                  ),
-              ],
+      child: ComboboxChipsField(
+        controller: _text,
+        focusNode: _focus,
+        enabled: _enabled,
+        // A pick takes the placeholder's place, as the picked label does in
+        // the single field.
+        placeholder: picked.isEmpty ? widget.placeholder : null,
+        trailing: const CoilIcon(CoilIconRole.chevronDown),
+        size: widget.size,
+        motion: widget.motion,
+        shortcuts: _shortcuts,
+        onChanged: _onChanged,
+        onSubmitted: (_) => _pickActive(),
+        chips: [
+          for (final option in picked)
+            _Chip(
+              label: option.label,
+              removeLabel:
+                  '${widget.removeLabel} '
+                  '${option.semanticLabel ?? option.searchText ?? ''}',
+              onRemove: _enabled ? () => remove(option.value) : null,
             ),
         ],
       ),
@@ -710,7 +713,8 @@ class _RemoveLastAction extends Action<_RemoveLastIntent> {
   void invoke(_RemoveLastIntent intent) => onInvoke();
 }
 
-/// A pick of a multi-select combobox, with a button that removes it.
+/// A pick of a multi-select combobox, with a button that removes it. It
+/// sits inside the field, one row high.
 class _Chip extends StatelessWidget {
   const _Chip({
     required this.label,
@@ -730,56 +734,64 @@ class _Chip extends StatelessWidget {
     final colors = theme.colors;
     final metrics = CoilTheme.metricsOf(context);
     final onRemove = this.onRemove;
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: colors.muted,
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(
-            theme.shape.radii(metrics.tier).item,
+    final extent = comboboxChipExtent(metrics);
+    // The × is an icon's size, and takes taps in the chip's full height,
+    // never past it into the next chip.
+    final remove = metrics.iconSize;
+    return SizedBox(
+      height: extent,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: colors.muted,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(
+              theme.shape.radii(metrics.tier).item,
+            ),
           ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: 8, end: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 2,
-          children: [
-            // A long chip label ends in an ellipsis.
-            Flexible(
-              child: DefaultTextStyle(
-                style: CoilTheme.textOf(context).caption,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                child: label,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 8, end: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 2,
+            children: [
+              // A long chip label ends in an ellipsis.
+              Flexible(
+                child: DefaultTextStyle(
+                  style: CoilTheme.textOf(context).caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  child: label,
+                ),
               ),
-            ),
-            Semantics(
-              button: true,
-              label: removeLabel,
-              excludeSemantics: true,
-              onTap: onRemove,
-              child: CoilInteraction(
-                onPressed: onRemove,
-                excludeFromSemantics: true,
-                minHitTarget: metrics.tier == CoilTier.touch ? 44 : 0,
-                builder: (context, states, _) => SizedBox.square(
-                  dimension: 20,
-                  // The icon fills the target: coil's × is drawn on its 24
-                  // grid, so it stays small, and an app's icon lines up.
-                  child: IconTheme(
-                    data: IconThemeData(
-                      size: 20,
-                      color: states.contains(WidgetState.hovered)
-                          ? colors.foreground
-                          : colors.mutedForeground,
+              Semantics(
+                button: true,
+                label: removeLabel,
+                excludeSemantics: true,
+                onTap: onRemove,
+                child: CoilInteraction(
+                  onPressed: onRemove,
+                  excludeFromSemantics: true,
+                  minHitTarget: extent,
+                  builder: (context, states, _) => SizedBox.square(
+                    dimension: remove,
+                    // The icon fills the target: coil's × is drawn on its
+                    // 24 grid, so it stays small, and an app's icon lines
+                    // up.
+                    child: IconTheme(
+                      data: IconThemeData(
+                        size: remove,
+                        color: states.contains(WidgetState.hovered)
+                            ? colors.foreground
+                            : colors.mutedForeground,
+                      ),
+                      child: const CoilIcon(CoilIconRole.close),
                     ),
-                    child: const CoilIcon(CoilIconRole.close),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
