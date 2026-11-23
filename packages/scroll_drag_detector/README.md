@@ -63,6 +63,36 @@ The wrapper also works with per-view overrides such as
 It preserves the consumer's settings, including `copyWith(...)` overrides, and
 delegates unchanged when there is no ancestor detector.
 
+### Content with its own drags
+
+A `ScrollDragDetector` competes in the gesture arena like a `GestureDetector`,
+and its axis drag beats a descendant pan, so a sheet, drawer or swipe-back route
+can steal drags from a map, a canvas or a draggable card. Wrap that content in
+`ExcludeScrollDrag`: a drag that starts inside it is never taken by an ancestor
+detector on the excluded axes, so the content gets the gesture as if no
+detector were there. Detectors inside it work as usual.
+
+```dart
+// A map in a sheet.
+ExcludeScrollDrag(child: MapView())
+
+// A draggable card on a drawer page.
+ExcludeScrollDrag(child: DraggableCard())
+
+// Any content of a full-screen swipe-back route that drags.
+ExcludeScrollDrag(child: Whiteboard())
+```
+
+Pass `axes` to exclude only some directions, for example a horizontal slider in
+a sheet that should still be dragged down:
+
+```dart
+ExcludeScrollDrag(
+  axes: {Axis.horizontal},
+  child: Carousel(),
+)
+```
+
 --- 
 
 [flutter_install_link]: https://docs.flutter.dev/get-started/install
