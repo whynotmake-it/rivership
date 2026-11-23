@@ -212,6 +212,30 @@ class Glyph {
     LucideIcons300.fileText,
     LucideIcons400.fileText,
   );
+  static const pause = Glyph(LucideIcons300.pause, LucideIcons400.pause);
+  static const skipBack = Glyph(
+    LucideIcons300.skipBack,
+    LucideIcons400.skipBack,
+  );
+  static const skipForward = Glyph(
+    LucideIcons300.skipForward,
+    LucideIcons400.skipForward,
+  );
+  static const listMusic = Glyph(
+    LucideIcons300.listMusic,
+    LucideIcons400.listMusic,
+  );
+  static const archive = Glyph(
+    LucideIcons300.archive,
+    LucideIcons400.archive,
+  );
+  static const clock = Glyph(LucideIcons300.clock, LucideIcons400.clock);
+  static const truck = Glyph(LucideIcons300.truck, LucideIcons400.truck);
+  static const creditCard = Glyph(
+    LucideIcons300.creditCard,
+    LucideIcons400.creditCard,
+  );
+  static const tag = Glyph(LucideIcons300.tag, LucideIcons400.tag);
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].
