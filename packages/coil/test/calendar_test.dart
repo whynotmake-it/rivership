@@ -44,10 +44,10 @@ void main() {
     );
     expect(find.text('November 2026'), findsOneWidget);
     expect(
-      tester.getSemantics(find.text('14')).flagsCollection.isSelected,
+      tester.getSemantics(find.text('14').first).flagsCollection.isSelected,
       Tristate.isTrue,
     );
-    await tester.tap(find.text('20'));
+    await tester.tap(find.text('20').first);
     await tester.pumpAndSettle();
     expect(_picked(tester), DateTime(2026, 11, 20));
   });
@@ -110,30 +110,33 @@ void main() {
   });
 
   pagingTests();
+  snapTests();
   sizingTests();
   titleTests();
   monthViewTests();
 }
 
-/// The calendar's days, laid out in the grid.
-Finder _days() => find.descendant(
-  of: find.byType(PageView),
-  matching: find.byType(CoilHoverItem),
-);
+/// The days' scroll view: the six rows in view.
+Finder _grid() => find.byType(CustomScrollView).first;
+
+/// The calendar's days, laid out in the grid (the weeks scrolled out of view
+/// are built too, a month's rows at a time).
+Finder _days() =>
+    find.descendant(of: _grid(), matching: find.byType(CoilHoverItem));
 
 void pagingTests() {
   testWidgets('a swipe on touch turns the month, and back', (tester) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
-    final grid = find.byType(PageView);
-    await tester.fling(grid, const Offset(-200, 0), 1000);
+    final grid = _grid();
+    await tester.fling(grid, const Offset(0, -200), 600);
     await tester.pumpAndSettle();
     expect(find.text('December 2026'), findsOneWidget);
-    await tester.fling(grid, const Offset(200, 0), 1000);
+    await tester.fling(grid, const Offset(0, 200), 600);
     await tester.pumpAndSettle();
     expect(find.text('November 2026'), findsOneWidget);
-    // A day on the page the swipe landed on picks.
-    await tester.tap(find.text('20'));
+    // A day in the month the swipe landed on picks.
+    await tester.tap(find.text('20').first);
     await tester.pumpAndSettle();
     expect(_picked(tester), DateTime(2026, 11, 20));
   });
@@ -143,19 +146,19 @@ void pagingTests() {
   ) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
-    final grid = find.byType(PageView);
+    final grid = _grid();
     final before = tester.getTopLeft(find.text('14').first);
     final gesture = await tester.startGesture(tester.getCenter(grid));
-    await gesture.moveBy(const Offset(-20, 0));
-    await gesture.moveBy(const Offset(-40, 0));
+    await gesture.moveBy(const Offset(0, -20));
+    await gesture.moveBy(const Offset(0, -40));
     await tester.pump();
     expect(
-      tester.getTopLeft(find.text('14').first).dx,
-      lessThan(before.dx - 30),
+      tester.getTopLeft(find.text('14').first).dy,
+      lessThan(before.dy - 30),
     );
-    // Slowly back a little, then let go: not past half a page, no fling.
+    // Slowly back a little, then let go: not past half a month, no fling.
     await tester.pump(const Duration(seconds: 1));
-    await gesture.moveBy(const Offset(10, 0));
+    await gesture.moveBy(const Offset(0, 10));
     await tester.pump(const Duration(seconds: 1));
     await gesture.up();
     await tester.pumpAndSettle();
@@ -171,8 +174,8 @@ void pagingTests() {
       testApp(tier: CoilTier.pointer, home: const _Demo()),
     );
     await tester.fling(
-      find.byType(PageView),
-      const Offset(-200, 0),
+      _grid(),
+      const Offset(0, -200),
       1000,
       deviceKind: PointerDeviceKind.mouse,
     );
@@ -188,11 +191,11 @@ void pagingTests() {
     final gesture = await tester.createGesture(
       kind: PointerDeviceKind.trackpad,
     );
-    await gesture.panZoomStart(tester.getCenter(find.byType(PageView)));
+    await gesture.panZoomStart(tester.getCenter(_grid()));
     for (var i = 0; i < 10; i++) {
       await gesture.panZoomUpdate(
-        tester.getCenter(find.byType(PageView)),
-        pan: Offset(-20.0 * (i + 1), 0),
+        tester.getCenter(_grid()),
+        pan: Offset(0, -20.0 * (i + 1)),
       );
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -206,14 +209,12 @@ void pagingTests() {
   ) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
-    await tester.fling(find.byType(PageView), const Offset(-200, 0), 1000);
+    await tester.fling(_grid(), const Offset(0, -200), 600);
     await tester.pumpAndSettle();
     expect(find.text('December 2026'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Next month'));
     await tester.pumpAndSettle();
     expect(find.text('January 2027'), findsOneWidget);
-    // One page in the tree once it settles.
-    expect(_days(), findsNWidgets(42));
     // Title, the arrows, then the grid.
     for (var i = 0; i < 4; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -236,7 +237,7 @@ void pagingTests() {
         home: _Demo(firstDate: DateTime(2026, 11, 10)),
       ),
     );
-    await tester.fling(find.byType(PageView), const Offset(250, 0), 1000);
+    await tester.fling(_grid(), const Offset(0, 250), 1000);
     await tester.pumpAndSettle();
     expect(find.text('November 2026'), findsOneWidget);
   });
@@ -264,7 +265,7 @@ void pagingTests() {
       await tester.pumpWidget(
         testApp(tier: CoilTier.touch, home: const _Demo()),
       );
-      await tester.fling(find.byType(PageView), const Offset(-200, 0), 1000);
+      await tester.fling(_grid(), const Offset(0, -200), 200);
       await tester.pumpAndSettle();
       expect(find.text('December 2026'), findsOneWidget);
       expect(played, isEmpty);
@@ -325,6 +326,139 @@ void pagingTests() {
   );
 }
 
+/// The month the title names, as (year, month).
+({int year, int month}) _titleMonth(WidgetTester tester) {
+  const names = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July', //
+    'August', 'September', 'October', 'November', 'December',
+  ];
+  final title = tester.widget<Text>(
+    find
+        .descendant(
+          of: find.byType(CoilCalendar),
+          matching: find.textContaining(RegExp(r'^[A-Z][a-z]+ \d{4}$')),
+        )
+        .first,
+  );
+  final parts = title.data!.split(' ');
+  return (year: int.parse(parts[1]), month: names.indexOf(parts[0]) + 1);
+}
+
+/// Whether the first of the title's month is in the top row of the days,
+/// whose top is the grid's top: the days rest on a month boundary.
+bool _restsOnMonth(WidgetTester tester) {
+  final grid = tester.getRect(_grid());
+  final row = grid.height / 6;
+  final title = _titleMonth(tester);
+  final first = find.descendant(
+    of: _grid(),
+    matching: find.bySemanticsLabel(
+      RegExp(
+        '${const [
+          'January', 'February', 'March', 'April', 'May', 'June', 'July', //
+          'August', 'September', 'October', 'November', 'December',
+        ][title.month - 1]} 1, ${title.year}\$',
+      ),
+    ),
+  );
+  if (first.evaluate().length != 1) return false;
+  final cell = tester.getRect(first);
+  return (cell.top - grid.top).abs() < 0.5 && (cell.height - row).abs() < 0.5;
+}
+
+void snapTests() {
+  testWidgets('a strong fling coasts several months and rests on a month, '
+      'and a day there picks', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
+    final scroll = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    expect(_restsOnMonth(tester), isTrue);
+
+    await tester.fling(_grid(), const Offset(0, -200), 3000);
+    // It carries on in the direction it was flung until it stops: no
+    // recoil, and nothing is left in motion afterwards.
+    var last = scroll.position.pixels;
+    for (var i = 0; i < 300 && tester.binding.hasScheduledFrame; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(scroll.position.pixels, greaterThanOrEqualTo(last));
+      last = scroll.position.pixels;
+    }
+    await tester.pumpAndSettle();
+    final title = _titleMonth(tester);
+    expect(
+      (title.year - 2026) * 12 + title.month - 11,
+      greaterThanOrEqualTo(3),
+    );
+    expect(_restsOnMonth(tester), isTrue);
+
+    await tester.tap(find.text('15').first);
+    await tester.pumpAndSettle();
+    expect(_picked(tester), DateTime(title.year, title.month, 15));
+  });
+
+  testWidgets('a drag let go in the middle of a month settles on the nearest', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
+    final row = tester.getSize(_grid()).height / 6;
+
+    Future<void> dragSlowly(double rows) async {
+      final gesture = await tester.startGesture(tester.getCenter(_grid()));
+      // Past the touch slop, then the rest of the way.
+      await gesture.moveBy(const Offset(0, -20));
+      await gesture.moveBy(Offset(0, 20 - rows * row));
+      // Held still: no velocity to carry it.
+      await tester.pump(const Duration(seconds: 1));
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+
+    // A little: back to November. Most of the way: on to December.
+    await dragSlowly(1);
+    expect(_titleMonth(tester), (year: 2026, month: 11));
+    expect(_restsOnMonth(tester), isTrue);
+    await dragSlowly(4);
+    expect(_titleMonth(tester), (year: 2026, month: 12));
+    expect(_restsOnMonth(tester), isTrue);
+  });
+
+  testWidgets('a mouse wheel moves a month a notch, and notches add up', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _Demo()),
+    );
+    final pointer = TestPointer(1, PointerDeviceKind.mouse);
+    await tester.sendEventToBinding(
+      pointer.hover(tester.getCenter(_grid())),
+    );
+    Future<void> notch(double dy) async {
+      await tester.sendEventToBinding(pointer.scroll(Offset(0, dy)));
+    }
+
+    // One notch is far less than a month, and doesn't spring back.
+    await notch(53);
+    await tester.pumpAndSettle();
+    expect(_titleMonth(tester), (year: 2026, month: 12));
+    expect(_restsOnMonth(tester), isTrue);
+    // Three more before the spring has settled: three more months.
+    for (var i = 0; i < 3; i++) {
+      await notch(53);
+      await tester.pump(const Duration(milliseconds: 30));
+    }
+    await tester.pumpAndSettle();
+    expect(_titleMonth(tester), (year: 2027, month: 3));
+    expect(_restsOnMonth(tester), isTrue);
+    // And back.
+    await notch(-53);
+    await tester.pumpAndSettle();
+    expect(_titleMonth(tester), (year: 2027, month: 2));
+    expect(_restsOnMonth(tester), isTrue);
+  });
+}
+
 void sizingTests() {
   for (final (width, scale) in const [
     (220.0, 1.0),
@@ -359,7 +493,7 @@ void sizingTests() {
       expect(day.height, lessThanOrEqualTo(44 - 22 + 22 * scale + 0.01));
       // The six weeks fit inside the calendar.
       expect(
-        tester.getRect(_days().last).bottom,
+        tester.getRect(_days().at(41)).bottom,
         lessThanOrEqualTo(calendar.bottom + 0.01),
       );
     });
@@ -408,7 +542,7 @@ void sizingTests() {
         CoilTier.pointer => 36.0,
         CoilTier.touch => 44.0,
       };
-      final grid = tester.getRect(find.byType(PageView));
+      final grid = tester.getRect(_grid());
       // At most 30 % past the natural cell, and centered in the 800.
       expect(grid.width, lessThanOrEqualTo(natural * 1.3 * 7 + 8));
       expect(grid.center.dx, moreOrLessEquals(500, epsilon: 0.5));
@@ -439,7 +573,7 @@ void sizingTests() {
         ),
       ),
     );
-    final grid = tester.getRect(find.byType(PageView));
+    final grid = tester.getRect(_grid());
     final cells = <RenderObject>{
       for (final cell in _cells().evaluate())
         tester.renderObject(
@@ -492,7 +626,7 @@ void sizingTests() {
 
 /// Each day's whole cell, the area that takes its tap.
 Finder _cells() => find.descendant(
-  of: find.byType(PageView),
+  of: _grid(),
   matching: find.byWidgetPredicate(
     (widget) => widget.runtimeType.toString() == '_Day',
   ),
@@ -531,12 +665,12 @@ class _MonthsDemoState extends State<_MonthsDemo> {
   );
 }
 
-/// The month view's pages of years.
+/// The month view's scroll of years.
 Finder _years() => find.descendant(
   of: find.byWidgetPredicate(
     (widget) => widget.runtimeType.toString() == 'CalendarMonthView',
   ),
-  matching: find.byType(PageView),
+  matching: find.byType(CustomScrollView),
 );
 
 /// The years whose months are in view, as numbers.
@@ -569,32 +703,39 @@ bool _enabledMonth(WidgetTester tester, String label) =>
     Tristate.isTrue;
 
 void titleTests() {
-  testWidgets('the title follows the page mid-swipe', (tester) async {
+  testWidgets('the title follows the month in the middle mid-swipe', (
+    tester,
+  ) async {
     useScreen(tester, TestScreen.phone);
     await tester.pumpWidget(testApp(tier: CoilTier.touch, home: const _Demo()));
-    final grid = find.byType(PageView);
-    final width = tester.getSize(grid).width;
+    final grid = _grid();
+    final row = tester.getSize(grid).height / 6;
     final gesture = await tester.startGesture(tester.getCenter(grid));
-    Future<void> moveTo(double fraction, double from) async {
+    var moved = 0.0;
+    Future<void> moveTo(double rows) async {
       const steps = 10;
+      final step = (rows - moved) * row / steps;
       for (var i = 0; i < steps; i++) {
-        await gesture.moveBy(Offset(-(fraction - from) * width / steps, 0));
+        await gesture.moveBy(Offset(0, -step));
         await tester.pump(const Duration(milliseconds: 16));
       }
+      moved = rows;
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    // Past the slop and under half a page: still November.
-    await gesture.moveBy(const Offset(-kTouchSlop - 1, 0));
-    await moveTo(0.4, 0);
+    // Past the slop and December's first row is still below the middle of
+    // the grid: November.
+    await gesture.moveBy(const Offset(0, -kTouchSlop - 1));
+    moved = (kTouchSlop + 1) / row;
+    await moveTo(1.5);
     expect(find.text('November 2026'), findsOneWidget);
     expect(find.text('December 2026'), findsNothing);
-    // Past half a page, with the finger still down: December.
-    await moveTo(0.6, 0.4);
+    // Once it passes the middle, with the finger still down: December.
+    await moveTo(3.6);
     expect(find.text('December 2026'), findsOneWidget);
     expect(find.text('November 2026'), findsNothing);
-    // Back under half: November again.
-    await moveTo(0.3, 0.6);
+    // Back under: November again.
+    await moveTo(1.8);
     expect(find.text('November 2026'), findsOneWidget);
     await gesture.up();
     await tester.pumpAndSettle();
@@ -676,8 +817,8 @@ void monthViewTests() {
     await tester.tap(find.bySemanticsLabel('November 2026'));
     await tester.pumpAndSettle();
     expect(_visibleYears(tester), [2026]);
-    // A swipe turns back a year, and the title's year follows.
-    await tester.fling(_years(), const Offset(200, 0), 1000);
+    // A swipe scrolls back a year, and the title's year follows.
+    await tester.fling(_years(), const Offset(0, 200), 600);
     await tester.pumpAndSettle();
     expect(_visibleYears(tester), [2025]);
     expect(find.text('2025'), findsOneWidget);
@@ -690,6 +831,34 @@ void monthViewTests() {
     await tester.tap(find.bySemanticsLabel('June 2030'));
     await tester.pumpAndSettle();
     expect(find.text('June 2030'), findsOneWidget);
+  });
+
+  testWidgets('a fling in the month view coasts to a year boundary', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.touch, home: const _MonthsDemo()),
+    );
+    await tester.tap(find.bySemanticsLabel('November 2026'));
+    await tester.pumpAndSettle();
+    await tester.fling(_years(), const Offset(0, -250), 3000);
+    await tester.pumpAndSettle();
+    final years = _visibleYears(tester);
+    expect(years, hasLength(1));
+    expect(years.single, greaterThan(2026));
+    // The year's January is in the top row, on the view's top, and the
+    // title names the year.
+    final view = tester.getRect(_years());
+    final january = tester.getRect(
+      find.bySemanticsLabel('January ${years.single}'),
+    );
+    expect(january.top, moreOrLessEquals(view.top, epsilon: 0.5));
+    expect(find.text('${years.single}'), findsOneWidget);
+    // A month picked there zooms back into its days.
+    await tester.tap(find.bySemanticsLabel('June ${years.single}'));
+    await tester.pumpAndSettle();
+    expect(find.text('June ${years.single}'), findsOneWidget);
   });
 
   testWidgets('the months title names only the year, and goes back to the '

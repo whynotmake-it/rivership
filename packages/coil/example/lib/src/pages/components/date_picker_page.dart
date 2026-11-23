@@ -70,9 +70,9 @@ class _DatePickerPageState extends State<DatePickerPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'DatePicker',
     summary:
-        'A popover next to the field on a pointer, a sheet on a phone. A '
-        'day alone commits on the tap; with a time, Done confirms in the '
-        'sheet.',
+        'A popover next to the field on a pointer, a floating panel on a '
+        'phone. A day alone commits on the tap; with a time, Done confirms '
+        'in the panel.',
     hero: const _TaskForm(),
     usage: '''
 CoilField(
@@ -93,9 +93,9 @@ CoilField(
       ),
       CatalogNote(
         'Touch',
-        'On a phone it opens a sheet with a footer that names the draft '
-            'and a pinned Done. The close button, the scrim, a drag down and '
-            'back all cancel.',
+        'On a phone it opens a floating panel with a footer that names the '
+            'draft and a pinned Done. The close button, the scrim, a sideways '
+            'swipe and back all cancel.',
       ),
       CatalogNote(
         'Keyboard',
@@ -104,8 +104,8 @@ CoilField(
       ),
       CatalogNote(
         'Accessibility',
-        'The time columns are adjustable: swipe up or down to change the '
-            'hour or minute.',
+        'Each time segment is adjustable: swipe up or down, or type, to '
+            'change the hour or minute.',
       ),
     ],
     children: [

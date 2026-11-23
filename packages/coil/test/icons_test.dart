@@ -149,8 +149,8 @@ void main() {
         _app(
           screen(),
           icons: const CoilIcons(
-            chevronStart: _AppIcon('start'),
-            chevronEnd: _AppIcon('end'),
+            chevronUp: _AppIcon('up'),
+            chevronDown: _AppIcon('down'),
             close: _AppIcon('close'),
             check: _AppIcon('check'),
           ),

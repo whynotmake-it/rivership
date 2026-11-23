@@ -61,8 +61,8 @@ class _CalendarPageState extends State<CalendarPage> {
     return CatalogPage(
       title: 'Calendar',
       summary:
-          'Pick a day and whatever hangs off it updates. Swipe or use the '
-          'arrows to page months; tap the month to jump across years.',
+          'Pick a day and whatever hangs off it updates. Scroll the weeks; '
+          'they land on a month. Tap the month to jump across years.',
       hero: const _Booking(),
       usage: '''
 CoilCalendar(
@@ -81,8 +81,8 @@ CoilCalendar(
         ),
         CatalogNote(
           'Touch',
-          'Swipe to page months; the page follows the finger and keeps '
-              'the fling. Each day takes the tap on its whole cell, and '
+          'Scroll the weeks; a fling coasts and eases onto the nearest '
+              'month. Each day takes the tap on its whole cell, and '
               'days stay square at any width.',
         ),
         CatalogNote(
