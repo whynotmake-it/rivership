@@ -163,6 +163,11 @@ class _MotorNavigationState extends State<MotorNavigation> {
     builder: (context, _) => HasSidebar(
       child: CoilSidebarScaffold(
         controller: _sidebar,
+        // Almost every demo is dragged. A drag anywhere on the page would
+        // open the drawer over them (and beat a demo's pan, which needs
+        // twice the slop of a horizontal drag), so only the trigger opens
+        // it here, and a drag only closes it.
+        drawerDrag: CoilDrawerDrag.close,
         sidebar: _sidebarFor(context),
         body: widget.child,
       ),

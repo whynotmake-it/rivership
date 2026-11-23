@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
+import 'package:motor_example/widgets/grab_detector.dart';
 import 'package:motor_example/widgets/live_timeline.dart';
 
 /// A thrown card clears the stack, then curves back under it.
@@ -206,9 +207,9 @@ class _Card extends StatelessWidget {
         },
         child: child,
       ),
-      child: GestureDetector(
-        onPanUpdate: onDrag,
-        onPanEnd: onRelease,
+      child: GrabDetector(
+        onUpdate: onDrag,
+        onEnd: onRelease,
         child: DecoratedBox(
           decoration: ShapeDecoration(
             color: colors.surface(4),
