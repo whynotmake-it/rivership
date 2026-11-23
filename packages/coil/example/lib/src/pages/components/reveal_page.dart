@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const revealEntry = CatalogEntry(
@@ -20,15 +21,42 @@ class RevealPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'Reveal',
     summary:
-        'Children blur-fade in a step apart on first build, then stay put. '
-        'Each demo has its own controls, right above it. With reduced motion '
-        'everything fades in at once.',
-    children: [
-      DemoSection(
-        title: 'Product',
-        description: 'The default: one stagger (60 ms) apart.',
-        child: _RevealDemo(),
+        'A screen settling in: children blur-fade in one after another on '
+        'first build, then stay put. Nothing moves on scroll.',
+    hero: _RevealDemo(),
+    usage: '''
+CoilReveal(
+  visible: loaded,
+  builder: (context, children) => Column(spacing: 8, children: children),
+  children: [
+    for (final panel in panels) PanelCard(panel),
+  ],
+)''',
+    notes: [
+      CatalogNote(
+        'Motion',
+        'Child 1 shows at once, then one step per child: 60 ms on product, '
+            '40 on subtle, 100 on landing. Blocks stagger 3 steps and bring '
+            'the rest in with the 4th; items stagger 7.',
       ),
+      CatalogNote(
+        'Reduced motion',
+        'The stagger is zero and the blur-fade only fades, so every child '
+            'fades in or out at once.',
+      ),
+      CatalogNote(
+        'Accessibility',
+        'Hidden children stay mounted but take no pointer, focus or '
+            'semantics until they show again.',
+      ),
+      CatalogNote(
+        "Do / Don't",
+        'Wrap the main column or a list, and keep headers, sidebars and '
+            'footers outside so the frame stays still. Do not reveal on '
+            'scroll.',
+      ),
+    ],
+    children: [
       DemoSection(
         title: 'Subtle',
         description: 'Two thirds of a stagger apart, for quiet screens.',

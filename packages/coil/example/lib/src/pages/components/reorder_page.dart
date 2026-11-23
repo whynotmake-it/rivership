@@ -4,6 +4,7 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
@@ -24,9 +25,55 @@ class ReorderPage extends StatelessWidget {
     title: 'Reorder',
     summary:
         'Items in a MotionLayoutGroup fly to their new place when their '
-        'order changes. MotionDraggable, MotionReorderable and '
-        'MotionDragToScroll add drag and drop on top. Scrolling never moves '
-        'anything on its own.',
+        'order changes. MotionReorderable adds drag and drop on top, and '
+        'scrolling never moves anything on its own.',
+    hero: _BoardHero(),
+    usage: '''
+MotionReorderable<Task>(
+  items: tasks,
+  onMove: (move) => setState(() {
+    tasks
+      ..remove(move.item)
+      ..insert(move.index, move.item!);
+  }),
+  builder: (context, drop) => ListView(
+    children: [
+      for (final task in tasks) ...[
+        if (drop?.before == task) const MotionDropGap(child: Slot()),
+        MotionReorderableItem(
+          item: task,
+          child: MotionDraggable<Task>(data: task, child: TaskCard(task)),
+        ),
+      ],
+      if (drop != null && drop.before == null)
+        const MotionDropGap(child: Slot()),
+    ],
+  ),
+)''',
+    notes: [
+      CatalogNote(
+        'Pointer',
+        'Drag a card anywhere over a column: the dragged card collapses and '
+            'a gap opens where it will drop. Near an edge, the column or the '
+            'board scrolls.',
+      ),
+      CatalogNote(
+        'Touch',
+        'These demos start a drag after a long press, so a swipe still '
+            'scrolls the page (MotionDragStart.longPress). '
+            'MotionDragToScroll scrolls while a card is held at an edge.',
+      ),
+      CatalogNote(
+        'Motion',
+        'Cards fly to their new place on the standard spring, on both axes. '
+            'A drop with nowhere to land shrinks away.',
+      ),
+      CatalogNote(
+        "Do / Don't",
+        'Put every list a card can move between in one MotionLayoutGroup, so '
+            'it can fly from one to the other.',
+      ),
+    ],
     children: [
       DemoSection(
         title: 'Layout group',
@@ -35,24 +82,6 @@ class ReorderPage extends StatelessWidget {
             'whatever changes place flies there. Tap a card to open it; it '
             'grows on its own spring, and the cards below follow.',
         child: _LayoutDemo(),
-      ),
-      DemoSection(
-        title: 'Between containers',
-        description:
-            'Both lists are in one group, so an item that moves to the other '
-            'list flies there, with no drag involved. Check an item to move '
-            'it.',
-        child: _ChecklistDemo(),
-      ),
-      DemoSection(
-        title: 'Board',
-        description:
-            'Each column is a MotionReorderable. Drag a card within its '
-            'column or to another one, anywhere over the column: the dragged '
-            'card collapses, and a gap opens where it will go. Near an edge, '
-            'the column or the board scrolls.',
-        padding: 0,
-        child: _Board(),
       ),
       DemoSection(
         title: 'Grid',
@@ -201,6 +230,31 @@ const _tasks = [
 ];
 
 const _owners = ['Ada', 'Grace', 'Linus', 'Margaret', 'Ken'];
+
+/// The board as the hero: it fills the stage edge to edge, as the screen it
+/// stands in for, instead of sitting in the stage's padding.
+class _BoardHero extends StatelessWidget {
+  const _BoardHero();
+
+  @override
+  Widget build(BuildContext context) {
+    // The padding HeroStage puts around its child.
+    final padding = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 24.0;
+    final height = _BoardMetrics.of(context).height;
+    return LayoutBuilder(
+      builder: (context, constraints) => SizedBox(
+        height: height - 2 * padding,
+        child: OverflowBox(
+          minWidth: constraints.maxWidth + 2 * padding,
+          maxWidth: constraints.maxWidth + 2 * padding,
+          minHeight: height,
+          maxHeight: height,
+          child: const _Board(),
+        ),
+      ),
+    );
+  }
+}
 
 class _Board extends StatefulWidget {
   const _Board();
@@ -1009,102 +1063,6 @@ List<Widget> _withGap<T extends Object>(
 void _moveTask(List<_Task> from, List<_Task> to, _Task item, int index) {
   from.remove(item);
   to.insert(index, item);
-}
-
-/// Two lists in one group: checking an item moves it to the other list,
-/// and it flies there.
-class _ChecklistDemo extends StatefulWidget {
-  const _ChecklistDemo();
-
-  @override
-  State<_ChecklistDemo> createState() => _ChecklistDemoState();
-}
-
-class _ChecklistDemoState extends State<_ChecklistDemo> {
-  final _maker = _TaskMaker(const [
-    'Pack the charger',
-    'Water the plants',
-    'Empty the fridge',
-    'Lock the windows',
-  ]);
-  late final _todo = [for (var i = 0; i < 4; i++) _maker.next()];
-  final _done = <_Task>[];
-
-  void _check(_Task task, {required bool done}) => setState(() {
-    _todo.remove(task);
-    _done.remove(task);
-    done ? _done.insert(0, task) : _todo.add(task);
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final motion = CoilTheme.motionOf(context);
-    return MotionLayoutGroup(
-      motion: motion.standard,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 24,
-        children: [
-          Expanded(child: _list(context, 'To do', _todo, done: false)),
-          Expanded(child: _list(context, 'Done', _done, done: true)),
-        ],
-      ),
-    );
-  }
-
-  Widget _list(
-    BuildContext context,
-    String title,
-    List<_Task> tasks, {
-    required bool done,
-  }) {
-    final metrics = CoilTheme.metricsOf(context);
-    final text = CoilTheme.textOf(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: metrics.controlHeight),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Semantics(
-              header: true,
-              child: Text(
-                title,
-                style: text.body.copyWith(fontWeight: text.emphasis),
-              ),
-            ),
-          ),
-        ),
-        for (final task in tasks)
-          MotionLayoutItem(
-            key: ValueKey(task),
-            id: task,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: metrics.controlHeight),
-              child: Row(
-                spacing: metrics.gap,
-                children: [
-                  CoilCheckbox(
-                    value: done,
-                    onChanged: (value) => _check(task, done: value ?? false),
-                    semanticLabel: task.title,
-                  ),
-                  Expanded(
-                    child: Text(
-                      task.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: (done ? text.muted : text).body,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 }
 
 /// A list whose dragged card keeps its room: a line marks where it will
