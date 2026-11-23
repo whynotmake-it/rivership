@@ -226,20 +226,27 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   /// excludes them from. The exclusion fills this before this detector's
   /// recognizers see the down, and clears it once the pointer is up or
   /// cancelled, or the exclusion is gone.
-  final _excludedPointers = <int, Set<Axis>>{};
+  ///
+  /// Kept per exclusion, so one exclusion releasing a pointer never drops the
+  /// axes another one still excludes it from.
+  final _excludedPointers = <int, Map<Object, Set<Axis>>>{};
 
   List<_ScrollDragDetectorState> _detectors = const [];
 
-  void _excludePointer(int pointer, Set<Axis> axes) {
-    (_excludedPointers[pointer] ??= <Axis>{}).addAll(axes);
+  void _excludePointer(int pointer, Object exclusion, Set<Axis> axes) {
+    (_excludedPointers[pointer] ??= {})[exclusion] = axes;
   }
 
-  void _releasePointer(int pointer) {
-    _excludedPointers.remove(pointer);
+  void _releasePointer(int pointer, Object exclusion) {
+    final exclusions = _excludedPointers[pointer];
+    if (exclusions == null) return;
+    exclusions.remove(exclusion);
+    if (exclusions.isEmpty) _excludedPointers.remove(pointer);
   }
 
   bool _isExcluded(int pointer, Axis axis) =>
-      _excludedPointers[pointer]?.contains(axis) ?? false;
+      _excludedPointers[pointer]?.values.any((axes) => axes.contains(axis)) ??
+      false;
 
   @override
   void didChangeDependencies() {
@@ -850,6 +857,13 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
   }
 }
 
+// Both recognizers skip pointers an ExcludeScrollDrag below marked. There is
+// no race with that mark: GestureBinding.dispatchEvent hands a pointer down to
+// the cached hit-test path synchronously and deepest first, so the
+// exclusion's Listener, being below the detector, has marked the pointer
+// before the detector's RawGestureDetector calls addPointer, which asks
+// isPointerAllowed (or isPointerPanZoomAllowed for a trackpad). The decision
+// is made once, on the down.
 class _VerticalDragRecognizer extends VerticalDragGestureRecognizer {
   _VerticalDragRecognizer({required this.isExcluded, super.debugOwner});
 
@@ -925,6 +939,11 @@ class _ScrollDragDetectorScope extends InheritedWidget {
 /// through the handoff of a scrollable inside [child]. Such a scrollable
 /// scrolls and overscrolls as if no detector were above it.
 ///
+/// A drag counts as starting inside [child] where [child] is hit, the same
+/// way a [GestureDetector] decides: a transparent gap in [child] that doesn't
+/// hit-test is not excluded. Give such content a background, or wrap it in a
+/// widget that hit-tests its whole area, to exclude all of it.
+///
 /// It applies to every [ScrollDragDetector] above it, so a drawer page inside
 /// a sheet keeps both out. Detectors inside [child] work as usual. Drags that
 /// start outside [child] are not affected.
@@ -970,14 +989,18 @@ class _ExcludeScrollDragState extends State<ExcludeScrollDrag> {
     _detectors = _ScrollDragDetectorScope.of(context);
   }
 
-  // Hit-test entries get a pointer down deepest first, so this runs before
-  // the recognizers of every ancestor detector decide whether to track it.
+  // Not a race: GestureBinding.dispatchEvent delivers a pointer down to the
+  // cached hit-test path synchronously, deepest entry first. This Listener is
+  // below every detector in _detectors, so it marks the pointer before any of
+  // their recognizers is offered it (addPointer -> isPointerAllowed). Moves,
+  // ups and cancels follow the same cached path, so _onPointerEnd always sees
+  // the end of a pointer marked here, and dispose releases the rest.
   void _onPointerDown(PointerEvent event) {
     final axes = _axes;
     if (axes.isEmpty) return;
     _pointers[event.pointer] = _detectors;
     for (final detector in _detectors) {
-      detector._excludePointer(event.pointer, axes);
+      detector._excludePointer(event.pointer, this, axes);
     }
   }
 
@@ -986,7 +1009,7 @@ class _ExcludeScrollDragState extends State<ExcludeScrollDrag> {
   void _release(int pointer) {
     for (final detector
         in _pointers.remove(pointer) ?? const <_ScrollDragDetectorState>[]) {
-      detector._releasePointer(pointer);
+      detector._releasePointer(pointer, this);
     }
   }
 

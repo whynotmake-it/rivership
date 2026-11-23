@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
@@ -306,5 +307,250 @@ void main() {
     expect(deepest, greaterThan(0));
     expect(outer, 0);
     expect(inner, 0);
+  });
+
+  group('soundness', () {
+    const insideKey = ValueKey('inside');
+    const outside = Offset(40, 40);
+
+    /// A detector over a plain area with a hit-testable [inside] box in the
+    /// middle. Records the horizontal and vertical drag updates it gets.
+    Widget detectorOver(
+      Widget inside, {
+      List<DragUpdateDetails>? horizontal,
+      List<DragUpdateDetails>? vertical,
+    }) =>
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: ScrollDragDetector(
+            up: _noDrag,
+            down: _noDrag,
+            left: _noDrag,
+            right: _noDrag,
+            onHorizontalDragUpdate: horizontal == null
+                ? null
+                : (details, _) => horizontal.add(details),
+            onVerticalDragUpdate:
+                vertical == null ? null : (details, _) => vertical.add(details),
+            child: ColoredBox(
+              color: _transparent,
+              child: Align(child: inside),
+            ),
+          ),
+        );
+
+    const box = SizedBox(
+      key: insideKey,
+      width: 200,
+      height: 200,
+      child: ColoredBox(color: _transparent),
+    );
+
+    Future<void> moveInSteps(
+      WidgetTester tester,
+      TestGesture gesture,
+      Offset offset,
+    ) async {
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(offset / 10);
+        await tester.pump();
+      }
+    }
+
+    testWidgets('an ended, cancelled or removed exclusion never leaks',
+        (tester) async {
+      final updates = <DragUpdateDetails>[];
+      final center = tester.getCenter;
+      var showExclusion = true;
+      late StateSetter setState;
+
+      Widget page({required bool excluding}) => detectorOver(
+            StatefulBuilder(
+              builder: (context, setter) {
+                setState = setter;
+                return showExclusion
+                    ? ExcludeScrollDrag(excluding: excluding, child: box)
+                    : box;
+              },
+            ),
+            horizontal: updates,
+          );
+
+      Future<void> expectOutsideTaken() async {
+        updates.clear();
+        await _dragInSteps(
+          tester,
+          find.byType(ScrollDragDetector),
+          const Offset(150, 0),
+          from: outside,
+        );
+        expect(updates, isNotEmpty);
+        updates.clear();
+      }
+
+      await tester.pumpWidget(page(excluding: true));
+
+      // (a) A drag inside that ends normally.
+      await _dragInSteps(tester, find.byKey(insideKey), const Offset(150, 0));
+      expect(updates, isEmpty);
+      await expectOutsideTaken();
+
+      // (b) A drag inside that is cancelled.
+      var gesture = await tester.startGesture(center(find.byKey(insideKey)));
+      await moveInSteps(tester, gesture, const Offset(150, 0));
+      await gesture.cancel();
+      await tester.pumpAndSettle();
+      expect(updates, isEmpty);
+      await expectOutsideTaken();
+
+      // Disabling the exclusion afterwards lets the same place be taken.
+      await tester.pumpWidget(page(excluding: false));
+      await _dragInSteps(tester, find.byKey(insideKey), const Offset(150, 0));
+      expect(updates, isNotEmpty);
+      updates.clear();
+      await tester.pumpWidget(page(excluding: true));
+
+      // (c) The exclusion goes away while the finger is still down inside.
+      gesture = await tester.startGesture(center(find.byKey(insideKey)));
+      await moveInSteps(tester, gesture, const Offset(30, 0));
+      showExclusion = false;
+      setState(() {});
+      await tester.pump();
+      await moveInSteps(tester, gesture, const Offset(120, 0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(updates, isEmpty);
+
+      // Now it is plain detector content, and nothing stays excluded.
+      await _dragInSteps(tester, find.byKey(insideKey), const Offset(150, 0));
+      expect(updates, isNotEmpty);
+      await expectOutsideTaken();
+    });
+
+    testWidgets('a held finger inside never affects another finger outside',
+        (tester) async {
+      final updates = <DragUpdateDetails>[];
+      await tester.pumpWidget(
+        detectorOver(const ExcludeScrollDrag(child: box), horizontal: updates),
+      );
+      final inside = tester.getCenter(find.byKey(insideKey));
+
+      for (final releaseInsideFirst in [true, false]) {
+        updates.clear();
+        final held = await tester.startGesture(inside, pointer: 101);
+        await held.moveBy(const Offset(-5, 0));
+        final other = await tester.startGesture(outside, pointer: 102);
+        // The held finger moves the other way, so any of its movement that
+        // reached the detector would show up with the wrong sign.
+        for (var i = 0; i < 10; i++) {
+          await other.moveBy(const Offset(15, 0));
+          await held.moveBy(const Offset(-15, 0));
+          await tester.pump();
+        }
+        expect(updates, isNotEmpty);
+        expect(updates.every((details) => details.delta.dx >= 0), isTrue);
+
+        if (releaseInsideFirst) {
+          await held.up();
+          await other.up();
+        } else {
+          await other.up();
+          await held.up();
+        }
+        await tester.pumpAndSettle();
+
+        updates.clear();
+        await _dragInSteps(tester, find.byKey(insideKey), const Offset(150, 0));
+        expect(updates, isEmpty);
+        await _dragInSteps(
+          tester,
+          find.byType(ScrollDragDetector),
+          const Offset(150, 0),
+          from: outside,
+        );
+        expect(updates, isNotEmpty);
+      }
+    });
+
+    testWidgets('trackpad pan gestures are excluded inside and taken outside',
+        (tester) async {
+      final updates = <DragUpdateDetails>[];
+      await tester.pumpWidget(
+        detectorOver(const ExcludeScrollDrag(child: box), horizontal: updates),
+      );
+
+      Future<void> pan(Offset from) async {
+        final gesture = await tester.startGesture(
+          from,
+          kind: PointerDeviceKind.trackpad,
+        );
+        await moveInSteps(tester, gesture, const Offset(150, 0));
+        await gesture.up();
+        await tester.pumpAndSettle();
+      }
+
+      await pan(outside);
+      expect(updates, isNotEmpty);
+
+      updates.clear();
+      await pan(tester.getCenter(find.byKey(insideKey)));
+      expect(updates, isEmpty);
+
+      // Nothing stays excluded after the pan ended.
+      await pan(outside);
+      expect(updates, isNotEmpty);
+    });
+
+    testWidgets('nested exclusions union their axes and decide on the down',
+        (tester) async {
+      final horizontal = <DragUpdateDetails>[];
+      final vertical = <DragUpdateDetails>[];
+      final childKey = GlobalKey();
+      final child = SizedBox(
+        key: childKey,
+        width: 200,
+        height: 200,
+        child: const ColoredBox(color: _transparent),
+      );
+
+      Widget page({required bool inner}) => detectorOver(
+            ExcludeScrollDrag(
+              axes: const {Axis.vertical},
+              child: inner
+                  ? ExcludeScrollDrag(
+                      axes: const {Axis.horizontal},
+                      child: child,
+                    )
+                  : child,
+            ),
+            horizontal: horizontal,
+            vertical: vertical,
+          );
+
+      await tester.pumpWidget(page(inner: true));
+      final inside = tester.getCenter(find.byKey(childKey));
+
+      await _dragInSteps(tester, find.byKey(childKey), const Offset(150, 0));
+      await _dragInSteps(tester, find.byKey(childKey), const Offset(0, 150));
+      expect(horizontal, isEmpty);
+      expect(vertical, isEmpty);
+
+      // The inner exclusion goes away mid-gesture: this gesture stays out.
+      final gesture = await tester.startGesture(inside);
+      await moveInSteps(tester, gesture, const Offset(20, 0));
+      await tester.pumpWidget(page(inner: false));
+      await moveInSteps(tester, gesture, const Offset(0, 100));
+      await moveInSteps(tester, gesture, const Offset(100, 0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(horizontal, isEmpty);
+      expect(vertical, isEmpty);
+
+      // Afterwards only the outer exclusion's axis is still excluded.
+      await _dragInSteps(tester, find.byKey(childKey), const Offset(0, 150));
+      expect(vertical, isEmpty);
+      await _dragInSteps(tester, find.byKey(childKey), const Offset(150, 0));
+      expect(horizontal, isNotEmpty);
+    });
   });
 }
