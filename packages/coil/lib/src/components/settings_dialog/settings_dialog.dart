@@ -57,6 +57,11 @@ class CoilSettingsSection<T> {
 ///
 /// It's a form dialog: on the touch tier in a compact window it opens as a
 /// sheet. The close button pops it. The future completes when it closes.
+///
+/// `snappingConfig`, `dragHandoff`, `dismissalMode`, `draggable` and
+/// `backgroundSnapshotMode` configure that sheet as [CoilSheetRoute]
+/// documents them, with the same defaults. They apply only when it
+/// presents as a sheet; a centered dialog ignores them.
 Future<void> showCoilSettingsDialog<T>({
   required BuildContext context,
   required Widget title,
@@ -64,10 +69,20 @@ Future<void> showCoilSettingsDialog<T>({
   T? initialSection,
   String closeLabel = 'Close',
   CoilMotion? motion,
+  SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+  SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
+  DismissalMode dismissalMode = DismissalMode.slide,
+  bool draggable = true,
+  RouteSnapshotMode backgroundSnapshotMode = RouteSnapshotMode.never,
 }) => showCoilDialog<void>(
   context: context,
   kind: CoilDialogKind.form,
   motion: motion,
+  snappingConfig: snappingConfig,
+  dragHandoff: dragHandoff,
+  dismissalMode: dismissalMode,
+  draggable: draggable,
+  backgroundSnapshotMode: backgroundSnapshotMode,
   builder: (context) => CoilSettingsDialog<T>(
     title: title,
     sections: sections,
