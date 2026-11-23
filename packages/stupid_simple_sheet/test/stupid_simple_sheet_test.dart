@@ -79,6 +79,77 @@ void main() {
     );
   }
 
+  testWidgets(
+    'stays open at a real snap point when complying with a new snapping '
+    'config or snapping a low relative position',
+    (tester) async {
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(navigatorKey: navigator, home: const Scaffold()),
+      );
+
+      const contentKey = Key('snap-content');
+      final route = StupidSimpleSheetRoute<void>(
+        snappingConfig: const SheetSnappingConfig([0.5, 1.0], initialSnap: 0.5),
+        child: const Scaffold(key: contentKey, body: Text('Sheet content')),
+      );
+      navigator.currentState!.push(route).ignore();
+      await tester.pumpAndSettle();
+
+      StupidSimpleSheetController<void> controller() =>
+          StupidSimpleSheetController.maybeOf<void>(
+            tester.element(find.byKey(contentKey)),
+          )!;
+
+      double top() => tester.getTopLeft(find.byKey(contentKey)).dy;
+
+      final halfTop = top();
+
+      // 0.5 is equidistant to closed (0.0) and full (1.0); the sheet must go
+      // to full, not close.
+      controller()
+          .overrideSnappingConfig(
+            SheetSnappingConfig.full,
+            animateToComply: true,
+          )
+          .ignore();
+      await tester.pumpAndSettle();
+
+      expect(route.isCurrent, isTrue);
+      expect(find.text('Sheet content'), findsOneWidget);
+      expect(top(), lessThan(halfTop));
+
+      // Reference: a sheet opened with the full config from the start.
+      final fullTop = top();
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+      final reference = StupidSimpleSheetRoute<void>(
+        child: const Scaffold(key: contentKey, body: Text('Sheet content')),
+      );
+      navigator.currentState!.push(reference).ignore();
+      await tester.pumpAndSettle();
+      expect(fullTop, top());
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+
+      // Snapping a position closer to closed than to the lowest stop must
+      // still land on a real snap point.
+      final snapping = StupidSimpleSheetRoute<void>(
+        snappingConfig: const SheetSnappingConfig([0.5, 1.0], initialSnap: 1),
+        child: const Scaffold(key: contentKey, body: Text('Sheet content')),
+      );
+      navigator.currentState!.push(snapping).ignore();
+      await tester.pumpAndSettle();
+
+      controller().animateToRelative(0.2, snap: true).ignore();
+      await tester.pumpAndSettle();
+
+      expect(snapping.isCurrent, isTrue);
+      expect(find.text('Sheet content'), findsOneWidget);
+      expect(top(), halfTop);
+    },
+  );
+
   group('StupidSimpleSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
