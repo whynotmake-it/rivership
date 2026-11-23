@@ -151,4 +151,57 @@ void main() {
     expect(find.byType(EditableText), findsNothing);
     expect(trigger.hasFocus, isTrue);
   });
+
+  testWidgets('on a phone a downward swipe closes the menu only from the top '
+      'of its list, and otherwise scrolls the list', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        home: Builder(
+          builder: (context) => Center(
+            child: CoilButton(
+              onPressed: () => showCoilCommandMenu(
+                context: context,
+                entries: [
+                  for (var i = 0; i < 30; i++)
+                    CoilAction(
+                      label: Text('Item $i'),
+                      searchText: 'Item $i',
+                      onPressed: () {},
+                    ),
+                ],
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    Finder row(String text) =>
+        find.byWidgetPredicate((w) => w is Text && w.data == text);
+    final field = find.byType(EditableText);
+    expect(field, findsOneWidget);
+
+    // Scrolled down a little, a downward drag scrolls the list back.
+    await tester.drag(row('Item 2'), const Offset(0, -150));
+    await tester.pumpAndSettle();
+    final scrolled = tester.getTopLeft(row('Item 3')).dy;
+    await tester.drag(row('Item 3'), const Offset(0, 100));
+    await tester.pumpAndSettle();
+    expect(field, findsOneWidget);
+    expect(tester.getTopLeft(row('Item 3')).dy, greaterThan(scrolled));
+
+    // A fling that began scrolled scrolls the list to its top and stays.
+    await tester.fling(row('Item 3'), const Offset(0, 600), 1500);
+    await tester.pumpAndSettle();
+    expect(field, findsOneWidget);
+
+    // From the top, a downward fling throws the panel away.
+    await tester.fling(row('Item 3'), const Offset(0, 600), 1500);
+    await tester.pumpAndSettle();
+    expect(field, findsNothing);
+  });
 }

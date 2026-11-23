@@ -27,7 +27,7 @@ enum CoilModalPresentation {
 
   /// A modal popover: a panel floating inside the window's margins over the
   /// scrim, under the top safe area or centered (`anchor`), above the
-  /// keyboard, that a drag on `dismissAxis` throws away.
+  /// keyboard, that a drag on `dismissDirections` throws away.
   ///
   /// It lays out like a sheet (touch rows, a [CoilSheetPanel] with a header
   /// or search line), so search lists on a phone use it: they fill the room
@@ -121,7 +121,7 @@ class CoilModalStyle extends CoilComponentStyle<CoilModalStyle> {
 /// [presentation] decides how it shows; null picks a sheet on the touch tier
 /// in a compact window and centers it elsewhere. With [dismissible] false,
 /// the scrim, Esc, back and dragging don't close it. The future completes
-/// with the value passed to `Navigator.pop`. [anchor], [dismissAxis],
+/// with the value passed to `Navigator.pop`. [anchor], [dismissDirections],
 /// [motions] and [style] are for the floating presentation; see
 /// [CoilModalRoute].
 Future<T?> showCoilModal<T>({
@@ -132,7 +132,7 @@ Future<T?> showCoilModal<T>({
   String? barrierLabel,
   CoilMotion? motion,
   CoilModalAnchor anchor = CoilModalAnchor.center,
-  Axis? dismissAxis = Axis.horizontal,
+  Set<AxisDirection> dismissDirections = _defaultDismissDirections,
   Map<CoilModalTrack<Object>, Motion>? motions,
   CoilModalStyle? style,
 }) => Navigator.of(context).push(
@@ -144,7 +144,7 @@ Future<T?> showCoilModal<T>({
     barrierLabel: barrierLabel,
     motion: motion,
     anchor: anchor,
-    dismissAxis: dismissAxis,
+    dismissDirections: dismissDirections,
     motions: motions,
     style: style,
   ),
@@ -182,17 +182,28 @@ Future<T?> showCoilModal<T>({
 /// it as in a sheet. The `anchor` puts it under the top safe area or centers
 /// it; either way it hugs its content up to the room above the keyboard,
 /// and content that should keep its height fills that room.
-/// Dragging along the `dismissAxis` moves the panel with the finger, tilting
-/// it a little around where it was grabbed (horizontally) and letting it
-/// recede, while the scrim fades and the panel itself fades late. On release
-/// it is thrown away when it would coast past half its extent (friction on
-/// its offset and velocity), carrying its velocity out on the `settle`
-/// track; otherwise it springs back from that velocity. A scrollable
-/// inside hands the drag over only at its edge, so a vertical list keeps
-/// scrolling under a horizontal dismiss. A null `dismissAxis`, or a
-/// non-dismissible route, has no drag. Motion springs resolve from the
-/// route's `motions`, then `style` over the theme's [CoilModalStyle], then
-/// the motion tokens.
+/// `dismissDirections` are the directions a drag throws the panel away in,
+/// by default [AxisDirection.left], [AxisDirection.right] and
+/// [AxisDirection.down]: sideways like a held card, and down like a sheet.
+/// Dragging in one of them moves the panel with the finger, tilting it a
+/// little around where it was grabbed (sideways only) and letting it recede,
+/// while the scrim fades and the panel itself fades late. On release it is
+/// thrown away when it would coast past the threshold (friction on its
+/// offset and velocity): half its width sideways, and vertically half its
+/// height, but never more than half its width, so a tall panel, such as a
+/// search list that fills the room down to the keyboard, doesn't take a
+/// half-screen drag. It carries its velocity out on the `settle` track;
+/// otherwise it springs back from that velocity. Dragging the other way
+/// (up on a panel that only goes down, say) moves it a little against a
+/// growing resistance, with no fade, and always springs back.
+///
+/// A scrollable inside hands the drag over only at its edge, and in every
+/// direction only when the gesture began there, as in a sheet: a downward
+/// drag dismisses when the list is at its top and otherwise scrolls the
+/// list, and a vertical list keeps scrolling under a sideways dismiss. An
+/// empty `dismissDirections`, or a non-dismissible route, has no drag.
+/// Motion springs resolve from the route's `motions`, then `style` over the
+/// theme's [CoilModalStyle], then the motion tokens.
 sealed class CoilModalRoute<T> implements PopupRoute<T> {
   /// Creates the route for [presentation], or for the presentation that
   /// fits [context] when it's null.
@@ -205,7 +216,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
     CoilMotion? motion,
     RouteSettings? settings,
     CoilModalAnchor anchor = CoilModalAnchor.center,
-    Axis? dismissAxis = Axis.horizontal,
+    Set<AxisDirection> dismissDirections = _defaultDismissDirections,
     Map<CoilModalTrack<Object>, Motion>? motions,
     CoilModalStyle? style,
   }) {
@@ -280,7 +291,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
         settleAway: track(CoilModalTrack.settle, tokens.standardExit),
         margin: look.margin!,
         anchor: anchor,
-        dismissAxis: dismissible ? dismissAxis : null,
+        dismissDirections: dismissible ? dismissDirections : const {},
         barrierColor: barrierColor,
         barrierDismissible: dismissible,
         barrierLabel: barrierLabel,
@@ -315,7 +326,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
 /// `Navigator.pages` and routers built on it.
 ///
 /// [presentation], [dismissible], [barrierLabel], [motion], [anchor],
-/// [dismissAxis], [motions] and [style] are read when
+/// [dismissDirections], [motions] and [style] are read when
 /// the route is created, from the navigator's context; a changed [child]
 /// rebuilds the open modal. Popping it (the scrim, Esc, back, a drag, or
 /// `Navigator.pop`) calls the navigator's `onDidRemovePage`.
@@ -332,7 +343,7 @@ class CoilModalPage<T> extends Page<T> {
     this.barrierLabel,
     this.motion,
     this.anchor = CoilModalAnchor.center,
-    this.dismissAxis = Axis.horizontal,
+    this.dismissDirections = _defaultDismissDirections,
     this.motions,
     this.style,
   });
@@ -356,8 +367,9 @@ class CoilModalPage<T> extends Page<T> {
   /// Where a floating panel sits; see [CoilModalRoute].
   final CoilModalAnchor anchor;
 
-  /// The axis a drag throws a floating panel away along; null for none.
-  final Axis? dismissAxis;
+  /// The directions a drag throws a floating panel away in; empty for none.
+  /// See [CoilModalRoute].
+  final Set<AxisDirection> dismissDirections;
 
   /// Per-track motions; see [CoilModalStyle.motions].
   final Map<CoilModalTrack<Object>, Motion>? motions;
@@ -374,7 +386,7 @@ class CoilModalPage<T> extends Page<T> {
     barrierLabel: barrierLabel,
     motion: motion,
     anchor: anchor,
-    dismissAxis: dismissAxis,
+    dismissDirections: dismissDirections,
     motions: motions,
     style: style,
     // The latest page's child, so updating the page updates the modal.
@@ -463,8 +475,8 @@ class _SlideFromStart extends StatelessWidget {
 /// A floating [CoilModalRoute]: a panel inside the window's margins over the
 /// scrim, springing in on Motor like the centered one.
 ///
-/// A drag on [dismissAxis] moves the panel (see [_FloatingPanel]). The
-/// route's animation controller is driven by that drag, as Flutter's
+/// A drag along [dismissDirections] moves the panel (see [_FloatingPanel]).
+/// The route's animation controller is driven by that drag, as Flutter's
 /// Cupertino back gesture drives its route's: the controller's value is the
 /// panel's presence, `1 - |offset| / extent`, so the scrim fades with the
 /// finger through the same animation the exit uses, and the panel's opacity
@@ -485,7 +497,7 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
     required this.settleAway,
     required this.margin,
     required this.anchor,
-    required this.dismissAxis,
+    required this.dismissDirections,
     required Color barrierColor,
     required super.barrierDismissible,
     required Widget Function(Widget child) wrapThemes,
@@ -519,8 +531,8 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
   final double margin;
   final CoilModalAnchor anchor;
 
-  /// The axis a drag dismisses along; null for none.
-  final Axis? dismissAxis;
+  /// The directions a drag dismisses in; empty for none.
+  final Set<AxisDirection> dismissDirections;
 
   /// Whether a drag holds the route's animation.
   bool _holding = false;
@@ -579,6 +591,14 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
   }
 }
 
+/// What a drag dismisses a modal along when none is given: sideways, which
+/// keeps the held-card feel, and down, as a sheet is dismissed.
+const _defaultDismissDirections = {
+  AxisDirection.left,
+  AxisDirection.right,
+  AxisDirection.down,
+};
+
 /// The most a horizontal drag tilts the panel, in radians, at a full extent.
 const _maxTilt = 0.06;
 
@@ -600,8 +620,7 @@ class _LateFade extends Animatable<double> {
   const _LateFade();
 
   @override
-  double transform(double t) =>
-      1 - _curve.transform(1 - t.clamp(0.0, 1.0));
+  double transform(double t) => 1 - _curve.transform(1 - t.clamp(0.0, 1.0));
 
   /// Solid for the first half of the way, so the page never ghosts through
   /// a panel that's only being moved, then fading in earnest.
@@ -645,10 +664,24 @@ class _FloatingPanelState extends State<_FloatingPanel>
   /// Stays through the spring back, so nothing jumps when it arrives.
   bool _touched = false;
 
-  /// The panel's extent along the dismiss axis when the drag started.
+  /// The axis of the current (or last) drag; the gesture arena picks it.
+  Axis _axis = Axis.horizontal;
+
+  /// Whether the drag may throw the panel away toward the negative side of
+  /// its axis (left, up) and the positive one (right, down).
+  bool _allowsNegative = true;
+  bool _allowsPositive = true;
+
+  /// The panel's extent along the drag's axis when the drag started.
   double _extent = 1;
 
-  /// How far the finger has moved the panel, in pixels.
+  /// How far the panel has to travel to be thrown away, in pixels: half the
+  /// extent, capped at half the width, so a tall panel doesn't need a
+  /// half-screen drag. It is gone (scrim clear) at twice this.
+  double _threshold = 1;
+
+  /// How far the finger has moved along the axis, in pixels. The panel is
+  /// where [_shown] puts it, which is the same unless it's resisted.
   double _pixels = 0;
 
   /// Where in the panel the finger took hold, which it tilts around; null
@@ -682,19 +715,66 @@ class _FloatingPanelState extends State<_FloatingPanel>
     }
   }
 
-  void _onDragStart(DragStartDetails details) {
+  bool _allows(double sign) => sign < 0 ? _allowsNegative : _allowsPositive;
+
+  /// How far the panel's travel against a direction that doesn't dismiss
+  /// can grow, at most: the panel gives a little, with growing resistance.
+  double get _reach => _threshold * 0.3;
+
+  /// Where the panel is for a finger [raw] pixels from where it began: with
+  /// it 1:1 toward a direction that dismisses, resisted toward one that
+  /// doesn't (`d·c / (c + |d|)`, so it never moves further than `c`).
+  double _shown(double raw) {
+    if (_allows(raw.sign)) return raw;
+    final reach = _reach;
+    return raw * reach / (reach + raw.abs());
+  }
+
+  /// The finger's distance that puts the panel [shown] pixels out; the
+  /// inverse of [_shown].
+  double _raw(double shown) {
+    if (_allows(shown.sign)) return shown;
+    final reach = _reach;
+    // [_shown] never reaches `reach`, so neither does its inverse's input;
+    // a spring that overshot there anyway is picked up at arm's length.
+    final clamped = shown.clamp(-reach * 0.99, reach * 0.99);
+    return clamped * reach / (reach - clamped.abs());
+  }
+
+  void _onDragStart(DragStartDetails details, Axis axis) {
+    if (_dragging && axis != _axis) return;
     if (_leaving || !widget.route.holdForDrag()) return;
     final box = _panelKey.currentContext?.findRenderObject();
     final size = box is RenderBox && box.hasSize ? box.size : null;
-    final axis = widget.route.dismissAxis!;
-    _extent = math.max(
+    final window = MediaQuery.sizeOf(context);
+    final width = size?.width ?? window.shortestSide;
+    final extent = math.max<double>(
       1,
       switch (axis) {
-            Axis.horizontal => size?.width,
-            Axis.vertical => size?.height,
-          } ??
-          MediaQuery.sizeOf(context).shortestSide,
+        Axis.horizontal => width,
+        Axis.vertical => size?.height ?? window.shortestSide,
+      },
     );
+    // A panel still springing back along another axis is let go: this drag
+    // starts from rest.
+    if (axis != _axis) {
+      _slide
+        ..stop()
+        ..value = 0;
+    }
+    final directions = widget.route.dismissDirections;
+    _axis = axis;
+    _allowsNegative = directions.contains(
+      axis == Axis.horizontal ? AxisDirection.left : AxisDirection.up,
+    );
+    _allowsPositive = directions.contains(
+      axis == Axis.horizontal ? AxisDirection.right : AxisDirection.down,
+    );
+    _extent = extent;
+    // Half the extent, but a tall panel (a search list fills the room down
+    // to the keyboard) is thrown away by a drag no longer than the same
+    // panel needs sideways, not by half the screen.
+    _threshold = math.min(extent, width) / 2;
     // Held where the finger is (for a drag a scrollable handed over, where
     // it began); a panel that can't say gives its center.
     _grab = box is RenderBox && box.hasSize && box.attached
@@ -702,30 +782,34 @@ class _FloatingPanelState extends State<_FloatingPanel>
         : null;
     // A panel still springing back is picked up where it is.
     _slide.stop();
-    _pixels = _slide.value * _extent;
+    _pixels = _raw(_slide.value * _extent);
     setState(() {
       _dragging = true;
       _touched = true;
     });
   }
 
-  void _onDragUpdate(double delta) {
-    if (!_dragging) return;
+  void _onDragUpdate(double delta, Axis axis) {
+    if (!_dragging || axis != _axis) return;
     _pixels += delta;
-    final offset = _pixels / _extent;
-    _slide.value = offset;
-    widget.route.dragTo(1 - offset.abs());
+    final shown = _shown(_pixels);
+    _slide.value = shown / _extent;
+    // Only moving toward a direction that dismisses fades the scrim.
+    widget.route.dragTo(
+      _allows(shown.sign) ? 1 - shown.abs() / (2 * _threshold) : 1,
+    );
   }
 
-  void _onDragEnd(double velocity, {required bool handedBack}) {
-    if (!_dragging) return;
+  void _onDragEnd(double velocity, Axis axis, {required bool handedBack}) {
+    if (!_dragging || axis != _axis) return;
     setState(() => _dragging = false);
     final route = widget.route;
     if (!route.isActive) return;
     // Where the panel would coast to if let go: it is thrown away when that
-    // is past half its extent in the direction it travels, so a quick flick
-    // from rest, or a slow drag past the middle, goes, and a drag past the
-    // middle flicked back toward rest returns.
+    // is past the threshold in the direction it travels, if that direction
+    // dismisses, so a quick flick from rest, or a slow drag past the
+    // middle, goes, and a drag past the middle flicked back toward rest
+    // returns.
     final landing = _coast.project(
       from: _pixels,
       velocity: velocity,
@@ -734,12 +818,18 @@ class _FloatingPanelState extends State<_FloatingPanel>
     final direction = velocity == 0 ? _pixels.sign : velocity.sign;
     final dismiss =
         !handedBack &&
-        landing.abs() > _extent / 2 &&
+        _allows(direction) &&
+        landing.abs() > _threshold &&
         landing.sign == direction;
     final vetoed = route.popDisposition == RoutePopDisposition.doNotPop;
     final speed = velocity / _extent;
     if (!dismiss) {
-      _settleBack(route, speed);
+      // While it's resisted the panel moves slower than the finger.
+      final reach = _reach;
+      final slowed = _allows(_pixels.sign)
+          ? 1.0
+          : reach * reach / math.pow(reach + _pixels.abs(), 2);
+      _settleBack(route, speed * slowed);
     } else if (vetoed) {
       // Let the PopScope hear it, then spring back.
       unawaited(route.navigator!.maybePop());
@@ -763,16 +853,17 @@ class _FloatingPanelState extends State<_FloatingPanel>
     }
   }
 
-  /// How far the panel has to move from rest along the dismiss axis, toward
-  /// [direction] (1 or -1), to be fully outside the window, with room for
-  /// its tilt.
+  /// How far the panel has to move from rest along the drag's axis, toward
+  /// [direction] (1 right or down, -1 left or up), to be fully outside the
+  /// window, with room for its tilt.
   double _distanceOutOfWindow(double direction) {
     final box = _panelKey.currentContext?.findRenderObject();
     if (box is! RenderBox || !box.hasSize || !box.attached) return _extent;
-    final horizontal = widget.route.dismissAxis == Axis.horizontal;
+    final horizontal = _axis == Axis.horizontal;
     final window = MediaQuery.sizeOf(context);
     final center = box.localToGlobal(box.size.center(Offset.zero));
-    final restCenter = (horizontal ? center.dx : center.dy) - _pixels;
+    final restCenter =
+        (horizontal ? center.dx : center.dy) - _slide.value * _extent;
     final windowExtent = horizontal ? window.width : window.height;
     final tilted = horizontal ? math.sin(_maxTilt) * box.size.height : 0;
     final start = restCenter - _extent / 2;
@@ -794,40 +885,62 @@ class _FloatingPanelState extends State<_FloatingPanel>
   }
 
   Widget _scrollDragged(Widget child) {
-    final axis = widget.route.dismissAxis;
-    if (axis == null) return child;
-    return switch (axis) {
-      Axis.horizontal => ScrollDragDetector(
-        up: ScrollDragMode.none,
-        down: ScrollDragMode.none,
-        left: ScrollDragMode.boundaryStart,
-        right: ScrollDragMode.boundaryStart,
-        onHorizontalDragStart: (details, _) => _onDragStart(details),
-        onHorizontalDragUpdate: (details, _) =>
-            _onDragUpdate(details.primaryDelta ?? 0),
-        onHorizontalDragEnd: (details, willScroll) => _onDragEnd(
-          details.primaryVelocity ?? 0,
-          handedBack: willScroll,
-        ),
-        onHorizontalDragCancel: () => _onDragEnd(0, handedBack: true),
-        child: child,
-      ),
-      Axis.vertical => ScrollDragDetector(
-        up: ScrollDragMode.boundaryStart,
-        down: ScrollDragMode.boundaryStart,
-        left: ScrollDragMode.none,
-        right: ScrollDragMode.none,
-        onVerticalDragStart: (details, _) => _onDragStart(details),
-        onVerticalDragUpdate: (details, _) =>
-            _onDragUpdate(details.primaryDelta ?? 0),
-        onVerticalDragEnd: (details, willScroll) => _onDragEnd(
-          details.primaryVelocity ?? 0,
-          handedBack: willScroll,
-        ),
-        onVerticalDragCancel: () => _onDragEnd(0, handedBack: true),
-        child: child,
-      ),
-    };
+    final directions = widget.route.dismissDirections;
+    final horizontal =
+        directions.contains(AxisDirection.left) ||
+        directions.contains(AxisDirection.right);
+    final vertical =
+        directions.contains(AxisDirection.up) ||
+        directions.contains(AxisDirection.down);
+    if (!horizontal && !vertical) return child;
+    // A direction that dismisses hands the drag over from a scrollable only
+    // when the gesture began at its edge (as a sheet does); one that doesn't
+    // leaves it with the scrollable.
+    ScrollDragMode mode(AxisDirection direction) =>
+        directions.contains(direction)
+        ? ScrollDragMode.boundaryStart
+        : ScrollDragMode.none;
+    return ScrollDragDetector(
+      up: mode(AxisDirection.up),
+      down: mode(AxisDirection.down),
+      left: mode(AxisDirection.left),
+      right: mode(AxisDirection.right),
+      onHorizontalDragStart: horizontal
+          ? (details, _) => _onDragStart(details, Axis.horizontal)
+          : null,
+      onHorizontalDragUpdate: horizontal
+          ? (details, _) =>
+                _onDragUpdate(details.primaryDelta ?? 0, Axis.horizontal)
+          : null,
+      onHorizontalDragEnd: horizontal
+          ? (details, willScroll) => _onDragEnd(
+              details.primaryVelocity ?? 0,
+              Axis.horizontal,
+              handedBack: willScroll,
+            )
+          : null,
+      onHorizontalDragCancel: horizontal
+          ? () => _onDragEnd(0, Axis.horizontal, handedBack: true)
+          : null,
+      onVerticalDragStart: vertical
+          ? (details, _) => _onDragStart(details, Axis.vertical)
+          : null,
+      onVerticalDragUpdate: vertical
+          ? (details, _) =>
+                _onDragUpdate(details.primaryDelta ?? 0, Axis.vertical)
+          : null,
+      onVerticalDragEnd: vertical
+          ? (details, willScroll) => _onDragEnd(
+              details.primaryVelocity ?? 0,
+              Axis.vertical,
+              handedBack: willScroll,
+            )
+          : null,
+      onVerticalDragCancel: vertical
+          ? () => _onDragEnd(0, Axis.vertical, handedBack: true)
+          : null,
+      child: child,
+    );
   }
 
   @override
@@ -852,7 +965,6 @@ class _FloatingPanelState extends State<_FloatingPanel>
           ].reduce(math.max) +
           margin,
     );
-    final axis = route.dismissAxis;
 
     // The panel cleared the insets, so what it holds has none left.
     final content = MediaQuery(
@@ -891,8 +1003,14 @@ class _FloatingPanelState extends State<_FloatingPanel>
                 final driven = _touched || _dragging || _leaving;
                 final offset = _slide.value;
                 final moving = driven && !_reduceMotion;
-                final depth = offset.abs().clamp(0.0, 1.0);
-                final tilt = moving && axis == Axis.horizontal
+                // It recedes as it's thrown, not while it's only resisted.
+                final depth = _allows(offset.sign)
+                    ? (offset.abs() * _extent / (2 * _threshold)).clamp(
+                        0.0,
+                        1.0,
+                      )
+                    : 0.0;
+                final tilt = moving && _axis == Axis.horizontal
                     ? offset * _maxTilt
                     : 0.0;
                 final scale = moving ? 1 - _recede * depth : 1.0;
@@ -904,8 +1022,7 @@ class _FloatingPanelState extends State<_FloatingPanel>
                   scale: driven ? 1 : 0.97,
                   blur: driven ? 0 : CoilBlurFade.defaultBlur,
                   child: FractionalTranslation(
-                    translation: switch (axis) {
-                      null => Offset.zero,
+                    translation: switch (_axis) {
                       Axis.horizontal => Offset(offset, 0),
                       Axis.vertical => Offset(0, offset),
                     },
