@@ -9,6 +9,7 @@ import 'package:coil_example/src/shell/settings.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:motor/motor.dart';
 
 /// Below this window width the catalog is on a phone (or in a phone-sized
 /// window): no top bar and no device frame, just the catalog on the touch
@@ -20,7 +21,14 @@ const catalogPhoneBreakpoint = 600.0;
 /// frame. Uses the settings of an enclosing [CatalogSettingsScope], or owns
 /// a set when mounted inside another app.
 class CatalogShell extends StatefulWidget {
-  const CatalogShell({super.key});
+  const CatalogShell({super.key, this.onHome, this.onOpenPackage});
+
+  /// Takes the host app back to its landing page, when the catalog is
+  /// mounted inside another app. See [CatalogHome].
+  final VoidCallback? onHome;
+
+  /// Opens another package's example in the host app. See [CatalogHome].
+  final ValueChanged<String>? onOpenPackage;
 
   @override
   State<CatalogShell> createState() => _CatalogShellState();
@@ -74,7 +82,13 @@ class _CatalogShellState extends State<CatalogShell> {
         child: chrome,
       );
     }
-    final environment = CatalogEnvironment(child: chrome);
+    final environment = CatalogEnvironment(
+      child: CatalogHome(
+        onHome: widget.onHome,
+        onOpenPackage: widget.onOpenPackage,
+        child: chrome,
+      ),
+    );
     if (CatalogSettingsScope.maybeOf(context) != null) return environment;
     return CatalogSettingsScope(
       settings: _ownSettings ??= CatalogSettings(),
@@ -119,6 +133,98 @@ class _ChromeRoute extends PageRoute<void> {
 
   @override
   Duration get transitionDuration => Duration.zero;
+}
+
+/// The host app's hooks, when the catalog is mounted inside another app:
+/// pressing the coil wordmark calls [onHome], and links to another
+/// package's example call [onOpenPackage] with its pub name.
+class CatalogHome extends InheritedWidget {
+  const CatalogHome({
+    required this.onHome,
+    required super.child,
+    super.key,
+    this.onOpenPackage,
+  });
+
+  final VoidCallback? onHome;
+  final ValueChanged<String>? onOpenPackage;
+
+  static VoidCallback? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<CatalogHome>()?.onHome;
+
+  /// Opens [package]'s example in the host app, or null when no host can.
+  static VoidCallback? openPackageOf(BuildContext context, String package) {
+    final open = context
+        .dependOnInheritedWidgetOfExactType<CatalogHome>()
+        ?.onOpenPackage;
+    return open == null ? null : () => open(package);
+  }
+
+  @override
+  bool updateShouldNotify(CatalogHome oldWidget) =>
+      onHome != oldWidget.onHome || onOpenPackage != oldWidget.onOpenPackage;
+}
+
+/// [child] as a link back to all packages when the catalog has a
+/// [CatalogHome], else as it is. The hover fill reaches [inset] past the
+/// child on each side; callers pull the link back by as much so the child
+/// keeps its place.
+class CatalogHomeLink extends StatelessWidget {
+  const CatalogHomeLink({required this.child, super.key, this.inset = 8});
+
+  final Widget child;
+  final double inset;
+
+  static const label = 'Back to all packages';
+
+  @override
+  Widget build(BuildContext context) {
+    final onHome = CatalogHome.of(context);
+    if (onHome == null) return child;
+    final colors = CoilTheme.of(context).colors;
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).item);
+    final motion = CoilTheme.motionOf(context);
+    return CoilTooltip(
+      message: const Text('All packages'),
+      side: CoilTooltipSide.bottom,
+      child: Semantics(
+        link: true,
+        label: label,
+        excludeSemantics: true,
+        child: CoilInteraction(
+          onPressed: onHome,
+          excludeFromSemantics: true,
+          builder: (context, states, child) {
+            final fill = states.contains(WidgetState.pressed)
+                ? colors.active
+                : states.contains(WidgetState.hovered)
+                ? colors.hover
+                : colors.hover.withValues(alpha: 0);
+            return CoilFocusRing(
+              visible: states.contains(WidgetState.focused),
+              borderRadius: radius,
+              child: SingleMotionBuilder(
+                value: fill.a,
+                motion: motion.fade,
+                builder: (context, alpha, child) => DecoratedBox(
+                  decoration: ShapeDecoration(
+                    color: fill.withValues(alpha: alpha.clamp(0, 1)),
+                    shape: RoundedSuperellipseBorder(borderRadius: radius),
+                  ),
+                  child: child,
+                ),
+                child: child,
+              ),
+            );
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: inset, vertical: 4),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Whether the catalog shows its top bar, which holds the preview
@@ -213,7 +319,14 @@ class CatalogTopBar extends StatelessWidget {
           border: Border(bottom: BorderSide(color: colors.border)),
         ),
         child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 12, 8),
+          // A home link's hover fill reaches 8 past the wordmark, so the
+          // bar pulls it back by as much to keep the mark at 16.
+          padding: EdgeInsetsDirectional.fromSTEB(
+            CatalogHome.of(context) == null ? 16 : 8,
+            8,
+            12,
+            8,
+          ),
           child: Row(
             children: [
               // Wide, the toggle sits in the middle; narrower, the
@@ -221,7 +334,7 @@ class CatalogTopBar extends StatelessWidget {
               if (wide)
                 Expanded(child: _Wordmark(showTagline: width >= 1280))
               else ...[
-                const CoilMark(),
+                const CatalogHomeLink(child: CoilMark()),
                 const Spacer(),
               ],
               SizedBox(width: gap),
@@ -368,31 +481,39 @@ class _Wordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = CoilTheme.textOf(context);
     final colors = CoilTheme.of(context).colors;
+    final hasLink = CatalogHome.of(context) != null;
+    // On the baseline, so the tagline sits on the wordmark's line.
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
-        const CoilMark(),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: 'coil',
-                  style: text.subtitle.copyWith(fontWeight: text.emphasis),
-                ),
-                if (showTagline)
-                  TextSpan(
-                    text: '   Refined Flutter components on springs',
-                    style: text.caption.copyWith(
-                      color: colors.mutedForeground,
-                    ),
-                  ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        CatalogHomeLink(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const CoilMark(),
+              const SizedBox(width: 8),
+              Text(
+                'coil',
+                style: text.subtitle.copyWith(fontWeight: text.emphasis),
+              ),
+            ],
           ),
         ),
+        if (showTagline) ...[
+          // The link's own inset already stands between them.
+          SizedBox(width: hasLink ? 4 : 12),
+          Flexible(
+            child: Text(
+              'Refined Flutter components on springs',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.caption.copyWith(color: colors.mutedForeground),
+            ),
+          ),
+        ],
       ],
     );
   }

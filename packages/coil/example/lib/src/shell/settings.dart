@@ -253,6 +253,27 @@ enum CatalogMotion {
   };
 }
 
+/// The rate every animation ticks at, through Motor's `TickerRateScope`:
+/// the display's own refresh rate, or a fixed one.
+enum CatalogFrameRate {
+  device('Display rate', null),
+  fps60('60 fps', 60),
+  fps30('30 fps', 30),
+  fps15('15 fps', 15);
+
+  const CatalogFrameRate(this.label, this.fps);
+
+  final String label;
+
+  /// The fixed rate, or null for every display frame.
+  final double? fps;
+
+  TickerRate get rate {
+    final fps = this.fps;
+    return fps == null ? const TickerRate.vsync() : TickerRate.fps(fps);
+  }
+}
+
 /// Whether the Motor devtools overlay is shown. It starts off. The preview
 /// settings turn it on, and the apps that mount the catalog show the overlay
 /// while this is true.
@@ -310,6 +331,11 @@ class CatalogSettings extends ChangeNotifier {
   bool get reducedMotion => _reducedMotion;
   bool _reducedMotion = false;
   set reducedMotion(bool value) => _set(() => _reducedMotion = value);
+
+  /// The rate coil's springs tick at.
+  CatalogFrameRate get frameRate => _frameRate;
+  CatalogFrameRate _frameRate = CatalogFrameRate.device;
+  set frameRate(CatalogFrameRate value) => _set(() => _frameRate = value);
 
   /// Slows every animation down by [slowMoFactor], through Flutter's own
   /// [timeDilation], so Motor springs keep their shape, just stretched.
@@ -543,14 +569,17 @@ class CatalogEnvironment extends StatelessWidget {
       ),
       child: Directionality(
         textDirection: settings.rtl ? TextDirection.rtl : TextDirection.ltr,
-        child: CoilTheme(
-          data: settings.theme(brightness),
-          child: CoilAdaptiveScope(
-            tier: settings.tier.tier,
-            child: Builder(
-              builder: (context) => ColoredBox(
-                color: CoilTheme.of(context).colors.background,
-                child: child,
+        child: TickerRateScope(
+          rate: settings.frameRate.rate,
+          child: CoilTheme(
+            data: settings.theme(brightness),
+            child: CoilAdaptiveScope(
+              tier: settings.tier.tier,
+              child: Builder(
+                builder: (context) => ColoredBox(
+                  color: CoilTheme.of(context).colors.background,
+                  child: child,
+                ),
               ),
             ),
           ),
