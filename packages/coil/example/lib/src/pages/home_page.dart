@@ -36,6 +36,7 @@ class HomePage extends StatelessWidget {
               context: context,
               removeTop: true,
               child: CoilScrollArea(
+                keyboardInset: true,
                 padding: EdgeInsetsDirectional.fromSTEB(
                   gutter + padding.left,
                   0,
