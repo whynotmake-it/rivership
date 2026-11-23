@@ -1,6 +1,5 @@
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/focus_within.dart';
-import 'package:coil/src/primitives/keyboard_overlap.dart';
 import 'package:cupertino_ui/cupertino_ui.dart'
     show
         CupertinoColors,
@@ -186,10 +185,6 @@ class CoilTextFieldCore extends StatefulWidget {
 
   /// The space kept between the field and the screen edges (and the
   /// software keyboard) when the field scrolls itself into view.
-  ///
-  /// While the keyboard covers the bottom of the viewport the field
-  /// scrolls in, the covered part is added to the bottom, so the field is
-  /// revealed above the keyboard even where the page draws behind it.
   final EdgeInsets scrollPadding;
 
   /// Scrolls a multi-line field's text. One is created if null.
@@ -263,7 +258,6 @@ class CoilTextFieldCore extends StatefulWidget {
 }
 
 class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
-    with WidgetsBindingObserver
     implements TextSelectionGestureDetectorBuilderDelegate {
   TextEditingController? _ownController;
   FocusNode? _ownFocusNode;
@@ -299,7 +293,6 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _focusNode
       ..addListener(_onFocusChanged)
       ..canRequestFocus = widget.enabled;
@@ -338,41 +331,11 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _focusNode.removeListener(_onFocusChanged);
     _controller.removeListener(_onValueChanged);
     _ownController?.dispose();
     _ownFocusNode?.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeMetrics() {
-    // The keyboard animates through metrics changes, a frame at a time.
-    // EditableText reveals the caret again after each, with the scroll
-    // padding of the build that follows, so it is rebuilt with the new
-    // overlap.
-    if (_focusNode.hasFocus) setState(() {});
-  }
-
-  /// How far the keyboard covers the bottom of the vertical viewport this
-  /// field scrolls in, in global coordinates ([CoilKeyboardOverlap.measure]).
-  ///
-  /// Revealing the field scrolls it to the viewport's bottom edge, which
-  /// may sit behind the keyboard; the covered part counts as padding. It
-  /// can only scroll as far as the content goes: a viewport with no room
-  /// left at its end needs trailing padding of its own
-  /// (`CoilScrollArea.keyboardInset`, [CoilKeyboardOverlap]).
-  double _keyboardOverlap() {
-    if (!_focusNode.hasFocus) return 0;
-    final viewport = Scrollable.maybeOf(
-      context,
-      axis: Axis.vertical,
-    )?.context.findRenderObject();
-    return CoilKeyboardOverlap.measure(
-      context,
-      viewport is RenderBox ? viewport : null,
-    );
   }
 
   void _onFocusChanged() {
@@ -512,11 +475,7 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       autocorrect: widget.autocorrect && !widget.obscureText,
       enableSuggestions: widget.enableSuggestions && !widget.obscureText,
       obscuringCharacter: widget.obscuringCharacter,
-      // Revealing scrolls within the viewport, which may run on behind
-      // the keyboard: the part it covers is padding too.
-      scrollPadding: widget.scrollPadding.copyWith(
-        bottom: widget.scrollPadding.bottom + _keyboardOverlap(),
-      ),
+      scrollPadding: widget.scrollPadding,
       scrollController: widget.scrollController,
       minLines: widget.minLines,
       maxLines: widget.maxLines,

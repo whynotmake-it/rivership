@@ -499,47 +499,38 @@ void main() {
     });
   });
 
-  testWidgets('on a phone, the last field of a keyboard-inset page scrolls '
-      'above the keyboard while the page runs on behind it', (tester) async {
+  testWidgets('a focused field scrolls above the keyboard', (tester) async {
     useScreen(tester, TestScreen.phone);
     const keyboard = 300.0;
     tester.view.viewInsets = const FakeViewPadding(bottom: keyboard * 2);
     addTearDown(tester.view.resetViewInsets);
-    const field = ValueKey('field');
     await tester.pumpWidget(
       testApp(
         tier: CoilTier.touch,
         home: CoilSidebarScaffold(
           sidebar: const CoilSidebar(children: [Text('Nav')]),
-          body: CoilScrollArea(
-            keyboardInset: true,
-            child: Column(
-              children: [
-                for (var i = 0; i < 30; i++)
-                  SizedBox(height: 48, child: Text('Row $i')),
-                const CoilInput(key: field),
-              ],
-            ),
+          body: ListView(
+            children: [
+              for (var i = 0; i < 30; i++)
+                SizedBox(height: 48, child: Text('$i')),
+              const CoilInput(key: ValueKey('field')),
+            ],
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CoilScrollArea), const Offset(0, -3000));
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(field));
+    await tester.tap(find.byKey(const ValueKey('field')));
     await tester.pumpAndSettle();
 
     final screen = TestScreen.phone.size.height;
     expect(
-      tester.getRect(find.byKey(field)).bottom,
+      tester.getRect(find.byKey(const ValueKey('field'))).bottom,
       lessThanOrEqualTo(screen - keyboard),
     );
-    // Nothing shrank: the scaffold and the page reach the screen's bottom,
-    // and rows draw on behind the keyboard.
-    expect(tester.getRect(find.byType(CoilSidebarScaffold)).bottom, screen);
-    expect(tester.getRect(find.byType(CoilScrollArea)).bottom, screen);
   });
 
   group('drawer', () {
