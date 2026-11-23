@@ -9,6 +9,10 @@ void main() {
   runApp(
     CupertinoApp.router(
       debugShowCheckedModeBanner: false,
+      // Black behind the pages, as on iOS: the Cupertino sheet scales the
+      // page back and shows what's behind it at the top.
+      builder: (context, child) =>
+          ColoredBox(color: const Color(0xFF000000), child: child),
       routerConfig: _router.config(),
     ),
   );
