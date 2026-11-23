@@ -1,4 +1,5 @@
 import 'package:coil/coil.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -162,10 +163,78 @@ void main() {
   });
 
   multiTests();
+
+  testWidgets('every option clicked in the list lands, however fast', (
+    tester,
+  ) async {
+    useScreen(tester, TestScreen.desktop);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    // A click: [frames] frames pass while the button is down. A real click
+    // holds it for a few; a fast one lifts within the frame.
+    Future<void> click(Finder finder, {int frames = 0}) async {
+      final at = tester.getCenter(finder);
+      await mouse.moveTo(at);
+      await mouse.down(at);
+      for (var i = 0; i < frames; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await mouse.up();
+    }
+
+    Finder row(String label) => find.descendant(
+      of: find.byType(CoilPopoverSurface),
+      matching: find.text(label),
+    );
+
+    await tester.pumpWidget(
+      testApp(tier: CoilTier.pointer, home: const _MultiDemo(options: fruits)),
+    );
+    await click(find.byType(EditableText), frames: 2);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    // Two fast clicks with no frame between them, then an ordinary one.
+    await click(row('Apple'));
+    await click(row('Banana'));
+    await tester.pump(const Duration(milliseconds: 16));
+    await click(row('Cherry'), frames: 5);
+    await tester.pumpAndSettle();
+    // A click on a match of a typed query.
+    await tester.enterText(find.byType(EditableText), 'man');
+    await tester.pumpAndSettle();
+    await click(row('Mango'), frames: 5);
+    await tester.pumpAndSettle();
+    expect(_values(tester), {'apple', 'banana', 'cherry', 'mango'});
+    for (final label in ['Apple', 'Banana', 'Cherry', 'Mango']) {
+      expect(find.bySemanticsLabel('Remove $label'), findsOneWidget);
+    }
+
+    // The single combobox: a held click on a match picks it, and the field
+    // keeps focus for the next search.
+    await tester.pumpWidget(
+      KeyedSubtree(
+        key: const ValueKey('single'),
+        child: testApp(tier: CoilTier.pointer, home: const _Demo()),
+      ),
+    );
+    await click(find.byType(EditableText), frames: 2);
+    await tester.enterText(find.byType(EditableText), 'ban');
+    await tester.pumpAndSettle();
+    await click(row('Banana'), frames: 5);
+    await tester.pumpAndSettle();
+    expect(tester.state<_DemoState>(find.byType(_Demo)).value, 'banana');
+    expect(_fieldText(tester), 'Banana');
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
+      isTrue,
+    );
+  }, variant: TargetPlatformVariant.desktop());
 }
 
 class _MultiDemo extends StatefulWidget {
-  const _MultiDemo();
+  const _MultiDemo({this.options = _fruit});
+
+  final List<CoilOption<String>> options;
 
   @override
   State<_MultiDemo> createState() => _MultiDemoState();
@@ -180,7 +249,7 @@ class _MultiDemoState extends State<_MultiDemo> {
     child: SizedBox(
       width: 240,
       child: CoilMultiCombobox<String>(
-        options: _fruit,
+        options: widget.options,
         values: values,
         onChanged: (v) => setState(() => values = v),
       ),

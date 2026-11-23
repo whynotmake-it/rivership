@@ -9,6 +9,7 @@ import 'package:coil/src/components/select/picked_label.dart';
 import 'package:coil/src/components/select/select_style.dart';
 import 'package:coil/src/components/select/select_trigger.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -264,6 +265,25 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
   FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
   bool get _enabled => widget.onChanged != null;
 
+  /// The picks this combobox last reported, until the owner rebuilds with
+  /// them: a second click in the same frame toggles on top of the first,
+  /// not on the stale [_ComboboxCore.picked].
+  Set<T>? _reported;
+
+  /// The picks to change: the last reported ones while the owner hasn't
+  /// rebuilt yet.
+  Set<T> get _picked => _reported ?? widget.picked;
+
+  void _report(Set<T> picked) {
+    if (_reported == null) {
+      // An owner that never rebuilds keeps its value: forget these after
+      // the frame.
+      SchedulerBinding.instance.addPostFrameCallback((_) => _reported = null);
+    }
+    _reported = picked;
+    widget.onChanged?.call(picked);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -274,6 +294,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
   @override
   void didUpdateWidget(_ComboboxCore<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _reported = null;
     if (oldWidget.focusNode != widget.focusNode) {
       (oldWidget.focusNode ?? _ownFocus)?.removeListener(_onFocus);
       _focus.addListener(_onFocus);
@@ -397,9 +418,9 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
 
   void _pick(T value) {
     if (widget.multiple) {
-      final picked = {...widget.picked};
+      final picked = {..._picked};
       if (!picked.remove(value)) picked.add(value);
-      widget.onChanged?.call(picked);
+      _report(picked);
       // The typed text found it; the next search starts over.
       _text.clear();
       _query.value = '';
@@ -491,8 +512,7 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       for (final option in widget.options)
         if (widget.picked.contains(option.value)) option,
     ];
-    void remove(T value) =>
-        widget.onChanged?.call({...widget.picked}..remove(value));
+    void remove(T value) => _report({..._picked}..remove(value));
     return Actions(
       actions: {
         _RemoveLastIntent: _RemoveLastAction(
@@ -671,14 +691,20 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
       popover: (context, content) {
         final metrics = CoilTheme.metricsOf(context);
         final style = _style(context, metrics);
-        return CoilPopoverSurface(
-          color: style.surface,
-          radius: CoilTheme.radiiOf(context).concentric(
-            style.radius!,
-            metrics.popupInset,
-            innerExtent: metrics.controlHeight,
+        // The list is part of the field: a press on it is no tap outside
+        // the field, which on a pointer would take the field's focus, and
+        // with it close the list and reset the query (rebuilding the rows)
+        // before the press lifts and picks.
+        return TextFieldTapRegion(
+          child: CoilPopoverSurface(
+            color: style.surface,
+            radius: CoilTheme.radiiOf(context).concentric(
+              style.radius!,
+              metrics.popupInset,
+              innerExtent: metrics.controlHeight,
+            ),
+            child: content,
           ),
-          child: content,
         );
       },
       sheet: (context, content) => CoilSheetPanel(
