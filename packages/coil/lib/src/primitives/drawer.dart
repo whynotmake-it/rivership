@@ -16,6 +16,9 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
 
+export 'package:scroll_drag_detector/scroll_drag_detector.dart'
+    show ExcludeScrollDrag;
+
 /// A side of a [CoilDrawer], following the text direction.
 enum CoilDrawerEdge {
   /// The leading edge: left in a left-to-right layout.
@@ -329,6 +332,9 @@ class CoilDrawerTransition {
 /// * focus moves into the panel, and returns to where it was on close;
 /// * screen readers reach only the panel, a route named by its semantic
 ///   label, and the content's dismiss action.
+///
+/// Wrap content that needs its own drags (a map, a canvas, a draggable
+/// card) in [ExcludeScrollDrag] so the drawer doesn't take them.
 ///
 /// [drag] decides which drags move it. Drags are read with a
 /// `ScrollDragDetector`, so a horizontal scrollable inside [child] keeps
