@@ -191,6 +191,27 @@ class Glyph {
     LucideIcons300.mousePointer2,
     LucideIcons400.mousePointer2,
   );
+  static const info = Glyph(LucideIcons300.info, LucideIcons400.info);
+  static const circleCheck = Glyph(
+    LucideIcons300.circleCheck,
+    LucideIcons400.circleCheck,
+  );
+  static const triangleAlert = Glyph(
+    LucideIcons300.triangleAlert,
+    LucideIcons400.triangleAlert,
+  );
+  static const circleAlert = Glyph(
+    LucideIcons300.circleAlert,
+    LucideIcons400.circleAlert,
+  );
+  static const refresh = Glyph(
+    LucideIcons300.refreshCw,
+    LucideIcons400.refreshCw,
+  );
+  static const fileText = Glyph(
+    LucideIcons300.fileText,
+    LucideIcons400.fileText,
+  );
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].
