@@ -9,7 +9,7 @@ const cardEntry = CatalogEntry(
   slug: 'card',
   title: 'Card',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Surfaces with a title, media and an optional press or dismiss.',
+  summary: 'A pressable surface with a title, media and an optional dismiss.',
   page: CardPage.new,
 );
 
@@ -64,8 +64,9 @@ class _CardPageState extends State<CardPage> {
     return CatalogPage(
       title: 'Card',
       summary:
-          'A surface that is one button when it has an action, with an '
-          'optional dismiss. Cards in a group share one hover highlight.',
+          'A card becomes a single button once you give it an onPressed, it '
+          'can carry a dismiss of its own, and cards in a group share one '
+          'hover highlight.',
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -126,32 +127,34 @@ CoilCardGroup(
       notes: const [
         CatalogNote(
           'Pointer',
-          'A card with an action hovers with one highlight that glides across '
-              'the group. The dismiss shows on hover or focus.',
+          'A card with an action takes the shared highlight of its group, '
+              'which glides from one card to the next, and its dismiss button '
+              'appears on hover or focus.',
         ),
         CatalogNote(
           'Touch',
-          'The card shows a press fill and always shows its dismiss, with a '
-              '44 hit target.',
+          'On touch the card fills while it is pressed and keeps its dismiss '
+              'button visible, with a 44 hit target.',
         ),
         CatalogNote(
           'Motion',
           'Dismissing blur-fades the card while its height collapses on '
-              'standard, and only then calls onDismissed. Remove the card '
-              'there.',
+              'standard, and onDismissed only fires once that has finished, '
+              'so that is where you remove the card.',
         ),
         CatalogNote(
           "Do / Don't",
-          'One primary action per card. Buttons in actions stay separate '
-              'tab stops after it. Never nest cards.',
+          'Give a card one primary action, and remember that buttons passed '
+              'to actions stay their own tab stops after it. Never nest '
+              'cards.',
         ),
       ],
       children: [
         DemoSection(
           title: 'Playground',
           description:
-              'Stacked puts the media on top at 16:9. Inline sets an icon '
-              'tile or a square image beside the text.',
+              'The stacked variant puts the media on top at 16:9, while '
+              'inline sets an icon tile or a square image beside the text.',
           controls: DemoControls(
             children: [
               DemoControl.choice(

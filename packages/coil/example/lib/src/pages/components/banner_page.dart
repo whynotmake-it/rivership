@@ -4,8 +4,6 @@ import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
-import 'package:lucide_icons_flutter/lucide_icons_300.dart';
-import 'package:lucide_icons_flutter/lucide_icons_400.dart';
 
 const bannerEntry = CatalogEntry(
   slug: 'banner',
@@ -13,20 +11,6 @@ const bannerEntry = CatalogEntry(
   group: CatalogGroup.layoutAndDisplay,
   summary: 'A page-level message that can be dismissed.',
   page: BannerPage.new,
-);
-
-const _infoGlyph = Glyph(LucideIcons300.info, LucideIcons400.info);
-const _successGlyph = Glyph(
-  LucideIcons300.circleCheck,
-  LucideIcons400.circleCheck,
-);
-const _warningGlyph = Glyph(
-  LucideIcons300.triangleAlert,
-  LucideIcons400.triangleAlert,
-);
-const _errorGlyph = Glyph(
-  LucideIcons300.circleAlert,
-  LucideIcons400.circleAlert,
 );
 
 typedef _Message = ({
@@ -47,28 +31,28 @@ _Message _messageFor(CoilBannerStatus status) => switch (status) {
   ),
   CoilBannerStatus.info => (
     name: 'Info',
-    glyph: _infoGlyph,
+    glyph: Glyph.info,
     title: 'Scheduled maintenance',
     description: 'Saturday, 02:00 to 04:00 UTC. Editing pauses briefly.',
     action: 'Details',
   ),
   CoilBannerStatus.success => (
     name: 'Success',
-    glyph: _successGlyph,
+    glyph: Glyph.circleCheck,
     title: 'Domain verified',
     description: 'Mail from example.com is now signed.',
     action: 'View records',
   ),
   CoilBannerStatus.warning => (
     name: 'Warning',
-    glyph: _warningGlyph,
+    glyph: Glyph.triangleAlert,
     title: 'Your card expires in May',
     description: 'Update it before your next invoice on 1 Dec.',
     action: 'Update card',
   ),
   CoilBannerStatus.destructive => (
     name: 'Error',
-    glyph: _errorGlyph,
+    glyph: Glyph.circleAlert,
     title: 'Sync failed',
     description: 'Three files could not upload. Check your connection.',
     action: 'Retry',
@@ -95,8 +79,9 @@ class _BannerPageState extends State<BannerPage> {
     return CatalogPage(
       title: 'Banner',
       summary:
-          'A message that sits over a page until it is dealt with. Dismissing '
-          'only asks the page to remove it; the page decides.',
+          'A message that sits above a page until it is dealt with. Pressing '
+          'the close button calls onDismissRequested, so the page decides '
+          'when the banner goes away.',
       hero: const _BillingPage(),
       usage: '''
 CoilBanner(
@@ -112,25 +97,26 @@ CoilBanner(
       notes: const [
         CatalogNote(
           'Touch',
-          'Swipe a banner sideways to dismiss it. The close button gets a '
-              '44 hit target.',
+          'You can swipe a banner sideways to dismiss it, and the close '
+              'button keeps a 44 hit target.',
         ),
         CatalogNote(
           'Motion',
-          'Appearing opens the row on standard, then the banner fades and '
-              'scales in from the top on gentle, 80 ms later. A changing '
-              'description springs the height.',
+          'The row opens on standard, and the banner fades and scales in from '
+              'the top on gentle 80 ms later. A description that changes '
+              'springs the height.',
         ),
         CatalogNote(
           'Accessibility',
-          'A banner is a live region: polite, so screen readers announce it '
-              'when it appears. The close button is labelled Dismiss.',
+          'A banner is a polite live region, so a screen reader announces it '
+              'when it appears, and its close button is labelled Dismiss.',
         ),
         CatalogNote(
           "Do / Don't",
-          'Never stack more than two. Use inline feedback, not a banner, for '
-              'a transient confirmation. Use placement: fixed for a bar under '
-              'the safe area at the top of the viewport.',
+          'Keep to one or two banners at a time, and use inline feedback '
+              'rather than a banner for a transient confirmation. Set '
+              'placement to fixed for a bar under the safe area at the top of '
+              'the viewport.',
         ),
       ],
       children: [
@@ -202,8 +188,9 @@ CoilBanner(
         DemoSection(
           title: 'Statuses',
           description:
-              'Color only for meaning: the status hue tints the icon and, in '
-              'the tinted variant, an 8 % wash behind it.',
+              'Color only carries meaning here: the status hue tints the '
+              'icon, and in the tinted variant it washes the background '
+              'behind it at 8 %.',
           child: DemoColumn(
             spacing: 8,
             children: [
@@ -261,7 +248,7 @@ class _BillingPageState extends State<_BillingPage> {
           status: CoilBannerStatus.warning,
           variant: CoilBannerVariant.tinted,
           visible: _shown,
-          icon: const CatalogIcon(_warningGlyph),
+          icon: const CatalogIcon(Glyph.triangleAlert),
           title: const Text('Your card expires in May'),
           description: const Text('Update it before your next invoice.'),
           actions: [

@@ -11,7 +11,7 @@ const thinkingStepsEntry = CatalogEntry(
   slug: 'thinking-steps',
   title: 'ThinkingSteps',
   group: CatalogGroup.layoutAndDisplay,
-  summary: "An assistant's reasoning, folded into a summary line.",
+  summary: 'The steps an assistant took, folded under a summary line.',
   page: ThinkingStepsPage.new,
 );
 
@@ -59,8 +59,8 @@ class _ThinkingStepsPageState extends State<ThinkingStepsPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'ThinkingSteps',
     summary:
-        'What an assistant did on the way to its answer, folded under a '
-        'summary line. Steps grow in as they arrive.',
+        'The steps an assistant took on the way to its answer, folded under a '
+        'summary line, with each new step growing in as it arrives.',
     hero: const _AgentRun(),
     usage: '''
 CoilThinkingSteps(
@@ -79,24 +79,25 @@ CoilThinkingSteps(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'The trigger is a tab stop; Enter or Space opens and closes the '
+        'The trigger is a tab stop, and Enter or Space opens and closes the '
             'list.',
       ),
       CatalogNote(
         'Motion',
-        'The list opens on standard. A step that arrives later grows on '
-            'gentle and fades in 80 ms after; source badges pop in from '
-            '0.85 with a blur.',
+        'The list opens on standard. A step that arrives later grows in on '
+            'gentle and fades in 80 ms after that, and source badges pop in '
+            'from 0.85 with a blur.',
       ),
       CatalogNote(
         "Do / Don't",
-        'Append steps to the list; steps present at the first build show '
-            'at once. A one-line step draws no connector, so details and '
-            'sources are what link steps.',
+        'Append steps as they arrive; the ones already there on the first '
+            'build appear at once. A step with only a title draws no '
+            'connector, so it is the details and sources that link the steps '
+            'together.',
       ),
       CatalogNote(
         'Screen readers',
-        'The indicator is a polite live region that announces a word at '
+        'The indicator is a polite live region that announces its word at '
             'most once every 4 seconds.',
       ),
     ],
@@ -104,8 +105,8 @@ CoilThinkingSteps(
       DemoSection(
         title: 'Steps',
         description:
-            'A connector runs from each glyph down beside the details to '
-            'the next step. Without a glyph the step gets a small dot.',
+            'A connector runs from each glyph down past the details to the '
+            'next step, and a step without a glyph gets a small dot instead.',
         controls: DemoControls(
           children: [
             DemoControl.toggle(
@@ -146,8 +147,8 @@ CoilThinkingSteps(
       const DemoSection(
         title: 'Indicator',
         description:
-            'Shown while the answer is on its way. The word cycles every 4 '
-            'seconds, and the row is as wide as the longest word.',
+            'Shown while the answer is still on its way. The word changes '
+            'every 4 seconds, and the row stays as wide as the longest one.',
         child: DemoWrap(
           spacing: 32,
           crossAxisAlignment: WrapCrossAlignment.start,

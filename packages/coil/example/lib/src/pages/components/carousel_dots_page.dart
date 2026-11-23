@@ -11,7 +11,7 @@ const carouselDotsEntry = CatalogEntry(
   slug: 'carousel-dots',
   title: 'CarouselDots',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Page dots whose active pill stretches between pages.',
+  summary: 'Page dots whose active pill stretches as you move between pages.',
   page: CarouselDotsPage.new,
 );
 
@@ -61,8 +61,9 @@ class _CarouselDotsPageState extends State<CarouselDotsPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'CarouselDots',
     summary:
-        'The position of a pager. Tap a dot, or focus them and use the '
-        'arrow keys; swiping the pages moves the pill.',
+        'Dots that show where you are in a pager. You can tap a dot or focus '
+        'the row and use the arrow keys, and swiping the pages themselves '
+        'moves the pill along.',
     hero: const _Pager(count: 5),
     usage: '''
 CoilCarouselDots(
@@ -77,37 +78,37 @@ CoilCarouselDots(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'The dots are one tab stop. Left and Right (or Up and Down) step '
-            'through slides, Home and End jump to the ends.',
+        'The dots are one tab stop. Left and Right, or Up and Down, step '
+            'through the slides, and Home and End jump to the ends.',
       ),
       CatalogNote(
         'Pointer',
-        'Each dot has its own 18 click target, and one highlight glides '
+        'Each dot has its own 18 click target, and a single highlight glides '
             'between them.',
       ),
       CatalogNote(
         'Touch',
-        'The row is one 44 high control: tap or drag along it to scrub. '
-            'Swipe the pager itself to page.',
+        'The row is one 44 high control, so you can tap or drag along it to '
+            'scrub, and swiping the pager itself still pages.',
       ),
       CatalogNote(
         'Motion',
-        'The pill grows from 6 to 24 on standard. The dots never advance on '
-            'their own: an autoplaying carousel drives progress itself and '
+        'The pill grows from 6 to 24 on standard. The dots never advance by '
+            'themselves: an autoplaying carousel drives the progress, and '
             'stops under reduced motion.',
       ),
       CatalogNote(
         'Screen readers',
-        'One adjustable control that reads "Slide 2 of 5", with increase and '
-            'decrease actions.',
+        'The row is one adjustable control that reads "Slide 2 of 5" and '
+            'offers increase and decrease actions.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
         description:
-            'With progress, the current pill fills as the slide plays. The '
-            'carousel owns the clock; picking a dot restarts it.',
+            'With progress on, the current pill fills as the slide plays. The '
+            'carousel owns the clock, so picking a dot restarts it.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

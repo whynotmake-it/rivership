@@ -8,7 +8,8 @@ const accordionEntry = CatalogEntry(
   slug: 'accordion',
   title: 'Accordion',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Panels that unfold on a spring, one or several at a time.',
+  summary:
+      'Sections that fold their panel away, one at a time or several at once.',
   page: AccordionPage.new,
 );
 
@@ -80,8 +81,9 @@ class _AccordionPageState extends State<AccordionPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Accordion',
     summary:
-        'Sections that fold their panel away. Single mode keeps one open, '
-        'multiple lets you read several side by side.',
+        'Sections that fold their panel away. In single mode one panel is '
+        'open at a time, and in multiple mode you can keep several open and '
+        'read them side by side.',
     hero: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -109,31 +111,34 @@ CoilAccordion<String>.single(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Every trigger is a tab stop. Enter or Space toggles it, Up and Down '
-            'move between triggers, Home and End jump to the ends.',
+        'Each trigger is its own tab stop, and Enter or Space toggles it. The '
+            'up and down arrows move between triggers, and Home and End jump '
+            'to the first and last.',
       ),
       CatalogNote(
         'Touch',
-        'Triggers show a press fill only; labels stay at full strength '
-            'instead of muted.',
+        'A trigger fills while it is held, and its label keeps its full '
+            'strength rather than dimming.',
       ),
       CatalogNote(
         'Motion',
-        'The chevron turns a quarter on quick, the panel opens on standard '
-            'with its text fading on fade.',
+        'The chevron turns a quarter turn on the quick spring while the panel '
+            'opens on standard, and the panel text fades in behind it.',
       ),
       CatalogNote(
         'Accessibility',
-        'Each trigger is a button with an expanded state, and an open panel '
-            'is labelled by its trigger. Pass a semanticLabel on each item.',
+        'Each trigger is a button that reports whether it is expanded, and an '
+            'open panel is labelled by its trigger, so give every item a '
+            'semanticLabel.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
         description:
-            'The group variant is narrow and shares one hover highlight, with '
-            'a tint behind what is open.',
+            'The group variant keeps the sections tight together: they share '
+            'one hover highlight, and whichever panel is open sits on a faint '
+            'tint.',
         controls: DemoControls(
           children: [
             DemoControl.choice(

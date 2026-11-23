@@ -4,18 +4,14 @@ import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
-import 'package:lucide_icons_flutter/lucide_icons_300.dart';
-import 'package:lucide_icons_flutter/lucide_icons_400.dart';
 
 const breadcrumbEntry = CatalogEntry(
   slug: 'breadcrumb',
   title: 'Breadcrumb',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'Where a page sits; long trails fold into a menu.',
+  summary: 'The trail to the current page, folding its middle into a menu.',
   page: BreadcrumbPage.new,
 );
-
-const _fileGlyph = Glyph(LucideIcons300.fileText, LucideIcons400.fileText);
 
 /// A folder, or a file when it has no [children] and a [size].
 class _Entry {
@@ -128,8 +124,9 @@ class _BreadcrumbPageState extends State<BreadcrumbPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Breadcrumb',
     summary:
-        'The trail to the current page. Every crumb but the last is a link, '
-        'and a long trail folds its middle into a menu.',
+        'The trail to the current page. Every crumb except the last one is a '
+        'link, and when the trail runs out of room its middle folds into a '
+        'menu.',
     hero: const _FileBrowser(),
     usage: '''
 CoilBreadcrumb(
@@ -144,31 +141,31 @@ CoilBreadcrumb(
     notes: const [
       CatalogNote(
         'Keyboard',
-        'Crumbs are links in native Tab order. Enter follows one, or opens '
-            'the menu on the "…" button.',
+        'Crumbs are links in the native Tab order, and Enter follows one or '
+            'opens the menu behind the "…" button.',
       ),
       CatalogNote(
         'Touch',
-        'On a phone the trail always shows the first crumb, "…" and the last '
-            'two. Each crumb takes a 44 hit target.',
+        'On a phone the trail keeps the first crumb, the "…" button and the '
+            'last two, and every crumb takes a 44 hit target.',
       ),
       CatalogNote(
         'Pointer',
-        'One highlight glides between crumbs on quick. Long names truncate '
-            'in the trail and read in full in the menu.',
+        'One highlight glides between crumbs on the quick spring. A long name '
+            'truncates in the trail and reads in full in the menu.',
       ),
       CatalogNote(
         'Screen readers',
-        'The trail is a navigation labelled "Breadcrumb". The current page '
-            'is plain text marked selected.',
+        'The trail is a navigation region labelled Breadcrumb, and the '
+            'current page is plain text marked as selected.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Playground',
         description:
-            'Narrow the row: middle crumbs collapse into "…", keeping the '
-            'first crumb, the last link and the page.',
+            'Narrow the row and the middle crumbs collapse into a "…" menu, '
+            'keeping the first crumb, the last link and the current page.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -269,7 +266,9 @@ class _FileBrowserState extends State<_FileBrowser> {
                 CoilCard(
                   key: ValueKey((_path, entry.name)),
                   variant: CoilCardVariant.inline,
-                  icon: CatalogIcon(entry.isFolder ? Glyph.folder : _fileGlyph),
+                  icon: CatalogIcon(
+                    entry.isFolder ? Glyph.folder : Glyph.fileText,
+                  ),
                   title: Text(entry.name),
                   description: entry.isFolder
                       ? Text(

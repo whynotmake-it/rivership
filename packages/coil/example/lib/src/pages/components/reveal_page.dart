@@ -10,7 +10,7 @@ const revealEntry = CatalogEntry(
   slug: 'reveal',
   title: 'Reveal',
   group: CatalogGroup.layoutAndDisplay,
-  summary: 'A screen settles in: its panels blur-fade in one after another.',
+  summary: 'Panels that blur-fade in one after another as a screen settles.',
   page: RevealPage.new,
 );
 
@@ -21,8 +21,9 @@ class RevealPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'Reveal',
     summary:
-        'A screen settling in: children blur-fade in one after another on '
-        'first build, then stay put. Nothing moves on scroll.',
+        'A screen settling in, where the children blur-fade in one after '
+        'another on the first build and then stay put. Nothing moves as you '
+        'scroll.',
     hero: _RevealDemo(),
     usage: '''
 CoilReveal(
@@ -35,47 +36,54 @@ CoilReveal(
     notes: [
       CatalogNote(
         'Motion',
-        'Child 1 shows at once, then one step per child: 60 ms on product, '
-            '40 on subtle, 100 on landing. Blocks stagger 3 steps and bring '
-            'the rest in with the 4th; items stagger 7.',
+        'The first child shows at once and the rest follow a step apart: 60 '
+            'ms on product, 40 on subtle and 100 on landing. Blocks stagger '
+            'for three steps and bring the rest in with the fourth, while '
+            'items stagger for seven.',
       ),
       CatalogNote(
         'Reduced motion',
-        'The stagger is zero and the blur-fade only fades, so every child '
-            'fades in or out at once.',
+        'The stagger drops to zero and the blur-fade only fades, so every '
+            'child appears or disappears at once.',
       ),
       CatalogNote(
         'Accessibility',
-        'Hidden children stay mounted but take no pointer, focus or '
+        'Hidden children stay mounted, but they take no pointer, focus or '
             'semantics until they show again.',
       ),
       CatalogNote(
         "Do / Don't",
         'Wrap the main column or a list, and keep headers, sidebars and '
-            'footers outside so the frame stays still. Do not reveal on '
-            'scroll.',
+            'footers outside it so the frame stays still. Do not reveal '
+            'things as you scroll.',
       ),
     ],
     children: [
       DemoSection(
         title: 'Subtle',
-        description: 'Two thirds of a stagger apart, for quiet screens.',
+        description:
+            'The steps sit two thirds of a stagger apart, for quieter '
+            'screens.',
         child: _RevealDemo(preset: CoilRevealPreset.subtle),
       ),
       DemoSection(
         title: 'Landing',
-        description: 'Rises 12 px and grows from 0.94 on gentle, 100 ms apart.',
+        description:
+            'Each child rises 12 and grows from 0.94 on gentle, 100 ms apart.',
         child: _RevealDemo(preset: CoilRevealPreset.landing),
       ),
       DemoSection(
         title: 'Items',
-        description: 'Rows stagger up to the eighth; the rest arrive with it.',
+        description:
+            'Rows stagger up to the eighth one, and anything after it arrives '
+            'along with it.',
         child: _RevealDemo(steps: CoilRevealSteps.items),
       ),
       DemoSection(
         title: 'Loading',
         description:
-            'A skeleton while data loads, then the rows arrive one by one.',
+            'A skeleton stands in while the data loads, and then the rows '
+            'arrive one by one.',
         child: _LoadingDemo(),
       ),
     ],
