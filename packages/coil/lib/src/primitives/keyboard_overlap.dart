@@ -31,11 +31,6 @@ import 'package:flutter/widgets.dart';
 /// the overlap follows it in the same frame with no motion of its own. The
 /// box's position is the one it had in the last frame, measured again after
 /// every build.
-///
-/// A surface that already rides on the keyboard, such as a sheet, wraps its
-/// content in [CoilKeyboardOverlap.handled]: everything in it then measures
-/// no overlap. Measuring alone would be a frame late there, since the
-/// surface moves in the same frame as the keyboard.
 class CoilKeyboardOverlap extends StatefulWidget {
   /// Builds [builder] with the keyboard's overlap of what it returns.
   const CoilKeyboardOverlap({required this.builder, super.key, this.child});
@@ -47,19 +42,9 @@ class CoilKeyboardOverlap extends StatefulWidget {
   /// overlap.
   final Widget? child;
 
-  /// Marks the keyboard as handled for [child]: a surface that lifts
-  /// itself above the keyboard wraps its content in this, so nothing in it
-  /// pads for the keyboard or scrolls a field above it a second time.
-  static Widget handled({required Widget child}) =>
-      _KeyboardHandled(child: child);
-
   /// How far the keyboard of [context]'s view covers the bottom of [box],
-  /// as laid out in the last frame; zero if [box] isn't laid out or
-  /// [context] is inside [handled].
+  /// as laid out in the last frame; zero if [box] isn't laid out.
   static double measure(BuildContext context, RenderBox? box) {
-    if (context.getInheritedWidgetOfExactType<_KeyboardHandled>() != null) {
-      return 0;
-    }
     final view = View.maybeOf(context);
     if (view == null || box == null || !box.attached || !box.hasSize) {
       return 0;
@@ -118,11 +103,4 @@ class _CoilKeyboardOverlapState extends State<CoilKeyboardOverlap>
     );
     return widget.builder(context, _overlap, widget.child);
   }
-}
-
-class _KeyboardHandled extends InheritedWidget {
-  const _KeyboardHandled({required super.child});
-
-  @override
-  bool updateShouldNotify(_KeyboardHandled oldWidget) => false;
 }

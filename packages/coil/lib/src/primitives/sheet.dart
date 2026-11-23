@@ -9,7 +9,6 @@ import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
 import 'package:coil/src/primitives/focus_ring.dart';
 import 'package:coil/src/primitives/interaction.dart';
-import 'package:coil/src/primitives/keyboard_overlap.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -174,9 +173,7 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
           alignment: Alignment.bottomCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: maxWidth),
-            // The sheet rides on the keyboard, so nothing in it pads for
-            // the keyboard again.
-            child: CoilKeyboardOverlap.handled(child: sheet),
+            child: sheet,
           ),
         ),
       ),
