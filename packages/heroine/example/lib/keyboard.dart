@@ -1,167 +1,234 @@
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:heroine/heroine.dart';
+import 'package:heroine_example/src/chrome.dart';
+import 'package:heroine_example/src/network_photo.dart';
+import 'package:heroine_example/src/photos.dart';
+import 'package:heroine_example/src/state_overlay.dart';
 
-final controller = TextEditingController();
+/// The caption both cards edit.
+final captionController = TextEditingController();
 
+/// A photo with a caption field on it. The field flies to the middle of the
+/// page and keeps following its target while the keyboard opens.
 class KeyboardCardExample extends StatelessWidget {
   const KeyboardCardExample({super.key});
 
-  static const name = 'Keyboard Card';
-  static const path = 'keyboard-card';
+  static const name = 'Keyboard';
+  static const path = 'keyboard';
+
+  /// The widest the caption gets.
+  static const _maxCaptionWidth = 560.0;
+
+  static final _photo = photos.firstWhere((photo) => photo.id == 29);
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: ModalRoute.of(context)?.secondaryAnimation ??
-          AlwaysStoppedAnimation(0),
-      builder: (context, value, child) {
-        final easedValue = Easing.standard.flipped.transform(value);
-
-        return ColorFiltered(
-          colorFilter: ColorFilter.mode(
-            CupertinoTheme.of(context)
-                .barBackgroundColor
-                .withValues(alpha: .5 * easedValue),
-            BlendMode.srcOver,
+    final gutter = DemoLayout.gutterOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    return DemoPage(
+      title: name,
+      // The header sits on the page, above the photo, so its glyph and title
+      // stay legible whatever the photo is.
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          NetworkPhoto(
+            _photo.fit(1600),
+            background: CoilTheme.of(context).colors.muted,
+            motion: CoilTheme.motionOf(context).fade,
           ),
-          child: child!,
-        );
-      },
-      child: CupertinoPageScaffold(
-        resizeToAvoidBottomInset: false,
-        navigationBar: CupertinoNavigationBar(
-          backgroundColor: Colors.transparent,
-          brightness: Brightness.light,
-          middle: SizedBox(),
-          enableBackgroundFilterBlur: false,
-          automaticBackgroundVisibility: false,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: Image.network(
-                'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop',
-              ).image,
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: SafeArea(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsetsDirectional.fromSTEB(
+                gutter + padding.left,
+                gutter,
+                gutter + padding.right,
+                gutter + padding.bottom,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _maxCaptionWidth),
                 child: Heroine(
-                  tag: 0,
+                  tag: 'caption',
                   continuouslyTrackTarget: true,
-                  child: Field(
-                    index: 0,
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        CardRoute(
-                          settings: RouteSettings(name: 'Details'),
-                          title: 'Details',
-                          builder: (context) => DetailsPage(index: 0),
-                          fullscreenDialog: true,
-                        ),
-                      );
-                    },
+                  child: CaptionCard(
+                    onPressed: () => Navigator.of(context).push(
+                      CardRoute<void>(
+                        barrierColor: CoilTheme.of(context).colors.scrim,
+                        builder: (context) => const CaptionPage(),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class Field extends StatelessWidget {
-  const Field({
-    super.key,
-    required this.index,
-    this.onPressed,
-    this.isFlipped = false,
-  });
+/// The caption on a raised surface: collapsed it is one line that opens the
+/// editor when pressed, expanded it is the editor.
+///
+/// With loose height it is as tall as its content. With tight constraints
+/// (a heroine flight builds it at every size between the two) it fills
+/// them, and shows as much of its content as fits.
+class CaptionCard extends StatelessWidget {
+  const CaptionCard({super.key, this.expanded = false, this.onPressed});
 
-  final int index;
-  final bool isFlipped;
+  final bool expanded;
+
+  /// Called when the collapsed card is pressed.
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoUserInterfaceLevel(
-      data: CupertinoUserInterfaceLevelData.elevated,
-      child: Builder(builder: (context) {
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(32),
-          ),
-          child: GestureDetector(
-            onTap: onPressed,
-            child: Container(
-              color: Colors.transparent,
-              child: CupertinoTextField(
-                placeholder: 'Type something...',
-                textAlignVertical: TextAlignVertical.top,
-                cursorColor: CupertinoTheme.of(context).primaryContrastingColor,
-                maxLines: isFlipped ? null : 1,
-                controller: controller,
-                autofocus: true,
-                enabled: isFlipped,
-                decoration: BoxDecoration(),
-                padding: const EdgeInsets.all(16.0),
-              ),
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).container);
+    final content = expanded ? const _CaptionEditor() : const _CaptionLine();
+    Widget card = CoilSurface(
+      offset: CoilSurface.popoverOffset,
+      borderRadius: radius,
+      child: LayoutBuilder(
+        builder: (context, constraints) => constraints.hasTightHeight
+            ? ClipRSuperellipse(
+                borderRadius: radius,
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minHeight: 0,
+                  maxHeight: double.infinity,
+                  child: content,
+                ),
+              )
+            : SizedBox(width: double.infinity, child: content),
+      ),
+    );
+    if (!expanded) {
+      card = Semantics(
+        button: true,
+        child: CoilInteraction(
+          onPressed: onPressed,
+          child: card,
+          builder: (context, states, child) => CoilFocusRing(
+            visible: states.contains(WidgetState.focused),
+            borderRadius: radius,
+            child: Stack(
+              children: [
+                child!,
+                Positioned.fill(
+                  child: ClipRSuperellipse(
+                    borderRadius: radius,
+                    child: StateOverlay(states: states),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      }),
+        ),
+      );
+    }
+    return card;
+  }
+}
+
+/// The caption, or a hint to add one, on one line.
+class _CaptionLine extends StatelessWidget {
+  const _CaptionLine();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListenableBuilder(
+        listenable: captionController,
+        builder: (context, _) {
+          final caption = captionController.text.replaceAll('\n', ' ').trim();
+          return caption.isEmpty
+              ? Text(
+                  'Add a caption',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.muted.body,
+                )
+              : Text(
+                  caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.body,
+                );
+        },
+      ),
     );
   }
 }
 
-class DetailsPage extends StatelessWidget {
-  const DetailsPage({super.key, required this.index});
+/// The caption field with its Done button.
+class _CaptionEditor extends StatelessWidget {
+  const _CaptionEditor();
 
-  final int index;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
+      children: [
+        CoilInput.multiline(
+          controller: captionController,
+          autofocus: true,
+          placeholder: const Text('Add a caption'),
+          semanticLabel: 'Caption',
+        ),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: CoilButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Done'),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The page the caption opens on: the editor over the photo, blurred
+/// behind it, above the keyboard.
+class CaptionPage extends StatelessWidget {
+  const CaptionPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final gutter = DemoLayout.gutterOf(context);
     return ReactToHeroineDismiss(
-      builder: (context, progress, offset, child) {
-        final opacity = 1 - progress;
-
-        return Padding(
-          padding: MediaQuery.viewInsetsOf(context),
-          child: BackdropFilter(
-            filter:
-                ImageFilter.blur(sigmaX: opacity * 20, sigmaY: opacity * 20),
-            child: child!,
-          ),
-        );
-      },
-      child: SafeArea(
-        child: Align(
-          alignment: Alignment.center,
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: DragDismissable(
-              child: Heroine(
-                tag: index,
-                continuouslyTrackTarget: true,
-                motion:
-                    Motion.bouncySpring(duration: Duration(milliseconds: 350)),
-                child: AspectRatio(
-                  aspectRatio: 2,
-                  child: Field(
-                    index: index,
-                    isFlipped: true,
-                    onPressed: () => Navigator.pop(context),
+      builder: (context, progress, offset, child) => BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: (1 - progress) * 20,
+          sigmaY: (1 - progress) * 20,
+        ),
+        child: child,
+      ),
+      child: Padding(
+        padding: MediaQuery.viewInsetsOf(context),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(gutter),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: KeyboardCardExample._maxCaptionWidth,
+                ),
+                child: DragDismissable(
+                  child: Heroine(
+                    tag: 'caption',
+                    continuouslyTrackTarget: true,
+                    motion: const CupertinoMotion.bouncy(),
+                    child: const CaptionCard(expanded: true),
                   ),
                 ),
               ),
@@ -173,22 +240,15 @@ class DetailsPage extends StatelessWidget {
   }
 }
 
-class CardRoute<T> extends PageRoute<T> with HeroinePageRouteMixin {
-  CardRoute({
-    required this.settings,
-    required this.title,
-    required this.builder,
-    this.fullscreenDialog = false,
-  });
+/// A route that fades in over the page below, which a tap outside the
+/// content dismisses.
+class CardRoute<T> extends PageRoute<T> with HeroinePageRouteMixin<T> {
+  CardRoute({required this.builder, this.barrierColor, super.settings});
+
+  final WidgetBuilder builder;
 
   @override
-  final RouteSettings settings;
-
-  final String title;
-
-  final Widget Function(BuildContext context) builder;
-
-  final bool fullscreenDialog;
+  final Color? barrierColor;
 
   @override
   bool get maintainState => false;
@@ -197,10 +257,7 @@ class CardRoute<T> extends PageRoute<T> with HeroinePageRouteMixin {
   bool get opaque => false;
 
   @override
-  Duration get transitionDuration => Duration(milliseconds: 300);
-
-  @override
-  Color? get barrierColor => Colors.black26;
+  Duration get transitionDuration => const Duration(milliseconds: 300);
 
   @override
   String? get barrierLabel => null;
@@ -213,16 +270,13 @@ class CardRoute<T> extends PageRoute<T> with HeroinePageRouteMixin {
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
-  ) {
-    return builder(context);
-  }
+  ) => builder(context);
 
   @override
-  Widget buildTransitions(BuildContext context, Animation<double> animation,
-      Animation<double> secondaryAnimation, Widget child) {
-    if (fullscreenDialog) {
-      return FadeTransition(opacity: animation, child: child);
-    }
-    return FadeTransition(opacity: animation, child: child);
-  }
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => FadeTransition(opacity: animation, child: child);
 }
