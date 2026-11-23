@@ -13,11 +13,11 @@ import 'package:coil_example/src/pages/components/calendar_page.dart';
 import 'package:coil_example/src/pages/components/card_page.dart';
 import 'package:coil_example/src/pages/components/carousel_dots_page.dart';
 import 'package:coil_example/src/pages/components/chat_message_page.dart';
-import 'package:coil_example/src/pages/components/checkbox_group_page.dart';
 import 'package:coil_example/src/pages/components/data_table_page.dart';
 import 'package:coil_example/src/pages/components/date_picker_page.dart';
 import 'package:coil_example/src/pages/components/dropdown_page.dart';
 import 'package:coil_example/src/pages/components/input_copy_page.dart';
+import 'package:coil_example/src/pages/components/input_group_page.dart';
 import 'package:coil_example/src/pages/components/input_message_page.dart';
 import 'package:coil_example/src/pages/components/queued_stack_page.dart';
 import 'package:coil_example/src/pages/components/radio_group_page.dart';
@@ -29,10 +29,18 @@ import 'package:coil_example/src/pages/components/thinking_steps_page.dart';
 import 'package:coil_example/src/pages/components/toggle_group_page.dart';
 import 'package:coil_example/src/pages/components/tooltip_page.dart';
 import 'package:coil_example/src/pages/home/bento.dart';
+import 'package:coil_example/src/widgets/catalog_asset.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
-/// Every tile, in reading order.
+/// The album cover and deck photo both share coil's one bundled image.
+/// [CatalogAsset] loads it whether the catalog runs on its own or inside the
+/// aggregate example app, where the asset key gains a package prefix.
+const _photo = CatalogAsset('assets/images/dunes.jpg');
+
+/// Every tile, in reading order: the flagship surfaces first, the
+/// supporting ones below.
 final homeTiles = <BentoTileData>[
   BentoTileData(
     title: 'Agent chat',
@@ -46,6 +54,24 @@ final homeTiles = <BentoTileData>[
     builder: (_) => const AgentTile(),
   ),
   BentoTileData(
+    title: 'Now playing',
+    links: const [sliderEntry, buttonEntry, dropdownEntry],
+    builder: (_) => const NowPlayingTile(),
+  ),
+  // Checkout before Inbox so that, in the two-column layout, the span-one
+  // tiles pair up instead of leaving one stretched across a whole row.
+  BentoTileData(
+    title: 'Checkout',
+    links: const [radioGroupEntry, inputGroupEntry, buttonEntry],
+    builder: (_) => const CheckoutTile(),
+  ),
+  BentoTileData(
+    title: 'Inbox',
+    span: 2,
+    links: const [dataTableEntry, badgeEntry, tooltipEntry],
+    builder: (_) => const InboxTile(),
+  ),
+  BentoTileData(
     title: 'Preferences',
     links: const [switchEntry, selectEntry, sliderEntry],
     builder: (_) => const PreferencesTile(),
@@ -56,35 +82,19 @@ final homeTiles = <BentoTileData>[
     builder: (_) => const ScheduleTile(),
   ),
   BentoTileData(
-    title: 'Team',
-    span: 2,
-    links: const [dataTableEntry, badgeEntry],
-    builder: (_) => const TeamTile(),
-  ),
-  BentoTileData(
-    title: 'Release',
-    links: const [buttonEntry, dropdownEntry, tooltipEntry],
-    builder: (_) => const ReleaseTile(),
-  ),
-  BentoTileData(
     title: 'Editor',
     links: const [toggleGroupEntry, textareaEntry],
     builder: (_) => const EditorTile(),
   ),
   BentoTileData(
-    title: 'Plan',
-    links: const [radioGroupEntry, checkboxGroupEntry],
-    builder: (_) => const PlanTile(),
+    title: 'Share',
+    links: const [breadcrumbEntry, carouselDotsEntry, inputCopyEntry],
+    builder: (_) => const ShareTile(),
   ),
   BentoTileData(
     title: 'Status',
     links: const [bannerEntry, accordionEntry],
     builder: (_) => const StatusTile(),
-  ),
-  BentoTileData(
-    title: 'Share',
-    links: const [breadcrumbEntry, inputCopyEntry, carouselDotsEntry],
-    builder: (_) => const ShareTile(),
   ),
   BentoTileData(
     title: 'Projects',
@@ -110,6 +120,12 @@ class _Eyebrow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A duration as m:ss, for scrubbers and track lengths.
+String _time(num seconds) {
+  final s = seconds.round();
+  return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 }
 
 // ---------------------------------------------------------------------------
@@ -395,6 +411,641 @@ class _AgentTileState extends State<AgentTile> {
 }
 
 // ---------------------------------------------------------------------------
+// Now playing
+
+typedef _Track = ({String title, String artist, int length});
+
+/// A music player: the cover, a scrubber you can drag, transport controls
+/// and a queue you can play from. Play advances the scrubber a second at a
+/// time; the up-next tracks move into the cover when you pick them.
+class NowPlayingTile extends StatefulWidget {
+  const NowPlayingTile({super.key});
+
+  @override
+  State<NowPlayingTile> createState() => _NowPlayingTileState();
+}
+
+class _NowPlayingTileState extends State<NowPlayingTile> {
+  static const _tracks = <_Track>[
+    (title: 'Coastline', artist: 'Mara Vey', length: 214),
+    (title: 'Paper Planes', artist: 'The Lowlands', length: 187),
+    (title: 'Golden Hour', artist: 'Sability', length: 203),
+    (title: 'Night Drive', artist: 'Juno Reef', length: 231),
+  ];
+
+  var _current = 0;
+  var _position = 72.0;
+  var _playing = false;
+  var _shuffle = false;
+  var _liked = true;
+  Timer? _timer;
+
+  _Track get _track => _tracks[_current];
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    setState(() => _playing = !_playing);
+    _timer?.cancel();
+    if (_playing) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        setState(() {
+          _position += 1;
+          if (_position >= _track.length) {
+            _position = 0;
+            _skip(1);
+          }
+        });
+      });
+    }
+  }
+
+  void _skip(int by) {
+    setState(() {
+      _current = (_current + by) % _tracks.length;
+      if (_current < 0) _current += _tracks.length;
+      _position = 0;
+    });
+  }
+
+  void _playFrom(int index) {
+    _timer?.cancel();
+    setState(() {
+      _current = index;
+      _position = 0;
+      _playing = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final colors = CoilTheme.of(context).colors;
+    final touch = CoilTheme.tierOf(context) == CoilTier.touch;
+    final radius = BorderRadius.circular(CoilTheme.radiiOf(context).item + 2);
+    final upNext = [
+      for (var i = 1; i < _tracks.length; i++) (_current + i) % _tracks.length,
+    ];
+    return SizedBox(
+      height: touch ? 480 : 420,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _Eyebrow('Now playing'),
+          Row(
+            children: [
+              SizedBox.square(
+                dimension: 56,
+                child: ClipRRect(
+                  borderRadius: radius,
+                  child: const Image(
+                    image: _photo,
+                    fit: BoxFit.cover,
+                    alignment: Alignment(0, -0.2),
+                    excludeFromSemantics: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _track.title,
+                      style: text.body.copyWith(fontWeight: text.emphasis),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _track.artist,
+                      style: text.muted.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              CoilButton.icon(
+                variant: CoilButtonVariant.ghost,
+                selected: _liked,
+                semanticLabel: _liked
+                    ? 'Remove from favorites'
+                    : 'Add to favorites',
+                icon: const CatalogIcon(Glyph.heart),
+                onPressed: () => setState(() => _liked = !_liked),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          CoilSlider(
+            value: _position.clamp(0, _track.length.toDouble()),
+            max: _track.length.toDouble(),
+            semanticLabel: 'Seek',
+            valueBuilder: (_, v) => Text(_time(v)),
+            semanticFormatter: _time,
+            onChanged: (v) => setState(() => _position = v),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                _time(_position),
+                style: text.muted.micro.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _time(_track.length),
+                style: text.muted.micro.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CoilButton.icon(
+                variant: CoilButtonVariant.ghost,
+                selected: _shuffle,
+                semanticLabel: 'Shuffle',
+                icon: const CatalogIcon(Glyph.shuffle),
+                onPressed: () => setState(() => _shuffle = !_shuffle),
+              ),
+              const SizedBox(width: 4),
+              CoilButton.icon(
+                variant: CoilButtonVariant.ghost,
+                semanticLabel: 'Previous track',
+                icon: const CatalogIcon(Glyph.skipBack),
+                onPressed: () => _skip(-1),
+              ),
+              const SizedBox(width: 4),
+              CoilButton.icon(
+                semanticLabel: _playing ? 'Pause' : 'Play',
+                icon: CatalogIcon(_playing ? Glyph.pause : Glyph.play),
+                onPressed: _togglePlay,
+              ),
+              const SizedBox(width: 4),
+              CoilButton.icon(
+                variant: CoilButtonVariant.ghost,
+                semanticLabel: 'Next track',
+                icon: const CatalogIcon(Glyph.skipForward),
+                onPressed: () => _skip(1),
+              ),
+              const SizedBox(width: 4),
+              CoilDropdown(
+                entries: [
+                  CoilAction(
+                    label: const Text('Add to playlist'),
+                    searchText: 'Add to playlist',
+                    leading: const CatalogIcon(Glyph.plus),
+                    onPressed: () {},
+                  ),
+                  CoilAction(
+                    label: const Text('Go to artist'),
+                    searchText: 'Go to artist',
+                    leading: const CatalogIcon(Glyph.user),
+                    onPressed: () {},
+                  ),
+                  CoilAction(
+                    label: const Text('Share'),
+                    searchText: 'Share',
+                    leading: const CatalogIcon(Glyph.link),
+                    onPressed: () {},
+                  ),
+                ],
+                builder: (context, menu) => CoilButton.icon(
+                  variant: CoilButtonVariant.ghost,
+                  semanticLabel: 'More',
+                  icon: const CatalogIcon(Glyph.more),
+                  onPressed: menu.open,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const CatalogIcon(Glyph.listMusic),
+              const SizedBox(width: 8),
+              Text('Up next', style: text.muted.caption),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: ListView(
+              primary: false,
+              padding: EdgeInsets.zero,
+              children: [
+                for (final index in upNext)
+                  CoilButton(
+                    variant: CoilButtonVariant.ghost,
+                    onPressed: () => _playFrom(index),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _tracks[index].title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _tracks[index].artist,
+                                style: text.muted.caption,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _time(_tracks[index].length),
+                          style: text.muted.caption.copyWith(
+                            color: colors.mutedForeground,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Inbox
+
+typedef _Mail = ({String from, String subject, String time, _MailTag tag});
+
+enum _MailTag {
+  unread('Unread', CoilBadgeColor.blue),
+  priority('Priority', CoilBadgeColor.amber),
+  read('Read', CoilBadgeColor.gray);
+
+  const _MailTag(this.label, this.color);
+
+  final String label;
+  final CoilBadgeColor color;
+}
+
+/// An inbox you triage: select rows (adjacent ones merge into one block)
+/// and act on them from the toolbar, whose buttons wake up once something
+/// is picked. Archiving, snoozing or deleting takes the rows out.
+class InboxTile extends StatefulWidget {
+  const InboxTile({super.key});
+
+  @override
+  State<InboxTile> createState() => _InboxTileState();
+}
+
+class _InboxTileState extends State<InboxTile> {
+  static const _inbox = <_Mail>[
+    (
+      from: 'Ada Lovelace',
+      subject: 'Re: onboarding funnel numbers',
+      time: '09:24',
+      tag: _MailTag.unread,
+    ),
+    (
+      from: 'Deploy bot',
+      subject: 'v2.4.0 is live in all regions',
+      time: '08:51',
+      tag: _MailTag.priority,
+    ),
+    (
+      from: 'Grace Hopper',
+      subject: 'Notes from the design review',
+      time: 'Yesterday',
+      tag: _MailTag.unread,
+    ),
+    (
+      from: 'Katherine Johnson',
+      subject: 'Kickoff deck is ready to share',
+      time: 'Yesterday',
+      tag: _MailTag.read,
+    ),
+    (
+      from: 'Barbara Liskov',
+      subject: 'Lunch on Thursday?',
+      time: 'Mon',
+      tag: _MailTag.read,
+    ),
+    (
+      from: 'Linus Torvalds',
+      subject: 'Re: arrow keys skip disabled days',
+      time: 'Mon',
+      tag: _MailTag.read,
+    ),
+    (
+      from: 'Margaret Hamilton',
+      subject: 'Review the release checklist',
+      time: 'Sun',
+      tag: _MailTag.unread,
+    ),
+  ];
+
+  late final _controller = CoilDataTableController<_Mail>(rows: [..._inbox]);
+
+  @override
+  void initState() {
+    super.initState();
+    // Two neighbors selected, so the merged highlight shows at a glance.
+    _controller.selected = {_inbox[1], _inbox[2]};
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _remove() {
+    final selected = _controller.selected;
+    _controller
+      ..rows = [
+        for (final mail in _controller.rows)
+          if (!selected.contains(mail)) mail,
+      ]
+      ..selected = const {};
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: _Eyebrow('Inbox')),
+            ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                final any = _controller.selected.isNotEmpty;
+                return Row(
+                  children: [
+                    for (final (label, glyph) in const [
+                      ('Archive', Glyph.archive),
+                      ('Snooze', Glyph.clock),
+                      ('Delete', Glyph.trash),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2),
+                        child: CoilTooltip(
+                          message: Text(label),
+                          child: CoilButton.icon(
+                            variant: CoilButtonVariant.ghost,
+                            size: CoilSize.compact,
+                            semanticLabel: label,
+                            icon: CatalogIcon(glyph),
+                            onPressed: any ? _remove : null,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        CoilDataTable<_Mail>(
+          controller: _controller,
+          searchable: false,
+          semanticLabel: 'Inbox',
+          empty: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              'Inbox zero. Everything is triaged.',
+              textAlign: TextAlign.center,
+              style: text.muted.body,
+            ),
+          ),
+          columns: [
+            CoilDataColumn(
+              label: const Text('From'),
+              cellBuilder: (context, m) => Text(
+                m.from,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: m.tag == _MailTag.read
+                    ? null
+                    : text.body.copyWith(fontWeight: text.emphasis),
+              ),
+            ),
+            CoilDataColumn(
+              label: const Text('Subject'),
+              flex: 2,
+              minWidth: 110,
+              cellBuilder: (context, m) =>
+                  Text(m.subject, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            CoilDataColumn(
+              label: const Text('Status'),
+              width: 116,
+              cellBuilder: (context, m) => CoilBadge(
+                variant: CoilBadgeVariant.dot,
+                color: m.tag.color,
+                child: Text(m.tag.label),
+              ),
+            ),
+            CoilDataColumn(
+              label: const Text('Time'),
+              width: 92,
+              alignment: AlignmentDirectional.centerEnd,
+              cellBuilder: (context, m) => Text(
+                m.time,
+                style: text.muted.caption.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Checkout
+
+typedef _Shipping = ({String name, String eta, double price});
+
+/// A checkout panel: pick a shipping speed from choice cards, add a promo
+/// code in the grouped fields, and the total keeps up. STUDENT takes 15 %
+/// off.
+class CheckoutTile extends StatefulWidget {
+  const CheckoutTile({super.key});
+
+  @override
+  State<CheckoutTile> createState() => _CheckoutTileState();
+}
+
+class _CheckoutTileState extends State<CheckoutTile> {
+  static const _subtotal = 48.0;
+  static const _shipping = <String, _Shipping>{
+    'standard': (name: 'Standard', eta: '3–5 days', price: 0),
+    'express': (name: 'Express', eta: '1–2 days', price: 9),
+  };
+
+  final _email = TextEditingController(text: 'ada@example.com');
+  final _promo = TextEditingController();
+
+  var _speed = 'standard';
+  var _applied = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _promo.dispose();
+    super.dispose();
+  }
+
+  double get _discount => _applied ? _subtotal * 0.15 : 0;
+  double get _total => _subtotal + _shipping[_speed]!.price - _discount;
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = CoilTheme.metricsOf(context).buttonGap;
+    final valid = _promo.text.trim().toUpperCase() == 'STUDENT';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Eyebrow('Checkout'),
+        CoilRadioGroup<String>.custom(
+          value: _speed,
+          onChanged: (v) => setState(() => _speed = v),
+          semanticLabel: 'Shipping',
+          child: CoilFieldGroup(
+            children: [
+              for (final MapEntry(key: id, value: option) in _shipping.entries)
+                CoilChoiceCard(
+                  size: CoilSize.compact,
+                  selected: _speed == id,
+                  control: CoilRadio(value: id, semanticLabel: option.name),
+                  title: Text(option.name),
+                  description: Text(
+                    option.price == 0
+                        ? '${option.eta} · free'
+                        : '${option.eta} · €${option.price.toStringAsFixed(0)}',
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        CoilInputGroup(
+          size: CoilSize.compact,
+          children: [
+            CoilField(
+              label: const Text('Email'),
+              child: CoilInput(
+                controller: _email,
+                leading: const CatalogIcon(Glyph.mail),
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+              ),
+            ),
+            CoilField(
+              label: const Text('Promo code'),
+              child: CoilInput(
+                controller: _promo,
+                placeholder: const Text('STUDENT'),
+                leading: const CatalogIcon(Glyph.tag),
+                autocorrect: false,
+                trailing: CoilButton(
+                  variant: CoilButtonVariant.ghost,
+                  size: CoilSize.compact,
+                  onPressed: valid && !_applied
+                      ? () => setState(() => _applied = true)
+                      : null,
+                  child: Text(_applied ? 'Applied' : 'Apply'),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const _TotalRow(label: 'Subtotal', amount: _subtotal, muted: true),
+        _TotalRow(
+          label: 'Shipping',
+          amount: _shipping[_speed]!.price,
+          muted: true,
+          free: _shipping[_speed]!.price == 0,
+        ),
+        if (_applied)
+          _TotalRow(label: 'Student discount', amount: -_discount, muted: true),
+        const SizedBox(height: 4),
+        _TotalRow(label: 'Total', amount: _total),
+        SizedBox(height: gap + 4),
+        CoilButton(
+          leading: const CatalogIcon(Glyph.creditCard),
+          onPressed: () {},
+          child: Text('Pay €${_total.toStringAsFixed(2)}'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TotalRow extends StatelessWidget {
+  const _TotalRow({
+    required this.label,
+    required this.amount,
+    this.muted = false,
+    this.free = false,
+  });
+
+  final String label;
+  final double amount;
+  final bool muted;
+  final bool free;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final style = muted
+        ? text.muted.body
+        : text.body.copyWith(fontWeight: text.emphasis);
+    final sign = amount < 0 ? '-' : '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(
+            free ? 'Free' : '$sign€${amount.abs().toStringAsFixed(2)}',
+            style: style.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Preferences
 
 /// App preferences: switch rows, a select and two sliders.
@@ -576,255 +1227,6 @@ class _ScheduleTileState extends State<ScheduleTile> {
             onChanged: (v) => setState(() => _reminder = v),
           ),
         ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Team
-
-typedef _Member = ({
-  String name,
-  String role,
-  CoilBadgeColor tone,
-  String status,
-  int commits,
-});
-
-/// A sortable, searchable, paged table of people, with badges.
-class TeamTile extends StatefulWidget {
-  const TeamTile({super.key});
-
-  @override
-  State<TeamTile> createState() => _TeamTileState();
-}
-
-class _TeamTileState extends State<TeamTile> {
-  final _controller = CoilDataTableController<_Member>(
-    pageSize: 6,
-    matches: (m, query) => m.name.toLowerCase().contains(query),
-    rows: [
-      for (final (i, name) in const [
-        'Ada Lovelace', 'Alan Turing', 'Barbara Liskov', 'Edsger Dijkstra', //
-        'Frances Allen', 'Grace Hopper', 'Hedy Lamarr', 'Katherine Johnson',
-        'Linus Torvalds', 'Margaret Hamilton',
-      ].indexed)
-        (
-          name: name,
-          role: const ['Engineer', 'Designer', 'Research'][i % 3],
-          tone: const [
-            CoilBadgeColor.green,
-            CoilBadgeColor.green,
-            CoilBadgeColor.amber,
-            CoilBadgeColor.gray,
-          ][i % 4],
-          status: const ['Active', 'Active', 'Away', 'Offline'][i % 4],
-          commits: (i * 37 + 12) % 200,
-        ),
-    ],
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const _Eyebrow('Team'),
-      CoilDataTable<_Member>(
-        controller: _controller,
-        columns: [
-          CoilDataColumn(
-            label: const Text('Name'),
-            cellBuilder: (context, m) =>
-                Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-            compare: (a, b) => a.name.compareTo(b.name),
-          ),
-          CoilDataColumn(
-            label: const Text('Role'),
-            width: 120,
-            cellBuilder: (context, m) => Text(m.role),
-          ),
-          CoilDataColumn(
-            label: const Text('Status'),
-            width: 112,
-            cellBuilder: (context, m) => CoilBadge(
-              variant: CoilBadgeVariant.dot,
-              color: m.tone,
-              child: Text(m.status),
-            ),
-          ),
-          CoilDataColumn(
-            label: const Text('Commits'),
-            width: 104,
-            alignment: AlignmentDirectional.centerEnd,
-            cellBuilder: (context, m) => Text('${m.commits}'),
-            compare: (a, b) => a.commits.compareTo(b.commits),
-          ),
-        ],
-      ),
-    ],
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Release
-
-/// A release's actions: publish with a loading state, a tooltip on an
-/// icon button, and an action menu with a destructive item last.
-class ReleaseTile extends StatefulWidget {
-  const ReleaseTile({super.key});
-
-  @override
-  State<ReleaseTile> createState() => _ReleaseTileState();
-}
-
-class _ReleaseTileState extends State<ReleaseTile> {
-  static const _changes = [
-    ('New', 'A drawer sidebar on phones'),
-    ('Improved', 'Sheets settle with a springier curve'),
-    ('Fixed', 'Menus keep their scroll position'),
-    ('Fixed', 'Arrow keys skip disabled days'),
-  ];
-
-  var _publishing = false;
-  var _published = false;
-  var _starred = false;
-  Timer? _timer;
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _publish() {
-    setState(() => _publishing = true);
-    _timer = Timer(const Duration(milliseconds: 1400), () {
-      setState(() {
-        _publishing = false;
-        _published = true;
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final text = CoilTheme.textOf(context);
-    final gap = CoilTheme.metricsOf(context).buttonGap;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _Eyebrow('Release'),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'v2.4.0',
-                style: text.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            CoilBadge(
-              variant: CoilBadgeVariant.dot,
-              color: _published ? CoilBadgeColor.green : CoilBadgeColor.amber,
-              child: Text(_published ? 'Live' : 'Draft'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Springier sheets, a phone drawer and 12 fixes.',
-          style: text.muted.body,
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            CoilButton(
-              loading: _publishing,
-              onPressed: _published ? null : _publish,
-              child: Text(_published ? 'Published' : 'Publish'),
-            ),
-            CoilButton(
-              variant: CoilButtonVariant.secondary,
-              onPressed: () {},
-              child: const Text('Preview'),
-            ),
-            CoilTooltip(
-              message: Text(_starred ? 'Unstar' : 'Star'),
-              child: CoilButton.icon(
-                variant: CoilButtonVariant.ghost,
-                selected: _starred,
-                semanticLabel: 'Star',
-                icon: const CatalogIcon(Glyph.star),
-                onPressed: () => setState(() => _starred = !_starred),
-              ),
-            ),
-            CoilDropdown(
-              entries: [
-                CoilAction(
-                  label: const Text('Duplicate'),
-                  searchText: 'Duplicate',
-                  leading: const CatalogIcon(Glyph.copy),
-                  onPressed: () {},
-                ),
-                CoilAction(
-                  label: const Text('Rename…'),
-                  searchText: 'Rename',
-                  leading: const CatalogIcon(Glyph.pencil),
-                  onPressed: () {},
-                ),
-                CoilAction(
-                  label: const Text('Download notes'),
-                  searchText: 'Download notes',
-                  leading: const CatalogIcon(Glyph.download),
-                  onPressed: () {},
-                ),
-                const CoilMenuSeparator(),
-                CoilAction(
-                  label: const Text('Unpublish'),
-                  searchText: 'Unpublish',
-                  leading: const CatalogIcon(Glyph.trash),
-                  tone: CoilActionTone.destructive,
-                  onPressed: () => setState(() => _published = false),
-                ),
-              ],
-              builder: (context, menu) => CoilButton.icon(
-                variant: CoilButtonVariant.ghost,
-                semanticLabel: 'More actions',
-                icon: const CatalogIcon(Glyph.more),
-                onPressed: menu.open,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        for (final (kind, change) in _changes)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 88,
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: CoilBadge(child: Text(kind)),
-                  ),
-                ),
-                Expanded(child: Text(change, style: text.muted.body)),
-              ],
-            ),
-          ),
       ],
     );
   }
@@ -1064,50 +1466,173 @@ class _EditorTileState extends State<EditorTile> {
 }
 
 // ---------------------------------------------------------------------------
-// Plan
+// Share
 
-/// Picking a plan and its add-ons: one highlight glides between the rows,
-/// and neighboring selections merge into one block.
-class PlanTile extends StatefulWidget {
-  const PlanTile({super.key});
+typedef _Slide = (String title, Alignment alignment, double scale);
+
+/// Sharing a deck: the crumb trail to it, a swipeable preview of its
+/// slides, dots that follow and drive the page, and a link to copy. You can
+/// drag the preview with a finger or the mouse; the dots glide along.
+class ShareTile extends StatefulWidget {
+  const ShareTile({super.key});
 
   @override
-  State<PlanTile> createState() => _PlanTileState();
+  State<ShareTile> createState() => _ShareTileState();
 }
 
-class _PlanTileState extends State<PlanTile> {
-  var _plan = 'team';
-  var _addOns = <String>{'sso', 'audit'};
+class _ShareTileState extends State<ShareTile> {
+  final _controller = PageController();
+  var _page = 0;
+
+  /// Each slide's title and how the photo is framed for it.
+  static const _slides = <_Slide>[
+    ('Cover', Alignment.center, 1),
+    ('Agenda', Alignment.topLeft, 1.6),
+    ('Metrics', Alignment.bottomRight, 1.35),
+    ('The team', Alignment(-0.6, 0.4), 1.9),
+  ];
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const _Eyebrow('Plan'),
-      CoilRadioGroup<String>(
-        value: _plan,
-        onChanged: (v) => setState(() => _plan = v),
-        semanticLabel: 'Plan',
-        options: const [
-          CoilOption(value: 'starter', label: Text('Starter, free')),
-          CoilOption(value: 'team', label: Text('Team, €12 a seat')),
-          CoilOption(value: 'scale', label: Text('Scale, talk to us')),
-        ],
-      ),
-      const SizedBox(height: 16),
-      const _Eyebrow('Add-ons'),
-      CoilCheckboxGroup<String>(
-        values: _addOns,
-        onChanged: (v) => setState(() => _addOns = v),
-        semanticLabel: 'Add-ons',
-        options: const [
-          CoilOption(value: 'sso', label: Text('Single sign-on')),
-          CoilOption(value: 'audit', label: Text('Audit log')),
-          CoilOption(value: 'support', label: Text('Priority support')),
-        ],
-      ),
-    ],
+  void initState() {
+    super.initState();
+    _controller.addListener(_follow);
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeListener(_follow)
+      ..dispose();
+    super.dispose();
+  }
+
+  // The dots track the page the view is nearest; their pill glides there
+  // on its own spring, so there is no jump between the images.
+  void _follow() {
+    final page = (_controller.page ?? _page.toDouble()).round();
+    if (page != _page) setState(() => _page = page);
+  }
+
+  void _go(int page) => unawaited(
+    _controller.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+    ),
   );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Eyebrow('Share'),
+        CoilBreadcrumb(
+          crumbs: [
+            CoilCrumb(label: const Text('Projects'), onPressed: () {}),
+            CoilCrumb(label: const Text('Onboarding'), onPressed: () {}),
+            const CoilCrumb(label: Text('Kickoff deck')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // A mouse drags the slides as a finger would.
+        ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: PointerDeviceKind.values.toSet(),
+            scrollbars: false,
+          ),
+          child: SizedBox(
+            height: 168,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: _slides.length,
+              itemBuilder: (context, i) => _SlideView(
+                slide: _slides[i],
+                index: i,
+                count: _slides.length,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: CoilCarouselDots(
+            count: _slides.length,
+            value: _page,
+            onChanged: _go,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const CoilInputCopy(value: 'https://coil.dev/s/kickoff'),
+      ],
+    );
+  }
+}
+
+/// One deck slide: a differently framed crop of the photo with its title.
+class _SlideView extends StatelessWidget {
+  const _SlideView({
+    required this.slide,
+    required this.index,
+    required this.count,
+  });
+
+  final _Slide slide;
+  final int index;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final (title, alignment, scale) = slide;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Semantics(
+        label: 'Slide ${index + 1} of $count: $title',
+        image: true,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(
+            CoilTheme.radiiOf(context).container,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ExcludeSemantics(
+                child: Transform.scale(
+                  scale: scale,
+                  alignment: alignment,
+                  child: const Image(image: _photo, fit: BoxFit.cover),
+                ),
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00000000), Color(0x99000000)],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 12,
+                child: ExcludeSemantics(
+                  child: Text(
+                    title,
+                    style: text.body.copyWith(
+                      color: const Color(0xFFFFFFFF),
+                      fontWeight: text.emphasis,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1177,113 +1702,6 @@ class _StatusTileState extends State<StatusTile> {
       ),
     ],
   );
-}
-
-// ---------------------------------------------------------------------------
-// Share
-
-/// Sharing a page: where it lives, a link to copy, and dots to page
-/// through its previews.
-class ShareTile extends StatefulWidget {
-  const ShareTile({super.key});
-
-  @override
-  State<ShareTile> createState() => _ShareTileState();
-}
-
-class _ShareTileState extends State<ShareTile> {
-  var _slide = 0;
-
-  /// The deck's slides: a title, and how the photo is cropped for it.
-  static const _slides = [
-    ('Kickoff', 1.0, Alignment.center),
-    ('Timeline', 1.7, Alignment.bottomLeft),
-    ('Metrics', 1.4, Alignment.topRight),
-    ('Team', 2.0, Alignment.centerRight),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final text = CoilTheme.textOf(context);
-    final (title, scale, alignment) = _slides[_slide];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _Eyebrow('Share'),
-        CoilBreadcrumb(
-          crumbs: [
-            CoilCrumb(label: const Text('Projects'), onPressed: () {}),
-            CoilCrumb(label: const Text('Onboarding'), onPressed: () {}),
-            const CoilCrumb(label: Text('Kickoff deck')),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Semantics(
-          label: 'Slide ${_slide + 1} of ${_slides.length}: $title',
-          image: true,
-          child: Container(
-            height: 168,
-            clipBehavior: Clip.antiAlias,
-            decoration: ShapeDecoration(
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(
-                  CoilTheme.radiiOf(context).container,
-                ),
-              ),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ExcludeSemantics(
-                  child: Transform.scale(
-                    scale: scale,
-                    alignment: alignment,
-                    child: Image.asset(
-                      'assets/images/dunes.jpg',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0x00000000), Color(0x99000000)],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: 10,
-                  child: ExcludeSemantics(
-                    child: Text(
-                      title,
-                      style: text.body.copyWith(
-                        color: const Color(0xFFFFFFFF),
-                        fontWeight: text.emphasis,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: CoilCarouselDots(
-            count: _slides.length,
-            value: _slide,
-            onChanged: (v) => setState(() => _slide = v),
-          ),
-        ),
-        const SizedBox(height: 8),
-        const CoilInputCopy(value: 'https://coil.dev/s/kickoff'),
-      ],
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
+import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:coil_example/src/widgets/reference.dart';
@@ -10,16 +11,35 @@ const motionEntry = CatalogEntry(
   slug: 'motion',
   title: 'Motion',
   group: CatalogGroup.foundations,
-  summary: 'Trigger and compare quick, standard, gentle and fade.',
+  summary:
+      'Compare the quick, standard, gentle and fade springs, and the '
+      'frame rates they tick at.',
   page: MotionPage.new,
 );
 
+/// Overriding the motion tokens on a theme.
+const _tokenSnippet = '''
+CoilThemeData(
+  motion: CoilMotion(
+    standard: CupertinoMotion(
+      duration: Duration(milliseconds: 180),
+    ),
+  ),
+)''';
+
+/// Pinning a subtree's springs to a fixed frame rate.
+const _rateSnippet = '''
+TickerRateScope(
+  rate: TickerRate.fps(30),
+  child: const ActivityFeed(),
+)''';
+
 /// One motion token pair and how a lane shows it.
 enum _Lane {
-  quick('quick', 'Hover glide, press collapse, focus ring travel'),
-  standard('standard', 'Tab pill, switch thumb, merge/split, popovers'),
-  gentle('gentle', 'Sheets, dialogs, large surfaces. The only bounce'),
-  fade('fade', 'Opacity and color. Kept under reduced motion');
+  quick('quick', 'The hover highlight, a press and the focus ring'),
+  standard('standard', 'Tab pills, switch thumbs, merging rows and popovers'),
+  gentle('gentle', 'Sheets, dialogs and large surfaces, and the only bounce'),
+  fade('fade', 'Opacity and color, kept under reduced motion');
 
   const _Lane(this.label, this.use);
 
@@ -59,33 +79,39 @@ class _MotionPageState extends State<MotionPage> {
     return CatalogPage(
       title: 'Motion',
       summary:
-          'Every token is a spring, exits included. Play runs the enter '
-          'springs, play again runs the exits. Tap mid-flight to see a '
-          'spring reverse with its velocity instead of restarting.',
-      usage: '''
-TickerRateScope(
-  rate: TickerRate.fps(30),
-  child: const ActivityFeed(),
-)''',
+          'Every token is a spring, including its exit. Pressing play runs '
+          'the enter springs and pressing it again runs the exits, and '
+          'tapping one mid-flight makes it reverse from its current velocity '
+          'rather than restart.',
+      usage: _tokenSnippet,
       notes: const [
+        CatalogNote(
+          'Motor',
+          "coil's motion runs on Motor 2.0, the package its springs come "
+              'from, so each token is a Motor CupertinoMotion you can reuse '
+              'directly.',
+        ),
         CatalogNote(
           'Motion',
           "coil's springs follow the nearest TickerRateScope, so a fixed "
-              "rate saves frame work for low-priority motion. The Frame rate "
-              "setting in the preview settings applies one to everything.",
+              'rate saves frame work for low-priority motion. The frame-rate '
+              'setting in the preview settings applies one to everything.',
         ),
         CatalogNote(
           'Accessibility',
-          'Reduced motion makes the spatial tokens instant and keeps fade. '
-              'Slow motion in the preview settings stretches them 5×.',
+          'Reduced motion makes the spatial tokens instant and keeps the '
+              'fade, and slow motion in the preview settings stretches them '
+              'five times.',
         ),
       ],
       children: [
         DemoSection(
           title: 'Tokens side by side',
           description: reduced
-              ? 'Reduced motion is on: spatial tokens are instant, fade stays.'
-              : 'Slow motion in the settings stretches all of them 5×.',
+              ? 'Reduced motion is on, so the spatial tokens are instant and '
+                    'only the fade still plays.'
+              : 'Slow motion in the settings stretches all of them five '
+                    'times.',
           child: DemoColumn(
             children: [
               Align(
@@ -104,9 +130,9 @@ TickerRateScope(
         DemoSection(
           title: 'Frame rates',
           description:
-              'The same spring, ticked at four rates. A lower rate samples '
-              'the spring less often and does less frame work; the motion '
-              'takes just as long.',
+              'The same spring ticked at four rates. A lower rate samples the '
+              'spring less often and does less frame work, and the motion '
+              'still takes just as long.',
           child: DemoColumn(
             children: [
               Align(
@@ -124,12 +150,17 @@ TickerRateScope(
                   motion: motion.gentle,
                   atEnd: _ratesAtEnd,
                 ),
+              const SizedBox(height: 4),
+              const UsageSnippet(code: _rateSnippet),
+              const _MotorExampleLink(),
             ],
           ),
         ),
         DemoSection(
           title: 'Holds',
-          description: 'Durations next to the springs.',
+          description:
+              'The two timing tokens that hold a state for a moment, shown '
+              'with their durations.',
           child: DemoColumn(
             spacing: 8,
             children: [
@@ -147,6 +178,27 @@ TickerRateScope(
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A ghost button to the Motor example, shown only when the catalog runs
+/// inside the aggregate app that can open it.
+class _MotorExampleLink extends StatelessWidget {
+  const _MotorExampleLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final open = CatalogHome.openPackageOf(context, 'motor');
+    if (open == null) return const SizedBox.shrink();
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: CoilButton(
+        variant: CoilButtonVariant.ghost,
+        trailing: const CatalogIcon(Glyph.arrowUpRight),
+        onPressed: open,
+        child: const Text('Open the Motor example'),
+      ),
     );
   }
 }
