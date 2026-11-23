@@ -1030,7 +1030,6 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **one 24 rhythm:** every action, badge and chevron is a 24 box (16 icon, gap 4), its center 26 from the inner edge, from header to footer; touch hit 44;
   - the phone drawer `min(320, 85 % width)` (`CoilDrawer.maxWidth`, `CoilDrawer.widthFraction`).
 - **Variants:** `sidebar` (a flush column with an edge hairline), `floating` (a surface card inset 8), `inset` (flush rows; the page becomes a raised card with an 8 margin that gives way on the sidebar's side as it opens).
-- **Keyboard:** the scaffold shrinks by the keyboard's height, like Material's `Scaffold`, so a focused field stays in view. Descendants see no inset. `resizeToAvoidBottomInset: false` opts out.
 - **Side:** `start` or `end`, following the text direction. The rail, the drawer, the peek edge and the default key follow it.
 - **Folding:** `offcanvas` slides it off the edge and gives the page its width back; `none` is a static column (no rail, shortcut or drawer), as in the settings dialog. **There is no icon-only rail on purpose:** glyphs alone turn navigation into a quiz, and section labels and actions have nowhere to go. Peek brings the real sidebar back instead.
 - **Header and footer:** stack parts vertically (each on its own row, actions as menu rows) or horizontally (`CoilSidebarBar`: the primary part, then 1–3 icon actions on the 24 rhythm).
