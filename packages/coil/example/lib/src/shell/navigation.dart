@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
+import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/shell/routes.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/widgets.dart';
@@ -51,7 +52,9 @@ Future<void> showCatalogSearch(BuildContext context, StackRouter router) =>
           for (final entry in catalogEntries.where((e) => e.group == group))
             CoilAction(
               label: Text(entry.title),
-              searchText: entry.title,
+              // The summary too, so "loading" finds Button and "range"
+              // finds Slider.
+              searchText: '${entry.title} ${entry.summary}',
               onPressed: () => unawaited(openCatalogPage(router, entry)),
             ),
         ],
@@ -139,6 +142,16 @@ class _CatalogNavigationState extends State<CatalogNavigation> {
       semanticLabel: 'Catalog',
       header: CoilSidebarMenu(
         items: [
+          // Mounted in another app, the drawer leads with the way back to
+          // it; on a wide pane the top bar's wordmark is that link.
+          if (CatalogHome.of(context) case final onHome?
+              when !CatalogChrome.hasTopBarOf(context))
+            CoilSidebarItem(
+              label: const Text('coil'),
+              semanticLabel: CatalogHomeLink.label,
+              leading: CoilMark(size: CoilTheme.metricsOf(context).iconSize),
+              onPressed: onHome,
+            ),
           CoilSidebarItem(
             label: const Text('Search'),
             leading: const CatalogIcon(Glyph.search),

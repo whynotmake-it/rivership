@@ -83,10 +83,17 @@ final List<AutoRoute> coilCatalogRoutes = [
 
 /// The whole catalog as one route with its pages nested, for apps that
 /// mount it next to other examples.
-NamedRouteDef coilCatalogRoute({String path = '/coil'}) => NamedRouteDef(
+///
+/// [onHome] takes the host app back to its landing page: with it, the
+/// coil wordmark in the top bar (and in the drawer on a phone) becomes a
+/// link back to all packages. Without it, the wordmark is inert.
+NamedRouteDef coilCatalogRoute({
+  String path = '/coil',
+  VoidCallback? onHome,
+}) => NamedRouteDef(
   name: 'Coil',
   path: path,
   type: catalogPageRouteType,
-  builder: (context, data) => const CatalogShell(),
+  builder: (context, data) => CatalogShell(onHome: onHome),
   children: coilCatalogRoutes,
 );

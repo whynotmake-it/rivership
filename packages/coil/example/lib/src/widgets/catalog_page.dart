@@ -2,6 +2,7 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/shell/preview_settings.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -22,14 +23,18 @@ abstract final class CatalogLayout {
       CoilTheme.tierOf(context) == CoilTier.touch ? 32 : 24;
 }
 
-/// A catalog page: a header with back and settings buttons, then
-/// [children] in a centered, scrolling column.
+/// A catalog page: a header with the sidebar and settings buttons, then a
+/// centered, scrolling column: the [summary], the [hero], its [usage], the
+/// sections in [children] and the [notes].
 class CatalogPage extends StatelessWidget {
   const CatalogPage({
     required this.title,
     required this.children,
     super.key,
     this.summary,
+    this.hero,
+    this.usage,
+    this.notes = const [],
   });
 
   final String title;
@@ -37,13 +42,33 @@ class CatalogPage extends StatelessWidget {
   /// One or two sentences under the header.
   final String? summary;
 
+  /// The component at its best, in a realistic context, on a
+  /// [HeroStage].
+  final Widget? hero;
+
+  /// The few lines of code behind the hero.
+  final String? usage;
+
+  /// The variants, sizes, states and options, usually [DemoSection]s.
   final List<Widget> children;
+
+  /// What's worth knowing about its behavior: keyboard, touch versus
+  /// pointer, motion, accessibility.
+  final List<CatalogNote> notes;
 
   @override
   Widget build(BuildContext context) {
     final gutter = CatalogLayout.gutterOf(context);
     final sectionGap = CatalogLayout.sectionGapOf(context);
     final summary = this.summary;
+    final hero = this.hero;
+    final usage = this.usage;
+    final blocks = [
+      if (hero != null) HeroStage(child: hero),
+      if (usage != null) UsageSnippet(code: usage),
+      ...children,
+      if (notes.isNotEmpty) NotesSection(notes: notes),
+    ];
     final padding = MediaQuery.paddingOf(context);
     final text = CoilTheme.textOf(context);
     // A page owns its background, so a page pushed on top covers the one
@@ -78,7 +103,7 @@ class CatalogPage extends StatelessWidget {
                             Text(summary, style: text.muted.subtitle),
                             SizedBox(height: sectionGap),
                           ],
-                          for (final (i, child) in children.indexed) ...[
+                          for (final (i, child) in blocks.indexed) ...[
                             if (i > 0) SizedBox(height: sectionGap),
                             child,
                           ],
@@ -153,11 +178,16 @@ class DemoSection extends StatelessWidget {
     super.key,
     this.description,
     this.padding = 16,
+    this.controls,
   });
 
   final String title;
   final String? description;
   final Widget child;
+
+  /// Live controls for [child], in a band at the top of the stage: build
+  /// them with [DemoControl]s in a [DemoControls].
+  final Widget? controls;
 
   /// The stage's padding; 0 lets the example meet the stage's edges.
   final double padding;
@@ -181,7 +211,28 @@ class DemoSection extends StatelessWidget {
           Text(description, style: text.muted.caption),
         ],
         const SizedBox(height: 12),
-        DemoStage(padding: padding, child: child),
+        if (controls case final controls?)
+          DemoStage(
+            padding: 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: controls,
+                ),
+                SizedBox(
+                  height: 1,
+                  child: ColoredBox(
+                    color: CoilTheme.of(context).colors.border,
+                  ),
+                ),
+                Padding(padding: EdgeInsets.all(padding), child: child),
+              ],
+            ),
+          )
+        else
+          DemoStage(padding: padding, child: child),
       ],
     );
   }

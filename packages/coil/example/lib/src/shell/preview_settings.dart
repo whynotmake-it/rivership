@@ -394,6 +394,16 @@ List<Widget> _motionRows(CatalogSettings settings) => [
     text: (motion) => motion.label,
     onChanged: (value) => settings.motion = value,
   ),
+  _SelectRow<CatalogFrameRate>(
+    label: const Text('Frame rate'),
+    description: const Text(
+      'Every spring ticks at this rate, through a TickerRateScope.',
+    ),
+    value: settings.frameRate,
+    values: CatalogFrameRate.values,
+    text: (rate) => rate.label,
+    onChanged: (value) => settings.frameRate = value,
+  ),
   _SwitchRow(
     label: 'Slow motion',
     description: Text(
