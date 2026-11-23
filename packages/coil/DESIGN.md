@@ -877,11 +877,11 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### Combobox
 
 - **Anatomy:** an input (field role) with an optional clear button and chevron; a list below (§13.2) with match highlighting (semibold on the matched prefix); an optional "Create '…'" row last; an empty state.
-- **Multi:** chips wrap inside the field before the input. A chip is 24 / 20 / 28 / 24 high, padding 8, caption, `hover` fill, item radius (pill → full). Its remove × is 16 visual with the hit box growing to the chip height (44 on touch). The field height springs on `quick` as chips wrap.
+- **Multi:** the picks sit **inside** the field as chips before the editable text, which takes the rest of their last row and wraps with them (`ComboboxChipsRun` lays a run of chips out, then gives the text what's left of the last run, or a row of its own when too little is). A chip is 24 / 20 / 28 / 24 high — the row the padding centers in the field's height — padding 8, caption, `muted` fill, item radius (pill → full). Its remove × is an icon's size (`iconSize`) with the hit box growing to the chip's full height (never into the next chip). The field grows in height as chips wrap and springs to it on `quick`; a window resize that rewraps snaps. The chevron stays centered on the first row.
 - **Pointer:** the list anchors under the input, at least the input's width, max height 300; the input keeps focus.
-- **Phone:** a **full-height sheet**. The input is on top, focused, with the keyboard up. Chips sit above the input, results below, and Done in the header for multi.
-- **Motion:** chips enter scale 0.9 → 1 + fade on `quick` (growing from the leading edge) and exit on `quickExit`; siblings slide on `standard`; the list blur-fades on the tier's popover tokens (§7.2).
-- **Keyboard:** typing filters and the active item resets to the first match; Up and Down move the active item; Enter picks it (IME-safe); Esc clears, then closes; Backspace on an empty input removes the last chip; Left and Right move between chips.
+- **Phone:** a **full-height sheet**. The page shows a select-style trigger (the keyboard would cover an in-page field); the sheet's input is on top, focused, with the keyboard up, results below.
+- **Motion:** the field's height springs as a chip wraps or unwraps (`quick`); the list blur-fades on the tier's popover tokens (§7.2).
+- **Keyboard:** typing filters and the active item resets to the first match; Up and Down move the active item; Enter picks it (IME-safe); Esc clears, then closes; Backspace on an empty input removes the last chip.
 - **Semantics:** a combobox textField with `expanded`; rows `selected`; a live result count; the chip toolbar is labeled "Selected".
 - **Do:** use it for long or open-ended option sets.
 - **Don't:** autocomplete inline over the user's typing.
