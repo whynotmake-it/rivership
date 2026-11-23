@@ -151,7 +151,13 @@ class _Ladder extends StatelessWidget {
       ),
     );
     return Table(
-      columnWidths: const {0: FlexColumnWidth(2.2)},
+      columnWidths: const {
+        0: IntrinsicColumnWidth(),
+        1: FlexColumnWidth(),
+        2: FlexColumnWidth(),
+        3: FlexColumnWidth(),
+        4: FlexColumnWidth(),
+      },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
         TableRow(

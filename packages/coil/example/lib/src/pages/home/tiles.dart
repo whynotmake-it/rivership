@@ -1,6 +1,7 @@
 // The home page's tiles: small product surfaces, each composed of several
 // live components, the way an app would use them together.
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/pages/components/accordion_page.dart';
@@ -23,7 +24,6 @@ import 'package:coil_example/src/pages/components/radio_group_page.dart';
 import 'package:coil_example/src/pages/components/select_page.dart';
 import 'package:coil_example/src/pages/components/slider_page.dart';
 import 'package:coil_example/src/pages/components/switch_page.dart';
-import 'package:coil_example/src/pages/components/tabs_page.dart';
 import 'package:coil_example/src/pages/components/textarea_page.dart';
 import 'package:coil_example/src/pages/components/thinking_steps_page.dart';
 import 'package:coil_example/src/pages/components/toggle_group_page.dart';
@@ -68,7 +68,7 @@ final homeTiles = <BentoTileData>[
   ),
   BentoTileData(
     title: 'Editor',
-    links: const [tabsEntry, toggleGroupEntry, textareaEntry],
+    links: const [toggleGroupEntry, textareaEntry],
     builder: (_) => const EditorTile(),
   ),
   BentoTileData(
@@ -408,6 +408,8 @@ class PreferencesTile extends StatefulWidget {
 class _PreferencesTileState extends State<PreferencesTile> {
   var _notifications = true;
   var _autosave = false;
+  var _sounds = true;
+  var _digest = false;
   var _language = 'en';
   var _volume = 0.6;
   var _quality = 3.0;
@@ -447,6 +449,16 @@ class _PreferencesTileState extends State<PreferencesTile> {
               value: _autosave,
               onChanged: (v) => setState(() => _autosave = v),
               label: const Text('Auto-save drafts'),
+            ),
+            CoilSwitch(
+              value: _sounds,
+              onChanged: (v) => setState(() => _sounds = v),
+              label: const Text('Sound effects'),
+            ),
+            CoilSwitch(
+              value: _digest,
+              onChanged: (v) => setState(() => _digest = v),
+              label: const Text('Weekly digest'),
             ),
           ],
         ),
@@ -499,39 +511,74 @@ class ScheduleTile extends StatefulWidget {
 }
 
 class _ScheduleTileState extends State<ScheduleTile> {
-  DateTime? _day = _today();
+  static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
 
-  static DateTime _today() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
-  }
-
+  DateTime? _day = _firstWorkday();
   DateTime? _reminder;
 
+  /// Today, or the next weekday: the calendar disables weekends.
+  static DateTime _firstWorkday() {
+    final now = DateTime.now();
+    var day = DateTime(now.year, now.month, now.day);
+    while (day.weekday >= DateTime.saturday) {
+      day = DateTime(day.year, day.month, day.day + 1);
+    }
+    return day;
+  }
+
+  /// A stand-in agenda: how many events a day holds.
+  static int _events(DateTime day) => (day.day * 5 + day.month) % 4;
+
+  static String _label(DateTime day) {
+    final events = _events(day);
+    final count = switch (events) {
+      0 => 'No events',
+      1 => '1 event',
+      _ => '$events events',
+    };
+    return '${_weekdays[day.weekday - 1]} ${day.day} '
+        '${_months[day.month - 1]} · $count';
+  }
+
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const _Eyebrow('Schedule'),
-      Center(
-        child: CoilCalendar(
-          selected: _day,
-          isDisabled: (day) => day.weekday >= DateTime.saturday,
-          onSelected: (day) => setState(() => _day = day),
+  Widget build(BuildContext context) {
+    final day = _day;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Eyebrow('Schedule'),
+        Center(
+          child: CoilCalendar(
+            selected: day,
+            isDisabled: (day) => day.weekday >= DateTime.saturday,
+            onSelected: (day) => setState(() => _day = day),
+          ),
         ),
-      ),
-      const SizedBox(height: 12),
-      CoilField(
-        label: const Text('Reminder'),
-        child: CoilDatePicker(
-          value: _reminder,
-          withTime: true,
-          minuteInterval: 15,
-          onChanged: (v) => setState(() => _reminder = v),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            day == null ? 'Pick a day to see its events' : _label(day),
+            style: CoilTheme.textOf(context).muted.caption,
+          ),
         ),
-      ),
-    ],
-  );
+        const SizedBox(height: 12),
+        CoilField(
+          label: const Text('Reminder'),
+          child: CoilDatePicker(
+            value: _reminder,
+            withTime: true,
+            minuteInterval: 15,
+            placeholder: const Text('No reminder'),
+            onChanged: (v) => setState(() => _reminder = v),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -555,7 +602,7 @@ class TeamTile extends StatefulWidget {
 
 class _TeamTileState extends State<TeamTile> {
   final _controller = CoilDataTableController<_Member>(
-    pageSize: 5,
+    pageSize: 6,
     matches: (m, query) => m.name.toLowerCase().contains(query),
     rows: [
       for (final (i, name) in const [
@@ -638,6 +685,13 @@ class ReleaseTile extends StatefulWidget {
 }
 
 class _ReleaseTileState extends State<ReleaseTile> {
+  static const _changes = [
+    ('New', 'A drawer sidebar on phones'),
+    ('Improved', 'Sheets settle with a springier curve'),
+    ('Fixed', 'Menus keep their scroll position'),
+    ('Fixed', 'Arrow keys skip disabled days'),
+  ];
+
   var _publishing = false;
   var _published = false;
   var _starred = false;
@@ -753,6 +807,24 @@ class _ReleaseTileState extends State<ReleaseTile> {
             ),
           ],
         ),
+        const SizedBox(height: 20),
+        for (final (kind, change) in _changes)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 88,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: CoilBadge(child: Text(kind)),
+                  ),
+                ),
+                Expanded(child: Text(change, style: text.muted.body)),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -761,10 +833,146 @@ class _ReleaseTileState extends State<ReleaseTile> {
 // ---------------------------------------------------------------------------
 // Editor
 
-enum _EditorView { write, preview }
+/// The marks a note's text can carry, as bits of a character's style.
+const _marks = {'bold': 1, 'italic': 2, 'underline': 4};
 
-/// A note editor: tabs between writing and the preview, formatting
-/// toggles that style the text, and a textarea that grows.
+/// A text controller whose text carries bold, italic and underline marks.
+///
+/// It keeps one style per character, in step with every edit: typed text
+/// takes the style of the character before it, or the style picked while
+/// the caret was collapsed, and deleted text takes its style with it.
+class _NoteController extends TextEditingController {
+  _NoteController(List<(String, int)> segments)
+    : _styles = [
+        for (final (text, style) in segments)
+          ...List.filled(text.length, style),
+      ],
+      super(text: segments.map((s) => s.$1).join());
+
+  final List<int> _styles;
+
+  /// The style the next typed character gets, when one was picked with a
+  /// collapsed caret. Moving the caret forgets it.
+  int? _typing;
+
+  TextSelection get _range => selection.isValid
+      ? selection
+      : TextSelection.collapsed(offset: text.length);
+
+  /// The marks at the caret, or the ones every selected character shares.
+  int get active {
+    final range = _range;
+    if (range.isCollapsed) {
+      final typing = _typing;
+      if (typing != null) return typing;
+      if (_styles.isEmpty) return 0;
+      return _styles[range.start > 0 ? range.start - 1 : 0];
+    }
+    var shared = _marks.values.fold(0, (a, b) => a | b);
+    for (var i = range.start; i < range.end; i++) {
+      shared &= _styles[i];
+    }
+    return shared;
+  }
+
+  Set<String> get activeMarks => {
+    for (final MapEntry(:key, :value) in _marks.entries)
+      if (active & value != 0) key,
+  };
+
+  /// Makes the marks in [wanted] the active ones: on the selection, or on
+  /// what is typed next when the caret is collapsed.
+  void apply(Set<String> wanted) {
+    final range = _range;
+    final current = active;
+    var next = current;
+    for (final MapEntry(:key, :value) in _marks.entries) {
+      next = wanted.contains(key) ? next | value : next & ~value;
+    }
+    if (next == current) return;
+    if (range.isCollapsed) {
+      _typing = next;
+    } else {
+      final changed = current ^ next;
+      for (var i = range.start; i < range.end; i++) {
+        _styles[i] = (_styles[i] & ~changed) | (next & changed);
+      }
+    }
+    notifyListeners();
+  }
+
+  @override
+  set value(TextEditingValue newValue) {
+    if (newValue.text != text) {
+      _edit(newValue.text);
+    } else if (newValue.selection != selection) {
+      _typing = null;
+    }
+    super.value = newValue;
+  }
+
+  /// Finds what changed between the old text and [next], and gives the
+  /// inserted characters their style.
+  void _edit(String next) {
+    final old = text;
+    if (_styles.length != old.length) {
+      _styles
+        ..clear()
+        ..addAll(List.filled(old.length, 0));
+    }
+    final shortest = math.min(old.length, next.length);
+    var start = 0;
+    while (start < shortest &&
+        old.codeUnitAt(start) == next.codeUnitAt(start)) {
+      start++;
+    }
+    var end = 0;
+    while (end < shortest - start &&
+        old.codeUnitAt(old.length - 1 - end) ==
+            next.codeUnitAt(next.length - 1 - end)) {
+      end++;
+    }
+    final removed = old.length - start - end;
+    final added = next.length - start - end;
+    final style =
+        _typing ?? (_styles.isEmpty ? 0 : _styles[start > 0 ? start - 1 : 0]);
+    _styles.replaceRange(start, start + removed, List.filled(added, style));
+    if (added > 0) _typing = null;
+  }
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    required bool withComposing,
+    TextStyle? style,
+  }) {
+    if (_styles.length != text.length || text.isEmpty) {
+      return TextSpan(style: style, text: text);
+    }
+    final weight = CoilTheme.textOf(context).emphasis;
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (var i = 1; i <= text.length; i++) {
+      if (i < text.length && _styles[i] == _styles[start]) continue;
+      final marks = _styles[start];
+      spans.add(
+        TextSpan(
+          text: text.substring(start, i),
+          style: TextStyle(
+            fontWeight: marks & 1 != 0 ? weight : null,
+            fontStyle: marks & 2 != 0 ? FontStyle.italic : null,
+            decoration: marks & 4 != 0 ? TextDecoration.underline : null,
+          ),
+        ),
+      );
+      start = i;
+    }
+    return TextSpan(style: style, children: spans);
+  }
+}
+
+/// A note editor: the formatting toggles show the marks at the caret or
+/// selection and change them, on the selection or on what is typed next.
 class EditorTile extends StatefulWidget {
   const EditorTile({super.key});
 
@@ -773,88 +981,84 @@ class EditorTile extends StatefulWidget {
 }
 
 class _EditorTileState extends State<EditorTile> {
-  var _view = _EditorView.write;
-  var _format = <String>{'bold'};
-  final _note = TextEditingController(
-    text: 'Ship the drawer on Friday. Tighten the exits first.',
-  );
+  final _focus = FocusNode();
+  final _note = _NoteController(const [
+    ('Ship the ', 0),
+    ('drawer', 1),
+    (' on ', 0),
+    ('Friday', 4),
+    ('. Tighten the exits ', 0),
+    ('first', 2),
+    ('.', 0),
+  ]);
 
   @override
   void dispose() {
+    _focus.dispose();
     _note.dispose();
     super.dispose();
+  }
+
+  static String _summary(String text) {
+    final trimmed = text.trim();
+    final words = trimmed.isEmpty ? 0 : trimmed.split(RegExp(r'\s+')).length;
+    if (words == 0) return 'Empty';
+    final minutes = math.max(1, (words / 200).ceil());
+    return '$words ${words == 1 ? 'word' : 'words'} · $minutes min read';
   }
 
   @override
   Widget build(BuildContext context) {
     final text = CoilTheme.textOf(context);
-    final style = text.body.copyWith(
-      fontWeight: _format.contains('bold') ? text.emphasis : null,
-      fontStyle: _format.contains('italic') ? FontStyle.italic : null,
-      decoration: TextDecoration.combine([
-        if (_format.contains('underline')) TextDecoration.underline,
-        if (_format.contains('strike')) TextDecoration.lineThrough,
-      ]),
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _Eyebrow('Note'),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            CoilTabs<_EditorView>(
-              value: _view,
-              onChanged: (v) => setState(() => _view = v),
-              tabs: const [
-                CoilTab(value: _EditorView.write, label: Text('Write')),
-                CoilTab(value: _EditorView.preview, label: Text('Preview')),
-              ],
-            ),
-            CoilToggleGroup<String>(
-              values: _format,
-              onChanged: (values) => setState(() => _format = values),
-              options: const [
-                CoilOption(
-                  value: 'bold',
-                  label: CatalogIcon(Glyph.bold, semanticLabel: 'Bold'),
-                ),
-                CoilOption(
-                  value: 'italic',
-                  label: CatalogIcon(Glyph.italic, semanticLabel: 'Italic'),
-                ),
-                CoilOption(
-                  value: 'underline',
-                  label: CatalogIcon(
-                    Glyph.underline,
-                    semanticLabel: 'Underline',
+    return ListenableBuilder(
+      listenable: _note,
+      builder: (context, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _Eyebrow('Note'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              CoilToggleGroup<String>(
+                values: _note.activeMarks,
+                onChanged: (values) {
+                  _note.apply(values);
+                  // Pressing a toggle must not end the editing.
+                  _focus.requestFocus();
+                },
+                options: const [
+                  CoilOption(
+                    value: 'bold',
+                    label: CatalogIcon(Glyph.bold, semanticLabel: 'Bold'),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (_view == _EditorView.write)
+                  CoilOption(
+                    value: 'italic',
+                    label: CatalogIcon(Glyph.italic, semanticLabel: 'Italic'),
+                  ),
+                  CoilOption(
+                    value: 'underline',
+                    label: CatalogIcon(
+                      Glyph.underline,
+                      semanticLabel: 'Underline',
+                    ),
+                  ),
+                ],
+              ),
+              Text(_summary(_note.text), style: text.muted.caption),
+            ],
+          ),
+          const SizedBox(height: 12),
           CoilInput.multiline(
             controller: _note,
+            focusNode: _focus,
+            minLines: 7,
             placeholder: const Text('Write a note…'),
-          )
-        else
-          ListenableBuilder(
-            listenable: _note,
-            builder: (context, _) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                _note.text.isEmpty ? 'Nothing to preview' : _note.text,
-                style: _note.text.isEmpty ? text.muted.body : style,
-              ),
-            ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -964,6 +1168,11 @@ class _StatusTileState extends State<StatusTile> {
             label: Text('Who was notified?'),
             panel: Text('Everyone watching the project.'),
           ),
+          CoilAccordionItem(
+            value: 'schedule',
+            label: Text('Can I schedule a release?'),
+            panel: Text('Yes, pick a time when you publish.'),
+          ),
         ],
       ),
     ],
@@ -985,18 +1194,18 @@ class ShareTile extends StatefulWidget {
 class _ShareTileState extends State<ShareTile> {
   var _slide = 0;
 
+  /// The deck's slides: a title, and how the photo is cropped for it.
   static const _slides = [
-    ('Cover', Glyph.image),
-    ('Timeline', Glyph.calendar),
-    ('Metrics', Glyph.chart),
-    ('Team', Glyph.users),
+    ('Kickoff', 1.0, Alignment.center),
+    ('Timeline', 1.7, Alignment.bottomLeft),
+    ('Metrics', 1.4, Alignment.topRight),
+    ('Team', 2.0, Alignment.centerRight),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
-    final (label, glyph) = _slides[_slide];
+    final (title, scale, alignment) = _slides[_slide];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1009,36 +1218,56 @@ class _ShareTileState extends State<ShareTile> {
           ],
         ),
         const SizedBox(height: 12),
-        DecoratedBox(
-          decoration: ShapeDecoration(
-            color: colors.accent,
-            shape: RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(
-                CoilTheme.radiiOf(context).container,
+        Semantics(
+          label: 'Slide ${_slide + 1} of ${_slides.length}: $title',
+          image: true,
+          child: Container(
+            height: 168,
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(
+                  CoilTheme.radiiOf(context).container,
+                ),
               ),
             ),
-          ),
-          child: SizedBox(
-            height: 112,
-            child: Center(
-              child: IconTheme.merge(
-                data: IconThemeData(
-                  color: colors.mutedForeground,
-                  size: 20,
-                  applyTextScaling: true,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 6,
-                  children: [
-                    CatalogIcon(glyph),
-                    Text(
-                      '${_slide + 1}. $label',
-                      style: text.muted.caption,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ExcludeSemantics(
+                  child: Transform.scale(
+                    scale: scale,
+                    alignment: alignment,
+                    child: Image.asset(
+                      'assets/images/dunes.jpg',
+                      fit: BoxFit.cover,
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0x99000000)],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 10,
+                  child: ExcludeSemantics(
+                    child: Text(
+                      title,
+                      style: text.body.copyWith(
+                        color: const Color(0xFFFFFFFF),
+                        fontWeight: text.emphasis,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
