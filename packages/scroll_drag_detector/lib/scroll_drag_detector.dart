@@ -221,6 +221,32 @@ class ScrollDragDetector extends StatefulWidget {
 
 class _ScrollDragDetectorState extends State<ScrollDragDetector> {
   final _draggingAxes = ValueNotifier(<Axis>{});
+
+  /// Pointers that went down inside an [ExcludeScrollDrag], with the axes it
+  /// excludes them from. The exclusion fills this before this detector's
+  /// recognizers see the down, and clears it once the pointer is up or
+  /// cancelled, or the exclusion is gone.
+  final _excludedPointers = <int, Set<Axis>>{};
+
+  List<_ScrollDragDetectorState> _detectors = const [];
+
+  void _excludePointer(int pointer, Set<Axis> axes) {
+    (_excludedPointers[pointer] ??= <Axis>{}).addAll(axes);
+  }
+
+  void _releasePointer(int pointer) {
+    _excludedPointers.remove(pointer);
+  }
+
+  bool _isExcluded(int pointer, Axis axis) =>
+      _excludedPointers[pointer]?.contains(axis) ?? false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _detectors = [this, ..._ScrollDragDetectorScope.of(context)];
+  }
+
   final _axisStates = <Axis, _AxisDragState>{
     Axis.vertical: _AxisDragState(),
     Axis.horizontal: _AxisDragState(),
@@ -262,49 +288,67 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
   @override
   Widget build(BuildContext context) {
+    final gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
+    final multitouchDragStrategy =
+        ScrollConfiguration.of(context).getMultitouchDragStrategy(context);
+
+    // A GestureDetector with the same two drag recognizers, except they skip
+    // pointers that went down inside an ExcludeScrollDrag.
     return NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
-      child: GestureDetector(
-        onVerticalDragDown: widget.onVerticalDragDown,
-        onVerticalDragStart: switch (widget.onVerticalDragStart) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
+      child: RawGestureDetector(
+        gestures: {
+          if (hasVertical || widget.onVerticalDragDown != null)
+            _VerticalDragRecognizer:
+                GestureRecognizerFactoryWithHandlers<_VerticalDragRecognizer>(
+              () => _VerticalDragRecognizer(
+                isExcluded: (pointer) => _isExcluded(pointer, Axis.vertical),
+                debugOwner: this,
+              ),
+              (instance) => instance
+                ..onDown = widget.onVerticalDragDown
+                ..onStart = switch (widget.onVerticalDragStart) {
+                  final callback? => (details) => callback(details, false),
+                  null => null,
+                }
+                ..onUpdate = switch (widget.onVerticalDragUpdate) {
+                  final callback? => (details) => callback(details, false),
+                  null => null,
+                }
+                ..onEnd = switch (widget.onVerticalDragEnd) {
+                  final callback? => (details) => callback(details, false),
+                  null => null,
+                }
+                ..onCancel = widget.onVerticalDragCancel
+                ..multitouchDragStrategy = multitouchDragStrategy
+                ..gestureSettings = gestureSettings,
+            ),
+          if (hasHorizontal || widget.onHorizontalDragDown != null)
+            _HorizontalDragRecognizer:
+                GestureRecognizerFactoryWithHandlers<_HorizontalDragRecognizer>(
+              () => _HorizontalDragRecognizer(
+                isExcluded: (pointer) => _isExcluded(pointer, Axis.horizontal),
+                debugOwner: this,
+              ),
+              (instance) => instance
+                ..onDown = widget.onHorizontalDragDown
+                ..onStart = switch (widget.onHorizontalDragStart) {
+                  final callback? => (details) => callback(details, false),
+                  null => null,
+                }
+                ..onUpdate = switch (widget.onHorizontalDragUpdate) {
+                  final callback? => (details) => callback(details, false),
+                  null => null,
+                }
+                ..onEnd = switch (widget.onHorizontalDragEnd) {
+                  final callback? => (details) => callback(details, false),
+                  null => null,
+                }
+                ..onCancel = widget.onHorizontalDragCancel
+                ..multitouchDragStrategy = multitouchDragStrategy
+                ..gestureSettings = gestureSettings,
+            ),
         },
-        onVerticalDragUpdate: switch (widget.onVerticalDragUpdate) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
-        onVerticalDragEnd: switch (widget.onVerticalDragEnd) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
-        onVerticalDragCancel: widget.onVerticalDragCancel,
-        onHorizontalDragDown: widget.onHorizontalDragDown,
-        onHorizontalDragStart: switch (widget.onHorizontalDragStart) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
-        onHorizontalDragUpdate: switch (widget.onHorizontalDragUpdate) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
-        onHorizontalDragEnd: switch (widget.onHorizontalDragEnd) {
-          final callback? => (details) {
-              callback(details, false);
-            },
-          null => null,
-        },
-        onHorizontalDragCancel: widget.onHorizontalDragCancel,
         child: ValueListenableBuilder<Set<Axis>>(
           valueListenable: _draggingAxes,
           builder: (context, draggingAxes, child) {
@@ -327,6 +371,7 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
               parent: parent,
               axes: blockedAxes,
               blockedDirections: blockedDirections,
+              owner: this,
             );
             return _ScrollDragBehaviorScope(
               behaviors: [
@@ -339,7 +384,10 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
               ),
             );
           },
-          child: widget.child,
+          child: _ScrollDragDetectorScope(
+            detectors: _detectors,
+            child: widget.child,
+          ),
         ),
       ),
     );
@@ -347,6 +395,11 @@ class _ScrollDragDetectorState extends State<ScrollDragDetector> {
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (!dragAxes.contains(notification.metrics.axis)) return true;
+    // A scrollable inside an ExcludeScrollDrag never hands off to us.
+    if (_ScrollDragExclusionScope.excludedAxes(notification.context, this)
+        .contains(notification.metrics.axis)) {
+      return true;
+    }
 
     switch (notification) {
       case ScrollStartNotification(:final dragDetails, :final metrics):
@@ -592,37 +645,53 @@ class ScrollDragBehavior extends ScrollBehavior {
   /// Wraps [parent] while preserving ancestor detectors' drag constraints.
   const ScrollDragBehavior({required this.parent})
       : _axes = null,
-        _blockedDirections = null;
+        _blockedDirections = null,
+        _owner = null;
 
   const ScrollDragBehavior._({
     required this.parent,
     required Set<Axis>? axes,
     required Set<AxisDirection>? blockedDirections,
+    required _ScrollDragDetectorState? owner,
   })  : _axes = axes,
-        _blockedDirections = blockedDirections;
+        _blockedDirections = blockedDirections,
+        _owner = owner;
 
   /// The consumer's scroll behavior, including its physics and input settings.
   final ScrollBehavior parent;
 
   final Set<Axis>? _axes;
   final Set<AxisDirection>? _blockedDirections;
+  final _ScrollDragDetectorState? _owner;
 
   List<ScrollDragBehavior> _behaviorsOf(BuildContext context) =>
       _axes != null ? [this] : _ScrollDragBehaviorScope.of(context);
 
+  /// The axes this detector's behavior controls for a scrollable at
+  /// [context], leaving out those an [ExcludeScrollDrag] in between excludes.
+  Set<Axis> _axesAt(BuildContext context) => _axes!.difference(
+        _ScrollDragExclusionScope.excludedAxes(
+          context,
+          _owner,
+          listen: true,
+        ),
+      );
+
   bool _doesApplyToDetails(BuildContext context, ScrollableDetails details) =>
       _behaviorsOf(context).any(
-        (behavior) => behavior._axes!.contains(
-          axisDirectionToAxis(details.direction),
-        ),
+        (behavior) => behavior
+            ._axesAt(context)
+            .contains(axisDirectionToAxis(details.direction)),
       );
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
     var physics = parent.getScrollPhysics(context);
     for (final behavior in _behaviorsOf(context).reversed) {
+      final axes = behavior._axesAt(context);
+      if (axes.isEmpty) continue;
       physics = _OverscrollScrollPhysics(
-        axes: behavior._axes!,
+        axes: axes,
         blockedDirections: behavior._blockedDirections!,
         parent: physics,
       );
@@ -654,6 +723,7 @@ class ScrollDragBehavior extends ScrollBehavior {
         ),
         axes: _axes,
         blockedDirections: _blockedDirections,
+        owner: _owner,
       );
 
   @override
@@ -707,7 +777,8 @@ class ScrollDragBehavior extends ScrollBehavior {
       parent.runtimeType != oldDelegate.parent.runtimeType ||
       parent.shouldNotify(oldDelegate.parent) ||
       !setEquals(oldDelegate._axes, _axes) ||
-      !setEquals(oldDelegate._blockedDirections, _blockedDirections);
+      !setEquals(oldDelegate._blockedDirections, _blockedDirections) ||
+      oldDelegate._owner != _owner;
 }
 
 class _ScrollDragBehaviorScope extends InheritedWidget {
@@ -777,4 +848,212 @@ class _OverscrollScrollPhysics extends ScrollPhysics {
 
     return value - position.pixels;
   }
+}
+
+class _VerticalDragRecognizer extends VerticalDragGestureRecognizer {
+  _VerticalDragRecognizer({required this.isExcluded, super.debugOwner});
+
+  final bool Function(int pointer) isExcluded;
+
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      !isExcluded(event.pointer) && super.isPointerAllowed(event);
+
+  @override
+  bool isPointerPanZoomAllowed(PointerPanZoomStartEvent event) =>
+      !isExcluded(event.pointer) && super.isPointerPanZoomAllowed(event);
+}
+
+class _HorizontalDragRecognizer extends HorizontalDragGestureRecognizer {
+  _HorizontalDragRecognizer({required this.isExcluded, super.debugOwner});
+
+  final bool Function(int pointer) isExcluded;
+
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      !isExcluded(event.pointer) && super.isPointerAllowed(event);
+
+  @override
+  bool isPointerPanZoomAllowed(PointerPanZoomStartEvent event) =>
+      !isExcluded(event.pointer) && super.isPointerPanZoomAllowed(event);
+}
+
+/// The [ScrollDragDetector]s above a point in the tree, nearest first.
+class _ScrollDragDetectorScope extends InheritedWidget {
+  const _ScrollDragDetectorScope({
+    required this.detectors,
+    required super.child,
+  });
+
+  final List<_ScrollDragDetectorState> detectors;
+
+  static List<_ScrollDragDetectorState> of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_ScrollDragDetectorScope>()
+          ?.detectors ??
+      const [];
+
+  @override
+  bool updateShouldNotify(_ScrollDragDetectorScope oldWidget) =>
+      !listEquals(detectors, oldWidget.detectors);
+}
+
+/// {@template exclude_scroll_drag}
+/// Keeps the [ScrollDragDetector]s above it out of drags that start inside
+/// [child], so [child] gets them as if no detector were there.
+///
+/// A [ScrollDragDetector] competes for drags like any [GestureDetector], and
+/// its drag usually wins against a pan or drag of its content. Wrap content
+/// that needs its own drags in [ExcludeScrollDrag], such as a map or canvas in
+/// a sheet, a draggable card on a drawer page, or any content of a route that
+/// can be swiped back from anywhere:
+///
+/// ```dart
+/// ScrollDragDetector(
+///   // ...
+///   child: Column(
+///     children: [
+///       const SheetHeader(),
+///       Expanded(child: ExcludeScrollDrag(child: MapView())),
+///     ],
+///   ),
+/// )
+/// ```
+///
+/// A pointer that goes down inside [child] is never taken by an ancestor
+/// [ScrollDragDetector] on the excluded [axes]: neither as its own drag, nor
+/// through the handoff of a scrollable inside [child]. Such a scrollable
+/// scrolls and overscrolls as if no detector were above it.
+///
+/// It applies to every [ScrollDragDetector] above it, so a drawer page inside
+/// a sheet keeps both out. Detectors inside [child] work as usual. Drags that
+/// start outside [child] are not affected.
+/// {@endtemplate}
+class ExcludeScrollDrag extends StatefulWidget {
+  /// {@macro exclude_scroll_drag}
+  const ExcludeScrollDrag({
+    required this.child,
+    this.axes = const {Axis.horizontal, Axis.vertical},
+    this.excluding = true,
+    super.key,
+  });
+
+  /// The widget below this widget in the tree.
+  final Widget child;
+
+  /// The drag axes ancestor detectors stay out of.
+  ///
+  /// Exclude only [Axis.horizontal] to keep a horizontally draggable child
+  /// while a sheet above it can still be dragged down from it.
+  final Set<Axis> axes;
+
+  /// Whether the exclusion applies.
+  ///
+  /// When false, ancestor detectors treat [child] like any other content.
+  final bool excluding;
+
+  @override
+  State<ExcludeScrollDrag> createState() => _ExcludeScrollDragState();
+}
+
+class _ExcludeScrollDragState extends State<ExcludeScrollDrag> {
+  List<_ScrollDragDetectorState> _detectors = const [];
+
+  /// The pointers this exclusion handed to [_detectors], with those detectors.
+  final _pointers = <int, List<_ScrollDragDetectorState>>{};
+
+  Set<Axis> get _axes => widget.excluding ? widget.axes : const {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _detectors = _ScrollDragDetectorScope.of(context);
+  }
+
+  // Hit-test entries get a pointer down deepest first, so this runs before
+  // the recognizers of every ancestor detector decide whether to track it.
+  void _onPointerDown(PointerEvent event) {
+    final axes = _axes;
+    if (axes.isEmpty) return;
+    _pointers[event.pointer] = _detectors;
+    for (final detector in _detectors) {
+      detector._excludePointer(event.pointer, axes);
+    }
+  }
+
+  void _onPointerEnd(PointerEvent event) => _release(event.pointer);
+
+  void _release(int pointer) {
+    for (final detector
+        in _pointers.remove(pointer) ?? const <_ScrollDragDetectorState>[]) {
+      detector._releasePointer(pointer);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pointers.keys.toList().forEach(_release);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final outer = _ScrollDragExclusionScope.maybeOf(context);
+    final axes = _axes;
+    final excluded = <_ScrollDragDetectorState, Set<Axis>>{
+      ...?outer?.excluded,
+      if (axes.isNotEmpty)
+        for (final detector in _detectors)
+          detector: {...?outer?.excluded[detector], ...axes},
+    };
+    return Listener(
+      onPointerDown: _onPointerDown,
+      onPointerPanZoomStart: _onPointerDown,
+      onPointerUp: _onPointerEnd,
+      onPointerCancel: _onPointerEnd,
+      onPointerPanZoomEnd: _onPointerEnd,
+      child: _ScrollDragExclusionScope(
+        excluded: excluded,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Which ancestor detectors are excluded below an [ExcludeScrollDrag], and on
+/// which axes.
+class _ScrollDragExclusionScope extends InheritedWidget {
+  const _ScrollDragExclusionScope({
+    required this.excluded,
+    required super.child,
+  });
+
+  final Map<_ScrollDragDetectorState, Set<Axis>> excluded;
+
+  static _ScrollDragExclusionScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_ScrollDragExclusionScope>();
+
+  /// The axes on which [detector] is excluded for content at [context].
+  static Set<Axis> excludedAxes(
+    BuildContext? context,
+    _ScrollDragDetectorState? detector, {
+    bool listen = false,
+  }) {
+    if (context == null || detector == null) return const {};
+    final scope = listen
+        ? maybeOf(context)
+        : context.getInheritedWidgetOfExactType<_ScrollDragExclusionScope>();
+    return scope?.excluded[detector] ?? const {};
+  }
+
+  @override
+  bool updateShouldNotify(_ScrollDragExclusionScope oldWidget) =>
+      !_sameExclusions(excluded, oldWidget.excluded);
+
+  static bool _sameExclusions(
+    Map<_ScrollDragDetectorState, Set<Axis>> a,
+    Map<_ScrollDragDetectorState, Set<Axis>> b,
+  ) =>
+      a.length == b.length &&
+      a.entries.every((entry) => setEquals(b[entry.key], entry.value));
 }
