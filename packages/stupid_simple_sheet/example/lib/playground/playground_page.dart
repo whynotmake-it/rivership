@@ -31,21 +31,26 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
 
   @override
   Widget build(BuildContext context) {
-    return DemoScaffold(
-      title: const Text('Playground'),
-      trailing: CoilButton(
-        variant: CoilButtonVariant.tertiary,
-        size: CoilSize.compact,
-        onPressed: _config == const SheetConfig()
-            ? null
-            : () => _update(const SheetConfig()),
-        child: const Text('Reset'),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) => constraints.maxWidth >= _twoColumnWidth
-            ? _wide(context)
-            : _narrow(context),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= _twoColumnWidth;
+        return DemoScaffold(
+          title: const Text('Playground'),
+          // Beside the code the bar spans both columns, its chevron on the
+          // settings' text edge and Reset on the code's trailing edge.
+          contentWidth: wide ? _wideContentWidth : DemoScaffold.maxContentWidth,
+          alignBackGlyph: wide,
+          trailing: CoilButton(
+            variant: CoilButtonVariant.tertiary,
+            size: CoilSize.compact,
+            onPressed: _config == const SheetConfig()
+                ? null
+                : () => _update(const SheetConfig()),
+            child: const Text('Reset'),
+          ),
+          body: wide ? _wide(context) : _narrow(context),
+        );
+      },
     );
   }
 
@@ -197,15 +202,18 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
                 _config.disabledReason(SheetSetting.motion) ??
                     'The spring the sheet opens and closes on.',
               ),
-              child: CoilTabs<SheetMotionPreset>(
-                value: _config.motion,
-                onChanged: _config.takes(SheetSetting.motion)
-                    ? (motion) => _update(_config.copyWith(motion: motion))
-                    : null,
-                tabs: [
-                  for (final motion in SheetMotionPreset.values)
-                    CoilTab(value: motion, label: Text(motion.label)),
-                ],
+              child: _dimmedUnless(
+                _config.takes(SheetSetting.motion),
+                CoilTabs<SheetMotionPreset>(
+                  value: _config.motion,
+                  onChanged: _config.takes(SheetSetting.motion)
+                      ? (motion) => _update(_config.copyWith(motion: motion))
+                      : null,
+                  tabs: [
+                    for (final motion in SheetMotionPreset.values)
+                      CoilTab(value: motion, label: Text(motion.label)),
+                  ],
+                ),
               ),
             ),
           ],
@@ -216,16 +224,20 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
             CoilField(
               label: const Text('Stops'),
               description: const Text('The heights the sheet snaps to.'),
-              child: CoilToggleGroup<SheetStop>(
-                values: _config.stops,
-                onChanged: (stops) {
-                  if (stops.isEmpty) return;
-                  _update(_config.copyWith(stops: stops));
-                },
-                options: [
-                  for (final stop in SheetStop.values)
-                    CoilOption(value: stop, label: Text(stop.label)),
-                ],
+              // The group stretches to its field; it hugs its segments.
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: CoilToggleGroup<SheetStop>(
+                  values: _config.stops,
+                  onChanged: (stops) {
+                    if (stops.isEmpty) return;
+                    _update(_config.copyWith(stops: stops));
+                  },
+                  options: [
+                    for (final stop in SheetStop.values)
+                      CoilOption(value: stop, label: Text(stop.label)),
+                  ],
+                ),
               ),
             ),
             CoilField(
@@ -403,6 +415,16 @@ class _PlaygroundPageState extends State<PlaygroundPage> {
           ],
         ),
       ],
+    );
+  }
+
+  /// [child] at coil's disabled opacity unless [enabled]. Tabs and toggle
+  /// groups have no disabled look of their own; switches and selects do.
+  Widget _dimmedUnless(bool enabled, Widget child) {
+    if (enabled) return child;
+    return Opacity(
+      opacity: CoilTheme.metricsOf(context).disabledOpacity,
+      child: child,
     );
   }
 

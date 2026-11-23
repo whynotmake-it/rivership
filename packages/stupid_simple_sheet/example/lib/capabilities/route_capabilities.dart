@@ -330,11 +330,13 @@ class _CupertinoCode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+    final textStyle = CupertinoTheme.of(context).textTheme.textStyle;
+    final style = textStyle.copyWith(
       fontSize: 13,
       height: 18 / 13,
-      fontFamily: 'monospace',
+      fontFamily: CodeBlock.fontFamily,
       fontFamilyFallback: CodeBlock.fontFamilyFallback,
+      fontFeatures: CodeBlock.fontFeatures,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -343,30 +345,49 @@ class _CupertinoCode extends StatelessWidget {
           color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Text(code, style: style, softWrap: false),
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The copy button has a row of its own, so no line of code runs
+            // under it.
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 12, end: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Dart',
+                      style: textStyle.copyWith(
+                        fontSize: 13,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(
+                          context,
+                        ),
+                      ),
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size.square(44),
+                    onPressed: () =>
+                        Clipboard.setData(ClipboardData(text: code)).ignore(),
+                    child: Semantics(
+                      label: 'Copy code',
+                      child: Icon(
+                        CupertinoIcons.doc_on_doc,
+                        size: 18,
+                        color: CupertinoColors.label.resolveFrom(context),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size.square(32),
-                onPressed: () =>
-                    Clipboard.setData(ClipboardData(text: code)).ignore(),
-                child: Icon(
-                  CupertinoIcons.doc_on_doc,
-                  size: 18,
-                  color: CupertinoColors.label.resolveFrom(context),
-                ),
-              ),
-            ],
-          ),
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Text(code, style: style, softWrap: false),
+            ),
+          ],
         ),
       ),
     );

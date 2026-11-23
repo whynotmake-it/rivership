@@ -408,9 +408,11 @@ class SheetConfig {
     final buffer = StringBuffer();
     if (route == SheetRouteKind.coil && !_usesPlainCoilRoute) {
       buffer.writeln(
-        '// DemoSheetRoute is CoilSheetRoute with the sheet settings it',
+        "// CoilSheetRoute doesn't take snapping, handoff or dismissal yet,",
       );
-      buffer.writeln("// doesn't expose itself.");
+      buffer.writeln(
+        '// so this example subclasses it (see lib/shell/coil_sheets.dart).',
+      );
     }
     buffer.writeln('Navigator.of(context).push(');
     buffer.writeln('  $_constructor');
