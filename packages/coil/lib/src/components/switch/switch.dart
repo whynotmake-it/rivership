@@ -126,7 +126,7 @@ bool _decidesOn(double position, double velocity) =>
     position + velocity * _projection > .5;
 
 class _CoilSwitchState extends State<CoilSwitch>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   /// The motion tokens, read where each animation starts so runtime
   /// theme changes apply to the next one.
   CoilMotion get _motion =>
