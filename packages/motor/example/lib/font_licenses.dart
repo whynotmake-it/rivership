@@ -6,13 +6,6 @@ void registerFontLicenses() {
   LicenseRegistry.addLicense(
     () => Stream.fromIterable([
       const LicenseEntryWithLineBreaks(
-        ['Archivo'],
-        '''
-Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
-
-$_ofl''',
-      ),
-      const LicenseEntryWithLineBreaks(
         ['JetBrains Mono'],
         '''
 Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
@@ -23,7 +16,7 @@ $_ofl''',
   );
 }
 
-/// The SIL Open Font License 1.1, which both fonts use.
+/// The SIL Open Font License 1.1, which JetBrains Mono uses.
 const _ofl = r'''
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

@@ -1,16 +1,34 @@
 import 'package:flutter/widgets.dart';
 import 'package:motor_example/pages/card_stack.dart';
+import 'package:motor_example/pages/controllers.dart';
+import 'package:motor_example/pages/converters.dart';
+import 'package:motor_example/pages/devtools.dart';
+import 'package:motor_example/pages/drag_and_drop.dart';
+import 'package:motor_example/pages/implicit_widgets.dart';
 import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/retarget.dart';
 import 'package:motor_example/pages/scrub.dart';
+import 'package:motor_example/pages/spring_lab.dart';
 import 'package:motor_example/pages/steps.dart';
 import 'package:motor_example/pages/sync.dart';
+import 'package:motor_example/pages/tick_rates.dart';
 import 'package:motor_example/pages/toggle.dart';
+import 'package:motor_example/widgets/icons.dart';
 
-/// The small drawing on a chapter's card on the home page.
-enum ChapterGlyph { toggle, retarget, cardStack, steps, sync, phases, scrub }
+/// The sidebar's sections, in order.
+enum ChapterGroup {
+  springs('Springs'),
+  choreography('Choreography'),
+  buildingBlocks('Building blocks'),
+  widgets('Widgets'),
+  tools('Tools');
 
-/// One lesson in the gallery.
+  const ChapterGroup(this.title);
+
+  final String title;
+}
+
+/// One demo in the gallery.
 @immutable
 class Chapter {
   const Chapter({
@@ -18,6 +36,7 @@ class Chapter {
     required this.path,
     required this.idea,
     required this.page,
+    required this.group,
     required this.glyph,
   });
 
@@ -26,16 +45,16 @@ class Chapter {
 
   final String path;
 
-  /// What the chapter teaches, in a few words.
+  /// What the demo shows, in one sentence.
   final String idea;
 
   final Widget Function() page;
 
-  /// The drawing on the chapter's card.
-  final ChapterGlyph glyph;
+  /// The sidebar section it's listed in.
+  final ChapterGroup group;
 
-  /// The chapter's position, starting at "01".
-  String get number => (chapters.indexOf(this) + 1).toString().padLeft(2, '0');
+  /// Its icon in the sidebar and on the overview.
+  final Glyph glyph;
 
   /// The following chapter, if any.
   Chapter? get next {
@@ -47,54 +66,117 @@ class Chapter {
 /// The gallery, in reading order.
 final chapters = [
   Chapter(
+    title: 'Spring lab',
+    path: 'spring-lab',
+    idea: 'Tune a spring and see the curve it draws, then drag and let go.',
+    page: SpringLabPage.new,
+    group: .springs,
+    glyph: Glyph.slidersHorizontal,
+  ),
+  Chapter(
     title: 'Toggle',
     path: 'toggle',
     idea:
         'One controller animates every part, and a drag hands over its speed.',
     page: TogglePage.new,
-    glyph: .toggle,
+    group: .springs,
+    glyph: Glyph.hand,
   ),
   Chapter(
     title: 'Retarget',
     path: 'retarget',
     idea: 'Retarget mid-flight without a jump. Springs keep their speed.',
     page: RetargetPage.new,
-    glyph: .retarget,
+    group: .springs,
+    glyph: Glyph.spline,
   ),
   Chapter(
     title: 'Card stack',
     path: 'card-stack',
     idea: 'Throw a card. It keeps your speed and returns under the stack.',
     page: CardStackPage.new,
-    glyph: .cardStack,
+    group: .springs,
+    glyph: Glyph.squareStack,
   ),
   Chapter(
     title: 'Steps',
     path: 'steps',
     idea: 'Each track runs its own steps, with a different motion per step.',
     page: StepsPage.new,
-    glyph: .steps,
+    group: .choreography,
+    glyph: Glyph.listOrdered,
   ),
   Chapter(
     title: 'Sync',
     path: 'sync',
     idea: 'Tracks wait for each other at a sync barrier.',
     page: SyncPage.new,
-    glyph: .sync,
+    group: .choreography,
+    glyph: Glyph.layers,
   ),
   Chapter(
     title: 'Phases',
     path: 'phases',
     idea: 'Named layouts you can drag between, even while they autoplay.',
     page: PhasesPage.new,
-    glyph: .phases,
+    group: .choreography,
+    glyph: Glyph.repeat,
   ),
   Chapter(
     title: 'Scrub',
     path: 'scrub',
     idea: 'Scrub to any moment, then play on from there.',
     page: ScrubPage.new,
-    glyph: .scrub,
+    group: .choreography,
+    glyph: Glyph.timer,
+  ),
+  Chapter(
+    title: 'Converters',
+    path: 'converters',
+    idea: 'Offsets, colors and angles, with a spring for every dimension.',
+    page: ConvertersPage.new,
+    group: .buildingBlocks,
+    glyph: Glyph.move,
+  ),
+  Chapter(
+    title: 'Controllers',
+    path: 'controllers',
+    idea: 'Drive a value from code, interrupt it and read its velocity.',
+    page: ControllersPage.new,
+    group: .buildingBlocks,
+    glyph: Glyph.gauge,
+  ),
+  Chapter(
+    title: 'Tick rates',
+    path: 'tick-rates',
+    idea: 'The same animation at fewer frames a second, with fixed_ticker.',
+    page: TickRatesPage.new,
+    group: .buildingBlocks,
+    glyph: Glyph.blocks,
+  ),
+  Chapter(
+    title: 'Implicit widgets',
+    path: 'implicit-widgets',
+    idea: 'Spring versions of AnimatedSize, AnimatedSwitcher and friends.',
+    page: ImplicitWidgetsPage.new,
+    group: .widgets,
+    glyph: Glyph.squareStack,
+  ),
+  Chapter(
+    title: 'Drag and drop',
+    path: 'drag-and-drop',
+    idea: 'Reorder a list. The dropped row lands on a spring.',
+    page: DragAndDropPage.new,
+    group: .widgets,
+    glyph: Glyph.gripVertical,
+  ),
+  Chapter(
+    title: 'DevTools',
+    path: 'devtools',
+    idea: 'Inspect, scrub, slow down and tune every animation while it runs.',
+    page: DevToolsPage.new,
+    group: .tools,
+    glyph: Glyph.activity,
   ),
 ];
 
