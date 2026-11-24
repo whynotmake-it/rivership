@@ -55,7 +55,7 @@ A surface opened from another surface sits **level + 2** for popovers and sheets
 | Token | Light | Dark | Use |
 |---|---|---|---|
 | `hover` | black 4 % | white 6 % | hover fill (pointer only) |
-| `active` | black 7 % | white 10 % | pressed fill, selected fill, merged selection, the tab hover pill |
+| `active` | black 7 % | white 10 % | pressed fill, selected fill, merged selection, tab pill (the hover pill always) |
 | `tint` | black 8 % | white 25 % | secondary button |
 | `tintHover` | black 6.5 % | white 20 % | secondary button hover |
 
@@ -65,10 +65,10 @@ A surface opened from another surface sits **level + 2** for popovers and sheets
 
 | Token | Light | Dark | Use: the only places these appear |
 |---|---|---|---|
-| `brand` | `#6B97FF` | `#6B97FF` | focus ring, switch-on track, the selected radio's dot, the text cursor and selection handles, text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar, the brand badge's dot |
+| `brand` | `#6B97FF` | `#6B97FF` | focus ring, switch-on track, text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar, the brand badge's dot; with brand selection, the selected radio's dot and the text cursor |
 | `brandFill` / `onBrandFill` | `#4168CB` / white | `#4168CB` / white | a surface that carries text on the brand: the solid brand badge |
-| `brandWash` | `brand` 14 % | `brand` 22 % | marks the current item: the selected tab's pill, the selected toggle segments |
-| `brandInk` | `#3E65C8` | `#6D98FF` | brand as text: the selected tab's and segment's label |
+| `brandWash` | `brand` 14 % | `brand` 22 % | with brand selection, the selected tab's pill and toggle segments |
+| `brandInk` | `#3E65C8` | `#6D98FF` | with brand selection, the selected tab's and segments' labels |
 | `red` / `redLabel` | `#FB2C36` / `#C10007` | `#FB2C36` / `#FF6467` | destructive: 15 % fill (dark 20 %) under `redLabel` text. Never a solid red button |
 | `destructive` | `#EF4444` | `#FCA5A5` | invalid borders (50 %), error text and icons |
 | `info` / `success` / `warning` | `#3B82F6` / `#22C55E` / `#F59E0B` | `#93C5FD` / `#86EFAC` / `#FCD34D` | Banner icons and badges only |
@@ -78,7 +78,16 @@ A surface opened from another surface sits **level + 2** for popovers and sheets
 - **`accessible`** (the default, and the default themes): the label is white or near-black, whichever reads better on the brand by APCA (white on a mid blue, orange, green or purple, dark on a yellow or lime). The fill then moves in Oklch, hue and chroma kept, until that label reaches 4.5 : 1, also at the brand button's hover and pressed tones (`CoilColors.brandStateShift`, 0.03 lighter and darker). coil's blue deepens from `#6B97FF` to `#4168CB`; a yellow keeps its color under a dark label. In dark, a brand darker than Oklch lightness 0.5 (navy) is first lifted to 0.5 so it stands off the page.
 - **`exact`**: the brand as given, under the APCA-picked label. A mid-tone brand's label falls below 4.5 : 1 by WCAG 2 (about 2.8 : 1 for coil's blue), so this is a brand decision, not a default.
 
-**Brand marks what's chosen, never what's hovered.** The selected tab and toggle segments sit on `brandWash` under `brandInk`; the radio's dot is `brand`; the cursor is `brand`. The slider fill and the checkbox tick stay neutral: a brand slider reads loud with a yellow or navy brand, and a lone colored tick reads weaker than a dark one. Hover stays neutral (§2.2). `brandInk` is `brand` moved in Oklch lightness until it reaches 4.5 : 1 on its wash over the background; a yellow darkens toward amber, not olive (`CoilColorMix.warmShadeHue`). In dark the wash lifts a deep brand to Oklch lightness 0.5 and leans a yellow amber, since a thin brand over a dark page reads as a dark shade of it.
+**Brand selection is opt-in.** coil is monochrome by default: selections use the neutral `active` fill and `foreground`. `CoilThemeData.brandSelection` puts the brand on selected states only: the selected tab's pill and the selected toggle segments sit on `brandWash` under `brandInk`, the selected radio's dot is `brand`, and the text cursor is `brand`. Hover stays neutral (§2.2), and the switch, the slider fill and the checkbox tick never change. Turn it on in the root theme for the whole app, or for one subtree with a nested theme:
+
+```dart
+CoilTheme.override(
+  transform: (t) => t.copyWith(brandSelection: true),
+  child: const BillingSettings(),
+)
+```
+
+`brandInk` and `brandWash` follow the brand-fill policy. Under `accessible`, `brandInk` is `brand` moved in Oklch lightness until it reaches 4.5 : 1 on its wash and on the background, and a yellow darkens toward amber, not olive (`CoilColorMix.warmShadeHue`). In dark, the wash lifts a deep brand to Oklch lightness 0.5 and leans a yellow amber, since a thin brand over a dark page reads as a dark shade of it. Under `exact`, the ink is `brand` and the wash is `brand` at 14 % (22 % in dark). High contrast forces the accessible ink and wash.
 
 High contrast always uses the accessible fill. `copyWith(brand:)` derives the accessible fill again unless `brandFill` and `onBrandFill` are passed too. Components read these tokens and never derive brand colors themselves.
 
@@ -757,7 +766,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **States:**
   - **one selected fill (`active`) glides between rows** on `standard`;
   - the selected label is semibold foreground (with a ghost width);
-  - the selected radio's border is transparent and its dot is `brand`;
+  - the selected radio's border is transparent and its dot is foreground (`brand` with brand selection);
   - hover is the gliding highlight.
 - **Motion:** dot in from scale 0.3 + fade on `quick`, out on `fadeExit` (bespoke and short); selected fill `standard`.
 - **Keyboard:** roving focus, so the selected row is the tab stop. Arrows move *and* select, with wrapping; Home and End jump.
@@ -768,7 +777,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### ToggleGroup
 
-- **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one `brandWash` block under `brandInk` labels.
+- **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block (`active`, or `brandWash` under `brandInk` labels with brand selection).
 - **Sizes:** segment height `controlHeight`, padding `controlPaddingX` (also next to an icon, unlike a button); the row is `segmentPadding` taller on each side.
 - **Segment content:** [icon] label. An option's `icon` leads the label, `buttonGap` before it, in the label's animated color and at `iconSize`; the width springs cover both. An icon-only segment passes its icon as the label, with a `semanticLabel`.
 - **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
@@ -809,9 +818,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### Tabs
 
-- **Anatomy:** a row of tabs: [icon] label. The **selected pill** (`brandWash`) sits under the selected tab.
+- **Anatomy:** a row of tabs: [icon] label. The **selected pill** (`active`, or `brandWash` with brand selection) sits under the selected tab.
 - **Sizes:** tab height `controlHeight`, padding `controlPaddingX`, icon gap `gap`.
-- **States:** selected is `brandInk` semibold (ghost width) with icon weight 533; others are muted; hover is a neutral pill (`active` @ 40 %, `hoverPill`) that grows out of the selected pill (pointer only).
+- **States:** selected is foreground (`brandInk` with brand selection) semibold (ghost width) with icon weight 533; others are muted; hover is a neutral pill (`active` @ 40 %, `hoverPill`) that grows out of the selected pill (pointer only).
 - **`labels: CoilTabLabels`:** `always` or `selected` (unselected tabs show the icon only, and the label width springs).
 - **Motion:** selected pill `standard`; hover pill `quick` (glides back into the selected pill on leave); ring `quick`; label width `quick`; scroll into view `standard`.
 - **Overflow:** the strip scrolls horizontally with 24 px edge fades, and the selected tab scrolls into view on `standard`.

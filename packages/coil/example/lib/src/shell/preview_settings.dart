@@ -260,6 +260,14 @@ List<Widget> _colorRows(CatalogSettings settings) => [
     },
     onChanged: (value) => settings.brandFill = value,
   ),
+  _SwitchRow(
+    label: 'Brand selection',
+    description: const Text(
+      'Selected tabs, segments and radios, and the cursor, in the brand.',
+    ),
+    value: settings.brandSelection,
+    onChanged: (value) => settings.brandSelection = value,
+  ),
   _SliderRow(
     label: 'Neutral hue',
     leading: _Swatch(

@@ -124,7 +124,12 @@ class CoilColors with Diagnosticable {
     Color text(Color token) => legible(token, neutral(token));
     Color status(Color token) => legible(token, token);
     final tones = brandTones(brand ?? base.brand, brightness, brandFill);
-    final accents = brandAccents(brand ?? base.brand, surfaces[0], brightness);
+    final accents = brandAccents(
+      brand ?? base.brand,
+      surfaces[0],
+      brightness,
+      brandFill,
+    );
     return base.copyWith(
       surfaces: surfaces,
       foreground: text(base.foreground),
@@ -297,16 +302,19 @@ class CoilColors with Diagnosticable {
   final Color onBrandFill;
 
   /// [brand] as text on the page: the label of a selected tab or toggle
-  /// segment, a link. Lightened or darkened in Oklch until it reaches
-  /// 4.5 : 1 on [brandWash] over the background; a yellow darkens toward
-  /// amber rather than olive.
+  /// segment when `CoilThemeData.brandSelection` is on. Under
+  /// [CoilBrandFill.accessible] it's lightened or darkened in Oklch until it
+  /// reaches 4.5 : 1 on [brandWash] and on the background, and a yellow
+  /// darkens toward amber rather than olive; under [CoilBrandFill.exact]
+  /// it's [brand].
   final Color brandInk;
 
-  /// A translucent brand wash that marks the current item: the selected
-  /// tab's pill, the selected toggle segment. Brand at 14 % in light; in
-  /// dark 22 %, lifted to Oklch lightness 0.5 and, for a yellow or lime,
-  /// leaned toward amber, since a thin brand over a dark page reads as a
-  /// dark shade of it.
+  /// A translucent brand wash that marks the current item when
+  /// `CoilThemeData.brandSelection` is on: the selected tab's pill, the
+  /// selected toggle segments. Brand at 14 % in light and 22 % in dark.
+  /// Under [CoilBrandFill.accessible] the dark wash lifts a deep brand to
+  /// Oklch lightness 0.5 and leans a yellow or lime toward amber, since a
+  /// thin brand over a dark page reads as a dark shade of it.
   final Color brandWash;
 
   /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
@@ -430,6 +438,7 @@ class CoilColors with Diagnosticable {
             newBrand,
             (surfaces ?? this.surfaces)[0],
             newBrightness,
+            CoilBrandFill.accessible,
           )
         : null;
     return CoilColors(
@@ -601,13 +610,24 @@ class CoilColors with Diagnosticable {
   }
 
   /// [brandInk] and [brandWash] for [brand] on [background] in
-  /// [brightness], as [CoilColors.fromSeed] derives them.
+  /// [brightness] under [policy], as [CoilColors.fromSeed] derives them.
+  ///
+  /// [CoilBrandFill.exact] keeps the brand as it is: the ink is [brand] and
+  /// the wash is [brand] at 14 % (22 % in dark). [CoilBrandFill.accessible]
+  /// lifts a deep brand's dark wash to Oklch lightness 0.5 and leans a
+  /// yellow's toward amber, and moves the ink in Oklch lightness until it
+  /// reaches 4.5 : 1 on both the wash and the bare background.
   static ({Color ink, Color wash}) brandAccents(
     Color brand,
     Color background,
     Brightness brightness,
+    CoilBrandFill policy,
   ) {
     final dark = brightness == Brightness.dark;
+    final alpha = dark ? 0.22 : 0.14;
+    if (policy == CoilBrandFill.exact) {
+      return (ink: brand, wash: brand.withValues(alpha: alpha));
+    }
     final (:l, :c, :h) = CoilColorMix.toOklch(brand);
     // Over a dark page a thin brand reads as a dark shade of it: lift a
     // deep one and lean a yellow warm, as a shade would.
@@ -618,11 +638,12 @@ class CoilColors with Diagnosticable {
             CoilColorMix.warmShadeHue(h, 0.3),
           )
         : brand;
-    final wash = washBase.withValues(alpha: dark ? 0.22 : 0.14);
+    final wash = washBase.withValues(alpha: alpha);
     final under = Color.alphaBlend(wash, background);
     // A hair over 4.5, so the ink still passes once stored in 8 bits.
-    bool passes(Color color) =>
-        CoilColorMix.contrastRatio(color, under) >= 4.55;
+    bool passes(Color color) => [under, background].every(
+      (ground) => CoilColorMix.contrastRatio(color, ground) >= 4.55,
+    );
     Color at(double lightness) => CoilColorMix.oklch(
       lightness,
       c,
@@ -649,15 +670,24 @@ class CoilColors with Diagnosticable {
   /// stronger off-state track ([accent] pushed toward the foreground). The
   /// theme's high contrast also strengthens the focus ring.
   ///
-  /// [brandFill] and [onBrandFill] take the [CoilBrandFill.accessible]
-  /// values, whatever the theme chose; [brand] itself is kept.
+  /// [brandFill], [onBrandFill], [brandInk] and [brandWash] take the
+  /// [CoilBrandFill.accessible] values, whatever the theme chose; [brand]
+  /// itself is kept.
   CoilColors highContrast() {
     final tones = brandTones(brand, brightness, CoilBrandFill.accessible);
+    final accents = brandAccents(
+      brand,
+      background,
+      brightness,
+      CoilBrandFill.accessible,
+    );
     return copyWith(
       accent: CoilColorMix.oklab(accent, foreground, 0.7),
       borderAlpha: 0.4,
       brandFill: tones.fill,
       onBrandFill: tones.label,
+      brandInk: accents.ink,
+      brandWash: accents.wash,
     );
   }
 

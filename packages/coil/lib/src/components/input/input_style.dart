@@ -51,7 +51,7 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
           .field
           .copyWith(color: c.foreground),
       placeholder: c.mutedForeground,
-      cursorColor: c.brand,
+      cursorColor: theme.brandSelection ? c.brand : c.foreground,
       cursorWidth: 1,
       selectionColor: c.brand.withValues(alpha: 0.3),
       radius: radii.item,

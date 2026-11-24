@@ -22,54 +22,109 @@ double _ratio(Color a, Color b) => CoilColorMix.contrastRatio(a, b);
 /// No more colorful than a tinted neutral (brands sit at chroma 0.13+).
 bool _isNeutral(Color color) => CoilColorMix.toOklch(color).c < 0.045;
 
+/// The colors a selected state shows, as the components resolve them.
+({
+  Color tabLabel,
+  Color tabPill,
+  Color segmentLabel,
+  Color segment,
+  Color dot,
+  Color cursor,
+  Color tabHover,
+  Color segmentHover,
+})
+_selection(CoilThemeData theme) {
+  final metrics = theme.metrics.resolve(theme.tier!, CoilSize.regular);
+  final background = theme.colors.background;
+  final tabs = CoilTabsStyle.fallback(theme, metrics);
+  final toggle = CoilToggleGroupStyle.fallback(theme, metrics);
+  return (
+    tabLabel: tabs.label!.resolve({WidgetState.selected})!,
+    tabPill: Color.alphaBlend(tabs.pill!, background),
+    segmentLabel: toggle.label!.resolve({WidgetState.selected})!,
+    segment: Color.alphaBlend(toggle.selection!, background),
+    dot: CoilRadioGroupStyle.fallback(theme, metrics).dot!,
+    cursor: CoilInputStyle.fallback(theme, metrics).cursorColor!,
+    tabHover: tabs.hoverPill!,
+    segmentHover: toggle.highlight!,
+  );
+}
+
 void main() {
   for (final brightness in Brightness.values) {
     for (final tier in CoilTier.values) {
-      test('${brightness.name} ${tier.name}: a selected tab or toggle segment '
-          'reads on its brand wash, and hovering one is never colored', () {
+      test('${brightness.name} ${tier.name}: selections stay monochrome '
+          'unless brand selection is on, and then read on their brand wash '
+          'while hover stays neutral', () {
         for (final MapEntry(key: name, value: brand) in _brands.entries) {
           for (final neutral in _neutrals) {
-            final theme = CoilThemeData(
-              colors: CoilColors.fromSeed(
+            for (final policy in CoilBrandFill.values) {
+              final colors = CoilColors.fromSeed(
                 brightness: brightness,
                 brand: brand,
+                brandFill: policy,
                 neutralHue: neutral.hue,
                 neutralChroma: neutral.chroma,
-              ),
-              tier: tier,
-            );
-            final background = theme.colors.background;
-            final metrics = theme.metrics.resolve(tier, CoilSize.regular);
-            final reason = '$name on ${neutral.hue}°/${neutral.chroma}';
+              );
+              final reason =
+                  '$name, ${policy.name}, on ${neutral.hue}°/${neutral.chroma}';
+              final theme = CoilThemeData(colors: colors, tier: tier);
 
-            final tabs = CoilTabsStyle.fallback(theme, metrics);
-            final tabLabel = tabs.label!.resolve({WidgetState.selected})!;
-            final tabPill = Color.alphaBlend(tabs.pill!, background);
-            expect(
-              _ratio(tabLabel, tabPill),
-              greaterThanOrEqualTo(4.5),
-              reason: 'tab, $reason',
-            );
-            expect(_isNeutral(tabs.hoverPill!), isTrue, reason: reason);
-            expect(
-              _isNeutral(tabs.label!.resolve({WidgetState.hovered})!),
-              isTrue,
-              reason: 'hovered tab label, $reason',
-            );
+              final off = _selection(theme);
+              for (final color in [
+                off.tabLabel,
+                off.tabPill,
+                off.segmentLabel,
+                off.segment,
+                off.dot,
+                off.cursor,
+              ]) {
+                expect(_isNeutral(color), isTrue, reason: 'off, $reason');
+              }
 
-            final toggle = CoilToggleGroupStyle.fallback(theme, metrics);
-            final segmentLabel = toggle.label!.resolve({WidgetState.selected})!;
-            final segment = Color.alphaBlend(toggle.selection!, background);
-            expect(
-              _ratio(segmentLabel, segment),
-              greaterThanOrEqualTo(4.5),
-              reason: 'toggle, $reason',
-            );
-            expect(_isNeutral(toggle.highlight!), isTrue, reason: reason);
+              final on = _selection(theme.copyWith(brandSelection: true));
+              expect(on.dot, brand, reason: reason);
+              expect(on.cursor, brand, reason: reason);
+              expect(_isNeutral(on.tabHover), isTrue, reason: reason);
+              expect(_isNeutral(on.segmentHover), isTrue, reason: reason);
+              if (policy == CoilBrandFill.accessible) {
+                for (final (label, ground) in [
+                  (on.tabLabel, on.tabPill),
+                  (on.segmentLabel, on.segment),
+                  (colors.brandInk, colors.background),
+                ]) {
+                  expect(
+                    _ratio(label, ground),
+                    greaterThanOrEqualTo(4.5),
+                    reason: reason,
+                  );
+                }
+              }
+            }
           }
         }
       });
     }
+
+    test('${brightness.name}: high contrast keeps brand text readable even '
+        'with an exact brand', () {
+      for (final MapEntry(key: name, value: brand) in _brands.entries) {
+        final colors = CoilColors.fromSeed(
+          brightness: brightness,
+          brand: brand,
+          brandFill: CoilBrandFill.exact,
+        ).highContrast();
+        expect(colors.brand, brand, reason: name);
+        final wash = Color.alphaBlend(colors.brandWash, colors.background);
+        for (final ground in [wash, colors.background]) {
+          expect(
+            _ratio(colors.brandInk, ground),
+            greaterThanOrEqualTo(4.5),
+            reason: name,
+          );
+        }
+      }
+    });
 
     test('${brightness.name}: a yellow or lime reads amber as text, not '
         'olive', () {
@@ -88,4 +143,39 @@ void main() {
       }
     });
   }
+
+  testWidgets('a nested theme turns brand selection on for its subtree only', (
+    tester,
+  ) async {
+    late CoilThemeData outside;
+    late CoilThemeData inside;
+    await tester.pumpWidget(
+      CoilTheme(
+        data: CoilThemeData.light.copyWith(tier: CoilTier.pointer),
+        child: Column(
+          children: [
+            Builder(
+              builder: (context) {
+                outside = CoilTheme.of(context);
+                return const SizedBox();
+              },
+            ),
+            CoilTheme.override(
+              transform: (t) => t.copyWith(brandSelection: true),
+              child: Builder(
+                builder: (context) {
+                  inside = CoilTheme.of(context);
+                  return const SizedBox();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final brand = CoilThemeData.light.colors.brand;
+    expect(_selection(outside).dot, isNot(brand));
+    expect(_selection(inside).dot, brand);
+    expect(_selection(inside).tabPill, isNot(_selection(outside).tabPill));
+  });
 }

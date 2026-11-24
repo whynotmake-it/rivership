@@ -27,14 +27,16 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// The defaults from the theme's tokens.
   factory CoilTabsStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
+    // With brand selection on, the current tab is marked in the brand: a
+    // wash under brand text.
+    final brand = theme.brandSelection;
     return CoilTabsStyle(
-      // The current tab is marked in the brand: a wash under brand text.
-      pill: c.brandWash,
+      pill: brand ? c.brandWash : c.active,
       // Hover is never colored: it previews a tab in the neutral wash.
       hoverPill: c.active,
       hoverPillOpacity: 0.4,
       label: WidgetStateProperty<Color?>.fromMap({
-        WidgetState.selected: c.brandInk,
+        WidgetState.selected: brand ? c.brandInk : c.foreground,
         WidgetState.hovered: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),

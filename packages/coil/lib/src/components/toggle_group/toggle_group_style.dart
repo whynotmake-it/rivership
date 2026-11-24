@@ -30,20 +30,22 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     CoilMetrics metrics,
   ) {
     final c = theme.colors;
+    // With brand selection on, the selected segments are marked in the
+    // brand: a wash under brand text.
+    final brand = theme.brandSelection;
+    final selectedLabel = brand ? c.brandInk : c.foreground;
     return CoilToggleGroupStyle(
-      // The selected segments are marked in the brand: a wash under brand
-      // text.
-      selection: c.brandWash,
+      selection: brand ? c.brandWash : c.active,
       highlight: c.hover,
       // Touch rows rest at full strength: "the pointer is here" means nothing
       // to a finger.
       label: metrics.tier == CoilTier.touch
           ? WidgetStateProperty<Color?>.fromMap({
-              WidgetState.selected: c.brandInk,
+              WidgetState.selected: selectedLabel,
               WidgetState.any: c.foreground,
             })
           : WidgetStateProperty<Color?>.fromMap({
-              WidgetState.selected: c.brandInk,
+              WidgetState.selected: selectedLabel,
               WidgetState.hovered | WidgetState.focused: c.foreground,
               WidgetState.any: c.mutedForeground,
             }),
