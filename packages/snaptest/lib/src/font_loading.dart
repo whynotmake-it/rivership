@@ -51,7 +51,7 @@ sealed class CupertinoFontConfig {
   /// ```dart
   /// await loadFonts(
   ///   cupertinoFonts: CupertinoFontConfig.fromMacOsSystemFonts(
-  ///     fallbackOverrideFontFamily: 'Roboto',
+  ///     fallbackOverride: 'Roboto',
   ///   ),
   /// );
   /// ```
@@ -200,7 +200,7 @@ Future<void> _loadFonts(
             'SF Pro fonts are only available on macOS with the fonts '
             'installed from https://developer.apple.com/fonts/.\n'
             'To use a fallback font instead, pass '
-            'fallbackOverrideFontFamily, or use '
+            'fallbackOverride, or use '
             'CupertinoFontConfig.override() for cross-platform consistency.',
           );
         }

@@ -28,13 +28,13 @@ final Map<String, int> _snapCallCounts = {};
 /// The global [Snap] instance.
 ///
 /// Use `snap()` for visual debugging screenshots, `snap.golden()` for golden
-/// file comparison only, and `snap.andGolden()` for both.
+/// file comparison, and `snap.andGolden()` for both.
 ///
 /// ```dart
 /// // Visual debugging screenshot
 /// await snap();
 ///
-/// // Golden comparison only (no .snaptest/ file)
+/// // Golden file comparison
 /// await snap.golden();
 ///
 /// // Both visual debugging + golden comparison
@@ -80,7 +80,7 @@ const Snap snap = Snap._();
 /// // Visual debugging screenshot (saves to .snaptest/)
 /// await snap();
 ///
-/// // Golden file comparison only (no .snaptest/ file)
+/// // Golden file comparison
 /// await snap.golden();
 ///
 /// // Both visual debugging + golden comparison
@@ -173,11 +173,12 @@ class Snap {
 
   /// Takes a golden comparison screenshot and runs [matchesGoldenFile].
   ///
-  /// Does **not** save a visual debugging screenshot. Use [andGolden] if you
-  /// want both.
+  /// Does **not** take a separate visual debugging screenshot; use [andGolden]
+  /// if you want both. The captured golden image is still saved to
+  /// [SnaptestSettings.pathPrefix] (`.snaptest/` by default) and returned.
   ///
   /// By default the golden is rendered with [SnaptestSettings.goldens]
-  /// (blocked text, no shadows, no images, no device frame) for cross-platform
+  /// (blocked text, no shadows, no device frame) for cross-platform
   /// consistency. Pass [settings] to override.
   ///
   /// {@macro snaptest_from_and_crop}
@@ -385,8 +386,7 @@ class Snap {
   ///
   /// Only one recording can be active per test; call [SnapRecording.stop]
   /// before starting another. If [SnapRecording.stop] is never called, the
-  /// recording stops
-  /// automatically when the test body completes.
+  /// recording stops automatically when the test body completes.
   ///
   /// {@macro snaptest_from_and_crop}
   Future<SnapRecording> recordVideo({
@@ -516,7 +516,10 @@ Future<File> _saveScreenshot({
 ///
 /// Returns a callback to restore the original test environment:
 /// ```dart
-/// final restore = setTestViewForDevice(Devices.ios.iPhone16Pro);
+/// final restore = setTestViewForDevice(
+///   Devices.ios.iPhone16Pro,
+///   Orientation.portrait,
+/// );
 ///
 /// // Test environment now simulates iPhone 16 Pro
 /// await tester.pumpWidget(MyApp());

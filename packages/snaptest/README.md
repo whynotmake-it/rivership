@@ -78,7 +78,7 @@ cannot be unloaded, and later calls do not change the initial Cupertino config.
 
 ## Settings
 
-By default, `snap()` uses `SnaptestSettings.rendered()` which produces beautiful screenshots with real text, shadows, and device frames. Perfect for debugging and documentation.
+By default, `snap()` uses `SnaptestSettings.rendered()` which produces realistic screenshots with real text, shadows, and device frames. Ideal for debugging and documentation.
 
 For simpler, more deterministic screenshots (e.g. for faster tests or when you don't need visual fidelity), use `SnaptestSettings()`:
 
@@ -106,9 +106,9 @@ also work; no trailing slash is needed.
 
 Snaptest provides three distinct methods for different use cases:
 
-### `snap.golden()` — golden comparison only
+### `snap.golden()` — golden comparison
 
-Takes a golden comparison screenshot without saving a visual debugging file. The golden is rendered with default `SnaptestSettings()` (blocked text, no shadows) for cross-platform consistency.
+Takes a golden comparison screenshot and compares it with `matchesGoldenFile` (without taking a separate visual debugging screenshot). The captured golden image is saved to `pathPrefix` (`.snaptest/` by default) and rendered with `SnaptestSettings.goldens` (blocked text, no shadows, no device frame) for cross-platform consistency.
 
 ```dart
 testWidgets('Golden only', (tester) async {
@@ -207,7 +207,7 @@ final recording = await snap.recordVideo(
     encoding: VideoEncoding.h264(crf: 20),// H.264 MP4, yuv420p, +faststart
     // encoding: VideoEncoding.vp9(),     // WebM with alpha (yuva420p)
     // backgroundColor: Color(0xFF000000), // behind the frame; null = transparent
-                                         // on alpha codecs, opaque white else
+                                         // on alpha codecs, opaque white otherwise
     includeDeviceFrame: true,             // render inside the device frame
     overlay: SnapPointerOverlay.builder,  // animated pointer indicator
     minimumPointerDuration: Duration(milliseconds: 100), // show quick taps too
@@ -221,7 +221,7 @@ final recording = await snap.recordVideo(
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
 - **`VideoEncoding.vp9()`** produces a WebM with an alpha channel (`libvpx-vp9` + `yuva420p`, CRF default 32). H.264 is better for sharing everywhere; VP9 for compositing or posting to tools that preserve transparency.
 - **`backgroundColor`** defaults to transparent on alpha-capable encodings (VP9) and opaque white otherwise. Pass any color to flatten the video onto it.
-- **`overlay`** is a widget drawn over every captured frame; `null` (the default) draws none. Pass `SnapPointerOverlay.builder` to show pointers like a screen recorder's "show touches": a soft dot while a mouse or stylus hovers, a ring-and-dot that springs in on press and follows the pointer, and a fade-out on release. Pointers are only tracked while an overlay is set. See [Custom overlays](#custom-overlays).
+- **`overlay`** is a widget drawn over every captured frame; `null` (the default) draws none. Pass `SnapPointerOverlay.builder` to show pointers like a screen recorder's "show touches": a soft dot while a mouse or stylus hovers, a filled circle with a stroked outline that eases in on press (`Curves.easeOutBack`) and follows the pointer, and a fade-out on release. Pointers are only tracked while an overlay is set. See [Custom overlays](#custom-overlays).
 - **`minimumPointerDuration`** keeps a released pointer in the frame (as `SnapPointerPhase.released`) until that much simulated time has passed since pointer-down, so quick taps between pumps become visible. A mouse or stylus still over the view goes back to `hovering` afterwards. This is overlay-only: it never pumps, changes input events or the test clock, and never extends the video. Use `finalHold` explicitly for taps near the end; cancellation removes a pointer immediately.
 - **`renderShadows`** opts into real shadows and Material elevation while recording. Defaults to false, matching Flutter test rendering. It repaints an existing scene without pumping and restores the previous shadow state on stop, failure, truncation, or automatic teardown.
 - **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
@@ -280,23 +280,9 @@ The overlay is one persistent widget tree for the whole recording, so it can be 
 
 ### Pitfalls
 
-Starting after `pumpWidget` captures the current scene immediately. Starting
-before it waits for the first real painted scene. Recording without any later
-elapsed time creates one video frame (and prints a diagnostic); pump a duration
-for animation, or set `finalHold` for an intentional still image. Stopping before
-any scene is painted fails with a no-frames error instead of encoding a placeholder.
-
-Frames stream as straight-alpha RGBA directly to FFmpeg while the test runs:
-there is no per-frame PNG compression or disk spool. A bounded pipe applies
-backpressure rather than dropping frames. Rendering and video encoding still
-take time. Unchanged retained scenes can reuse their pixels without skipping timestamps;
-textures and overlays are always captured again.
-
-`maxSpoolBytes` limits the observed temporary **encoded video** size. Encoder buffering may delay detection.
-`encoderTimeout` bounds a streaming batch or finalization, not the entire test.
-Failures retain timing metadata and any partial video, not individual PNGs.
-
 The recorder faithfully captures what the test paints — most "the video jumps" issues are test-scripting artifacts, not recording bugs:
+
+- **Starting before or after `pumpWidget`.** Starting after `pumpWidget` captures the current scene immediately; starting before it waits for the first real painted scene. Recording with no subsequent elapsed time produces a single frame (and prints a diagnostic) — pump a duration for animation, or set `finalHold` for an intentional still image. Stopping before any scene is painted fails with a no-frames error.
 
 - **Single `moveBy` teleports.** `tester.drag()` sends one `moveBy` event, so a draggable (e.g. a sheet) jumps to its end position in a single frame. Drive drags with `startGesture`, incremental `moveBy` + small `pump`s in a loop, then `up()`:
 
@@ -315,7 +301,11 @@ The recorder faithfully captures what the test paints — most "the video jumps"
 
 - **`dart:io` futures never complete in the test's zone.** Widget tests run in a `FakeAsync` zone; async IO must go through `binding.runAsync` (the encoder already does this internally). Prefer synchronous IO (`readAsBytesSync`, `writeAsBytesSync`) inside test bodies.
 
-- **Runaway pumps are capped.** `maxSimulatedDuration` (1 minute of simulated time by default), `maxCapturedFrames`, and `maxSpoolBytes` freeze capture and mark the artifact `.truncated` if a `pumpAndSettle` loop runs long. Raise them for long demos.
+### Limits & performance
+
+- **Direct streaming to FFmpeg.** Frames stream as straight-alpha RGBA over a bounded pipe (applying backpressure rather than dropping frames) with no per-frame PNG disk spool. Unchanged retained scenes can reuse their pixels without skipping timestamps; textures and overlays are always captured again.
+- **Runaway pumps are capped.** `maxSimulatedDuration` (1 minute of simulated time by default), `maxCapturedFrames`, and `maxSpoolBytes` (which caps the temporary encoded video size; encoder buffering may delay detection) freeze capture and mark the artifact `.truncated` if a `pumpAndSettle` loop runs long. Raise them for long demos.
+- **Timeouts and failures.** `encoderTimeout` bounds a streaming batch or finalization, not the entire test. On failure, timing metadata and any partial video are retained (not individual PNGs).
 
 ### Recipe: demo videos
 
@@ -586,7 +576,7 @@ import 'package:snaptest/golden_tools.dart';
 ```
 
 This exports:
-- **`captureImage()`** — render an Element to a `ui.Image` with optional blocked text and device frame
+- **`CaptureFinder`** / **`CaptureImage`** — `.captureImage()` extensions on `Finder` and `Element` to render their closest `RepaintBoundary` to a `ui.Image` with optional blocked text and device frame
 - **`BlockedTextPaintingContext`** / **`BlockedTextCanvasAdapter`** — replace text rendering with colored rectangles
 - **`loadFont()`** / **`loadFonts()`** — load fonts into the test environment
 - **`precacheImages()`** — pre-cache images for accurate rendering
@@ -675,9 +665,5 @@ This ensures consistent screenshots across environments, but may differ slightly
 
 ---
 
-[dart_install_link]: https://dart.dev/get-dart
-[github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
-[mason_link]: https://github.com/felangel/mason
-[very_good_ventures_link]: https://verygood.ventures
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
 [lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40
