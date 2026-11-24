@@ -104,6 +104,17 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
   final _pressWatch = Stopwatch();
   Timer? _pressRelease;
 
+  // Read in [didChangeDependencies], never from a gesture callback: a
+  // recognizer disposed with the control cancels its press while the
+  // element is already deactivated, when a lookup through context throws.
+  late Duration _minPressDuration;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _minPressDuration = CoilTheme.motionOf(context).minPressDuration;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -161,8 +172,7 @@ class _CoilInteractionDetectorState extends State<CoilInteractionDetector> {
     }
     // A tap that lifts before the press could be seen still shows it for
     // the theme's minimum, as iOS cells do.
-    final minimum = CoilTheme.motionOf(context).minPressDuration;
-    final remaining = minimum - _pressWatch.elapsed;
+    final remaining = _minPressDuration - _pressWatch.elapsed;
     // A cancel (the touch became a scroll, or left) clears at once.
     if (!completed || remaining <= Duration.zero || !widget.enabled) {
       widget.states.update(WidgetState.pressed, false);

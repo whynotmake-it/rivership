@@ -12,7 +12,12 @@ import 'src/test_icons.dart';
 const _width = 400.0;
 
 CoilQueuedMessage _message(String id, String text) =>
-    CoilQueuedMessage(id: id, semanticLabel: text, child: Text(text));
+    CoilQueuedMessage(id: id, child: Text(text));
+
+extension on CoilQueuedMessage {
+  /// The message's text on screen.
+  String get text => (child! as Text).data!;
+}
 
 final _a = _message('a', 'Tighten the spacing');
 final _b = _message('b', 'Match these mockups');
@@ -123,7 +128,7 @@ double _top(WidgetTester tester, CoilQueuedMessage message) => tester
     .getRect(
       find
           .ancestor(
-            of: find.text(message.semanticLabel),
+            of: find.text(message.text),
             matching: find.byType(CoilSurface),
           )
           .first,
@@ -139,7 +144,7 @@ Future<TestGesture> _hover(WidgetTester tester) async {
   final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
   addTearDown(mouse.removePointer);
   await mouse.addPointer(location: Offset.zero);
-  await mouse.moveTo(tester.getCenter(find.text(_a.semanticLabel)));
+  await mouse.moveTo(tester.getCenter(find.text(_a.text)));
   await tester.pumpAndSettle();
   return mouse;
 }
@@ -152,7 +157,6 @@ void main() {
         messages: [
           CoilQueuedMessage(
             id: 'ink',
-            semanticLabel: 'HEH',
             child: InkLabel(ink, const Text('HEH')),
           ),
         ],
@@ -171,13 +175,13 @@ void main() {
       await _pump(tester, [_a, _b]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 40));
-      final midOpacity = _opacity(tester, _b.semanticLabel);
-      final midBottom = _bottom(tester, _b.semanticLabel);
+      final midOpacity = _opacity(tester, _b.text);
+      final midBottom = _bottom(tester, _b.text);
       expect(midOpacity, inExclusiveRange(0, 1));
       await tester.pumpAndSettle();
-      expect(_opacity(tester, _b.semanticLabel), 1);
+      expect(_opacity(tester, _b.text), 1);
       expect(
-        _bottom(tester, _b.semanticLabel),
+        _bottom(tester, _b.text),
         lessThan(midBottom),
         reason: 'it rises from below its place',
       );
@@ -189,36 +193,36 @@ void main() {
       await _pump(tester, [_a]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 30));
-      expect(_opacity(tester, _b.semanticLabel), inExclusiveRange(0, 1));
+      expect(_opacity(tester, _b.text), inExclusiveRange(0, 1));
       await tester.pumpAndSettle();
-      expect(find.text(_b.semanticLabel), findsNothing);
+      expect(find.text(_b.text), findsNothing);
     });
 
     testWidgets('a reorder slides the cards past each other', (tester) async {
       await _pump(tester, [_a, _b, _c]);
       await _hover(tester);
-      final texts = [_a.semanticLabel, _b.semanticLabel, _c.semanticLabel];
+      final texts = [_a.text, _b.text, _c.text];
       expect(_order(tester, texts), [
-        _c.semanticLabel,
-        _b.semanticLabel,
-        _a.semanticLabel,
+        _c.text,
+        _b.text,
+        _a.text,
       ]);
-      final aBefore = _bottom(tester, _a.semanticLabel);
-      final cBefore = _bottom(tester, _c.semanticLabel);
+      final aBefore = _bottom(tester, _a.text);
+      final cBefore = _bottom(tester, _c.text);
 
       await _pump(tester, [_c, _b, _a]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
-      final aMid = _bottom(tester, _a.semanticLabel);
+      final aMid = _bottom(tester, _a.text);
       expect(aMid, lessThan(aBefore), reason: 'moving, not jumping');
       expect(aMid, greaterThan(cBefore));
       await tester.pumpAndSettle();
       expect(_order(tester, texts), [
-        _a.semanticLabel,
-        _b.semanticLabel,
-        _c.semanticLabel,
+        _a.text,
+        _b.text,
+        _c.text,
       ]);
-      expect(_bottom(tester, _a.semanticLabel), cBefore);
+      expect(_bottom(tester, _a.text), cBefore);
     });
 
     testWidgets('queueing behind the folded pile makes it recoil', (
@@ -226,13 +230,13 @@ void main() {
     ) async {
       await _pump(tester, [_a, _b, _c]);
       await tester.pumpAndSettle();
-      final rest = _bottom(tester, _a.semanticLabel);
+      final rest = _bottom(tester, _a.text);
       await _pump(tester, [_a, _b, _c, _d]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
-      expect(_bottom(tester, _a.semanticLabel), lessThan(rest));
+      expect(_bottom(tester, _a.text), lessThan(rest));
       await tester.pumpAndSettle();
-      expect(_bottom(tester, _a.semanticLabel), rest);
+      expect(_bottom(tester, _a.text), rest);
     });
 
     testWidgets('reduced motion: cards move at once and still fade', (
@@ -240,15 +244,15 @@ void main() {
     ) async {
       await _pump(tester, [_a, _b, _c], reducedMotion: true);
       await _hover(tester);
-      final cBefore = _bottom(tester, _c.semanticLabel);
+      final cBefore = _bottom(tester, _c.text);
       await _pump(tester, [_c, _b, _a], reducedMotion: true);
       await tester.pump();
-      expect(_bottom(tester, _a.semanticLabel), cBefore, reason: 'no slide');
+      expect(_bottom(tester, _a.text), cBefore, reason: 'no slide');
 
       await _pump(tester, [_c, _b, _a, _d], reducedMotion: true);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 30));
-      expect(_opacity(tester, _d.semanticLabel), inExclusiveRange(0, 1));
+      expect(_opacity(tester, _d.text), inExclusiveRange(0, 1));
     });
 
     testWidgets('runtime motion overrides apply per track', (tester) async {
@@ -284,7 +288,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       // Folded, the third card is fully visible once present; it's still
       // fading in on the slow override.
-      expect(_opacity(tester, _c.semanticLabel), lessThan(0.6));
+      expect(_opacity(tester, _c.text), lessThan(0.6));
     });
   });
 
@@ -297,8 +301,7 @@ void main() {
       expect(peek(), closeTo(12, 0.5), reason: 'the second card peeks 12 px');
 
       final mouse = await _hover(tester);
-      final fanned =
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel);
+      final fanned = _bottom(tester, _a.text) - _bottom(tester, _b.text);
       expect(fanned, greaterThan(40), reason: 'a card apart');
 
       await mouse.moveTo(const Offset(_width / 2, 2));
@@ -314,14 +317,14 @@ void main() {
 
       final mouse = await _hover(tester);
       expect(find.bySemanticsLabel('Remove'), findsOneWidget);
-      await mouse.moveTo(tester.getCenter(find.text(_a.semanticLabel)));
+      await mouse.moveTo(tester.getCenter(find.text(_a.text)));
       await tester.tapAt(
-        tester.getCenter(find.text(_a.semanticLabel)),
+        tester.getCenter(find.text(_a.text)),
         kind: PointerDeviceKind.mouse,
       );
       await tester.pump(kDoubleTapMinTime);
       await tester.tapAt(
-        tester.getCenter(find.text(_a.semanticLabel)),
+        tester.getCenter(find.text(_a.text)),
         kind: PointerDeviceKind.mouse,
       );
       await tester.pumpAndSettle();
@@ -331,10 +334,9 @@ void main() {
     testWidgets('dragging a card reorders the queue', (tester) async {
       await _pump(tester, [_a, _b, _c]);
       await _hover(tester);
-      final pitch =
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel);
+      final pitch = _bottom(tester, _a.text) - _bottom(tester, _b.text);
       final drag = await tester.startGesture(
-        tester.getCenter(find.text(_a.semanticLabel)),
+        tester.getCenter(find.text(_a.text)),
         kind: PointerDeviceKind.mouse,
       );
       await drag.moveBy(const Offset(0, -20));
@@ -343,11 +345,11 @@ void main() {
       await drag.up();
       await tester.pumpAndSettle();
       expect(
-        _order(tester, [_a.semanticLabel, _b.semanticLabel, _c.semanticLabel]),
+        _order(tester, [_a.text, _b.text, _c.text]),
         [
-          _c.semanticLabel,
-          _a.semanticLabel,
-          _b.semanticLabel,
+          _c.text,
+          _a.text,
+          _b.text,
         ],
       );
     });
@@ -366,20 +368,19 @@ void main() {
         findsNWidgets(2),
         reason: 'actions always show on touch',
       );
-      final folded =
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel);
+      final folded = _bottom(tester, _a.text) - _bottom(tester, _b.text);
 
-      await tester.tap(find.text(_a.semanticLabel));
+      await tester.tap(find.text(_a.text));
       await tester.pumpAndSettle();
       expect(
-        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        _bottom(tester, _a.text) - _bottom(tester, _b.text),
         greaterThan(folded + 20),
       );
 
       await tester.tap(find.bySemanticsLabel('Collapse queued messages'));
       await tester.pumpAndSettle();
       expect(
-        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        _bottom(tester, _a.text) - _bottom(tester, _b.text),
         closeTo(folded, 0.5),
         reason: 'nothing stays open where the finger lifted',
       );
@@ -388,13 +389,13 @@ void main() {
     testWidgets('collapse goes when one message is left, and the pin with '
         'it', (tester) async {
       await _pump(tester, [_a, _b], tier: CoilTier.touch);
-      await tester.tap(find.text(_a.semanticLabel));
+      await tester.tap(find.text(_a.text));
       await tester.pumpAndSettle();
       expect(find.bySemanticsLabel('Collapse queued messages'), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Remove').first);
       await tester.pumpAndSettle();
-      expect(find.text(_a.semanticLabel), findsNothing);
+      expect(find.text(_a.text), findsNothing);
       expect(
         find.bySemanticsLabel('Collapse queued messages'),
         findsNothing,
@@ -440,7 +441,7 @@ void main() {
         reason: 'a peeking card offers its actions on the card',
       );
 
-      await tester.tap(find.text(_a.semanticLabel));
+      await tester.tap(find.text(_a.text));
       await tester.pumpAndSettle();
       await expectLater(tester, meetsGuideline(guideline));
       expect(find.bySemanticsLabel('Remove'), findsNWidgets(4));
@@ -449,12 +450,12 @@ void main() {
 
     testWidgets('remove takes the card out of the queue', (tester) async {
       await _pump(tester, [_a, _b], tier: CoilTier.touch);
-      await tester.tap(find.text(_a.semanticLabel));
+      await tester.tap(find.text(_a.text));
       await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel('Remove').first);
       await tester.pumpAndSettle();
-      expect(find.text(_a.semanticLabel), findsNothing);
-      expect(find.text(_b.semanticLabel), findsOneWidget);
+      expect(find.text(_a.text), findsNothing);
+      expect(find.text(_b.text), findsOneWidget);
     });
   });
 
@@ -467,7 +468,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
       expect(
-        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        _bottom(tester, _a.text) - _bottom(tester, _b.text),
         greaterThan(40),
         reason: 'focus inside fans it out',
       );
@@ -476,11 +477,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
       await tester.pumpAndSettle();
-      final texts = [_a.semanticLabel, _b.semanticLabel, _c.semanticLabel];
+      final texts = [_a.text, _b.text, _c.text];
       expect(_order(tester, texts), [
-        _c.semanticLabel,
-        _a.semanticLabel,
-        _b.semanticLabel,
+        _c.text,
+        _a.text,
+        _b.text,
       ]);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -488,7 +489,7 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
-      expect(find.text(_a.semanticLabel), findsNothing);
+      expect(find.text(_a.text), findsNothing);
     });
   });
 
@@ -497,7 +498,6 @@ void main() {
   ) async {
     const tall = CoilQueuedMessage(
       id: 'tall',
-      semanticLabel: 'Tall',
       child: SizedBox(height: 90, child: Text('Tall')),
     );
     await _pump(tester, [_a, tall, _c]);
@@ -507,7 +507,7 @@ void main() {
           .ancestor(of: find.text(text), matching: find.byType(CoilSurface))
           .first,
     );
-    final texts = [_a.semanticLabel, 'Tall', _c.semanticLabel];
+    final texts = [_a.text, 'Tall', _c.text];
     // Folded: the top edges step by the same peek.
     expect(surface(texts[0]).top - surface(texts[1]).top, closeTo(12, 0.01));
     expect(surface(texts[1]).top - surface(texts[2]).top, closeTo(12, 0.01));
@@ -554,7 +554,7 @@ void main() {
     Rect surface(CoilQueuedMessage m) => tester.getRect(
       find
           .ancestor(
-            of: find.text(m.semanticLabel),
+            of: find.text(m.text),
             matching: find.byType(CoilSurface),
           )
           .first,
@@ -565,7 +565,7 @@ void main() {
   group('reaches the cards behind', () {
     Finder cardOf(CoilQueuedMessage m) => find
         .ancestor(
-          of: find.text(m.semanticLabel),
+          of: find.text(m.text),
           matching: find.byType(CoilSurface),
         )
         .first;
@@ -576,7 +576,7 @@ void main() {
 
     List<Object> left(WidgetTester tester) => [
       for (final m in [_a, _b, _c])
-        if (find.text(m.semanticLabel).evaluate().isNotEmpty) m.id,
+        if (find.text(m.text).evaluate().isNotEmpty) m.id,
     ];
 
     testWidgets('fanned out under a mouse, every card hovers and presses', (
@@ -586,7 +586,7 @@ void main() {
       await _pump(tester, [_a, _b, _c], edited: edited);
       final mouse = await _hover(tester);
       for (final m in [_c, _b, _a]) {
-        await mouse.moveTo(tester.getCenter(find.text(m.semanticLabel)));
+        await mouse.moveTo(tester.getCenter(find.text(m.text)));
         await tester.pumpAndSettle();
         expect(
           buttonsOf(m),
@@ -602,7 +602,7 @@ void main() {
       }
       expect(edited, ['c', 'b', 'a']);
 
-      await mouse.moveTo(tester.getCenter(find.text(_b.semanticLabel)));
+      await mouse.moveTo(tester.getCenter(find.text(_b.text)));
       await tester.pumpAndSettle();
       await mouse.moveTo(tester.getCenter(buttonsOf(_b).last));
       await tester.tapAt(
@@ -657,8 +657,7 @@ void main() {
     ) async {
       await _pump(tester, [_a, _b, _c]);
       await tester.pumpAndSettle();
-      final folded =
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _c.semanticLabel);
+      final folded = _bottom(tester, _a.text) - _bottom(tester, _c.text);
       // Each card, then its edit and remove buttons, which show while
       // focus is inside it.
       final reached = <Object>{};
@@ -672,7 +671,7 @@ void main() {
           if (focus.focusNode?.hasFocus ?? false) reached.add(m.id);
         }
         expect(
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _c.semanticLabel),
+          _bottom(tester, _a.text) - _bottom(tester, _c.text),
           greaterThan(folded + 40),
         );
       }
@@ -706,7 +705,7 @@ void main() {
         final card = tester.getRect(
           find
               .ancestor(
-                of: find.text(_a.semanticLabel),
+                of: find.text(_a.text),
                 matching: find.byType(CoilSurface),
               )
               .first,
@@ -731,28 +730,27 @@ void main() {
     ) async {
       await tester.pumpWidget(_app(transcript()));
       await tester.pumpAndSettle();
-      final folded =
-          _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel);
+      final folded = _bottom(tester, _a.text) - _bottom(tester, _b.text);
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       addTearDown(mouse.removePointer);
       await mouse.addPointer(location: const Offset(_width / 2, 20));
       await tester.pumpAndSettle();
       expect(
-        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        _bottom(tester, _a.text) - _bottom(tester, _b.text),
         folded,
       );
 
       // Over the pile it fans out, and stays out between the cards.
-      await mouse.moveTo(tester.getCenter(find.text(_a.semanticLabel)));
+      await mouse.moveTo(tester.getCenter(find.text(_a.text)));
       await tester.pumpAndSettle();
       final gap =
-          (tester.getRect(find.text(_a.semanticLabel)).top +
-              tester.getRect(find.text(_b.semanticLabel)).bottom) /
+          (tester.getRect(find.text(_a.text)).top +
+              tester.getRect(find.text(_b.text)).bottom) /
           2;
       await mouse.moveTo(Offset(_width / 2, gap));
       await tester.pumpAndSettle();
       expect(
-        _bottom(tester, _a.semanticLabel) - _bottom(tester, _b.semanticLabel),
+        _bottom(tester, _a.text) - _bottom(tester, _b.text),
         greaterThan(folded + 20),
       );
     });
@@ -762,7 +760,7 @@ void main() {
     final semantics = tester.ensureSemantics();
     await _pump(tester, [_a, _b]);
     expect(
-      find.bySemanticsLabel('Queued message 1 of 2: ${_a.semanticLabel}'),
+      find.bySemanticsLabel('Queued message 1 of 2\n${_a.text}'),
       findsOneWidget,
     );
     expect(find.bySemanticsLabel('2 queued messages'), findsOneWidget);

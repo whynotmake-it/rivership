@@ -74,7 +74,6 @@ class CoilQueuedMessage {
   /// Creates a queued message.
   const CoilQueuedMessage({
     required this.id,
-    required this.semanticLabel,
     this.child,
     this.attachments = const [],
   });
@@ -83,11 +82,9 @@ class CoilQueuedMessage {
   /// queue changes.
   final Object id;
 
-  /// The message as screen readers hear it, usually its text.
-  final String semanticLabel;
-
   /// The message text, usually a [Text]. The card styles it in the subtitle
-  /// role and keeps it to one line with an ellipsis.
+  /// role and keeps it to one line with an ellipsis. Screen readers hear
+  /// it after the card's [CoilQueuedStackLabels.messageLabel].
   final Widget? child;
 
   /// Previews of attached files, such as `CoilFileThumbnail`s. The card
@@ -117,15 +114,16 @@ class CoilQueuedStackLabels {
   /// The collapse button an expanded stack shows on touch.
   final String collapseLabel;
 
-  /// A card: its place in the queue (from 1), the queue's length and the
-  /// message's [CoilQueuedMessage.semanticLabel].
-  final String Function(int position, int count, String label) messageLabel;
+  /// A card: its place in the queue (from 1) and the queue's length.
+  /// Screen readers hear the message's own [CoilQueuedMessage.child] after
+  /// it.
+  final String Function(int position, int count) messageLabel;
 
   /// The gutter: how many messages are queued.
   final String Function(int count) countLabel;
 
-  static String _message(int position, int count, String label) =>
-      'Queued message $position of $count: $label';
+  static String _message(int position, int count) =>
+      'Queued message $position of $count';
 
   static String _count(int count) =>
       count == 1 ? '1 queued message' : '$count queued messages';
@@ -457,11 +455,7 @@ class _CoilQueuedStackState extends State<CoilQueuedStack> {
       lifted: entry == _dragging,
       front: entry.slot == 0 && !entry.exiting,
       showActions: touch,
-      semanticLabel: widget.labels.messageLabel(
-        entry.slot + 1,
-        count,
-        entry.message.semanticLabel,
-      ),
+      semanticLabel: widget.labels.messageLabel(entry.slot + 1, count),
       labels: widget.labels,
       editIcon: widget.editIcon,
       removeIcon: widget.removeIcon,

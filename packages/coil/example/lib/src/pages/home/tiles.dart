@@ -213,7 +213,7 @@ class _AgentTileState extends State<AgentTile> {
   CoilQueuedMessage _message(String text) {
     final id = _ids++;
     _texts[id] = text;
-    return CoilQueuedMessage(id: id, semanticLabel: text, child: Text(text));
+    return CoilQueuedMessage(id: id, child: Text(text));
   }
 
   void _send(String text) {
@@ -272,8 +272,11 @@ class _AgentTileState extends State<AgentTile> {
                 ? [
                     CoilChatMessageAction(
                       label: const Text('Copy'),
-                      semanticLabel: 'Copy',
-                      icon: CoilCopyGlyph.listening(controller: _copy),
+                      // The icon names the button, as in an IconButton.
+                      icon: Semantics(
+                        label: 'Copy',
+                        child: CoilCopyGlyph.listening(controller: _copy),
+                      ),
                       onPressed: () => _copy.copy(_planReply, context: context),
                     ),
                   ]
