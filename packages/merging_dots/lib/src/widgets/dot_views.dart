@@ -30,6 +30,10 @@ import 'package:motor/motor.dart';
 /// repaint it: nothing rebuilds or lays out while the dots move. Pixels are
 /// shaded only around visible dots, and each pixel looks at its 5x5 nearest
 /// cells, so grid size barely changes the cost.
+///
+/// Like every dot widget, it animates at the display's frame rate unless
+/// it is inside a `TickerRateScope`, for example at `TickerRate.fps(30)`
+/// for a spinner that doesn't need more.
 class DotGridView extends StatefulWidget {
   /// Shows [grid], animating to it whenever it changes.
   const DotGridView({
@@ -342,7 +346,7 @@ class DotSceneRenderer extends LeafRenderObjectWidget {
 /// Drives a [DotAnimator] from a dot view's configuration.
 abstract class _DotsViewState<W extends StatefulWidget, T extends DotState>
     extends State<W>
-    with SingleTickerProviderStateMixin<W> {
+    with SingleFixedTickerProviderStateMixin<W> {
   late final DotAnimator<T> animator;
 
   T? stateOf(W widget);

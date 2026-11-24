@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:merging_dots/src/character/dot_character.dart';
 import 'package:merging_dots/src/character/dot_character_controller.dart';
 import 'package:merging_dots/src/widgets/dot_views.dart';
+import 'package:motor/motor.dart';
 
 /// Shows a [DotCharacter] in [state], moving to a new state whenever
 /// [state] changes.
@@ -15,6 +16,11 @@ import 'package:merging_dots/src/widgets/dot_views.dart';
 ///
 /// Pass a [controller] to make it look somewhere or blink on cue. The view
 /// then drives that controller instead of its own.
+///
+/// The character animates at the display's frame rate. Wrap it in a
+/// `TickerRateScope` to run it at a fixed rate instead, like
+/// `TickerRate.fps(30)`: every motion keeps its timing, just with fewer
+/// frames.
 class DotCharacterView extends StatefulWidget {
   /// Shows [character] in [state], or its initial state.
   const DotCharacterView({
@@ -43,7 +49,7 @@ class DotCharacterView extends StatefulWidget {
 }
 
 class _DotCharacterViewState extends State<DotCharacterView>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   DotCharacterController? _own;
 
   DotCharacterController get _controller => widget.controller ?? _own!;

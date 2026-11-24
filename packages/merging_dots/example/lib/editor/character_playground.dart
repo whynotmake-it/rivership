@@ -21,7 +21,7 @@ class CharacterPlayground extends StatefulWidget {
 }
 
 class _CharacterPlaygroundState extends State<CharacterPlayground>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   static const _states = {
     'loading': 'Loading',
     'idle': 'Idle',
@@ -32,6 +32,13 @@ class _CharacterPlaygroundState extends State<CharacterPlayground>
   };
 
   var _body = BlobBody.round;
+  var _thirtyFps = false;
+
+  // Every motion of the character ticks with this state, so this one rate
+  // drives the dots, the transitions and all idles.
+  @override
+  TickerRate get tickerRate =>
+      _thirtyFps ? TickerRate.fps(30) : const TickerRate.vsync();
   late DotCharacter _character = BlobCharacter.build(body: _body);
   late final _controller = DotCharacterController(
     vsync: this,
@@ -92,6 +99,14 @@ class _CharacterPlaygroundState extends State<CharacterPlayground>
                   ),
                 ),
               );
+            },
+          ),
+          CoilSwitch(
+            value: _thirtyFps,
+            label: const Text('Animate at 30 fps'),
+            onChanged: (value) {
+              setState(() => _thirtyFps = value);
+              updateTickerRate();
             },
           ),
           const SizedBox(height: 16),

@@ -3,7 +3,16 @@
 library;
 
 export 'package:motor/motor.dart'
-    show CupertinoMotion, CurvedMotion, LinearMotion, LoopMode, Motion;
+    show
+        CupertinoMotion,
+        CurvedMotion,
+        FixedTickerProviderStateMixin,
+        LinearMotion,
+        LoopMode,
+        Motion,
+        SingleFixedTickerProviderStateMixin,
+        TickerRate,
+        TickerRateScope;
 
 export 'src/animation/dot_animator.dart';
 export 'src/animation/dot_sequence.dart';

@@ -130,7 +130,9 @@ void main() {
       expect(looked, isTrue);
 
       controller.lookAt(const Offset(1, 0));
-      await tester.pump(const Duration(seconds: 1));
+      for (var i = 0; i < 50; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
       layers.setRange(0, layers.length, controller.animator.values);
       controller.modifyLayers(layers, 2);
       expect(layers[DotScene.stride + 2], greaterThan(4));
