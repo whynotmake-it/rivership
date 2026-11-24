@@ -62,6 +62,7 @@ Future<CoilSheetRoute<String>> _push(
   return route;
 }
 
+const _footerKey = ValueKey('footer');
 const _tallKey = ValueKey('tall');
 const _tall = SizedBox(key: _tallKey, height: 2000);
 
@@ -317,6 +318,74 @@ void main() {
       expect(tester.getRect(_sheet()), rest, reason: 'it settles back');
     });
   }
+
+  testWidgets('snapping stops: it opens at half, a drag settles at full or '
+      'back at half instead of closing, and shrink keeps a pinned footer on '
+      'screen', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(_app());
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+
+    // A full sheet is the reference for where the stops are.
+    Future<CoilSheetRoute<String>> push({
+      SheetSnappingConfig? snapping,
+      DismissalMode mode = DismissalMode.slide,
+    }) async {
+      final route = CoilSheetRoute<String>(
+        context: _home,
+        snappingConfig: snapping ?? SheetSnappingConfig.full,
+        dismissalMode: mode,
+        child: CoilSheetPanel(
+          title: const Text('Fruit'),
+          footer: const SizedBox(key: _footerKey, height: 48),
+          child: ListView(
+            children: const [SizedBox(key: _content, height: 2000)],
+          ),
+        ),
+      );
+      Navigator.of(_home).push(route).ignore();
+      await tester.pumpAndSettle();
+      return route;
+    }
+
+    final full = await push();
+    final fullTop = tester.getRect(_sheet()).top;
+    Navigator.of(_home).pop();
+    await tester.pumpAndSettle();
+    expect(full.isActive, isFalse);
+
+    const config = SheetSnappingConfig([0.5, 1.0], initialSnap: 0.5);
+    final route = await push(snapping: config);
+    final range = screenHeight - fullTop;
+    final halfTop = fullTop + range / 2;
+    double top() => tester.getRect(_sheet()).top;
+    expect(top(), closeTo(halfTop, 1), reason: 'opens at the half stop');
+
+    await tester.drag(find.text('Fruit'), Offset(0, -range * 0.3));
+    await tester.pumpAndSettle();
+    expect(top(), closeTo(fullTop, 1), reason: 'a drag up settles at full');
+
+    await tester.drag(find.text('Fruit'), Offset(0, range * 0.4));
+    await tester.pumpAndSettle();
+    expect(top(), closeTo(halfTop, 1), reason: 'a drag down stops at half');
+    expect(route.isActive, isTrue, reason: 'it did not close');
+
+    // Slid down, the footer rides the sheet off the bottom; shrunk, it
+    // stays on screen.
+    expect(
+      tester.getRect(find.byKey(_footerKey)).bottom,
+      greaterThan(screenHeight),
+    );
+    Navigator.of(_home).pop();
+    await tester.pumpAndSettle();
+    await push(snapping: config, mode: DismissalMode.shrink);
+    expect(
+      tester.getRect(find.byKey(_footerKey)).bottom,
+      lessThanOrEqualTo(screenHeight),
+      reason: 'the pinned footer is on screen at the half stop',
+    );
+  });
 
   testWidgets('a sheet opened from a sheet slides over it with its own '
       'scrim', (tester) async {
