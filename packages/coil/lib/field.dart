@@ -1,11 +1,7 @@
 /// The Coil field components: [CoilField], [CoilFieldSet], [CoilFieldGroup],
 /// [CoilFieldSeparator], and [CoilChoiceCard].
 ///
-/// @docImport 'src/components/field/choice_card.dart';
-/// @docImport 'src/components/field/field.dart';
-/// @docImport 'src/components/field/field_group.dart';
-/// @docImport 'src/components/field/field_separator.dart';
-/// @docImport 'src/components/field/field_set.dart';
+/// @docImport 'package:coil/field.dart';
 library;
 
 export 'src/components/field/choice_card.dart';

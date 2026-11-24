@@ -9,8 +9,7 @@ const checkboxEntry = CatalogEntry(
   slug: 'checkbox',
   title: 'Checkbox',
   group: CatalogGroup.leafControls,
-  summary:
-      'An independent on/off choice with a check, or a dash when mixed.',
+  summary: 'An independent on/off choice with a check, or a dash when mixed.',
   page: CheckboxPage.new,
 );
 

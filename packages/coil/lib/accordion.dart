@@ -1,6 +1,6 @@
 /// Coil's [CoilAccordion] component.
 ///
-/// @docImport 'src/components/accordion/accordion.dart';
+/// @docImport 'package:coil/accordion.dart';
 library;
 
 export 'src/components/accordion/accordion.dart';

@@ -1,6 +1,6 @@
 /// The Coil [CoilTooltip] component.
 ///
-/// @docImport 'src/components/tooltip/tooltip.dart';
+/// @docImport 'package:coil/tooltip.dart';
 library;
 
 export 'src/components/tooltip/tooltip.dart';

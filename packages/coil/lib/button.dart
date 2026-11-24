@@ -1,6 +1,6 @@
 /// The Coil [CoilButton] component.
 ///
-/// @docImport 'src/components/button/button.dart';
+/// @docImport 'package:coil/button.dart';
 library;
 
 export 'src/components/button/button.dart';

@@ -1,6 +1,6 @@
 /// The Coil [CoilSelect] and [CoilMultiSelect] components.
 ///
-/// @docImport 'src/components/select/select.dart';
+/// @docImport 'package:coil/select.dart';
 library;
 
 export 'src/components/select/select.dart' show CoilMultiSelect, CoilSelect;

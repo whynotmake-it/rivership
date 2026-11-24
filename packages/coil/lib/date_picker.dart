@@ -1,6 +1,6 @@
 /// The Coil [CoilDatePicker] component.
 ///
-/// @docImport 'src/components/select/date_picker.dart';
+/// @docImport 'package:coil/date_picker.dart';
 library;
 
 export 'calendar.dart' show CoilCalendarLabels;

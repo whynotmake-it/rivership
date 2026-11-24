@@ -1,7 +1,6 @@
 /// The Coil [CoilRadioGroup] component and its [CoilRadio].
 ///
-/// @docImport 'src/components/radio_group/radio.dart';
-/// @docImport 'src/components/radio_group/radio_group.dart';
+/// @docImport 'package:coil/radio_group.dart';
 library;
 
 export 'src/components/radio_group/radio.dart'

@@ -1,6 +1,6 @@
 /// The Coil [CoilQueuedStack] component.
 ///
-/// @docImport 'src/components/queued_stack/queued_stack.dart';
+/// @docImport 'package:coil/queued_stack.dart';
 library;
 
 export 'src/components/queued_stack/queued_stack.dart';

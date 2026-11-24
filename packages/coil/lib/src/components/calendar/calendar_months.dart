@@ -5,6 +5,7 @@ import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/calendar/calendar_layout.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 

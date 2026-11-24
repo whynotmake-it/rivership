@@ -1,6 +1,6 @@
 /// The Coil [CoilScrollArea] component.
 ///
-/// @docImport 'src/components/scroll_area/scroll_area.dart';
+/// @docImport 'package:coil/scroll_area.dart';
 library;
 
 export 'src/components/scroll_area/scroll_area.dart';

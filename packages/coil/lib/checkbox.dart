@@ -1,6 +1,6 @@
 /// The Coil [CoilCheckbox] component.
 ///
-/// @docImport 'src/components/checkbox/checkbox.dart';
+/// @docImport 'package:coil/checkbox.dart';
 library;
 
 export 'src/components/checkbox/checkbox.dart';

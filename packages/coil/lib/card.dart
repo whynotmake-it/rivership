@@ -1,7 +1,6 @@
 /// The Coil [CoilCard] and [CoilCardGroup] components.
 ///
-/// @docImport 'src/components/card/card.dart';
-/// @docImport 'src/components/card/card_group.dart';
+/// @docImport 'package:coil/card.dart';
 library;
 
 export 'src/components/card/card.dart' hide CardSlot;

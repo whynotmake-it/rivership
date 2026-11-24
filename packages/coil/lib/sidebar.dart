@@ -1,7 +1,6 @@
 /// The Coil sidebar: [CoilSidebarScaffold], [CoilSidebar], and its parts.
 ///
-/// @docImport 'src/components/sidebar/sidebar_panel.dart';
-/// @docImport 'src/components/sidebar/sidebar_scaffold.dart';
+/// @docImport 'package:coil/sidebar.dart';
 library;
 
 export 'src/components/sidebar/sidebar_callouts.dart';

@@ -1,6 +1,6 @@
 /// The Coil [CoilSkeleton] component.
 ///
-/// @docImport 'src/components/skeleton/skeleton.dart';
+/// @docImport 'package:coil/skeleton.dart';
 library;
 
 export 'src/components/skeleton/skeleton.dart';
