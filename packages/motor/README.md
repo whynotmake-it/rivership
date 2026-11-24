@@ -24,6 +24,8 @@ Motor models all of that with one consistent engine:
 - **One engine underneath everything:** `TrackController` and `TrackBuilder` back the entire package. Single-value APIs (`SingleMotionBuilder`, `MotionBuilder`, `MotionController`) are thin one-track wrappers on top, so you can start simple or jump straight to multi-property choreography without switching mental models.
 - **Companion packages:** [`motor_widgets`](../motor_widgets) provides drop-in replacements for Flutter's implicit animation widgets and drag-and-drop; [`motor_devtools`](../motor_devtools) adds an optional in-app timeline inspector, scrubber, and motion tuner.
 
+> **Built with Motor:** Want to see what a full production UI feels like when every interaction runs on Motor? Explore [**Coil**](../coil) ([live catalog](https://whynotmake-it.github.io/rivership/#/coil)), our Flutter design system built from the ground up on Motor and `motor_widgets`.
+
 ## Installation
 
 Motor requires the [Flutter SDK][flutter_install_link] (Flutter 3.32 / Dart 3.8 or newer).
@@ -137,7 +139,7 @@ final customSpring = SpringMotion(
 
 ## 2. Tracks & Steps: describing what happens
 
-![Multi-property track choreography with a sync barrier and live timeline](./doc/steps_choreography.gif)
+![Motor track orchestration bento: multi-property steps with live timeline, sync barriers, and synchronized loops](./doc/orchestration_bento.gif)
 
 ### Declare a `Track` per property
 
@@ -228,6 +230,8 @@ Each track runs its own steps and motions independently on the same clock. Pass 
 
 You can rebuild `animations:` from widget state. When a rebuild changes one track's animation, **only that track redirects** — from its current value and velocity — while every other track keeps playing untouched:
 
+![Mid-flight spring vs. curve retargeting and PhaseTrackBuilder morphing between named states](./doc/physics_and_phases_bento.gif)
+
 ```dart
 TrackBuilder(
   animations: [
@@ -316,8 +320,6 @@ By default, a track reaches the barrier once the preceding step has settled. Wit
 ### Named phases (`TrackPhaseTimeline` and `PhaseTrackBuilder`)
 
 When an animation moves between named states (like compact, expanded, and focused), `TrackPhaseTimeline` maps each phase to its track animations and automatically inserts sync barriers between phases so every track arrives together.
-
-![Named phases morphing between Mini, Card, and Full states](./doc/phases_showcase.gif)
 
 Drive it with `PhaseTrackBuilder`, either manually via `currentPhase` or automatically via `playing: true`:
 
