@@ -181,6 +181,7 @@ CoilButton(
 
   static String _variantName(CoilButtonVariant variant) => switch (variant) {
     CoilButtonVariant.primary => 'Primary',
+    CoilButtonVariant.accent => 'Accent',
     CoilButtonVariant.secondary => 'Secondary',
     CoilButtonVariant.tertiary => 'Tertiary',
     CoilButtonVariant.ghost => 'Ghost',
@@ -189,6 +190,7 @@ CoilButton(
 
   static String _labelFor(CoilButtonVariant variant) => switch (variant) {
     CoilButtonVariant.primary => 'Publish',
+    CoilButtonVariant.accent => 'Upgrade',
     CoilButtonVariant.secondary => 'Duplicate',
     CoilButtonVariant.tertiary => 'Export',
     CoilButtonVariant.ghost => 'Skip',

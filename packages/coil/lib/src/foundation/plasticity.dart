@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/color_mix.dart';
+import 'package:coil/src/foundation/colors.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -571,6 +573,65 @@ class CoilRelief {
     sheenBottom: sheenBottom ?? this.sheenBottom,
     shadows: shadows ?? this.shadows,
   );
+
+  /// This relief recolored for a saturated [fill], such as the accent
+  /// button's brand: the same light, in the fill's own color.
+  ///
+  /// The recipe lights with white and black at low opacity. Over grey that
+  /// is exact; over a saturated fill, an sRGB blend toward white washes the
+  /// color out (a greyish blue) and one toward black dulls it (a muddy
+  /// yellow or green). Here every layer becomes the opaque color it would
+  /// blend to, kept at that blend's Oklab lightness but with the fill's
+  /// chroma and hue, so the highlights and shades stay as rich as the fill.
+  /// Light shades of yellow-to-green hues also lean warm, toward orange, as
+  /// painted shadows do, instead of turning olive. The drop shadows take the
+  /// fill's hue, deep and dark, instead of grey.
+  ///
+  /// Compose it after hover and press are resolved: it reads the layer
+  /// alphas they set.
+  CoilRelief tintedOver(Color fill) {
+    if (debugNaiveTint || fill.a <= 0) return this;
+    final (:l, :c, :h) = CoilColorMix.toOklch(fill);
+    double lightness(Color color) => CoilColorMix.toOklch(color).l;
+    // The blend's lightness, in the fill's chroma and hue.
+    Color kept(Color layer, Color under) {
+      if (layer.a <= 0) return layer;
+      final blended = Color.alphaBlend(layer, under);
+      final to = lightness(blended);
+      final hue = CoilColors.warmShade(h, l - to);
+      return CoilColorMix.oklch(to, c, hue);
+    }
+
+    final top = Color.alphaBlend(sheenTop, fill);
+    final bottom = Color.alphaBlend(sheenBottom, fill);
+    Color fade(Color opaque, Color layer) =>
+        opaque.withValues(alpha: layer.a <= 0 ? 0 : 1);
+    return CoilRelief(
+      edgeWidth: edgeWidth,
+      edgeTop: fade(kept(edgeTop, top), edgeTop),
+      edgeBottom: fade(kept(edgeBottom, bottom), edgeBottom),
+      rimTop: fade(kept(rimTop, top), rimTop),
+      rimBottom: fade(kept(rimBottom, bottom), rimBottom),
+      sheenTop: fade(kept(sheenTop, fill), sheenTop),
+      sheenBottom: fade(kept(sheenBottom, fill), sheenBottom),
+      shadows: [
+        for (final s in shadows)
+          s.copyWith(
+            color: CoilColorMix.oklch(
+              math.min(l, 0.45),
+              c * 0.9,
+              h,
+              alpha: math.min(1, s.color.a * 1.3),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Prototype switch: [tintedOver] returns the relief untouched, so a
+  /// saturated fill is lit by the plain white and black sRGB blend. For
+  /// comparisons only.
+  static bool debugNaiveTint = false;
 
   /// This relief brighter by [t] (0 to 1): the hover response.
   CoilRelief _brighten(double t) {

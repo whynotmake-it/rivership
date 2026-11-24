@@ -241,6 +241,107 @@ class CoilColors with Diagnosticable {
   /// The one brand color (switch track, focus rings).
   final Color brand;
 
+  /// The accent button's fill: [brand], deepened in Oklch (same hue and
+  /// chroma) only as far as its label needs for 4.5 : 1.
+  ///
+  /// The label ([onBrandFill]) is white or near-black, whichever APCA
+  /// says reads better on the brand: white on a mid blue, orange, green or
+  /// purple, dark on a yellow or lime, which then keep their color. A brand
+  /// that already passes is used as given. In dark, a deep brand
+  /// (navy) is first lifted to Oklch lightness 0.5 so it stands off the
+  /// page.
+  Color get brandFill => _brandTones.fill;
+
+  /// The label and icon color on [brandFill]: white or near-black,
+  /// whichever reads with more APCA contrast on [brand].
+  Color get onBrandFill => _brandTones.label;
+
+  /// [brand] as text or a thin mark on [background] (a link, a cursor, a
+  /// tick): lightened or darkened in Oklch until it reaches 4.5 : 1, hue
+  /// and chroma kept.
+  ///
+  /// A yellow or lime darkened this far would read olive, so it leans warm,
+  /// toward amber, as it darkens.
+  Color get brandInk {
+    final (:l, :c, :h) = CoilColorMix.toOklch(brand);
+    Color at(double lightness) =>
+        CoilColorMix.oklch(lightness, c, warmShade(h, l - lightness));
+    bool passes(Color color) =>
+        CoilColorMix.contrastRatio(color, background) >= 4.5;
+    if (passes(brand)) return brand;
+    final extreme = CoilColorMix.toOklch(background).l > 0.5 ? 0.0 : 1.0;
+    var fails = l;
+    var ok = extreme;
+    for (var i = 0; i < 24; i++) {
+      final mid = (fails + ok) / 2;
+      if (passes(at(mid))) {
+        ok = mid;
+      } else {
+        fails = mid;
+      }
+    }
+    return at(ok);
+  }
+
+  /// [hue] (Oklch degrees) for a shade [darkenedBy] Oklch lightness darker:
+  /// yellow-to-lime hues lean toward orange (60), up to 25 degrees, so a
+  /// dark yellow reads amber rather than olive. Other hues are kept.
+  static double warmShade(double hue, double darkenedBy) {
+    if (darkenedBy <= 0 || hue <= 75 || hue >= 150) return hue;
+    return hue -
+        math.min(25, darkenedBy * 120) * ((150 - hue) / 75).clamp(0, 1);
+  }
+
+  ({Color fill, Color label}) get _brandTones =>
+      _brandTonesCache[(brand, brightness)] ??= _resolveBrandTones(
+        brightness == Brightness.dark ? _lifted(brand) : brand,
+      );
+
+  static final _brandTonesCache =
+      <(Color, Brightness), ({Color fill, Color label})>{};
+
+  /// A deep brand (navy, a dark green) lifted to Oklch lightness 0.5 so it
+  /// still stands off dark surfaces. Lighter brands are kept.
+  static Color _lifted(Color brand) {
+    final (:l, :c, :h) = CoilColorMix.toOklch(brand);
+    return l >= 0.5 ? brand : CoilColorMix.oklch(0.5, c, h, alpha: brand.a);
+  }
+
+  static ({Color fill, Color label}) _resolveBrandTones(Color brand) {
+    const white = Color(0xFFFFFFFF);
+    const ink = Color(0xFF171717);
+    // APCA decides which label reads better on the hue (white on a mid
+    // blue or orange, dark on yellow); the fill then meets coil's 4.5 : 1
+    // text floor, even at the hover tone, which is a little lighter.
+    final label =
+        CoilColorMix.apcaContrast(ink, brand).abs() >=
+            CoilColorMix.apcaContrast(white, brand).abs()
+        ? ink
+        : white;
+    final (:l, :c, :h) = CoilColorMix.toOklch(brand);
+    Color at(double lightness) =>
+        CoilColorMix.oklch(lightness, c, h, alpha: brand.a);
+    bool passes(double lightness) =>
+        CoilColorMix.contrastRatio(label, at(lightness + hoverLift)) >= 4.5;
+    if (passes(l)) return (fill: brand, label: label);
+    // The tone closest to the brand that passes: darker under a white
+    // label, lighter under a dark one.
+    var fails = l;
+    var ok = label == white ? 0.0 : 1.0;
+    for (var i = 0; i < 24; i++) {
+      final mid = (fails + ok) / 2;
+      if (passes(mid)) {
+        ok = mid;
+      } else {
+        fails = mid;
+      }
+    }
+    return (fill: at(ok), label: label);
+  }
+
+  /// How much lighter (Oklch) the accent button is under the pointer.
+  static const hoverLift = 0.03;
+
   /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
   final double borderAlpha;
 

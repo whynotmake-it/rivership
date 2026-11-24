@@ -49,6 +49,14 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
         }),
         WidgetStatePropertyAll<Color?>(c.background),
       ),
+      CoilButtonVariant.accent => (
+        WidgetStateProperty<Color?>.fromMap({
+          held: _shifted(c.brandFill, -0.03),
+          WidgetState.hovered: _shifted(c.brandFill, CoilColors.hoverLift),
+          WidgetState.any: c.brandFill,
+        }),
+        WidgetStatePropertyAll<Color?>(c.onBrandFill),
+      ),
       CoilButtonVariant.secondary => (
         WidgetStateProperty<Color?>.fromMap({
           held: c.tint,
@@ -98,6 +106,14 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
       iconSize: metrics.iconSize,
       minHeight: metrics.controlHeight,
     );
+  }
+
+  /// [color] with its Oklch lightness moved by [by], chroma and hue kept:
+  /// the accent brightens under the pointer and deepens when pressed, so it
+  /// never greys or washes out.
+  static Color _shifted(Color color, double by) {
+    final (:l, :c, :h) = CoilColorMix.toOklch(color);
+    return CoilColorMix.oklch(l + by, c, h, alpha: color.a);
   }
 
   /// The surface color.

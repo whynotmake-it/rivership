@@ -3,6 +3,10 @@ enum CoilButtonVariant {
   /// Solid foreground fill: the one main action.
   primary,
 
+  /// The theme's brand as a solid fill: the one main action, in color.
+  /// Lit like [primary], in the brand's own hue.
+  accent,
+
   /// A see-through tint that takes on the surface beneath it.
   secondary,
 
