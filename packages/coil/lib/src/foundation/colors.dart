@@ -10,9 +10,9 @@ import 'package:flutter/painting.dart';
 /// brand badge).
 enum CoilBrandFill {
   /// The brand, deepened or lightened in Oklch (hue and chroma kept) until
-  /// its label reaches 4.5 : 1, coil's floor for text, measured at the
-  /// slightly lighter hover tone. A brand that already passes is kept. The
-  /// default.
+  /// its label reaches 4.5 : 1, coil's floor for text, also at the button's
+  /// slightly lighter hover and darker pressed tones. A brand that already
+  /// passes is kept. The default.
   accessible,
 
   /// The brand exactly as given, under whichever label (white or
@@ -495,10 +495,11 @@ class CoilColors with Diagnosticable {
   static double _drop(int i) =>
       const [1.0, 3.0, 6.0, 12.0, 24.0, 48.0, 96.0][i - 1];
 
-  /// How much lighter (Oklch lightness) the brand button gets under the
-  /// pointer. [CoilBrandFill.accessible] checks its label at this tone too,
-  /// so hovering never drops it below 4.5 : 1.
-  static const brandHoverLift = 0.03;
+  /// How far (Oklch lightness) the brand button moves from [brandFill]:
+  /// this much lighter under the pointer and this much darker pressed.
+  /// [CoilBrandFill.accessible] checks its label at both tones too, so no
+  /// state drops it below 4.5 : 1.
+  static const brandStateShift = 0.03;
 
   /// [brandFill] and its label for [brand] in [brightness] under [policy],
   /// as [CoilColors.fromSeed] derives them.
@@ -507,9 +508,9 @@ class CoilColors with Diagnosticable {
   /// whichever reads better on the brand by APCA: white on a mid blue,
   /// orange, green or purple, dark on a yellow or lime. [CoilBrandFill.exact]
   /// stops there. [CoilBrandFill.accessible] then moves the fill in Oklch,
-  /// hue and chroma kept, until the label reaches 4.5 : 1 at the hover tone
-  /// ([brandHoverLift] lighter); in dark it first lifts a brand darker than
-  /// Oklch lightness 0.5 to 0.5.
+  /// hue and chroma kept, until the label reaches 4.5 : 1 at the hover and
+  /// pressed tones too ([brandStateShift] lighter and darker); in dark it
+  /// first lifts a brand darker than Oklch lightness 0.5 to 0.5.
   static ({Color fill, Color label}) brandTones(
     Color brand,
     Brightness brightness,
@@ -546,9 +547,10 @@ class CoilColors with Diagnosticable {
     final start = lifted ? at(l) : brand;
     final label = labelFor(start);
     // A hair over 4.5, so the fill still passes once stored in 8 bits.
-    bool passes(double lightness) =>
-        CoilColorMix.contrastRatio(label, at(lightness + brandHoverLift)) >=
-        4.55;
+    bool passes(double lightness) => [
+      lightness - brandStateShift,
+      lightness + brandStateShift,
+    ].every((tone) => CoilColorMix.contrastRatio(label, at(tone)) >= 4.55);
     if (passes(l)) return (fill: start, label: label);
     // The tone closest to the brand that passes: darker under a white
     // label, lighter under a dark one.

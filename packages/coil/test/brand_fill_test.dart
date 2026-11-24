@@ -36,7 +36,7 @@ void main() {
       });
 
       test('an accessible brand fill keeps its label readable, hovered '
-          'too, however the brand is set', () {
+          'and pressed too, however the brand is set', () {
         for (final MapEntry(key: name, value: brand) in _brands.entries) {
           final base = brightness == Brightness.dark
               ? CoilColors.dark
@@ -55,12 +55,12 @@ void main() {
             ('high contrast', exact.highContrast()),
           ]) {
             final (:l, :c, :h) = CoilColorMix.toOklch(colors.brandFill);
-            final hovered = CoilColorMix.oklch(
-              l + CoilColors.brandHoverLift,
-              c,
-              h,
-            );
-            for (final fill in [colors.brandFill, hovered]) {
+            final shift = CoilColors.brandStateShift;
+            for (final fill in [
+              colors.brandFill,
+              CoilColorMix.oklch(l + shift, c, h),
+              CoilColorMix.oklch(l - shift, c, h),
+            ]) {
               expect(
                 _ratio(colors.onBrandFill, fill),
                 greaterThanOrEqualTo(4.5),
