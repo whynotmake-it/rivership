@@ -32,6 +32,9 @@ enum CoilDialogKind {
 /// back and dragging don't close it. The future completes with the value
 /// passed to `Navigator.pop`.
 ///
+/// As a sheet, it takes drags from its content; wrap content that needs its
+/// own (a map, a canvas) in `ExcludeScrollDrag`.
+///
 /// To open a dialog from `Navigator.pages` or a router, show it in a
 /// [CoilModalPage] with the same [CoilDialogKind.presentation].
 Future<T?> showCoilDialog<T>({

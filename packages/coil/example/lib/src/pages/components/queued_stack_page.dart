@@ -77,7 +77,7 @@ class _QueuedStackPageState extends State<QueuedStackPage> {
   CoilQueuedMessage _message(String text) {
     final id = _ids++;
     _texts[id] = text;
-    return CoilQueuedMessage(id: id, semanticLabel: text, child: Text(text));
+    return CoilQueuedMessage(id: id, child: Text(text));
   }
 
   /// The composer queues while a reply streams.

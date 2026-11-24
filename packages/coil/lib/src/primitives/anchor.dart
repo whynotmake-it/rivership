@@ -164,15 +164,13 @@ class CoilPopover extends StatefulWidget {
 }
 
 class _CoilPopoverState extends State<CoilPopover>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   final _portal = OverlayPortalController(debugLabel: 'CoilPopover');
   final _scope = FocusScopeNode(debugLabel: 'CoilPopover');
-  late final _presence = SingleMotionController(
-    motion: const Motion.instant(),
-    vsync: this,
-    velocityTracking: const VelocityTracking.off(),
-    debugLabel: 'CoilPopover.presence',
-  )..addStatusListener(_onStatus);
+
+  /// Created in [initState]: a fixed-rate ticker needs a live context, so it
+  /// can't be created lazily from [dispose].
+  late final SingleMotionController _presence;
 
   bool _open = false;
 
@@ -200,6 +198,12 @@ class _CoilPopoverState extends State<CoilPopover>
   void initState() {
     super.initState();
     widget.controller._state = this;
+    _presence = SingleMotionController(
+      motion: const Motion.instant(),
+      vsync: this,
+      velocityTracking: const VelocityTracking.off(),
+      debugLabel: 'CoilPopover.presence',
+    )..addStatusListener(_onStatus);
   }
 
   @override

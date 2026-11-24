@@ -12,6 +12,12 @@ The widgets here take a Motor `motion` instead. When their value changes
 mid-flight, they head for the new value with the velocity they already have.
 There is no `AnimationController`, `Tween` or curve in this package.
 
+## Installation
+
+```sh
+flutter pub add motor_widgets
+```
+
 ## Flutter widget → Motor widget
 
 | Flutter | Motor widgets | Notes |
@@ -24,9 +30,9 @@ There is no `AnimationController`, `Tween` or curve in this package.
 | `AnimatedRotation` | `MotionRotation` | `turns`, like `AnimatedRotation`. |
 | `AnimatedSlide` | `MotionSlide` | `offset` is a fraction of the child's size. |
 | `AnimatedContainer` | `MotionContainer` | One track per property; see below for what animates. |
-| `AnimatedSize` | `MotionSize` | A render object that springs toward its child's size. |
-| `AnimatedSwitcher` | `MotionSwitcher` | Same `transitionBuilder` and `layoutBuilder`, fed by a presence spring per child. |
-| rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. |
+| `AnimatedSize` | `MotionSize` | A render object that springs toward its child's size when the child's content changes. It snaps when a change in its constraints changes the child's size. |
+| `AnimatedSwitcher` | `MotionSwitcher` | Same `transitionBuilder` and `layoutBuilder`, fed by a presence spring per child. Leaving children are inert. |
+| rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. New children fade in as the width grows. |
 | (none) | `MotionLayoutGroup`, `MotionLayoutItem` | Flies items to their new places when a rebuild moves them. See [Layout groups](#layout-groups). |
 | `Draggable`, `LongPressDraggable` | `MotionDraggable` | The feedback lands with a spring; plain `DragTarget`s work unchanged. `start: .longPress` stands in for `LongPressDraggable`. See [Dragging](#dragging). |
 | `ReorderableListView` | `MotionReorderable` | Tells your builder where a drag would drop, so you can show a gap or a line in any list, grid or sliver. See [Reordering](#reordering). |
@@ -42,11 +48,27 @@ builders, so it shows up by name in `motor_devtools`.
   spring has no reverse leg. The switchers have no `reverseDuration`,
   `switchInCurve` or `switchOutCurve`; `exitMotion` sets the motion of a
   leaving child and defaults to `motion`.
+- **`MotionSize` tells why the child's size changed.** When the child's
+  content changes, the size springs. When a change in the incoming
+  constraints changes the child's size, such as a window being resized, the
+  size snaps at once and drops any spring in flight. A change in the
+  constraints that leaves the child's size alone keeps the spring running.
+  `AnimatedSize` springs in every case. A change of the ambient text scale
+  snaps too.
+- **Leaving children are inert.** In `MotionSwitcher` and
+  `MotionSizeSwitcher`, a leaving child can't be tapped, focused or read by a
+  screen reader. It keeps its state, and is interactive again if its key
+  comes back while it is still leaving. `AnimatedSwitcher` doesn't do this.
 - **`MotionSizeSwitcher` has no `layoutBuilder`.** It lays its children out
   itself.
+- **`MotionSizeSwitcher` fades new children in with the width.** While the
+  size grows in width, the new child is clipped, so it stays nearly
+  transparent until the width has arrived. Leaving children, a shrinking size
+  and growth in height only don't fade.
 - **`MotionSizeSwitcher(immediateResize: true)` doesn't stretch leaving
-  children.** They keep the constraints they had, so wrapping text doesn't
-  reflow while it fades. They sit by `alignment`, clipped to the new size.
+  children.** They are laid out with the switcher's own incoming constraints,
+  so wrapping text doesn't reflow while it fades. They sit by `alignment`,
+  clipped to the new size. A leaving child keeps its state in both modes.
   `AnimatedSizeSwitcher` lays them out at the new size.
 - **`MotionSizeSwitcher.sizeMotion`** gives the size its own spring, for
   example a spatial spring while the children fade on `motion`.

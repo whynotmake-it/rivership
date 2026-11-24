@@ -160,18 +160,16 @@ class CoilTooltipAnchor extends StatefulWidget {
 }
 
 class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   /// When any tooltip last closed, for [CoilTooltipAnchor.skipDelay].
   static Duration? _lastClosed;
   static final _clock = Stopwatch()..start();
 
   final _portal = OverlayPortalController(debugLabel: 'CoilTooltip');
-  late final _presence = SingleMotionController(
-    motion: const Motion.instant(),
-    vsync: this,
-    velocityTracking: const VelocityTracking.off(),
-    debugLabel: 'CoilTooltipAnchor.presence',
-  )..addStatusListener(_onStatus);
+
+  /// Created in [initState]: a fixed-rate ticker needs a live context, so it
+  /// can't be created lazily from [dispose].
+  late final SingleMotionController _presence;
   Timer? _delay;
   bool _shown = false;
 
@@ -185,6 +183,12 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
   @override
   void initState() {
     super.initState();
+    _presence = SingleMotionController(
+      motion: const Motion.instant(),
+      vsync: this,
+      velocityTracking: const VelocityTracking.off(),
+      debugLabel: 'CoilTooltipAnchor.presence',
+    )..addStatusListener(_onStatus);
     widget.presence?.addStatusListener(_onControlledStatus);
     _syncControlled();
   }
@@ -406,15 +410,13 @@ class CoilTooltipAnchorGroup extends StatefulWidget {
 }
 
 class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   final _portal = OverlayPortalController(debugLabel: 'CoilTooltipGroup');
   final _area = GlobalKey(debugLabel: 'CoilTooltipGroup.area');
-  late final _presence = SingleMotionController(
-    motion: const Motion.instant(),
-    vsync: this,
-    velocityTracking: const VelocityTracking.off(),
-    debugLabel: 'CoilTooltipGroup.presence',
-  )..addStatusListener(_onStatus);
+
+  /// Created in [initState]: a fixed-rate ticker needs a live context, so it
+  /// can't be created lazily from [dispose].
+  late final SingleMotionController _presence;
 
   /// The anchor the bubble is on, also while it springs out.
   _CoilTooltipAnchorState? _anchor;
@@ -428,6 +430,17 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
 
   CoilMotion get _tokens =>
       CoilTheme.motionOf(context, override: widget.motion);
+
+  @override
+  void initState() {
+    super.initState();
+    _presence = SingleMotionController(
+      motion: const Motion.instant(),
+      vsync: this,
+      velocityTracking: const VelocityTracking.off(),
+      debugLabel: 'CoilTooltipGroup.presence',
+    )..addStatusListener(_onStatus);
+  }
 
   @override
   void dispose() {

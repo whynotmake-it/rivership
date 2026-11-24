@@ -316,7 +316,6 @@ void main() {
                 messages: const [
                   CoilQueuedMessage(
                     id: 'a',
-                    semanticLabel: 'Ship it',
                     child: Text('Ship it'),
                   ),
                 ],
