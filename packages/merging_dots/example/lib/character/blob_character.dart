@@ -98,12 +98,14 @@ abstract final class BlobCharacter {
   ///
   /// Its states:
   /// - `loading`: three dots hopping in turn.
+  /// - `pulse`, `goo` and `orbit`: other loaders. The dots grow in turn,
+  ///   melt into each other, or circle a ring in 3D.
   /// - `idle`: a face that breathes, blinks and looks around.
   /// - `happy`: hops twice with squinting eyes, then idles.
   /// - `surprised`: pops up with wide eyes, then idles.
   /// - `thinking`: looks up from side to side.
   /// - `sleepy`: eyes shut, breathing slowly.
-  /// - `done`: the eyes stretch into a checkmark.
+  /// - `done`: the eyes stretch into a checkmark that swings in in 3D.
   /// - `error`: the eyes turn into an exclamation mark and it shakes.
   ///
   /// Its eyes invert the body, so they peek out as dots when they look
@@ -176,6 +178,7 @@ abstract final class BlobCharacter {
       Offset bodyOffset = Offset.zero,
       double bodySquash = 1,
       _Lids lids = _Lids.open,
+      Offset turn = Offset.zero,
     }) {
       final r = body.eyeRadius * eyeScale;
       final y = body.eyeY;
@@ -207,8 +210,9 @@ abstract final class BlobCharacter {
           blend: body.blend,
           offset: bodyOffset,
           squash: bodySquash,
+          turn: turn,
         ),
-        eyes: eyes.copyWith(offset: eyes.offset + bodyOffset),
+        eyes: eyes.copyWith(offset: eyes.offset + bodyOffset, turn: turn),
       );
     }
 
@@ -220,6 +224,48 @@ abstract final class BlobCharacter {
         middle: dot(1),
         right: dot(2),
         bodyLayer: const SceneLayer(blend: 7),
+      );
+    }
+
+    // Three dots growing in turn.
+    DotScene pulsePose(int big) {
+      SceneDot dot(int i) => SceneDot(30 + i * 20, 52, big == i ? 10.5 : 6.5);
+      return scene(
+        left: dot(0),
+        middle: dot(1),
+        right: dot(2),
+        bodyLayer: const SceneLayer(blend: 9),
+      );
+    }
+
+    // The middle dot swinging over to melt into each side.
+    DotScene gooPose(double middle) => scene(
+      left: const SceneDot(30, 52, 8),
+      middle: SceneDot(middle, 52, 8),
+      right: const SceneDot(70, 52, 8),
+      bodyLayer: const SceneLayer(blend: 14),
+    );
+
+    // Three dots circling a ring tilted toward the viewer: the front ones
+    // dip and grow, the back ones rise and shrink.
+    const orbitSteps = 12;
+    DotScene orbitPose(int step) {
+      SceneDot dot(int i) {
+        final angle = (step / orbitSteps + i / 3) * 2 * math.pi;
+        final depth = math.sin(angle) * 20;
+        return SceneDot(
+          50 + math.cos(angle) * 20,
+          52,
+          7.5 + math.sin(angle) * 1.5,
+          depth: depth,
+        );
+      }
+
+      return scene(
+        left: dot(0),
+        middle: dot(1),
+        right: dot(2),
+        bodyLayer: const SceneLayer(blend: 8, turn: Offset(0, -0.55)),
       );
     }
 
@@ -239,13 +285,15 @@ abstract final class BlobCharacter {
     DotScene mark(
       (SceneDot, SceneDot) strokes, {
       Offset bodyOffset = Offset.zero,
+      Offset turn = Offset.zero,
     }) {
-      final scene = face(bodyOffset: bodyOffset);
+      final scene = face(bodyOffset: bodyOffset, turn: turn);
       return scene
           .withDot(0, onHead(strokes.$1.copyWith(layer: 1)))
           .withDot(2, onHead(strokes.$2.copyWith(layer: 1)));
     }
 
+    const loaders = ['loading', 'pulse', 'goo', 'orbit'];
     const hop = CupertinoMotion(
       duration: Duration(milliseconds: 380),
       bounce: 0.3,
@@ -269,6 +317,33 @@ abstract final class BlobCharacter {
               hold: const Duration(milliseconds: 120),
             ),
           ], motion: hop),
+        ),
+        'pulse': CharacterState(
+          DotSequence(
+            [for (var i = 0; i < 3; i++) DotKeyframe(pulsePose(i))],
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 320),
+              bounce: 0.35,
+            ),
+          ),
+        ),
+        'goo': CharacterState(
+          DotSequence(
+            [
+              DotKeyframe(gooPose(36), hold: const Duration(milliseconds: 80)),
+              DotKeyframe(gooPose(64), hold: const Duration(milliseconds: 80)),
+            ],
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 620),
+              bounce: 0.2,
+            ),
+          ),
+        ),
+        'orbit': CharacterState(
+          DotSequence([
+            for (var step = 0; step < orbitSteps; step++)
+              DotKeyframe(orbitPose(step)),
+          ], motion: const Motion.linear(Duration(milliseconds: 95))),
         ),
         'idle': CharacterState.pose(
           idle,
@@ -361,14 +436,27 @@ abstract final class BlobCharacter {
         'done': CharacterState(
           DotSequence(
             [
+              // The check swings in from the side in 3D, overshoots and
+              // settles facing the front.
               DotKeyframe(
-                mark(check, bodyOffset: const Offset(0, -5)),
+                mark(
+                  check,
+                  bodyOffset: const Offset(0, -6),
+                  turn: const Offset(-0.75, 0.25),
+                ),
                 motion: const CupertinoMotion(
-                  duration: Duration(milliseconds: 420),
-                  bounce: 0.3,
+                  duration: Duration(milliseconds: 320),
+                  bounce: 0.2,
                 ),
               ),
-              DotKeyframe(mark(check)),
+              DotKeyframe(mark(check, turn: const Offset(0.32, -0.12))),
+              DotKeyframe(
+                mark(check),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 520),
+                  bounce: 0.45,
+                ),
+              ),
             ],
             motion: const CupertinoMotion(
               duration: Duration(milliseconds: 380),
@@ -400,43 +488,53 @@ abstract final class BlobCharacter {
         ),
       },
       transitions: [
-        // Three dots melt into one blob, then the eyes open from its
-        // middle as the next state starts.
-        CharacterTransition(
-          from: 'loading',
-          motion: const CupertinoMotion(
-            duration: Duration(milliseconds: 420),
-            bounce: 0.15,
-          ),
-          via: [
-            DotKeyframe(
-              scene(
-                left: SceneDot(center.dx - 6, center.dy, 12),
-                middle: SceneDot(center.dx, center.dy, body.dots.first.radius),
-                right: SceneDot(center.dx + 6, center.dy, 12),
-                bodyLayer: const SceneLayer(blend: 18),
-              ),
+        // Loaders change into each other directly.
+        for (final from in loaders)
+          for (final to in loaders)
+            if (from != to) CharacterTransition(from: from, to: to, via: []),
+        for (final loader in loaders) ...[
+          // Three dots melt into one blob, then the eyes open from its
+          // middle as the next state starts.
+          CharacterTransition(
+            from: loader,
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 420),
+              bounce: 0.15,
             ),
-          ],
-        ),
-        // The eyes close into the body, which then splits into dots.
-        CharacterTransition(
-          to: 'loading',
-          motion: const CupertinoMotion(
-            duration: Duration(milliseconds: 380),
-            bounce: 0.1,
-          ),
-          via: [
-            DotKeyframe(
-              scene(
-                left: SceneDot(center.dx - 10, center.dy, 13),
-                middle: SceneDot(center.dx, center.dy, 22),
-                right: SceneDot(center.dx + 10, center.dy, 13),
-                bodyLayer: const SceneLayer(blend: 18),
+            via: [
+              DotKeyframe(
+                scene(
+                  left: SceneDot(center.dx - 6, center.dy, 12),
+                  middle: SceneDot(
+                    center.dx,
+                    center.dy,
+                    body.dots.first.radius,
+                  ),
+                  right: SceneDot(center.dx + 6, center.dy, 12),
+                  bodyLayer: const SceneLayer(blend: 18),
+                ),
               ),
+            ],
+          ),
+          // The eyes close into the body, which then splits into dots.
+          CharacterTransition(
+            to: loader,
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 380),
+              bounce: 0.1,
             ),
-          ],
-        ),
+            via: [
+              DotKeyframe(
+                scene(
+                  left: SceneDot(center.dx - 10, center.dy, 13),
+                  middle: SceneDot(center.dx, center.dy, 22),
+                  right: SceneDot(center.dx + 10, center.dy, 13),
+                  bodyLayer: const SceneLayer(blend: 18),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

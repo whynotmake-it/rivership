@@ -24,6 +24,9 @@ class _CharacterPlaygroundState extends State<CharacterPlayground>
     with FixedTickerProviderStateMixin {
   static const _states = {
     'loading': 'Loading',
+    'pulse': 'Pulse',
+    'goo': 'Goo',
+    'orbit': 'Orbit',
     'idle': 'Idle',
     'happy': 'Happy',
     'surprised': 'Surprised',
