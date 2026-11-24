@@ -191,6 +191,51 @@ class Glyph {
     LucideIcons300.mousePointer2,
     LucideIcons400.mousePointer2,
   );
+  static const pause = Glyph(LucideIcons300.pause, LucideIcons400.pause);
+  static const skipBack = Glyph(
+    LucideIcons300.skipBack,
+    LucideIcons400.skipBack,
+  );
+  static const skipForward = Glyph(
+    LucideIcons300.skipForward,
+    LucideIcons400.skipForward,
+  );
+  static const listMusic = Glyph(
+    LucideIcons300.listMusic,
+    LucideIcons400.listMusic,
+  );
+  static const archive = Glyph(
+    LucideIcons300.archive,
+    LucideIcons400.archive,
+  );
+  static const clock = Glyph(LucideIcons300.clock, LucideIcons400.clock);
+  static const truck = Glyph(LucideIcons300.truck, LucideIcons400.truck);
+  static const creditCard = Glyph(
+    LucideIcons300.creditCard,
+    LucideIcons400.creditCard,
+  );
+  static const tag = Glyph(LucideIcons300.tag, LucideIcons400.tag);
+  static const info = Glyph(LucideIcons300.info, LucideIcons400.info);
+  static const circleCheck = Glyph(
+    LucideIcons300.circleCheck,
+    LucideIcons400.circleCheck,
+  );
+  static const triangleAlert = Glyph(
+    LucideIcons300.triangleAlert,
+    LucideIcons400.triangleAlert,
+  );
+  static const circleAlert = Glyph(
+    LucideIcons300.circleAlert,
+    LucideIcons400.circleAlert,
+  );
+  static const refresh = Glyph(
+    LucideIcons300.refreshCw,
+    LucideIcons400.refreshCw,
+  );
+  static const fileText = Glyph(
+    LucideIcons300.fileText,
+    LucideIcons400.fileText,
+  );
 }
 
 /// Draws a [Glyph] styled by the ambient [IconTheme], like [Icon].
