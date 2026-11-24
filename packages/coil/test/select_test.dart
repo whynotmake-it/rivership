@@ -633,13 +633,20 @@ void main() {
       );
     });
 
-    test('anything that needs room is a sheet', () {
+    test('anything else that needs room is a sheet', () {
       expect(rule(items: 9), CoilPresentation.sheet);
-      expect(rule(search: true), CoilPresentation.sheet);
       expect(rule(multi: true, items: 3), CoilPresentation.sheet);
       expect(rule(depth: 2), CoilPresentation.sheet);
-      expect(rule(kind: CoilOverlayKind.combobox), CoilPresentation.sheet);
       expect(rule(kind: CoilOverlayKind.dateTime), CoilPresentation.sheet);
+    });
+
+    test('anything with a search field is a floating panel', () {
+      expect(rule(search: true), CoilPresentation.floating);
+      expect(rule(search: true, items: 30), CoilPresentation.floating);
+      expect(
+        rule(kind: CoilOverlayKind.combobox),
+        CoilPresentation.floating,
+      );
     });
 
     testWidgets('a short select on a phone is an anchored touch popover', (

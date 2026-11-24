@@ -323,7 +323,7 @@ class _SelectCoreState<T> extends State<_SelectCore<T>> {
   }
 
   Widget _buildList(BuildContext context, CoilPopupHandle popup) {
-    final sheet = popup.presentation == CoilPresentation.sheet;
+    final sheet = popup.presentation.usesSheetPanel;
     // The sheet is a touch surface whatever the tier: touch-sized rows.
     final metrics = sheet
         ? CoilTheme.metricsOf(

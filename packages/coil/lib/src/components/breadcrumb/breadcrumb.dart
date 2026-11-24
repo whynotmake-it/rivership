@@ -216,7 +216,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
         content: (context, popup) {
           final theme = CoilTheme.of(context);
           // A sheet is a touch surface whatever the tier.
-          final metrics = popup.presentation == CoilPresentation.sheet
+          final metrics = popup.presentation.usesSheetPanel
               ? theme.metrics.resolve(CoilTier.touch, CoilSize.regular)
               : CoilTheme.metricsOf(context);
           final style = _style(context, metrics);
@@ -243,9 +243,7 @@ class _CoilBreadcrumbState extends State<CoilBreadcrumb> {
               metrics: metrics,
               // The sheet paints its own surface; the popover may take
               // the style's.
-              surface: popup.presentation == CoilPresentation.sheet
-                  ? null
-                  : style.surface,
+              surface: popup.presentation.usesSheetPanel ? null : style.surface,
               scrollbar: scroll.scrollbarLook,
               fadeExtent: scroll.fadeExtent!,
               highlight: style.highlight,
