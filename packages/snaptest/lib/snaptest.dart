@@ -10,12 +10,10 @@ export 'src/snap.dart' show Snap, setTestViewForDevice, snap;
 export 'src/snaptest_settings.dart' show SnaptestSettings;
 export 'src/test_devices_variant.dart' show TestDevicesVariant;
 export 'src/video/ffmpeg_encoder.dart' show SnapVideoException;
+export 'src/video/pointer_overlay.dart' show SnapPointerOverlay;
 export 'src/video/snap_recording.dart' show SnapRecording;
 export 'src/video/snaptest_binding.dart' show SnaptestWidgetsFlutterBinding;
+export 'src/video/video_frame.dart'
+    show SnapPointer, SnapPointerPhase, SnapVideoFrame, SnapVideoOverlayBuilder;
 export 'src/video/video_settings.dart'
-    show
-        PointerIndicatorPainter,
-        SnapVideoSettings,
-        VideoEncoding,
-        VideoFailurePolicy,
-        VideoTiming;
+    show SnapVideoSettings, VideoEncoding, VideoFailurePolicy, VideoTiming;

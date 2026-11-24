@@ -381,7 +381,7 @@ void main() {
                   : Duration.zero,
               timing: VideoTiming.smooth,
               includeDeviceFrame: true,
-              showPointers: true,
+              overlay: SnapPointerOverlay.builder,
               finalHold: const Duration(milliseconds: 400),
             ),
           );
@@ -442,7 +442,7 @@ void main() {
           settings: const SnapVideoSettings(
             frameRate: 24,
             includeDeviceFrame: true,
-            showPointers: true,
+            overlay: SnapPointerOverlay.builder,
             encoding: VideoEncoding.h264(crf: 23),
             finalHold: Duration(milliseconds: 400),
           ),
