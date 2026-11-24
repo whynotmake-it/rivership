@@ -29,11 +29,11 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
       plasticity: theme.plasticity,
       track: WidgetStateProperty<Color?>.fromMap({
         WidgetState.selected & WidgetState.hovered: CoilColorMix.oklab(
-          c.brand,
+          c.brandMark,
           const Color(0xFF000000),
           0.92,
         ),
-        WidgetState.selected: c.brand,
+        WidgetState.selected: c.brandMark,
         WidgetState.hovered: CoilColorMix.oklab(c.accent, c.overlay, 0.9),
         WidgetState.any: c.accent,
       }),

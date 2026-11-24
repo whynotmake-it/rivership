@@ -45,6 +45,7 @@ final _brand = <_Token>[
   ('onBrandFill', (c) => c.onBrandFill),
   ('brandInk', (c) => c.brandInk),
   ('brandWash', (c) => c.brandWash),
+  ('brandMark', (c) => c.brandMark),
   ('red', (c) => c.red),
   ('redLabel', (c) => c.redLabel),
   ('destructive', (c) => c.destructive),

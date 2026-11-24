@@ -1284,8 +1284,8 @@ class _SearchField extends StatelessWidget {
                               .resolve(metrics.tier, metrics.size)
                               .body)
                       .copyWith(color: colors.foreground),
-              cursorColor: theme.brandSelection
-                  ? colors.brand
+              cursorColor: theme.selectsInBrand
+                  ? colors.brandMark
                   : colors.foreground,
               textInputAction: TextInputAction.search,
               autocorrect: false,

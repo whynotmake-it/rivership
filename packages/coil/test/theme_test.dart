@@ -114,10 +114,8 @@ void main() {
       1,
     );
     const violet = Color(0xFF8B5CF6);
-    expect(
-      theme.focusRing.colorOf(theme.colors.copyWith(brand: violet)),
-      violet,
-    );
+    final colors = theme.colors.copyWith(brand: violet);
+    expect(theme.focusRing.colorOf(colors), colors.brandMark);
   });
 
   test('the scrim is a color token: black 20 % in light, 30 % in dark', () {

@@ -57,7 +57,7 @@ void main() {
     }
 
     await tester.pumpWidget(_app(CoilSwitch(value: true, onChanged: (_) {})));
-    expect(trackOf(), CoilThemeData.light.colors.brand);
+    expect(trackOf(), CoilThemeData.light.colors.brandMark);
 
     final themed = CoilThemeData.light.withComponentStyle(
       const CoilSwitchStyle(track: WidgetStatePropertyAll(red)),

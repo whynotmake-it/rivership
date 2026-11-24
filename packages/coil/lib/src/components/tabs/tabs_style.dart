@@ -29,7 +29,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
     final c = theme.colors;
     // With brand selection on, the current tab is marked in the brand: a
     // wash under brand text.
-    final brand = theme.brandSelection;
+    final brand = theme.selectsInBrand;
     return CoilTabsStyle(
       pill: brand ? c.brandWash : c.active,
       // Hover is never colored: it previews a tab in the neutral wash.

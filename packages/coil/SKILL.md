@@ -26,7 +26,7 @@ CoilButton(onPressed: save, child: const Text('Save'))
 Change things here before ejecting. Every layer below wraps a subtree.
 
 - **App-wide:** `CoilTheme(data: CoilThemeData(...), child: app)`. Start from `CoilThemeData.light` or `.dark`.
-- **Colors:** `CoilColors.fromSeed(brightness:, brand:, brandFill:, neutralHue:, neutralChroma:)`. `brand` stays as given; text on the brand sits on `brandFill` under `onBrandFill` (`CoilBrandFill.accessible` by default, `.exact` keeps the raw brand). Selections are monochrome unless `CoilThemeData(brandSelection: true)` (or a nested `CoilTheme.override`) puts the brand on selected tabs, segments, radios and the cursor.
+- **Colors:** `CoilColors.fromSeed(brightness:, brand:, brandFill:, neutralHue:, neutralChroma:)`. `brand` stays as given; text on the brand sits on `brandFill` under `onBrandFill` (`CoilBrandFill.accessible` by default, `.exact` keeps the raw brand). Selections are monochrome unless `CoilThemeData(brandSelection: true)` (or a nested `CoilTheme.override`) puts the brand on selected tabs, segments, radios and the cursor. Marks (focus ring, on switch, radio dot, cursor) use `brandMark`, the brand moved in lightness only as far as 3 : 1 on page, card and dialog surfaces needs, in both themes; a grey brand (chroma under 0.03) keeps the neutral selection.
 - **Shape:** `shape: CoilShape.rounded`, `.pill` or `.sharp`.
 - **Icons:** `icons: CoilIcons(check: Icon(...), close: Icon(...))` swaps coil's drawn glyphs for an icon set everywhere they show; unnamed roles keep coil's. An icon can animate itself from `CoilIconPresence.maybeOf(context)`. See `doc/icons.md`.
 - **Size tier:** `tier: CoilTier.pointer` or `.touch`. By default it follows the platform.

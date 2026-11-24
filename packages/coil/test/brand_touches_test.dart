@@ -84,8 +84,8 @@ void main() {
               expect(off.segmentLabel, colors.foreground, reason: reason);
 
               final on = _selection(theme.copyWith(brandSelection: true));
-              expect(on.dot, brand, reason: reason);
-              expect(on.cursor, brand, reason: reason);
+              expect(on.dot, colors.brandMark, reason: reason);
+              expect(on.cursor, colors.brandMark, reason: reason);
               expect(_isNeutral(on.tabHover), isTrue, reason: reason);
               expect(_isNeutral(on.segmentHover), isTrue, reason: reason);
               if (policy == CoilBrandFill.accessible) {
@@ -193,7 +193,7 @@ void main() {
     expect(out.dot, colors.foreground);
     expect(out.rawTabPill, colors.active);
     expect(out.rawSegment, colors.active);
-    expect(ins.dot, colors.brand);
+    expect(ins.dot, colors.brandMark);
     expect(ins.rawTabPill, colors.brandWash);
     expect(ins.tabLabel, colors.brandInk);
     expect(ins.rawSegment, colors.brandWash);

@@ -108,6 +108,13 @@ class CoilThemeData with Diagnosticable {
   /// ```
   final bool brandSelection;
 
+  /// Whether selected states actually show the brand: [brandSelection] is
+  /// on and the brand has color to show ([CoilColors.brandIsChromatic]). A
+  /// grey brand, such as graphite, keeps the neutral selection, since a grey
+  /// wash under grey text would only lower its contrast. Components read
+  /// this, not [brandSelection].
+  bool get selectsInBrand => brandSelection && colors.brandIsChromatic;
+
   /// The icons components show, by role: an app's own icon set in place of
   /// coil's drawn glyphs. Roles left null keep coil's; a component's own
   /// slot wins over this. Add a partial set with
@@ -523,8 +530,8 @@ class CoilTheme extends StatelessWidget {
           return DefaultTextStyle(
             style: textOf(context).body,
             child: DefaultSelectionStyle(
-              cursorColor: theme.brandSelection
-                  ? theme.colors.brand
+              cursorColor: theme.selectsInBrand
+                  ? theme.colors.brandMark
                   : theme.colors.foreground,
               selectionColor: theme.colors.brand.withValues(alpha: 0.3),
               child: child,
