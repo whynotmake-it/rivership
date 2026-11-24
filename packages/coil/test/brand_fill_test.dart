@@ -55,7 +55,7 @@ void main() {
             ('high contrast', exact.highContrast()),
           ]) {
             final (:l, :c, :h) = CoilColorMix.toOklch(colors.brandFill);
-            final shift = CoilColors.brandStateShift;
+            const shift = CoilColors.brandStateShift;
             for (final fill in [
               colors.brandFill,
               CoilColorMix.oklch(l + shift, c, h),
