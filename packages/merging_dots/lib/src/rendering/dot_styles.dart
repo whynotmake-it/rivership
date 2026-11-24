@@ -232,3 +232,126 @@ class DotCloudStyle {
   @override
   int get hashCode => Object.hash(color, blend);
 }
+
+/// How a layer of a `DotScene` combines with the layers below it.
+enum DotLayerMode {
+  /// Drawn in its color on top.
+  over,
+
+  /// Cuts holes into the layers below, then drawn in its color on top.
+  cut,
+
+  /// Flips the layers below: where it overlaps them it cuts a hole, and
+  /// where it sticks out it is filled like them. An eye that looks past
+  /// the edge of the face peeks out as a dot.
+  invert,
+}
+
+/// How one layer of a `DotScene` is drawn.
+@immutable
+class DotLayerStyle {
+  /// Creates the style of a layer.
+  ///
+  /// With [DotLayerMode.cut] or [DotLayerMode.invert], [edgeBlend] rounds
+  /// the corners where the layer's edge crosses the edges below.
+  const DotLayerStyle({
+    this.color,
+    this.mode = DotLayerMode.over,
+    this.edgeBlend = 4,
+  }) : assert(edgeBlend >= 0, 'edgeBlend must not be negative.');
+
+  /// A layer that cuts holes into the layers below it, filled with
+  /// [color], or see-through without one.
+  const DotLayerStyle.cut({
+    this.color = const Color(0x00000000),
+    this.edgeBlend = 4,
+  }) : mode = DotLayerMode.cut;
+
+  /// A layer that flips the layers below it, see [DotLayerMode.invert].
+  const DotLayerStyle.invert({this.edgeBlend = 4})
+    : mode = DotLayerMode.invert,
+      color = const Color(0x00000000);
+
+  /// Reads a style written by [toJson].
+  factory DotLayerStyle.fromJson(Map<String, Object?> json) => DotLayerStyle(
+    color: json['color'] == null ? null : Color(json['color']! as int),
+    mode: DotLayerMode.values.asNameMap()[json['mode']] ?? DotLayerMode.over,
+    edgeBlend: (json['edgeBlend'] as num? ?? 4).toDouble(),
+  );
+
+  /// The color of the layer. Defaults to the ambient `IconTheme` color for
+  /// [DotLayerMode.over] and to transparent otherwise.
+  final Color? color;
+
+  /// How the layer combines with the layers below it.
+  final DotLayerMode mode;
+
+  /// How round the corners are where the layer's edge crosses the edges
+  /// below it, in canvas units.
+  final double edgeBlend;
+
+  /// A JSON representation, read by [DotLayerStyle.fromJson].
+  Map<String, Object?> toJson() => {
+    if (color case final color?) 'color': color.toARGB32(),
+    if (mode != DotLayerMode.over) 'mode': mode.name,
+    if (mode != DotLayerMode.over) 'edgeBlend': edgeBlend,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is DotLayerStyle &&
+      other.color == color &&
+      other.mode == mode &&
+      other.edgeBlend == edgeBlend;
+
+  @override
+  int get hashCode => Object.hash(color, mode, edgeBlend);
+}
+
+/// How a `DotScene` is drawn: one [DotLayerStyle] per layer, bottom first.
+///
+/// Layers without a style of their own are drawn like the first one.
+@immutable
+class DotSceneStyle {
+  /// Creates a scene style.
+  ///
+  /// [layers] must not be empty.
+  const DotSceneStyle({this.layers = const [DotLayerStyle()]});
+
+  /// A body in [color], defaulting to the ambient `IconTheme` color, with
+  /// a second layer of eyes that invert it: holes inside the body, dots
+  /// where they peek out of it.
+  factory DotSceneStyle.face({Color? color, double edgeBlend = 3}) =>
+      DotSceneStyle(
+        layers: [
+          DotLayerStyle(color: color),
+          DotLayerStyle.invert(edgeBlend: edgeBlend),
+        ],
+      );
+
+  /// Reads a style written by [toJson].
+  factory DotSceneStyle.fromJson(Map<String, Object?> json) => DotSceneStyle(
+    layers: [
+      for (final layer in json['layers']! as List)
+        DotLayerStyle.fromJson(layer as Map<String, Object?>),
+    ],
+  );
+
+  /// The style of each layer.
+  final List<DotLayerStyle> layers;
+
+  /// The style of layer [index].
+  DotLayerStyle layer(int index) => layers[index.clamp(0, layers.length - 1)];
+
+  /// A JSON representation, read by [DotSceneStyle.fromJson].
+  Map<String, Object?> toJson() => {
+    'layers': [for (final layer in layers) layer.toJson()],
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is DotSceneStyle && listEquals(other.layers, layers);
+
+  @override
+  int get hashCode => Object.hashAll(layers);
+}

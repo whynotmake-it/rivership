@@ -1,11 +1,12 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:merging_dots/src/animation/dot_animator.dart';
 import 'package:merging_dots/src/model/dot_cloud.dart';
 import 'package:merging_dots/src/model/dot_grid.dart';
+import 'package:merging_dots/src/model/dot_scene.dart';
 import 'package:merging_dots/src/model/dot_state.dart';
 import 'package:merging_dots/src/rendering/data_texture.dart';
 import 'package:merging_dots/src/rendering/dot_shaders.dart';
@@ -778,4 +779,303 @@ class _CloudLayout {
   final int dotRows;
   final double span;
   final Rect bounds;
+}
+
+/// Adjusts the layers of a [DotScene] every frame, on top of its
+/// animation. A character's idle behaviors, like blinking and looking
+/// around, are modifiers.
+abstract interface class DotSceneModifier implements Listenable {
+  /// Changes the channels of [count] layers in [layers] in place,
+  /// [DotScene.stride] values per layer in the order of
+  /// [DotScene.writeChannels]: opacity, blend, offset x and y, squash and
+  /// scale.
+  ///
+  /// Called whenever the scene paints. Notify listeners to repaint.
+  void modifyLayers(Float32List layers, int count);
+}
+
+/// Renders a [DotScene] from a [DotAnimator] with the scene shader.
+///
+/// The scene's canvas is scaled to fit and centered. Each frame the dots
+/// change, they are uploaded as a small texture, and every shaded pixel
+/// merges each layer's dots, cuts or inverts and composites the layers.
+class RenderDotScene extends RenderDots<DotScene> {
+  /// Creates a render object for a scene drawn with [style].
+  RenderDotScene({
+    required super.animator,
+    required super.devicePixelRatio,
+    required List<Color> colors,
+    required DotSceneStyle style,
+    DotSceneModifier? modifier,
+  }) : _colors = colors,
+       _style = style,
+       _modifier = modifier,
+       super(color: colors.first);
+
+  static const _sceneStride = DotScene.stride;
+
+  List<Color> _colors;
+
+  /// The color of each layer, resolved from the style.
+  List<Color> get colors => _colors;
+  set colors(List<Color> value) {
+    if (listEquals(value, _colors)) return;
+    _colors = value;
+    color = value.first;
+    markNeedsPaint();
+  }
+
+  DotSceneStyle _style;
+
+  /// Whether layers cut and how.
+  DotSceneStyle get style => _style;
+  set style(DotSceneStyle value) {
+    if (value == _style) return;
+    _style = value;
+    markNeedsPaint();
+  }
+
+  DotSceneModifier? _modifier;
+
+  /// Adjusts the layers every frame.
+  DotSceneModifier? get modifier => _modifier;
+  set modifier(DotSceneModifier? value) {
+    if (identical(value, _modifier)) return;
+    if (attached) _modifier?.removeListener(markNeedsPaint);
+    _modifier = value;
+    if (attached) _modifier?.addListener(markNeedsPaint);
+    markNeedsPaint();
+  }
+
+  final _dots = DotDataTexture();
+  final _layers = Float32List(DotScene.maxLayers * _sceneStride);
+  int _dataRevision = -1;
+  Object? _dataKey;
+  (Offset, double, int)? _upload;
+
+  @override
+  ui.FragmentProgram? get program => DotShaders.scene;
+
+  @override
+  Object layoutKey(DotScene target) => target.size;
+
+  @override
+  Size naturalSize(DotScene target) => target.size;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _modifier?.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _modifier?.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  void dispose() {
+    _dots.dispose();
+    super.dispose();
+  }
+
+  /// The scale from the scene's canvas to local coordinates and the local
+  /// position of the canvas' origin.
+  (double, Offset) get transform {
+    final canvasSize = animator.target.size;
+    if (canvasSize.isEmpty) return (1, Offset.zero);
+    final scale = math.min(
+      size.width / canvasSize.width,
+      size.height / canvasSize.height,
+    );
+    return (
+      scale,
+      Offset(
+        (size.width - canvasSize.width * scale) / 2,
+        (size.height - canvasSize.height * scale) / 2,
+      ),
+    );
+  }
+
+  /// Converts [localPosition] to the scene's canvas coordinates.
+  Offset toCanvas(Offset localPosition) {
+    final (scale, origin) = transform;
+    return (localPosition - origin) / scale;
+  }
+
+  int get _layerCount =>
+      math.min(animator.target.layers.length, DotScene.maxLayers);
+
+  /// Uploads the dots in local pixels. Returns their top left corner, the
+  /// span their values are fractions of, and how many there are.
+  (Offset, double, int)? _updateData(double scale, Offset origin) {
+    final key = (scale, origin);
+    if (_dataRevision == animator.revision && _dataKey == key) return _upload;
+    _dataRevision = animator.revision;
+    _dataKey = key;
+
+    final values = animator.values;
+    final layers = _layerCount;
+    final count = math.min(
+      animator.dotCount - layers,
+      DotScene.maxDots,
+    );
+    var left = double.infinity;
+    var top = double.infinity;
+    var right = double.negativeInfinity;
+    var bottom = double.negativeInfinity;
+    var visible = 0;
+    for (var i = 0; i < count; i++) {
+      final o = (layers + i) * _sceneStride;
+      final r = values[o + 2] * scale;
+      if (r <= 0) continue;
+      final x = origin.dx + values[o] * scale;
+      final y = origin.dy + values[o + 1] * scale;
+      left = math.min(left, x - r);
+      top = math.min(top, y - r);
+      right = math.max(right, x + r);
+      bottom = math.max(bottom, y + r);
+      visible++;
+    }
+    if (visible == 0) return _upload = null;
+
+    final span = math.max<double>(math.max(right - left, bottom - top), 1);
+    final data = Uint8List(visible * 3 * 4);
+    int quantize(double v) => (v * 65535).round().clamp(0, 65535);
+    var n = 0;
+    for (var i = 0; i < count; i++) {
+      final o = (layers + i) * _sceneStride;
+      final r = values[o + 2] * scale;
+      if (r <= 0) continue;
+      final x = quantize((origin.dx + values[o] * scale - left) / span);
+      final y = quantize((origin.dy + values[o + 1] * scale - top) / span);
+      final radius = quantize(r / span);
+      final layer = quantize(
+        values[o + 3].clamp(0, layers - 1).toDouble() / 4,
+      );
+      final p = n * 12;
+      data
+        ..[p] = x >> 8
+        ..[p + 1] = x & 0xFF
+        ..[p + 2] = y >> 8
+        ..[p + 3] = 255
+        ..[p + 4] = y & 0xFF
+        ..[p + 5] = radius >> 8
+        ..[p + 6] = radius & 0xFF
+        ..[p + 7] = 255
+        ..[p + 8] = layer >> 8
+        ..[p + 9] = layer & 0xFF
+        ..[p + 10] = 0
+        ..[p + 11] = 255;
+      n++;
+    }
+    _dots.upload(data, visible * 3, 1);
+    return _upload = (Offset(left, top), span, visible);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final (scale, origin) = transform;
+    final layerCount = _layerCount;
+    final values = animator.values;
+    if (animator.dotCount <= layerCount) return;
+
+    _layers
+      ..fillRange(0, _layers.length, 0)
+      ..setRange(0, layerCount * _sceneStride, values);
+    _modifier?.modifyLayers(_layers, layerCount);
+
+    final canvas = context.canvas;
+    final shader = obtainShader();
+    if (shader == null) {
+      _paintFallback(canvas, offset, scale, origin);
+      return;
+    }
+
+    final upload = _updateData(scale, origin);
+    if (upload == null) return;
+    final (dataOrigin, span, count) = upload;
+
+    // Everything a layer can reach: its offset, scale and blend.
+    var reach = 2.0;
+    var grow = 1.0;
+    for (var l = 0; l < layerCount; l++) {
+      final o = l * _sceneStride;
+      reach = math.max(
+        reach,
+        Offset(_layers[o + 2], _layers[o + 3]).distance * scale +
+            _layers[o + 1] * scale * _blendToSmoothing * 3.5 +
+            2,
+      );
+      grow = math.max(grow, math.max(_layers[o + 5], 1));
+    }
+    final bounds = Rect.fromLTWH(
+      dataOrigin.dx,
+      dataOrigin.dy,
+      span,
+      span,
+    ).inflate(reach + span * (grow - 1)).intersect(Offset.zero & size);
+    if (bounds.isEmpty) return;
+
+    shader
+      ..setFloat(0, dataOrigin.dx)
+      ..setFloat(1, dataOrigin.dy)
+      ..setFloat(2, span)
+      ..setFloat(3, count.toDouble())
+      ..setFloat(4, count * 3.0)
+      ..setFloat(5, pixelWidth(canvas))
+      ..setFloat(6, _dots.isRendered ? 1 : 0);
+    for (var l = 0; l < DotScene.maxLayers; l++) {
+      final base = 7 + l * 12;
+      final o = l * _sceneStride;
+      final present = l < layerCount;
+      final layerStyle = _style.layer(l);
+      final color = present ? _colors[math.min(l, _colors.length - 1)] : null;
+      final a = color?.a ?? 0;
+      shader
+        ..setFloat(base, (color?.r ?? 0) * a)
+        ..setFloat(base + 1, (color?.g ?? 0) * a)
+        ..setFloat(base + 2, (color?.b ?? 0) * a)
+        ..setFloat(base + 3, a)
+        ..setFloat(base + 4, present ? _layers[o] : 0)
+        ..setFloat(
+          base + 5,
+          math.max(0, _layers[o + 1]) * scale * _blendToSmoothing,
+        )
+        ..setFloat(base + 6, present ? layerStyle.mode.index.toDouble() : 0)
+        ..setFloat(base + 7, layerStyle.edgeBlend * scale)
+        ..setFloat(base + 8, _layers[o + 2] * scale)
+        ..setFloat(base + 9, _layers[o + 3] * scale)
+        ..setFloat(base + 10, present ? _layers[o + 4] : 1)
+        ..setFloat(base + 11, present ? _layers[o + 5] : 1);
+    }
+    shader.setImageSampler(0, _dots.image!);
+
+    canvas
+      ..save()
+      ..translate(offset.dx, offset.dy)
+      ..drawRect(bounds, Paint()..shader = shader)
+      ..restore();
+  }
+
+  void _paintFallback(
+    Canvas canvas,
+    Offset offset,
+    double scale,
+    Offset origin,
+  ) {
+    final values = animator.values;
+    final layers = _layerCount;
+    final paint = Paint()..color = color;
+    for (var i = layers; i < animator.dotCount; i++) {
+      final o = i * _sceneStride;
+      if (values[o + 2] <= 0 || values[o + 3] >= 0.5) continue;
+      canvas.drawCircle(
+        offset + origin + Offset(values[o], values[o + 1]) * scale,
+        values[o + 2] * scale,
+        paint,
+      );
+    }
+  }
 }

@@ -4,6 +4,7 @@ import 'package:merging_dots/src/animation/dot_sequence.dart';
 import 'package:merging_dots/src/animation/dot_stagger.dart';
 import 'package:merging_dots/src/model/dot_cloud.dart';
 import 'package:merging_dots/src/model/dot_grid.dart';
+import 'package:merging_dots/src/model/dot_scene.dart';
 import 'package:merging_dots/src/model/dot_state.dart';
 import 'package:merging_dots/src/rendering/dot_styles.dart';
 import 'package:merging_dots/src/rendering/render_dots.dart';
@@ -193,6 +194,148 @@ class _DotCloudViewState extends _DotsViewState<DotCloudView, DotCloud> {
       devicePixelRatio: MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
       blend: style.blend,
     );
+  }
+}
+
+/// Shows a [DotScene]: layers of freely placed dots, each merging with its
+/// own blend, where upper layers can cut holes into lower ones.
+///
+/// Give it a new [scene] and dots move, resize and change layers with
+/// [motion], while the layers fade, move, squash and change their blend
+/// along with them. Or play a [DotSequence] with [DotSceneView.sequence].
+///
+/// A [modifier] adjusts the layers every frame on top of that, which is
+/// how a `DotCharacter` blinks and looks around. To show a character, use
+/// `DotCharacterView`.
+///
+/// A scene draws up to [DotScene.maxDots] dots, and every shaded pixel
+/// looks at all of them, so it is meant for small, expressive shapes. Use
+/// a `DotCloudView` for many dots.
+class DotSceneView extends StatefulWidget {
+  /// Shows [scene], animating to it whenever it changes.
+  const DotSceneView({
+    required DotScene this.scene,
+    super.key,
+    this.style = const DotSceneStyle(),
+    this.motion = const CupertinoMotion.smooth(),
+    this.stagger = const DotStagger.none(),
+    this.modifier,
+  }) : sequence = null,
+       playing = true,
+       onFrame = null;
+
+  /// Plays [sequence] while [playing].
+  const DotSceneView.sequence({
+    required DotSequence<DotScene> this.sequence,
+    super.key,
+    this.style = const DotSceneStyle(),
+    this.playing = true,
+    this.onFrame,
+    this.modifier,
+  }) : scene = null,
+       motion = const CupertinoMotion.smooth(),
+       stagger = const DotStagger.none();
+
+  /// The scene to show, or null when playing a [sequence].
+  final DotScene? scene;
+
+  /// The sequence to play, or null when showing a [scene].
+  final DotSequence<DotScene>? sequence;
+
+  /// How the layers are drawn.
+  final DotSceneStyle style;
+
+  /// The motion when [scene] changes.
+  final Motion motion;
+
+  /// The stagger when [scene] changes.
+  final DotStagger stagger;
+
+  /// Whether [sequence] plays. When false, the dots freeze where they are.
+  final bool playing;
+
+  /// Called whenever [sequence] starts moving to a frame.
+  final ValueChanged<int>? onFrame;
+
+  /// Adjusts the layers every frame.
+  final DotSceneModifier? modifier;
+
+  @override
+  State<DotSceneView> createState() => _DotSceneViewState();
+}
+
+class _DotSceneViewState extends _DotsViewState<DotSceneView, DotScene> {
+  @override
+  DotScene? stateOf(DotSceneView widget) => widget.scene;
+  @override
+  DotSequence<DotScene>? sequenceOf(DotSceneView widget) => widget.sequence;
+  @override
+  Motion get motion => widget.motion;
+  @override
+  DotStagger get stagger => widget.stagger;
+  @override
+  bool get playing => widget.playing;
+  @override
+  ValueChanged<int>? get onFrame => widget.onFrame;
+
+  @override
+  Widget build(BuildContext context) => DotSceneRenderer(
+    animator: animator,
+    style: widget.style,
+    modifier: widget.modifier,
+  );
+}
+
+/// Draws the scene of [animator] with [style], adjusted by [modifier].
+///
+/// [DotSceneView] and `DotCharacterView` build on it. Use it directly to
+/// drive a [DotAnimator] yourself.
+class DotSceneRenderer extends LeafRenderObjectWidget {
+  /// Draws the scene of [animator].
+  const DotSceneRenderer({
+    required this.animator,
+    super.key,
+    this.style = const DotSceneStyle(),
+    this.modifier,
+  });
+
+  /// Where the dots come from.
+  final DotAnimator<DotScene> animator;
+
+  /// How the layers are drawn.
+  final DotSceneStyle style;
+
+  /// Adjusts the layers every frame.
+  final DotSceneModifier? modifier;
+
+  List<Color> _colors(BuildContext context) {
+    final fallback = IconTheme.of(context).color ?? const Color(0xFF000000);
+    return [
+      for (var i = 0; i < DotScene.maxLayers; i++)
+        style.layer(i).color ??
+            (style.layer(i).mode == DotLayerMode.over
+                ? fallback
+                : const Color(0x00000000)),
+    ];
+  }
+
+  @override
+  RenderDotScene createRenderObject(BuildContext context) => RenderDotScene(
+    animator: animator,
+    devicePixelRatio: MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
+    colors: _colors(context),
+    style: style,
+    modifier: modifier,
+  );
+
+  @override
+  void updateRenderObject(BuildContext context, RenderDotScene renderObject) {
+    renderObject
+      ..animator = animator
+      ..devicePixelRatio = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1
+      ..colors = _colors(context)
+      ..style = style
+      ..modifier = modifier;
   }
 }
 

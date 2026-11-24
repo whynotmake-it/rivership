@@ -103,6 +103,12 @@ class DotCloud implements DotState {
   };
 
   @override
+  int get channels => DotState.stride;
+
+  @override
+  int get sizeChannel => 2;
+
+  @override
   void writeChannels(Float32List out) {
     for (var i = 0; i < dots.length; i++) {
       final dot = dots[i];

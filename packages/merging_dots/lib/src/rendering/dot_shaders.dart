@@ -25,6 +25,7 @@ abstract final class DotShaders {
   static ui.FragmentProgram? _grid;
   static ui.FragmentProgram? _cloud;
   static ui.FragmentProgram? _tiles;
+  static ui.FragmentProgram? _scene;
   static Future<void>? _loading;
 
   /// The grid program, or null while it loads.
@@ -36,21 +37,27 @@ abstract final class DotShaders {
   /// The tiles program, or null while it loads.
   static ui.FragmentProgram? get tiles => _tiles;
 
+  /// The layered scene program, or null while it loads.
+  static ui.FragmentProgram? get scene => _scene;
+
   /// Whether all programs are ready.
-  static bool get isLoaded => _grid != null && _cloud != null && _tiles != null;
+  static bool get isLoaded =>
+      _grid != null && _cloud != null && _tiles != null && _scene != null;
 
   /// Loads all programs. Completes right away once they are loaded.
   static Future<void> precache() {
     return _loading ??= () async {
       try {
-        final (grid, cloud, tiles) = await (
+        final (grid, cloud, tiles, scene) = await (
           _load('dot_grid'),
           _load('dot_cloud'),
           _load('dot_tiles'),
+          _load('dot_scene'),
         ).wait;
         _grid = grid;
         _cloud = cloud;
         _tiles = tiles;
+        _scene = scene;
       } on Object catch (error, stack) {
         // Leave the circle fallback in place, but tell the developer.
         _loading = null;

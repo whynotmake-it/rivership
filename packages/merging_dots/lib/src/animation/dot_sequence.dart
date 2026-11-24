@@ -3,6 +3,7 @@ import 'package:merging_dots/src/animation/dot_stagger.dart';
 import 'package:merging_dots/src/animation/motion_json.dart';
 import 'package:merging_dots/src/model/dot_cloud.dart';
 import 'package:merging_dots/src/model/dot_grid.dart';
+import 'package:merging_dots/src/model/dot_scene.dart';
 import 'package:merging_dots/src/model/dot_state.dart';
 import 'package:motor/motor.dart';
 
@@ -94,6 +95,10 @@ class DotSequence<T extends DotState> {
   static DotSequence<DotCloud> cloudFromJson(Map<String, Object?> json) =>
       _fromJson(json, DotCloud.fromJson);
 
+  /// Reads a scene sequence written by [toJson].
+  static DotSequence<DotScene> sceneFromJson(Map<String, Object?> json) =>
+      _fromJson(json, DotScene.fromJson);
+
   static DotSequence<S> _fromJson<S extends DotState>(
     Map<String, Object?> json,
     S Function(Map<String, Object?> state) readState,
@@ -163,7 +168,11 @@ class DotSequence<T extends DotState> {
   /// Motions that [MotionJson] can't store are left out, so the frame falls
   /// back to the sequence's motion, or the default spring.
   Map<String, Object?> toJson() => {
-    'kind': T == DotCloud ? 'cloud' : 'grid',
+    'kind': switch (T) {
+      const (DotCloud) => 'cloud',
+      const (DotScene) => 'scene',
+      _ => 'grid',
+    },
     'motion': MotionJson.toJson(motion),
     'stagger': stagger.toJson(),
     'loop': loop.name,
@@ -173,6 +182,7 @@ class DotSequence<T extends DotState> {
           'state': switch (frame.state) {
             final DotGrid grid => grid.toJson(),
             final DotCloud cloud => cloud.toJson(),
+            final DotScene scene => scene.toJson(),
             _ => throw UnsupportedError(
               '${frame.state.runtimeType} has no JSON form.',
             ),

@@ -6,7 +6,6 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:merging_dots/src/animation/dot_sequence.dart';
 import 'package:merging_dots/src/animation/dot_stagger.dart';
-import 'package:merging_dots/src/model/dot_cloud.dart';
 import 'package:merging_dots/src/model/dot_state.dart';
 import 'package:motor/motor.dart';
 
@@ -26,13 +25,14 @@ import 'package:motor/motor.dart';
 class DotAnimator<T extends DotState> extends ChangeNotifier {
   /// Creates an animator showing [initial], ticking with [vsync].
   DotAnimator({required TickerProvider vsync, required T initial})
-    : _target = initial {
+    : _target = initial,
+      _stride = initial.channels {
     _ticker = vsync.createTicker(_tick);
     _resize(initial.dotCount);
     initial.writeChannels(_values);
   }
 
-  static const _stride = DotState.stride;
+  final int _stride;
 
   late final Ticker _ticker;
 
@@ -66,9 +66,14 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
   /// Called when a sequence starts moving to frame `index`.
   ValueChanged<int>? onFrame;
 
-  /// The current channels of every dot, [DotState.stride] per dot.
+  /// Called when a sequence that doesn't loop is over: its last frame was
+  /// reached and held. It may still be settling, and the callback may start
+  /// the next animation right away, keeping its momentum.
+  VoidCallback? onSequenceEnd;
+
+  /// The current channels of every dot, [DotState.channels] per dot.
   ///
-  /// Only the first `dotCount * stride` values are used.
+  /// Only the first `dotCount * channels` values are used.
   Float32List get values => _values;
 
   /// How many dots [values] currently holds.
@@ -181,6 +186,10 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
   }
 
   void _moveTo(T state, Motion motion, DotStagger stagger) {
+    assert(
+      state.channels == _stride,
+      'All states of one animator need the same number of channels.',
+    );
     if (!_target.canAnimateTo(state) || motion.duration == Duration.zero) {
       final sequence = _sequence;
       _jump(state);
@@ -195,7 +204,7 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
     final previousCount = _count;
     final targetCount = state.dotCount;
     final count = math.max(previousCount, targetCount);
-    final sizeChannel = state is DotCloud ? 2 : 0;
+    final sizeChannel = state.sizeChannel;
 
     final from = Float32List(count * _stride)
       ..setRange(0, previousCount * _stride, _values);
@@ -369,6 +378,7 @@ class DotAnimator<T extends DotState> extends ChangeNotifier {
     if (next == null) {
       _sequence = null;
       if (settledAt != null) _ticker.stop();
+      onSequenceEnd?.call();
       return false;
     }
     // Start the next keyframe from where this one stood when it was due to

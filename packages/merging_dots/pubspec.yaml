@@ -27,3 +27,4 @@ flutter:
     - shaders/dot_grid.frag
     - shaders/dot_cloud.frag
     - shaders/dot_tiles.frag
+    - shaders/dot_scene.frag

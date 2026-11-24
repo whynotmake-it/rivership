@@ -1,0 +1,181 @@
+#version 460 core
+
+// Renders up to four layers of freely placed dots, like a character's body
+// with eyes cut out of it.
+//
+// Each layer merges its own dots with its own smoothing. A dot sits between
+// two layers while it moves from one to the other and then counts half on
+// each. A layer that cuts removes its shape from all layers below it with a
+// smooth subtraction; one that inverts flips them, a smooth XOR. Then
+// everything is composited bottom to top.
+
+#include <flutter/runtime_effect.glsl>
+
+precision highp float;
+
+// Top left corner of the dot positions, in local pixels.
+uniform vec2 uOrigin;
+// Positions, radii and layers are stored as fractions of this.
+uniform float uSpan;
+// How many dots uDots holds.
+uniform float uCount;
+// Width of uDots, in texels.
+uniform float uDotsWidth;
+// Width of the anti-aliased edge, in local pixels.
+uniform float uAa;
+// 1 when the data was rendered on the GPU instead of uploaded, which flips
+// it on OpenGL ES.
+uniform float uFlip;
+
+// Per layer:
+// color: premultiplied color.
+// look: opacity, smoothing in pixels, mode (0 over, 1 cut, 2 invert),
+//       smoothing of the edges it makes in the layers below, in pixels.
+// shape: offset in pixels, height scale, radius scale.
+uniform vec4 uColor0;
+uniform vec4 uLook0;
+uniform vec4 uShape0;
+uniform vec4 uColor1;
+uniform vec4 uLook1;
+uniform vec4 uShape1;
+uniform vec4 uColor2;
+uniform vec4 uLook2;
+uniform vec4 uShape2;
+uniform vec4 uColor3;
+uniform vec4 uLook3;
+uniform vec4 uShape3;
+
+// Three texels per dot, as 16 bit fractions of uSpan, or of 4 for the
+// layer: (x high, x low, y high), (y low, radius high, radius low),
+// (layer high, layer low, -).
+uniform sampler2D uDots;
+
+out vec4 fragColor;
+
+#include "smooth_union.glsl"
+
+const int kMaxDots = 64;
+
+vec2 dataUv(float column) {
+  vec2 uv = vec2((column + 0.5) / uDotsWidth, 0.5);
+#ifdef IMPELLER_TARGET_OPENGLES
+  if (uFlip > 0.5) {
+    uv.y = 1.0 - uv.y;
+  }
+#endif
+  return uv;
+}
+
+float unpack(float high, float low) {
+  return (high * 255.0 * 256.0 + low * 255.0) / 65535.0;
+}
+
+// Adds a dot of radius r that belongs to a layer by `share` to that layer.
+SmoothUnion addTo(
+    SmoothUnion u,
+    vec2 p,
+    vec2 center,
+    float r,
+    float share,
+    vec4 look,
+    vec4 shape) {
+  if (share <= 0.0) {
+    return u;
+  }
+  float radius = r * share * shape.w;
+  if (radius <= 0.0) {
+    return u;
+  }
+  vec2 delta = p - center - shape.xy;
+  vec2 radii = vec2(radius, max(radius * shape.z, 0.01));
+  // A cheap distance to an ellipse, exact for circles.
+  vec2 g = delta / (radii * radii);
+  float k0 = length(delta / radii);
+  float k1 = length(g);
+  float d = k1 > 0.0 ? k0 * (k0 - 1.0) / k1 : -min(radii.x, radii.y);
+  vec2 direction = k1 > 0.0 ? g / k1 : vec2(0.0);
+  return smoothUnionAdd(
+      u, d, direction, min(radii.x, radii.y), length(delta), 1e6, look.y);
+}
+
+float smin(float a, float b, float k) {
+  if (k <= 0.0) {
+    return min(a, b);
+  }
+  float h = max(k - abs(a - b), 0.0) / k;
+  return min(a, b) - h * h * k * 0.25;
+}
+
+float smax(float a, float b, float k) {
+  return -smin(-a, -b, k);
+}
+
+// Cuts `shape` out of d, or flips d inside it, as much as its layer does.
+float combine(float d, float shape, vec4 look) {
+  float amount = clamp(look.x, 0.0, 1.0);
+  if (look.z < 0.5 || amount <= 0.0 || shape > 1e3) {
+    return d;
+  }
+  float k = look.w;
+  float result;
+  if (look.z < 1.5) {
+    result = smax(d, -shape, k);
+  } else {
+    // Inside exactly one of the two.
+    result = smax(smin(d, shape, k), -smax(d, shape, k), k);
+  }
+  return mix(d, result, amount);
+}
+
+float coverage(float d, vec4 look) {
+  return clamp(0.5 - d / uAa, 0.0, 1.0) * clamp(look.x, 0.0, 1.0);
+}
+
+void main() {
+  vec2 p = FlutterFragCoord().xy;
+  SmoothUnion u0 = smoothUnionStart();
+  SmoothUnion u1 = smoothUnionStart();
+  SmoothUnion u2 = smoothUnionStart();
+  SmoothUnion u3 = smoothUnionStart();
+
+  for (int n = 0; n < kMaxDots; n++) {
+    if (float(n) >= uCount) {
+      break;
+    }
+    float column = float(n) * 3.0;
+    vec4 a = texture(uDots, dataUv(column));
+    vec4 b = texture(uDots, dataUv(column + 1.0));
+    vec4 c = texture(uDots, dataUv(column + 2.0));
+    vec2 center = uOrigin + vec2(unpack(a.r, a.g), unpack(a.b, b.r)) * uSpan;
+    float r = unpack(b.g, b.b) * uSpan;
+    // Springs overshoot. Near a layer counts as on it, so a dot that
+    // bounces into its new layer doesn't spill into the next one.
+    float layer = unpack(c.r, c.g) * 4.0;
+    layer = floor(layer) + smoothstep(0.2, 0.8, fract(layer));
+    u0 = addTo(u0, p, center, r, 1.0 - abs(layer), uLook0, uShape0);
+    u1 = addTo(u1, p, center, r, 1.0 - abs(layer - 1.0), uLook1, uShape1);
+    u2 = addTo(u2, p, center, r, 1.0 - abs(layer - 2.0), uLook2, uShape2);
+    u3 = addTo(u3, p, center, r, 1.0 - abs(layer - 3.0), uLook3, uShape3);
+  }
+
+  float d0 = smoothUnionDistance(u0, uLook0.y);
+  float d1 = smoothUnionDistance(u1, uLook1.y);
+  float d2 = smoothUnionDistance(u2, uLook2.y);
+  float d3 = smoothUnionDistance(u3, uLook3.y);
+
+  d0 = combine(d0, d1, uLook1);
+  d0 = combine(d0, d2, uLook2);
+  d1 = combine(d1, d2, uLook2);
+  d0 = combine(d0, d3, uLook3);
+  d1 = combine(d1, d3, uLook3);
+  d2 = combine(d2, d3, uLook3);
+
+  vec4 color = uColor0 * coverage(d0, uLook0);
+  float a1 = coverage(d1, uLook1);
+  color = uColor1 * a1 + color * (1.0 - a1 * uColor1.a);
+  float a2 = coverage(d2, uLook2);
+  color = uColor2 * a2 + color * (1.0 - a2 * uColor2.a);
+  float a3 = coverage(d3, uLook3);
+  color = uColor3 * a3 + color * (1.0 - a3 * uColor3.a);
+  fragColor = color;
+}

@@ -263,6 +263,12 @@ class DotGrid implements DotState {
   };
 
   @override
+  int get channels => DotState.stride;
+
+  @override
+  int get sizeChannel => 0;
+
+  @override
   void writeChannels(Float32List out) {
     final offsets = _offsets;
     for (var i = 0; i < dotCount; i++) {
