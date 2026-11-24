@@ -40,9 +40,6 @@ flutter:
   uses-material-design: true
 
   fonts:
-    - family: Archivo
-      fonts:
-        - asset: packages/motor_example/assets/Archivo-VariableFont_wdth,wght.ttf
     - family: JetBrains Mono
       fonts:
         - asset: packages/motor_example/assets/JetBrainsMono-VariableFont_wght.ttf
