@@ -15,14 +15,15 @@ import 'package:motor/motor.dart';
 ///
 /// Everything moves with motor. The dots are driven by one [DotAnimator],
 /// so every change of state starts from wherever the dots are, with their
-/// momentum. Each idle is a pair of motor controllers, one for what it does
-/// and one fading it in and out with the states that have it, layered on
-/// top as a [DotSceneModifier].
+/// momentum. Every idle is a few tracks of one motor [TrackController],
+/// [idleTracks]: what it does, and how much it shows, faded in and out
+/// with the states that have it. They are layered on top as a
+/// [DotSceneModifier].
 ///
-/// All of them tick with the `vsync` it is given, which must be able to
-/// create several tickers. Use motor's `FixedTickerProviderStateMixin` to
-/// run the whole character at a lower frame rate under a `TickerRateScope`,
-/// like `DotCharacterView` does.
+/// The dots and the idles tick with the `vsync` it is given, which must be
+/// able to create two tickers. Use motor's `FixedTickerProviderStateMixin`
+/// to run the whole character at a lower frame rate under a
+/// `TickerRateScope`, like `DotCharacterView` does.
 ///
 /// `DotCharacterView` creates a controller for you. Create your own to call
 /// [lookAt] or [blink], or to listen to [state].
@@ -37,11 +38,15 @@ class DotCharacterController extends ChangeNotifier
     required DotCharacter character,
     String? initialState,
     int? seed,
-  }) : _vsync = vsync,
-       _character = character,
+  }) : _character = character,
        _state = initialState ?? character.initial,
        _random = math.Random(seed) {
     final state = character.state(_state);
+    idleTracks = TrackController(
+      vsync: vsync,
+      velocityTracking: const VelocityTracking.off(),
+      debugLabel: 'idles',
+    )..addListener(notifyListeners);
     animator =
         DotAnimator<DotScene>(
             vsync: vsync,
@@ -52,8 +57,10 @@ class DotCharacterController extends ChangeNotifier
     _playState();
   }
 
-  final TickerProvider _vsync;
   final math.Random _random;
+
+  /// Plays every idle, each as a few tracks.
+  late final TrackController idleTracks;
 
   /// Drives the dots. Its listeners hear about every frame.
   late final DotAnimator<DotScene> animator;
@@ -157,27 +164,25 @@ class DotCharacterController extends ChangeNotifier
         continue;
       }
       runner.fadeTo(0).then((_) {
-        if (_disposed || runner.weight.value > 0) return;
+        if (_disposed || runner.weight > 0) return;
         _idles.remove(runner);
-        runner
-          ..removeListener(notifyListeners)
-          ..dispose();
+        runner.stop();
       });
     }
     for (final idle in idles) {
       if (_idles.any((runner) => runner.idle == idle)) continue;
-      final runner = _IdleRunner.of(idle, _vsync, _random)
-        ..addListener(notifyListeners)
-        ..start(_lookTarget);
+      final runner = _IdleRunner.of(idle, idleTracks, _random, this);
       _idles.add(runner);
-      runner.fadeTo(1);
+      runner
+        ..start(_lookTarget)
+        ..fadeTo(1);
     }
   }
 
   @override
   void modifyLayers(Float32List layers, int count) {
     for (final runner in _idles) {
-      final weight = runner.weight.value;
+      final weight = runner.weight;
       if (weight <= 0) continue;
       runner.apply(layers, count, weight);
     }
@@ -186,10 +191,8 @@ class DotCharacterController extends ChangeNotifier
   @override
   void dispose() {
     _disposed = true;
-    for (final runner in _idles) {
-      runner.dispose();
-    }
     _idles.clear();
+    idleTracks.dispose();
     animator.dispose();
     super.dispose();
   }
@@ -202,85 +205,88 @@ const _stride = DotScene.stride;
 Duration _around(math.Random random, Duration interval) =>
     interval * (0.5 + random.nextDouble());
 
-/// Keeps one [DotIdle] going with motor controllers.
+/// Keeps one [DotIdle] going with tracks of a shared [TrackController].
 abstract class _IdleRunner {
-  _IdleRunner(this.idle, TickerProvider vsync)
-    : weight = SingleMotionController(
-        motion: const CupertinoMotion(duration: Duration(milliseconds: 450)),
-        vsync: vsync,
-      );
+  _IdleRunner(this.idle, this.tracks, this.owner);
 
   factory _IdleRunner.of(
     DotIdle idle,
-    TickerProvider vsync,
+    TrackController tracks,
     math.Random random,
+    DotCharacterController owner,
   ) => switch (idle) {
-    BreatheIdle() => _WaveRunner(idle, vsync, idle.period),
-    BobIdle() => _WaveRunner(idle, vsync, idle.period),
-    BlinkIdle() => _BlinkRunner(idle, vsync, random),
-    LookAroundIdle() => _LookRunner(idle, vsync, random),
+    BreatheIdle() => _WaveRunner(idle, tracks, owner, idle.period),
+    BobIdle() => _WaveRunner(idle, tracks, owner, idle.period),
+    BlinkIdle() => _BlinkRunner(idle, tracks, owner, random),
+    LookAroundIdle() => _LookRunner(idle, tracks, owner, random),
   };
 
+  static const _fade = CupertinoMotion(duration: Duration(milliseconds: 450));
+
   final DotIdle idle;
+  final TrackController tracks;
+  final DotCharacterController owner;
 
   /// How much the idle shows, faded in and out with its states.
-  final SingleMotionController weight;
+  final _weight = Track<double>(MotionConverter.single, initial: 0);
 
-  /// The controllers that move the idle.
-  List<Listenable> get controllers;
+  /// The tracks that move the idle.
+  List<Track> get moving;
 
-  late final Listenable _all = Listenable.merge([weight, ...controllers]);
+  double get weight => tracks.value(_weight);
 
-  void addListener(VoidCallback listener) => _all.addListener(listener);
+  /// Whether chained steps should go on.
+  bool get alive => !owner._disposed && owner._idles.contains(this);
 
-  void removeListener(VoidCallback listener) => _all.removeListener(listener);
-
-  MotionFuture fadeTo(double target) => weight.animateTo(target);
+  MotionFuture fadeTo(double target) => tracks.animate([
+    _weight([TrackStep.to(target, motion: _fade)]),
+  ]);
 
   void start(Offset? lookTarget);
 
   void apply(Float32List layers, int count, double weight);
 
-  @mustCallSuper
-  void dispose() => weight.dispose();
+  void stop() => tracks.stop(tracks: [_weight, ...moving], canceled: true);
 }
 
 /// Swings between -1 and 1 like a sine for [BreatheIdle] and [BobIdle].
 class _WaveRunner extends _IdleRunner {
-  _WaveRunner(super.idle, super.vsync, this.period)
-    : wave = SingleMotionController(
-        motion: const CupertinoMotion.smooth(),
-        vsync: vsync,
-      );
+  _WaveRunner(super.idle, super.tracks, super.owner, this.period);
 
   final Duration period;
-  final SingleMotionController wave;
+  final _wave = Track<double>(MotionConverter.single, initial: 0);
 
   @override
-  List<Listenable> get controllers => [wave];
+  List<Track> get moving => [_wave];
 
   @override
   void start(Offset? lookTarget) {
-    // A quarter swing up from the middle, then half swings back and forth.
+    // A quarter swing up from the middle, then half swings down and back
+    // up, ending where the loop starts.
     final half = CurvedMotion(period ~/ 2, Curves.easeInOutSine);
-    wave
-        .play([
-          TrackStep.to(
-            1,
-            motion: CurvedMotion(period ~/ 4, Curves.easeOutSine),
-          ),
+    tracks
+        .animate([
+          _wave([
+            TrackStep.to(
+              1,
+              motion: CurvedMotion(period ~/ 4, Curves.easeOutSine),
+            ),
+          ]),
         ])
-        .then(
-          (_) => wave.play([
-            TrackStep.to(-1, motion: half),
-            TrackStep.to(1, motion: half),
-          ], loop: LoopMode.loop),
-        );
+        .then((_) {
+          if (!alive) return;
+          tracks.animate([
+            _wave([
+              TrackStep.to(-1, motion: half),
+              TrackStep.to(1, motion: half),
+            ]),
+          ], loop: LoopMode.seamless);
+        });
   }
 
   @override
   void apply(Float32List layers, int count, double weight) {
-    final swing = wave.value * weight;
+    final swing = tracks.value(_wave) * weight;
     switch (idle) {
       case BreatheIdle(layers: final breathing, :final amount):
         for (final layer in breathing) {
@@ -294,21 +300,11 @@ class _WaveRunner extends _IdleRunner {
       default:
     }
   }
-
-  @override
-  void dispose() {
-    wave.dispose();
-    super.dispose();
-  }
 }
 
 /// Shuts a layer now and then, sometimes twice.
 class _BlinkRunner extends _IdleRunner {
-  _BlinkRunner(BlinkIdle super.idle, super.vsync, this.random)
-    : shut = SingleMotionController(
-        motion: const CupertinoMotion.smooth(),
-        vsync: vsync,
-      );
+  _BlinkRunner(super.idle, super.tracks, super.owner, this.random);
 
   static const _close = CurvedMotion(
     Duration(milliseconds: 70),
@@ -322,12 +318,12 @@ class _BlinkRunner extends _IdleRunner {
   final math.Random random;
 
   /// 0 when open, 1 when shut.
-  final SingleMotionController shut;
+  final _shut = Track<double>(MotionConverter.single, initial: 0);
 
   BlinkIdle get _idle => idle as BlinkIdle;
 
   @override
-  List<Listenable> get controllers => [shut];
+  List<Track> get moving => [_shut];
 
   @override
   void start(Offset? lookTarget) => _next();
@@ -338,52 +334,44 @@ class _BlinkRunner extends _IdleRunner {
   ];
 
   void _next() {
+    if (!alive) return;
     final twice = random.nextDouble() < 0.2;
-    shut
-        .play([
-          TrackStep.hold(_around(random, _idle.interval)),
-          ..._blink,
-          if (twice) ...[
-            const TrackStep.hold(Duration(milliseconds: 80)),
+    tracks
+        .animate([
+          _shut([
+            TrackStep.hold(_around(random, _idle.interval)),
             ..._blink,
-          ],
+            if (twice) ...[
+              const TrackStep.hold(Duration(milliseconds: 80)),
+              ..._blink,
+            ],
+          ]),
         ])
         .then((_) => _next());
   }
 
-  void blinkNow() => shut.play(_blink).then((_) => _next());
+  void blinkNow() => tracks.animate([_shut(_blink)]).then((_) => _next());
 
   @override
   void apply(Float32List layers, int count, double weight) {
     final layer = _idle.layer;
     if (layer >= count) return;
-    layers[layer * _stride + 4] *= 1 - (1 - _idle.closed) * shut.value * weight;
-  }
-
-  @override
-  void dispose() {
-    shut.dispose();
-    super.dispose();
+    final shut = tracks.value(_shut);
+    layers[layer * _stride + 4] *= 1 - (1 - _idle.closed) * shut * weight;
   }
 }
 
 /// Moves layers to a new spot now and then, or where they are told to look.
 class _LookRunner extends _IdleRunner {
-  _LookRunner(LookAroundIdle super.idle, super.vsync, this.random)
-    : gaze = MotionController<Offset>(
-        motion: idle.motion,
-        vsync: vsync,
-        converter: MotionConverter.offset,
-        initialValue: Offset.zero,
-      );
+  _LookRunner(super.idle, super.tracks, super.owner, this.random);
 
   final math.Random random;
-  final MotionController<Offset> gaze;
+  final _gaze = Track<Offset>(MotionConverter.offset, initial: Offset.zero);
 
   LookAroundIdle get _idle => idle as LookAroundIdle;
 
   @override
-  List<Listenable> get controllers => [gaze];
+  List<Track> get moving => [_gaze];
 
   @override
   void start(Offset? lookTarget) => lookAt(lookTarget);
@@ -394,15 +382,21 @@ class _LookRunner extends _IdleRunner {
       return;
     }
     final range = _idle.range;
-    gaze.animateTo(
-      Offset(
-        direction.dx.clamp(-1, 1) * range.dx,
-        direction.dy.clamp(-1, 1) * range.dy,
-      ),
-    );
+    tracks.animate([
+      _gaze([
+        TrackStep.to(
+          Offset(
+            direction.dx.clamp(-1, 1) * range.dx,
+            direction.dy.clamp(-1, 1) * range.dy,
+          ),
+          motion: _idle.motion,
+        ),
+      ]),
+    ]);
   }
 
   void _wander() {
+    if (!alive) return;
     final range = _idle.range;
     final Offset spot;
     if (random.nextDouble() < 0.3) {
@@ -415,27 +409,23 @@ class _LookRunner extends _IdleRunner {
         math.sin(angle) * distance * range.dy,
       );
     }
-    gaze
-        .play([
-          TrackStep.hold(_around(random, _idle.interval)),
-          TrackStep.to(spot),
+    tracks
+        .animate([
+          _gaze([
+            TrackStep.hold(_around(random, _idle.interval)),
+            TrackStep.to(spot, motion: _idle.motion),
+          ]),
         ])
         .then((_) => _wander());
   }
 
   @override
   void apply(Float32List layers, int count, double weight) {
-    final offset = gaze.value * weight;
+    final offset = tracks.value(_gaze) * weight;
     for (final layer in _idle.layers) {
       if (layer >= count) continue;
       layers[layer * _stride + 2] += offset.dx;
       layers[layer * _stride + 3] += offset.dy;
     }
-  }
-
-  @override
-  void dispose() {
-    gaze.dispose();
-    super.dispose();
   }
 }

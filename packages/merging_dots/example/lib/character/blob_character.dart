@@ -108,7 +108,7 @@ abstract final class BlobCharacter {
     const center = Offset(50, 52);
     // Dots 0 and 2 are the outer loading dots and the eyes, dot 1 the
     // middle loading dot and the body, then the rest of the body and the
-    // two eyelids.
+    // eyelids: two upper ones, then two lower ones.
     DotScene scene({
       required SceneDot left,
       required SceneDot middle,
@@ -131,10 +131,9 @@ abstract final class BlobCharacter {
         for (var i = 0; i < _bodySlots - 1; i++)
           if (i < rest.length) rest[i] else SceneDot(center.dx, center.dy, 0),
         ...?lids,
-        if (lids == null) ...[
-          SceneDot(left.x, left.y, 0, layer: 2),
-          SceneDot(right.x, right.y, 0, layer: 2),
-        ],
+        if (lids == null)
+          for (var i = 0; i < 4; i++)
+            SceneDot(i.isEven ? left.x : right.x, left.y, 0, layer: 2),
       ],
     );
 
@@ -149,19 +148,27 @@ abstract final class BlobCharacter {
       final y = body.eyeY;
       // Larger eyes move apart, so they don't melt into each other.
       final gap = body.eyeGap + (r - body.eyeRadius);
-      SceneDot lid(double x) => switch (lids) {
-        _Lids.open => SceneDot(x, y, 0, layer: 2),
-        // Covers the lower half: the eye smiles as an arc.
-        _Lids.happy => SceneDot(x, y + r * 0.95, r * 1.15, layer: 2),
-        // A flat lid over the upper half: the eye droops.
-        _Lids.sleepy => SceneDot(x, y - r * 0.5, r * 1.3, layer: 2),
-      };
+      // Open lids rest just outside the eyes, so they slide over them
+      // from above or below instead of growing out of their middle.
+      SceneDot upper(double x) => lids == _Lids.sleepy
+          // A flat lid over the upper half: the eye droops.
+          ? SceneDot(x, y - r * 0.5, r * 1.3, layer: 2)
+          : SceneDot(x, y - r * 1.4, 0, layer: 2);
+      SceneDot lower(double x) => lids == _Lids.happy
+          // Covers the lower half: the eye smiles as an arc.
+          ? SceneDot(x, y + r * 0.95, r * 1.15, layer: 2)
+          : SceneDot(x, y + r * 1.4, 0, layer: 2);
       return scene(
         left: SceneDot(50 - gap, y, r, layer: 1),
         middle: body.dots.first,
         right: SceneDot(50 + gap, y, r, layer: 1),
         rest: body.dots.sublist(1),
-        lids: [lid(50 - gap), lid(50 + gap)],
+        lids: [
+          upper(50 - gap),
+          upper(50 + gap),
+          lower(50 - gap),
+          lower(50 + gap),
+        ],
         lidSquash: lids == _Lids.sleepy ? 0.5 : 1,
         bodyLayer: SceneLayer(
           blend: body.blend,
