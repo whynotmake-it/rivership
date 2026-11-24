@@ -24,15 +24,17 @@ class ScrollAreaPage extends StatelessWidget {
         child: SizedBox(
           height: 200,
           child: CoilScrollArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 1; i <= 30; i++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Item $i'),
-                  ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 1; i <= 30; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text('Item $i'),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

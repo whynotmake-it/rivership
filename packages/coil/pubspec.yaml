@@ -17,6 +17,7 @@ environment:
 dependencies:
   corner_radius_plugin: ^1.0.0
   cupertino_ui: ^1.1.6
+  fixed_ticker: ^0.2.0
   flutter:
     sdk: flutter
   material_ui: ^1.11.0
