@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
 import 'package:snaptest/src/capture.dart';
+import 'package:snaptest/src/video/overlay_renderer.dart';
 
 void main() {
   for (final background in [
@@ -33,14 +34,12 @@ void main() {
               final capture = VideoFrameCapture(
                 SnapVideoSettings(
                   includeDeviceFrame: framed,
-                  showPointers: true,
                   backgroundColor: background,
                 ),
                 crop,
               );
               addTearDown(capture.dispose);
               final element = tester.element(find.byType(View));
-              const pointers = [Offset(30, 20), Offset(80, 60)];
               final result = await tester.runAsync(() async {
                 final captured = await captureElementImage(
                   element,
@@ -48,11 +47,7 @@ void main() {
                   orientation: orientation,
                   includeDeviceFrame: framed,
                 );
-                var legacy = await drawPointerIndicators(
-                  captured.image,
-                  captured,
-                  pointers,
-                );
+                var legacy = captured.image;
                 if (crop != null) {
                   legacy = await cropCapturedImage(legacy, crop, captured);
                 }
@@ -61,7 +56,6 @@ void main() {
                   element,
                   device: device,
                   orientation: orientation,
-                  pointers: pointers,
                 ))!;
                 final oldPixels = await _pixels(legacy);
                 final newPixels = await _pixels(image);
@@ -101,19 +95,24 @@ void main() {
     expect(result!.$1, orderedEquals(result.$2));
   });
 
-  testWidgets('retains static pixels, but invalidates on paint and pointers', (
+  testWidgets('retains static pixels, but invalidates on paint and overlays', (
     tester,
   ) async {
     await tester.pumpWidget(const _Scene());
     final capture = VideoFrameCapture(const SnapVideoSettings(), null);
     addTearDown(capture.dispose);
-    Future<bool?> take([List<Offset> pointers = const []]) =>
+    final overlay = OverlayImage(
+      (await tester.runAsync(() => _solid(const Size(8, 8))))!,
+      const Rect.fromLTWH(30, 20, 8, 8),
+    );
+    addTearDown(overlay.dispose);
+    Future<bool?> take([OverlayImage? overlayImage]) =>
         tester.runAsync(() async {
           final image = await capture.capture(
             tester.element(find.byType(View)),
             device: null,
             orientation: Orientation.portrait,
-            pointers: pointers,
+            overlay: overlayImage,
           );
           final changed = image != null;
           image?.dispose();
@@ -121,7 +120,7 @@ void main() {
         });
     expect(await take(), isTrue);
     expect(await take(), isFalse);
-    expect(await take(const [Offset(30, 20)]), isTrue);
+    expect(await take(overlay), isTrue);
     expect(await take(), isTrue);
     await tester.pumpWidget(const _Scene(color: Colors.blue));
     expect(await take(), isTrue);
@@ -146,7 +145,6 @@ void main() {
         tester.element(find.byType(View)),
         device: device,
         orientation: Orientation.portrait,
-        pointers: [],
       );
       return image == null ? null : _pixels(image);
     });
@@ -156,7 +154,7 @@ void main() {
     expect(await take(), isNot(orderedEquals(before!)));
   });
 
-  testWidgets('does not reuse texture pixels or custom pointer painting', (
+  testWidgets('does not reuse texture pixels', (
     tester,
   ) async {
     await tester.pumpWidget(const Texture(textureId: 123));
@@ -168,42 +166,17 @@ void main() {
         element,
         device: null,
         orientation: Orientation.portrait,
-        pointers: [],
       );
       first?.dispose();
       final second = await capture.capture(
         element,
         device: null,
         orientation: Orientation.portrait,
-        pointers: [],
       );
       second?.dispose();
       return second != null;
     });
     expect(textures, isTrue);
-    await tester.pumpWidget(const _Scene());
-    var paints = 0;
-    final custom = VideoFrameCapture(
-      SnapVideoSettings(
-        pointerIndicator: (canvas, center, scale) {
-          paints++;
-        },
-      ),
-      null,
-    );
-    addTearDown(custom.dispose);
-    await tester.runAsync(() async {
-      for (var i = 0; i < 2; i++) {
-        final image = await custom.capture(
-          tester.element(find.byType(View)),
-          device: null,
-          orientation: Orientation.portrait,
-          pointers: [const Offset(30, 20)],
-        );
-        image?.dispose();
-      }
-    });
-    expect(paints, 2);
   });
 
   testWidgets('detects composited transforms without repainting the child', (
@@ -226,7 +199,6 @@ void main() {
         tester.element(find.byType(View)),
         device: null,
         orientation: Orientation.portrait,
-        pointers: [],
       );
       return image == null ? null : _pixels(image);
     });
@@ -303,4 +275,13 @@ class _FramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FramePainter oldDelegate) => false;
+}
+
+Future<ui.Image> _solid(Size size) {
+  final recorder = ui.PictureRecorder();
+  Canvas(recorder).drawRect(Offset.zero & size, Paint()..color = Colors.red);
+  final picture = recorder.endRecording();
+  return picture
+      .toImage(size.width.round(), size.height.round())
+      .whenComplete(picture.dispose);
 }

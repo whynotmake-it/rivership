@@ -57,35 +57,11 @@ class SnaptestWidgetsFlutterBinding extends AutomatedTestWidgetsFlutterBinding {
   @internal
   int drawnFrameCount = 0;
 
-  /// Positions of currently-down pointers, in logical view coordinates.
-  ///
-  /// Maintained while a recording with `SnapVideoSettings.showPointers` is
-  /// active; [SnapRecording] reads it to composite touch indicators.
-  @internal
-  final Map<int, Offset> activePointerPositions = {};
-
   @override
   void handlePointerEvent(PointerEvent event) {
     final recording = activeRecording;
-    final tracking =
-        recording != null &&
-        (recording.settings.showPointers ||
-            recording.settings.pointerIndicator != null);
-    if (tracking && recording.isCapturing) {
-      if (event is PointerDownEvent || event is PointerMoveEvent) {
-        activePointerPositions[event.pointer] = event.position;
-      } else if (event is PointerUpEvent || event is PointerCancelEvent) {
-        if (activePointerPositions.remove(event.pointer) != null) {
-          // The indicator is gone but nothing repaints on release, so the
-          // last captured frame would keep showing it. Flag a re-capture;
-          // the next captured frame or the finalizer records the state.
-          if (recording.settings.minimumPointerDuration == Duration.zero) {
-            recording.markPointerStateChanged();
-          }
-        }
-      }
-    }
-    if (tracking && recording.isCapturing) {
+    if (recording != null && recording.isCapturing) {
+      // Only records the event for the overlay; dispatch is unchanged.
       recording.trackPointerEvent(event);
     }
     super.handlePointerEvent(event);
@@ -148,7 +124,6 @@ class SnaptestWidgetsFlutterBinding extends AutomatedTestWidgetsFlutterBinding {
     // timed-out or uncaught failure. Encoding is never triggered here.
     activeRecording?.freeze();
     activeRecording = null;
-    activePointerPositions.clear();
     super.postTest();
   }
 
