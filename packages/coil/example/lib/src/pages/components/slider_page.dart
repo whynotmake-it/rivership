@@ -1,6 +1,7 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const sliderEntry = CatalogEntry(
@@ -8,8 +9,8 @@ const sliderEntry = CatalogEntry(
   title: 'Slider',
   group: CatalogGroup.groupedControls,
   summary:
-      'One value or a range: scrubber, pips or pill, steps, typed values '
-      'and tooltips. Drags never coast.',
+      'Sets a value or a range by tapping or dragging, with optional steps '
+      'and a typed value.',
   page: SliderPage.new,
 );
 
@@ -20,38 +21,235 @@ class SliderPage extends StatefulWidget {
   State<SliderPage> createState() => _SliderPageState();
 }
 
+enum _Style {
+  scrubber('Scrubber', CoilSliderVariant.scrubber),
+  pill('Pill', CoilSliderVariant.pill),
+  pips('Pips', CoilSliderVariant.pips),
+  pillPips('Pill pips', CoilSliderVariant.pillPips);
+
+  const _Style(this.label, this.variant);
+
+  final String label;
+  final CoilSliderVariant variant;
+}
+
+enum _Display {
+  text('Text', CoilSliderValueDisplay.text),
+  editable('Editable', CoilSliderValueDisplay.editable),
+  tooltip('Tooltip', CoilSliderValueDisplay.tooltip);
+
+  const _Display(this.label, this.display);
+
+  final String label;
+  final CoilSliderValueDisplay display;
+}
+
 class _SliderPageState extends State<SliderPage> {
-  var _volume = 0.6;
-  var _quality = 3.0;
-  var _brightness = 0.4;
-  var _price = 120.0;
-  var _compact = 0.5;
-  var _range = const CoilRangeValues(80, 320);
-  var _rating = 0.7;
-  var _opacity = 0.75;
-  var _tooltip = 0.3;
-  var _tooltipRange = const CoilRangeValues(.2, .6);
+  var _style = _Style.scrubber;
+  var _display = _Display.text;
+  var _compact = false;
+  var _disabled = false;
+  var _opacity = 60.0;
 
-  static const _ratings = [0.1, 0.5, 0.7, 1.1, 1.3];
-
-  static String _percent(double v) => '${(v * 100).round()} %';
-
-  static String _qualityName(double v) =>
-      const ['Draft', 'Low', 'Medium', 'High', 'Best'][v.round() - 1];
+  var _pips = false;
+  var _rangeDisplay = _Display.text;
+  var _price = const CoilRangeValues(80, 320);
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'Slider',
     summary:
-        'Tap to jump, drag to set. With a mouse, hovering previews the value '
-        'under the pointer; with a finger, a bubble shows the value above '
-        'the thumb. Arrows step, Shift+arrow steps 10 %.',
+        'Tapping the track jumps to that value and dragging the thumb sets '
+        'it. With a mouse the value under the pointer is previewed, and on '
+        'touch a bubble above the thumb shows the value you are setting.',
+    hero: const _ClipSettings(),
+    usage: r'''
+// Written to one width, so the value never moves the track.
+String speedLabel(double v) => '${v.toStringAsFixed(2)}×';
+
+CoilSlider(
+  label: const Text('Playback speed'),
+  variant: CoilSliderVariant.pillPips,
+  steps: const [0.5, 0.75, 1, 1.25, 1.5, 2],
+  value: speed,
+  valueBuilder: (_, v) => Text(speedLabel(v)),
+  onChanged: (v) => setState(() => speed = v),
+)''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        'The arrow keys move by one division, or to the next entry of a '
+            'step list. Page Up, Page Down and Shift with an arrow move by '
+            'ten percent, and Home and End jump to the ends. A range slider '
+            'takes one tab stop per thumb.',
+      ),
+      CatalogNote(
+        'Pointer',
+        'Hovering shows a preview bar with the value under the pointer. An '
+            'editable value opens for typing when you click it or press '
+            'Enter; Enter then applies it snapped to the nearest step and '
+            'Esc cancels.',
+      ),
+      CatalogNote(
+        'Touch',
+        'Touch has no preview, so a bubble follows your finger just above '
+            'the track and springs onto the thumb when you let go. A stepped '
+            'slider plays a haptic tick for each step you cross.',
+      ),
+      CatalogNote(
+        'Screen readers',
+        'The slider is announced as adjustable with increase and decrease '
+            'actions. Pass semanticFormatter so the value is read the way it '
+            'is shown, for example “1.25×” rather than “1.25”.',
+      ),
+    ],
     children: [
       DemoSection(
-        title: 'Scrubber',
-        description: 'A full-width row with the label and value inside.',
-        child: DemoColumn(
+        title: 'Playground',
+        description:
+            'The row styles draw the label and value inside the track, while '
+            'the pill styles put them on either side of it.',
+        controls: DemoControls(
           children: [
+            DemoControl.choice(
+              label: 'Style',
+              value: _style,
+              values: _Style.values,
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _style = v),
+            ),
+            DemoControl.choice(
+              label: 'Value',
+              value: _display,
+              values: _Display.values,
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _display = v),
+            ),
+            DemoControl.toggle(
+              label: 'Compact',
+              value: _compact,
+              onChanged: (v) => setState(() => _compact = v),
+            ),
+            DemoControl.toggle(
+              label: 'Disabled',
+              value: _disabled,
+              onChanged: (v) => setState(() => _disabled = v),
+            ),
+          ],
+        ),
+        child: CoilSlider(
+          label: const Text('Opacity'),
+          variant: _style.variant,
+          valueDisplay: _display.display,
+          size: _compact ? CoilSize.compact : null,
+          max: 100,
+          divisions: 10,
+          value: _opacity,
+          valueBuilder: (_, v) => Text('${v.round()} %'),
+          semanticFormatter: (v) => '${v.round()} percent',
+          onChanged: _disabled ? null : (v) => setState(() => _opacity = v),
+        ),
+      ),
+      DemoSection(
+        title: 'Range',
+        description:
+            'A range has two thumbs that never cross each other. A tap or a '
+            'drag moves whichever thumb is nearest, and Tab moves between '
+            'them.',
+        controls: DemoControls(
+          children: [
+            DemoControl.choice(
+              label: 'Value',
+              value: _rangeDisplay,
+              values: const [_Display.text, _Display.tooltip],
+              labelOf: (v) => v.label,
+              onChanged: (v) => setState(() => _rangeDisplay = v),
+            ),
+            DemoControl.toggle(
+              label: 'Pips',
+              value: _pips,
+              onChanged: (v) => setState(() => _pips = v),
+            ),
+          ],
+        ),
+        child: CoilRangeSlider(
+          label: const Text('Price'),
+          variant: _pips ? CoilSliderVariant.pillPips : CoilSliderVariant.pill,
+          valueDisplay: _rangeDisplay.display,
+          max: 500,
+          divisions: 50,
+          values: _price,
+          valueBuilder: (_, v) => Text('€${v.round()}'),
+          semanticFormatter: (v) => '${v.round()} euros',
+          onChanged: (v) => setState(() => _price = v),
+        ),
+      ),
+    ],
+  );
+}
+
+/// A clip in a video editor: a step list for the speed, a scrubber for the
+/// volume and a range for the trim.
+class _ClipSettings extends StatefulWidget {
+  const _ClipSettings();
+
+  @override
+  State<_ClipSettings> createState() => _ClipSettingsState();
+}
+
+class _ClipSettingsState extends State<_ClipSettings> {
+  var _speed = 1.25;
+  var _volume = 0.8;
+  var _trim = const CoilRangeValues(12, 108);
+
+  static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  static const _length = 150.0;
+
+  // Every speed is written to the same width, so the value never changes
+  // the width of the pill and the snap points stay put as it moves.
+  static String _speedName(double v) => '${v.toStringAsFixed(2)}×';
+
+  // Read out the way people say it: "1×", not "1.00×".
+  static String _speedSpoken(double v) =>
+      '${v == v.roundToDouble() ? v.round() : v}× speed';
+
+  static String _percent(double v) => '${(v * 100).round()} %';
+
+  static String _time(double v) {
+    final seconds = v.round();
+    return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final gap = CoilTheme.metricsOf(context).gap;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Clip settings', style: text.title),
+        const SizedBox(height: 4),
+        Text(
+          'Kept: ${_time(_trim.end - _trim.start)} of '
+          '${_time(_length)}.',
+          style: text.muted.body,
+        ),
+        const SizedBox(height: 20),
+        Column(
+          spacing: gap + 4,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CoilSlider(
+              label: const Text('Playback speed'),
+              variant: CoilSliderVariant.pillPips,
+              min: _speeds.first,
+              max: _speeds.last,
+              steps: _speeds,
+              value: _speed,
+              valueBuilder: (_, v) => Text(_speedName(v)),
+              semanticFormatter: _speedSpoken,
+              onChanged: (v) => setState(() => _speed = v),
+            ),
             CoilSlider(
               label: const Text('Volume'),
               value: _volume,
@@ -59,143 +257,18 @@ class _SliderPageState extends State<SliderPage> {
               semanticFormatter: _percent,
               onChanged: (v) => setState(() => _volume = v),
             ),
-            CoilSlider(
-              label: const Text('Price limit'),
-              max: 500,
-              divisions: 50,
-              value: _price,
-              valueBuilder: (_, v) => Text('€${v.round()}'),
-              onChanged: (v) => setState(() => _price = v),
-            ),
-          ],
-        ),
-      ),
-      DemoSection(
-        title: 'Pips',
-        description: 'A dot at every step.',
-        child: CoilSlider(
-          label: const Text('Quality'),
-          variant: CoilSliderVariant.pips,
-          min: 1,
-          max: 5,
-          divisions: 4,
-          value: _quality,
-          valueBuilder: (_, v) => Text(_qualityName(v)),
-          semanticFormatter: _qualityName,
-          onChanged: (v) => setState(() => _quality = v),
-        ),
-      ),
-      DemoSection(
-        title: 'Pill',
-        description: 'A thin track with a knob, between label and value.',
-        child: CoilSlider(
-          label: const Text('Brightness'),
-          variant: CoilSliderVariant.pill,
-          value: _brightness,
-          valueBuilder: (_, v) => Text(_percent(v)),
-          semanticFormatter: _percent,
-          onChanged: (v) => setState(() => _brightness = v),
-        ),
-      ),
-      DemoSection(
-        title: 'Range',
-        description:
-            'Two thumbs that never cross. A tap or a drag moves the nearest '
-            'one; Tab moves between them.',
-        child: CoilRangeSlider(
-          label: const Text('Price'),
-          max: 500,
-          divisions: 50,
-          values: _range,
-          valueBuilder: (_, v) => Text('€${v.round()}'),
-          onChanged: (v) => setState(() => _range = v),
-        ),
-      ),
-      DemoSection(
-        title: 'Step list',
-        description:
-            'Any allowed values, not only even steps, with a dot at each: '
-            'on the row or on the pill.',
-        child: DemoColumn(
-          children: [
-            for (final variant in [
-              CoilSliderVariant.pips,
-              CoilSliderVariant.pillPips,
-            ])
-              CoilSlider(
-                label: const Text('Rating'),
-                variant: variant,
-                min: _ratings.first,
-                max: _ratings.last,
-                steps: _ratings,
-                value: _rating,
-                valueBuilder: (_, v) => Text('$v A'),
-                onChanged: (v) => setState(() => _rating = v),
-              ),
-          ],
-        ),
-      ),
-      DemoSection(
-        title: 'Editable value',
-        description:
-            'Click or tap the value, or press Enter, to type one. Enter '
-            'applies it, snapped to a step; Esc cancels.',
-        child: CoilSlider(
-          label: const Text('Opacity'),
-          variant: CoilSliderVariant.pill,
-          valueDisplay: CoilSliderValueDisplay.editable,
-          divisions: 100,
-          value: _opacity,
-          onChanged: (v) => setState(() => _opacity = v),
-        ),
-      ),
-      DemoSection(
-        title: 'Tooltip',
-        description:
-            'The value rides the thumb while the slider is hovered, pressed '
-            'or focused with the keyboard.',
-        child: DemoColumn(
-          children: [
-            CoilSlider(
-              label: const Text('Blur'),
-              variant: CoilSliderVariant.pill,
-              valueDisplay: CoilSliderValueDisplay.tooltip,
-              value: _tooltip,
-              valueBuilder: (_, v) => Text(_percent(v)),
-              semanticFormatter: _percent,
-              onChanged: (v) => setState(() => _tooltip = v),
-            ),
             CoilRangeSlider(
-              label: const Text('Window'),
-              valueDisplay: CoilSliderValueDisplay.tooltip,
-              values: _tooltipRange,
-              valueBuilder: (_, v) => Text(_percent(v)),
-              semanticFormatter: _percent,
-              onChanged: (v) => setState(() => _tooltipRange = v),
+              label: const Text('Trim'),
+              max: _length,
+              divisions: _length.round(),
+              values: _trim,
+              valueBuilder: (_, v) => Text(_time(v)),
+              semanticFormatter: _time,
+              onChanged: (v) => setState(() => _trim = v),
             ),
           ],
         ),
-      ),
-      DemoSection(
-        title: 'Compact and disabled',
-        child: DemoColumn(
-          children: [
-            CoilSlider(
-              label: const Text('Zoom'),
-              size: CoilSize.compact,
-              value: _compact,
-              valueBuilder: (_, v) => Text(_percent(v)),
-              semanticFormatter: _percent,
-              onChanged: (v) => setState(() => _compact = v),
-            ),
-            const CoilSlider(
-              label: Text('Locked'),
-              value: 0.3,
-              onChanged: null,
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
