@@ -108,10 +108,24 @@ class CoilTextFieldCore extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.onEditingComplete,
+    this.onTap,
+    this.onTapOutside,
+    this.textDirection,
+    this.maxLength,
+    this.maxLengthEnforcement,
+    this.contextMenuBuilder = defaultContextMenuBuilder,
+    this.enableInteractiveSelection = true,
+    this.restorationId,
+    this.spellCheckConfiguration,
+    this.smartDashesType,
+    this.smartQuotesType,
     this.shortcuts = const <ShortcutActivator, Intent>{},
     this.actions = const <Type, Action<Intent>>{},
     this.decorationBuilder,
-  });
+  }) : assert(
+         maxLength == null || maxLength > 0,
+         'maxLength must be null or greater than 0.',
+       );
 
   /// The text controller; one is created if null.
   final TextEditingController? controller;
@@ -227,6 +241,71 @@ class CoilTextFieldCore extends StatefulWidget {
   /// Called when the user finishes editing, before [onSubmitted].
   final VoidCallback? onEditingComplete;
 
+  /// Called when a pointer or a finger taps the field, after the tap places
+  /// the caret, never when focus arrives some other way (Tab). Like
+  /// `TextField.onTap`, the second tap of a double tap doesn't call it.
+  final VoidCallback? onTap;
+
+  /// Called when a pointer taps outside the field. Null keeps
+  /// [EditableText]'s default. See `TextField.onTapOutside`.
+  final TapRegionCallback? onTapOutside;
+
+  /// The text's direction. Defaults to the ambient [Directionality]. See
+  /// `TextField.textDirection`.
+  final TextDirection? textDirection;
+
+  /// The most characters the field accepts; null for no limit. See
+  /// `TextField.maxLength`.
+  final int? maxLength;
+
+  /// How [maxLength] is enforced. Defaults to the platform's. See
+  /// `TextField.maxLengthEnforcement`.
+  final MaxLengthEnforcement? maxLengthEnforcement;
+
+  /// Builds the selection toolbar. Null shows no menu. See
+  /// `TextField.contextMenuBuilder`.
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+
+  /// Whether the text can be selected and the toolbar shown. See
+  /// `TextField.enableInteractiveSelection`.
+  final bool enableInteractiveSelection;
+
+  /// The id the field saves its state under for restoration. See
+  /// `TextField.restorationId`.
+  final String? restorationId;
+
+  /// How spell check runs and shows its results. See
+  /// `TextField.spellCheckConfiguration`.
+  final SpellCheckConfiguration? spellCheckConfiguration;
+
+  /// Whether the keyboard replaces dashes with typographic ones. See
+  /// `TextField.smartDashesType`.
+  final SmartDashesType? smartDashesType;
+
+  /// Whether the keyboard replaces quotes with typographic ones. See
+  /// `TextField.smartQuotesType`.
+  final SmartQuotesType? smartQuotesType;
+
+  /// Native first: the iOS system edit menu where the field supports it,
+  /// else the platform's Flutter toolbar. On web, [EditableText] never calls
+  /// this while the browser's own menu is enabled.
+  static Widget defaultContextMenuBuilder(
+    BuildContext context,
+    EditableTextState editableTextState,
+  ) {
+    if (SystemContextMenu.isSupportedByField(editableTextState)) {
+      return SystemContextMenu.editableText(
+        editableTextState: editableTextState,
+      );
+    }
+    return _withDefaultLocalizations(
+      context,
+      AdaptiveTextSelectionToolbar.editableText(
+        editableTextState: editableTextState,
+      ),
+    );
+  }
+
   /// Keys mapped to intents, disabled while an IME composition is in
   /// progress. See the class docs.
   final Map<ShortcutActivator, Intent> shortcuts;
@@ -267,9 +346,7 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
   FocusNode get _focusNode =>
       widget.focusNode ?? (_ownFocusNode ??= FocusNode());
 
-  late final _selectionGestures = TextSelectionGestureDetectorBuilder(
-    delegate: this,
-  );
+  late final _selectionGestures = _SelectionGestures(this);
 
   /// One composing-aware action per intent type in
   /// [CoilTextFieldCore.shortcuts].
@@ -286,7 +363,8 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       CoilTheme.platformOf(context) == TargetPlatform.iOS;
 
   @override
-  bool get selectionEnabled => widget.enabled;
+  bool get selectionEnabled =>
+      widget.enabled && widget.enableInteractiveSelection;
 
   EditableTextState? get _editableText => editableTextKey.currentState;
 
@@ -459,6 +537,22 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
     final selectionColor =
         widget.selectionColor ?? colors.brand.withValues(alpha: 0.3);
     final platform = _PlatformText.of(CoilTheme.platformOf(context), context);
+    final maxLength = widget.maxLength;
+    final enforcement =
+        widget.maxLengthEnforcement ??
+        LengthLimitingTextInputFormatter.getDefaultMaxLengthEnforcement(
+          CoilTheme.platformOf(context),
+        );
+    final inputFormatters = maxLength == null
+        ? widget.inputFormatters
+        : <TextInputFormatter>[
+            ...?widget.inputFormatters,
+            if (enforcement != MaxLengthEnforcement.none)
+              LengthLimitingTextInputFormatter(
+                maxLength,
+                maxLengthEnforcement: enforcement,
+              ),
+          ];
 
     Widget editable = EditableText(
       key: editableTextKey,
@@ -495,19 +589,26 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       showSelectionHandles: _showSelectionHandles,
       onSelectionChanged: _handleSelectionChanged,
       onSelectionHandleTapped: _handleSelectionHandleTapped,
-      contextMenuBuilder: _buildContextMenu,
+      contextMenuBuilder: widget.contextMenuBuilder,
       magnifierConfiguration: TextMagnifier.adaptiveMagnifierConfiguration,
       keyboardType: widget.keyboardType,
       textInputAction: widget.textInputAction,
       keyboardAppearance: widget.keyboardAppearance ?? theme.brightness,
-      inputFormatters: widget.inputFormatters,
+      inputFormatters: inputFormatters,
       autofillHints: widget.autofillHints,
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
       onEditingComplete: widget.onEditingComplete,
+      onTapOutside: widget.onTapOutside,
+      textDirection: widget.textDirection,
+      restorationId: widget.restorationId,
+      spellCheckConfiguration: widget.spellCheckConfiguration,
+      smartDashesType: widget.smartDashesType,
+      smartQuotesType: widget.smartQuotesType,
       rendererIgnoresPointer: true,
       mouseCursor: MouseCursor.defer,
-      enableInteractiveSelection: widget.enabled,
+      enableInteractiveSelection:
+          widget.enabled && widget.enableInteractiveSelection,
     );
 
     // The handles are built in the overlay with the themes captured here
@@ -595,19 +696,6 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
       _focusNode.requestFocus();
     }
   }
-}
-
-/// Native first: the iOS system edit menu where the field supports it,
-/// else the platform's Flutter toolbar. On web, [EditableText] never calls
-/// this while the browser's own menu is enabled.
-Widget _buildContextMenu(BuildContext context, EditableTextState state) {
-  if (SystemContextMenu.isSupportedByField(state)) {
-    return SystemContextMenu.editableText(editableTextState: state);
-  }
-  return _withDefaultLocalizations(
-    context,
-    AdaptiveTextSelectionToolbar.editableText(editableTextState: state),
-  );
 }
 
 /// The Material and Cupertino toolbars read their button labels from
@@ -761,4 +849,17 @@ class _PlatformText {
   final Offset? cursorOffset;
   final bool isApple;
   final bool isDesktop;
+}
+
+/// The text field's selection gestures, which report a tap to
+/// [CoilTextFieldCore.onTap].
+class _SelectionGestures extends TextSelectionGestureDetectorBuilder {
+  _SelectionGestures(this._state) : super(delegate: _state);
+
+  final _CoilTextFieldCoreState _state;
+
+  @override
+  void onUserTap() {
+    if (_state.widget.enabled) _state.widget.onTap?.call();
+  }
 }

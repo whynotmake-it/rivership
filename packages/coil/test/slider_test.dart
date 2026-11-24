@@ -1,4 +1,6 @@
 import 'package:coil/coil.dart';
+import 'package:coil/src/components/slider/slider_text.dart'
+    show SliderValueText;
 import 'package:coil/src/components/slider/slider_visuals.dart'
     show sliderBubbleKey, sliderKnobKey;
 import 'package:coil/src/primitives/motion_layer.dart' show CoilPainterLayer;
@@ -142,6 +144,31 @@ Offset _at(WidgetTester tester, double fraction) {
 }
 
 void main() {
+  testWidgets('the value slot keeps its width when a middle step is the '
+      'widest value', (tester) async {
+    await tester.pumpWidget(
+      const _Host(
+        steps: [0, .25, .5, 1],
+        initial: 0,
+        variant: CoilSliderVariant.pill,
+      ),
+    );
+    double slot() => tester.getSize(find.byType(SliderValueText)).width;
+    final atEnd = slot();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await settle(tester);
+    for (var i = 0; i < 4 && _valueOf(tester) < .25; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await settle(tester);
+    }
+    expect(_shown('0.25'), findsOneWidget);
+    expect(slot(), atEnd, reason: 'the widest step must already fit');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await settle(tester);
+    expect(_valueOf(tester), 0);
+    expect(slot(), atEnd);
+  });
+
   testWidgets('a tap jumps to the position', (tester) async {
     await tester.pumpWidget(const _Host());
     await tester.tapAt(_at(tester, .8));

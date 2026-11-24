@@ -112,8 +112,20 @@ class CoilSwitch extends StatefulWidget {
   State<CoilSwitch> createState() => _CoilSwitchState();
 }
 
-/// How far a drag may pull the thumb past either end, in travels.
+/// The most the stretch's overshoot approaches, in travels, however far a
+/// drag or a spring goes past either end: it is rubber-banded toward this
+/// (`coilRubberBand`), never clamped at it.
 const _overdrag = 0.15;
+
+/// How strongly the stretch resists: the overshoot is divided by this
+/// before it is rubber-banded, so the stretch builds up over a few
+/// travels instead of nearly at once.
+const _resistance = 2;
+
+/// The furthest past an end a released thumb springs back from, in
+/// multiples of [_overdrag]: a thumb dragged far away does not take long
+/// to come home.
+const _releaseReach = 4;
 
 /// How far ahead a release is projected: the thumb decides by where it
 /// would be this long after letting go (`x + v·t`), so a quick flick
@@ -126,7 +138,7 @@ bool _decidesOn(double position, double velocity) =>
     position + velocity * _projection > .5;
 
 class _CoilSwitchState extends State<CoilSwitch>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   /// The motion tokens, read where each animation starts so runtime
   /// theme changes apply to the next one.
   CoilMotion get _motion =>
@@ -279,11 +291,9 @@ class _CoilSwitchState extends State<CoilSwitch>
     if (!_dragging) return;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final dx = rtl ? -details.delta.dx : details.delta.dx;
-    final thumb = (_controller.value(_thumb) + dx / travel).clamp(
-      -_overdrag,
-      1 + _overdrag,
-    );
-    _controller.set([_thumb.value(thumb)]);
+    // Past an end the value keeps following the finger; the track turns
+    // that into a rubber-banded stretch when it paints.
+    _controller.set([_thumb.value(_controller.value(_thumb) + dx / travel)]);
   }
 
   void _dragEnd(DragEndDetails details, double travel) {
@@ -293,7 +303,10 @@ class _CoilSwitchState extends State<CoilSwitch>
     // in travels per second, like the thumb track.
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final speed = details.velocity.pixelsPerSecond.dx / travel * (rtl ? -1 : 1);
-    final on = _decidesOn(_controller.value(_thumb), speed);
+    const reach = _overdrag * _releaseReach;
+    final position = _controller.value(_thumb).clamp(-reach, 1 + reach);
+    _controller.set([_thumb.value(position)]);
+    final on = _decidesOn(position, speed);
     if (on != widget.value) {
       _dragDecided = true;
       _report(on);
@@ -518,7 +531,8 @@ class _SwitchTrack extends StatelessWidget {
   final CoilSwitchStyle style;
   final bool sharp;
 
-  /// 0 off, 1 on; a drag may pull it slightly past either end.
+  /// 0 off, 1 on; a drag or a spring may take it past either end, where the
+  /// track stretches with rubber-band resistance.
   final double thumb;
   final double squish;
   final double tint;
@@ -589,10 +603,13 @@ class _SwitchTrack extends StatelessWidget {
       hover,
     )!;
 
-    // Pulled past an end, the switch stretches toward it and narrows to
-    // keep its area: about 4% at most, a quieter take on Motor's toggle.
-    final over = (thumb - at).clamp(-_overdrag, _overdrag);
-    final stretch = 1 + over.abs() * 0.25;
+    // Past an end, the switch stretches toward it and narrows to keep its
+    // area. The overshoot is rubber-banded: the stretch keeps growing but
+    // ever more softly, toward 1.0375 (under 4 %), a quieter take on
+    // Motor's toggle.
+    final over = thumb - at;
+    final stretch =
+        1 + coilRubberBand(over.abs() / _resistance, limit: _overdrag) * 0.25;
     final radius = BorderRadius.circular(style.radius!);
 
     return Transform(
