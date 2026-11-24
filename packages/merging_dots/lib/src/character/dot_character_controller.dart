@@ -421,11 +421,27 @@ class _LookRunner extends _IdleRunner {
 
   @override
   void apply(Float32List layers, int count, double weight) {
+    final idle = _idle;
     final offset = tracks.value(_gaze) * weight;
-    for (final layer in _idle.layers) {
+    for (final layer in idle.layers) {
       if (layer >= count) continue;
       layers[layer * _stride + 2] += offset.dx;
       layers[layer * _stride + 3] += offset.dy;
+    }
+    if (idle.turn == Offset.zero) return;
+    // Looking right turns the head right, looking down tilts it down.
+    final yaw = idle.range.dx == 0
+        ? 0.0
+        : offset.dx / idle.range.dx * idle.turn.dx;
+    final pitch = idle.range.dy == 0
+        ? 0.0
+        : -offset.dy / idle.range.dy * idle.turn.dy;
+    for (var layer = 0; layer < count; layer++) {
+      if (idle.turnLayers case final only? when !only.contains(layer)) {
+        continue;
+      }
+      layers[layer * _stride + 6] += yaw;
+      layers[layer * _stride + 7] += pitch;
     }
   }
 }

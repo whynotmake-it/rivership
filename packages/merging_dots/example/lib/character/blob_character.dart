@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/painting.dart';
 import 'package:merging_dots/merging_dots.dart';
 
@@ -105,9 +107,34 @@ abstract final class BlobCharacter {
   /// - `error`: the eyes turn into an exclamation mark and it shakes.
   ///
   /// Its eyes invert the body, so they peek out as dots when they look
-  /// past its edge.
+  /// past its edge. When it looks around, it turns its head in 3D: its eyes
+  /// are balls on the front of a sphere around its body, so they slide
+  /// further than the body and peek out past it.
   static DotCharacter build({BlobBody body = BlobBody.round, Color? color}) {
     const center = Offset(50, 52);
+    // The head is a sphere around the body's dots.
+    var left = double.infinity;
+    var top = double.infinity;
+    var right = double.negativeInfinity;
+    var bottom = double.negativeInfinity;
+    for (final dot in body.dots) {
+      left = math.min(left, dot.x - dot.radius);
+      top = math.min(top, dot.y - dot.radius);
+      right = math.max(right, dot.x + dot.radius);
+      bottom = math.max(bottom, dot.y + dot.radius);
+    }
+    final pivot = Offset((left + right) / 2, (top + bottom) / 2);
+    final headRadius = math.max(right - left, bottom - top) / 2;
+    // Eyes, lids and marks sit on the front of the head.
+    SceneDot onHead(SceneDot dot) {
+      if (dot.layer < 1) return dot;
+      final at = dot.start + dot.stretch / 2 - pivot;
+      final depth = math.sqrt(
+        math.max(headRadius * headRadius - at.distanceSquared, 0),
+      );
+      return dot.copyWith(depth: depth);
+    }
+
     // Dots 0 and 2 are the outer loading dots and the eyes, dot 1 the
     // middle loading dot and the body, then the rest of the body and the
     // eyelids: two upper ones, then two lower ones.
@@ -121,21 +148,25 @@ abstract final class BlobCharacter {
       SceneLayer bodyLayer = const SceneLayer(),
       SceneLayer eyes = const SceneLayer(blend: 2),
     }) => DotScene(
+      pivot: pivot,
       layers: [
         bodyLayer,
         eyes,
         eyes.copyWith(squash: lidSquash),
       ],
       dots: [
-        left,
-        middle,
-        right,
-        for (var i = 0; i < _bodySlots - 1; i++)
-          if (i < rest.length) rest[i] else SceneDot(center.dx, center.dy, 0),
-        ...?lids,
-        if (lids == null)
-          for (var i = 0; i < 4; i++)
-            SceneDot(i.isEven ? left.x : right.x, left.y, 0, layer: 2),
+        for (final dot in <SceneDot>[
+          left,
+          middle,
+          right,
+          for (var i = 0; i < _bodySlots - 1; i++)
+            if (i < rest.length) rest[i] else SceneDot(center.dx, center.dy, 0),
+          ...?lids,
+          if (lids == null)
+            for (var i = 0; i < 4; i++)
+              SceneDot(i.isEven ? left.x : right.x, left.y, 0, layer: 2),
+        ])
+          onHead(dot),
       ],
     );
 
@@ -211,8 +242,8 @@ abstract final class BlobCharacter {
     }) {
       final scene = face(bodyOffset: bodyOffset);
       return scene
-          .withDot(0, strokes.$1.copyWith(layer: 1))
-          .withDot(2, strokes.$2.copyWith(layer: 1));
+          .withDot(0, onHead(strokes.$1.copyWith(layer: 1)))
+          .withDot(2, onHead(strokes.$2.copyWith(layer: 1)));
     }
 
     const hop = CupertinoMotion(
@@ -226,7 +257,7 @@ abstract final class BlobCharacter {
         layers: [
           DotLayerStyle(color: color),
           const DotLayerStyle.invert(edgeBlend: 3),
-          DotLayerStyle(color: color),
+          DotLayerStyle(color: color, clipped: true),
         ],
       ),
       states: {
@@ -249,7 +280,11 @@ abstract final class BlobCharacter {
             DotIdle.breathe(),
             DotIdle.bob(amount: 1),
             DotIdle.blink(),
-            DotIdle.lookAround(layers: [1, 2]),
+            DotIdle.lookAround(
+              layers: [1, 2],
+              range: Offset(4, 3),
+              turn: Offset(0.42, 0.3),
+            ),
           ],
         ),
         'happy': CharacterState(

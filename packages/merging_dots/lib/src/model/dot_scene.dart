@@ -16,6 +16,7 @@ class SceneLayer {
     this.offset = Offset.zero,
     this.squash = 1,
     this.scale = 1,
+    this.turn = Offset.zero,
   });
 
   /// Reads a layer written by [toJson].
@@ -28,6 +29,7 @@ class SceneLayer {
       offset: Offset(read('dx', 0), read('dy', 0)),
       squash: read('squash', 1),
       scale: read('scale', 1),
+      turn: Offset(read('yaw', 0), read('pitch', 0)),
     );
   }
 
@@ -50,6 +52,14 @@ class SceneLayer {
   /// Scales the radius of every dot of the layer. Bodies breathe with it.
   final double scale;
 
+  /// Turns the layer in 3D around the scene's [DotScene.pivot], in radians:
+  /// `dx` turns it to the right, `dy` tilts it up.
+  ///
+  /// Dots with more [SceneDot.depth] move further, so a face whose eyes sit
+  /// in front of its body turns with parallax. Turn every layer of a
+  /// character the same way to turn its head.
+  final Offset turn;
+
   /// A copy with the given fields replaced.
   SceneLayer copyWith({
     double? opacity,
@@ -57,12 +67,14 @@ class SceneLayer {
     Offset? offset,
     double? squash,
     double? scale,
+    Offset? turn,
   }) => SceneLayer(
     opacity: opacity ?? this.opacity,
     blend: blend ?? this.blend,
     offset: offset ?? this.offset,
     squash: squash ?? this.squash,
     scale: scale ?? this.scale,
+    turn: turn ?? this.turn,
   );
 
   /// A JSON representation, read by [SceneLayer.fromJson].
@@ -73,6 +85,8 @@ class SceneLayer {
     if (offset.dy != 0) 'dy': offset.dy,
     if (squash != 1) 'squash': squash,
     if (scale != 1) 'scale': scale,
+    if (turn.dx != 0) 'yaw': turn.dx,
+    if (turn.dy != 0) 'pitch': turn.dy,
   };
 
   @override
@@ -82,10 +96,11 @@ class SceneLayer {
       other.blend == blend &&
       other.offset == offset &&
       other.squash == squash &&
-      other.scale == scale;
+      other.scale == scale &&
+      other.turn == turn;
 
   @override
-  int get hashCode => Object.hash(opacity, blend, offset, squash, scale);
+  int get hashCode => Object.hash(opacity, blend, offset, squash, scale, turn);
 }
 
 /// A dot of a [DotScene], on one of its layers: a circle, or a capsule
@@ -105,13 +120,19 @@ class SceneDot {
     this.radius, {
     this.layer = 0,
     this.stretch = Offset.zero,
+    this.depth = 0,
   });
 
   /// A capsule from [start] to [end], [radius] thick on each side.
-  SceneDot.capsule(Offset start, Offset end, this.radius, {this.layer = 0})
-    : x = start.dx,
-      y = start.dy,
-      stretch = end - start;
+  SceneDot.capsule(
+    Offset start,
+    Offset end,
+    this.radius, {
+    this.layer = 0,
+    this.depth = 0,
+  }) : x = start.dx,
+       y = start.dy,
+       stretch = end - start;
 
   /// Reads a dot written by [toJson].
   factory SceneDot.fromJson(List<Object?> json) {
@@ -122,6 +143,7 @@ class SceneDot {
       at(2),
       layer: at(3),
       stretch: Offset(at(4), at(5)),
+      depth: at(6),
     );
   }
 
@@ -147,6 +169,12 @@ class SceneDot {
   /// Where the capsule ends, relative to its start. Zero for a circle.
   final Offset stretch;
 
+  /// How far the dot sits in front of the scene's [DotScene.pivot], toward
+  /// the viewer, in canvas units. It only matters when its layer turns, see
+  /// [SceneLayer.turn]: eyes on the front of a head have depth, and slide
+  /// further than the head itself.
+  final double depth;
+
   /// The start of the dot.
   Offset get start => Offset(x, y);
 
@@ -160,18 +188,20 @@ class SceneDot {
     double? radius,
     double? layer,
     Offset? stretch,
+    double? depth,
   }) => SceneDot(
     x ?? this.x,
     y ?? this.y,
     radius ?? this.radius,
     layer: layer ?? this.layer,
     stretch: stretch ?? this.stretch,
+    depth: depth ?? this.depth,
   );
 
-  /// A compact JSON representation: `[x, y, radius, layer, dx, dy]`,
-  /// without the trailing values that are zero.
+  /// A compact JSON representation: `[x, y, radius, layer, dx, dy,
+  /// depth]`, without the trailing values that are zero.
   List<num> toJson() {
-    final values = <num>[x, y, radius, layer, stretch.dx, stretch.dy];
+    final values = <num>[x, y, radius, layer, stretch.dx, stretch.dy, depth];
     while (values.length > 3 && values.last == 0) {
       values.removeLast();
     }
@@ -185,14 +215,16 @@ class SceneDot {
       other.y == y &&
       other.radius == radius &&
       other.layer == layer &&
-      other.stretch == stretch;
+      other.stretch == stretch &&
+      other.depth == depth;
 
   @override
-  int get hashCode => Object.hash(x, y, radius, layer, stretch);
+  int get hashCode => Object.hash(x, y, radius, layer, stretch, depth);
 
   @override
   String toString() =>
-      'SceneDot($x, $y, $radius, layer: $layer, stretch: $stretch)';
+      'SceneDot($x, $y, $radius, layer: $layer, stretch: $stretch, '
+      'depth: $depth)';
 }
 
 /// Freely placed dots on stacked layers, like the face of a character: a
@@ -213,6 +245,7 @@ class DotScene implements DotState {
     required this.layers,
     required this.dots,
     this.size = const Size.square(100),
+    this.pivot,
   });
 
   /// Reads a scene written by [toJson].
@@ -227,6 +260,10 @@ class DotScene implements DotState {
         for (final dot in json['dots']! as List) SceneDot.fromJson(dot as List),
       ],
       size: Size((size[0] as num).toDouble(), (size[1] as num).toDouble()),
+      pivot: switch (json['pivot']) {
+        [final num x, final num y] => Offset(x.toDouble(), y.toDouble()),
+        _ => null,
+      },
     );
   }
 
@@ -236,9 +273,9 @@ class DotScene implements DotState {
   /// The most dots a scene renders.
   static const int maxDots = 64;
 
-  /// The channels of a scene entry: six for a layer, and six for a dot:
-  /// position, radius, layer and stretch.
-  static const int stride = 6;
+  /// The channels of a scene entry: eight for a layer, and seven of eight
+  /// for a dot: position, radius, layer, stretch and depth.
+  static const int stride = 8;
 
   /// The layers, bottom first.
   final List<SceneLayer> layers;
@@ -249,15 +286,24 @@ class DotScene implements DotState {
   /// The size of the design canvas the dots are placed on.
   final Size size;
 
+  /// What turning layers turn around, see [SceneLayer.turn]. Defaults to
+  /// the middle of the canvas.
+  final Offset? pivot;
+
+  /// The point turning layers turn around.
+  Offset get turnPivot => pivot ?? size.center(Offset.zero);
+
   /// A copy with the given fields replaced.
   DotScene copyWith({
     List<SceneLayer>? layers,
     List<SceneDot>? dots,
     Size? size,
+    Offset? pivot,
   }) => DotScene(
     layers: layers ?? this.layers,
     dots: dots ?? this.dots,
     size: size ?? this.size,
+    pivot: pivot ?? this.pivot,
   );
 
   /// A copy with layer [index] replaced by [layer].
@@ -271,6 +317,7 @@ class DotScene implements DotState {
   /// A JSON representation, read by [DotScene.fromJson].
   Map<String, Object?> toJson() => {
     'size': [size.width, size.height],
+    if (pivot case final pivot?) 'pivot': [pivot.dx, pivot.dy],
     'layers': [for (final layer in layers) layer.toJson()],
     'dots': [for (final dot in dots) dot.toJson()],
   };
@@ -297,6 +344,8 @@ class DotScene implements DotState {
       out[o + 3] = layer.offset.dy;
       out[o + 4] = layer.squash;
       out[o + 5] = layer.scale;
+      out[o + 6] = layer.turn.dx;
+      out[o + 7] = layer.turn.dy;
     }
     for (var i = 0; i < dots.length; i++) {
       final dot = dots[i];
@@ -307,6 +356,8 @@ class DotScene implements DotState {
       out[o + 3] = dot.layer;
       out[o + 4] = dot.stretch.dx;
       out[o + 5] = dot.stretch.dy;
+      out[o + 6] = dot.depth;
+      out[o + 7] = 0;
     }
   }
 
@@ -331,12 +382,13 @@ class DotScene implements DotState {
       identical(this, other) ||
       other is DotScene &&
           other.size == size &&
+          other.pivot == pivot &&
           listEquals(other.layers, layers) &&
           listEquals(other.dots, dots);
 
   @override
   int get hashCode =>
-      Object.hash(size, Object.hashAll(layers), Object.hashAll(dots));
+      Object.hash(size, pivot, Object.hashAll(layers), Object.hashAll(dots));
 
   @override
   String toString() =>

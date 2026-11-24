@@ -40,12 +40,18 @@ sealed class DotIdle {
   /// with [motion], like eyes looking around. Now and then it looks back
   /// to the middle.
   ///
+  /// With a [turn], the whole character also turns its head that far
+  /// toward each spot, in radians, see `SceneLayer.turn`: the eyes slide
+  /// over its face with parallax.
+  ///
   /// `DotCharacterController.lookAt` points it somewhere instead.
   const factory DotIdle.lookAround({
     List<int> layers,
     Offset range,
     Duration interval,
     Motion motion,
+    Offset turn,
+    List<int>? turnLayers,
   }) = LookAroundIdle;
 }
 
@@ -148,10 +154,19 @@ final class LookAroundIdle extends DotIdle {
       duration: Duration(milliseconds: 420),
       bounce: 0.15,
     ),
+    this.turn = Offset.zero,
+    this.turnLayers,
   });
 
   /// The layers that move.
   final List<int> layers;
+
+  /// How far the head turns toward the edge of [range], in radians: `dx`
+  /// to the sides, `dy` up and down.
+  final Offset turn;
+
+  /// The layers that turn, or null for all of them.
+  final List<int>? turnLayers;
 
   /// How far they move from the middle, in canvas units.
   final Offset range;
@@ -168,9 +183,17 @@ final class LookAroundIdle extends DotIdle {
       listEquals(other.layers, layers) &&
       other.range == range &&
       other.interval == interval &&
-      other.motion == motion;
+      other.motion == motion &&
+      other.turn == turn &&
+      listEquals(other.turnLayers, turnLayers);
 
   @override
-  int get hashCode =>
-      Object.hash(Object.hashAll(layers), range, interval, motion);
+  int get hashCode => Object.hash(
+    Object.hashAll(layers),
+    range,
+    interval,
+    motion,
+    turn,
+    Object.hashAll(turnLayers ?? const []),
+  );
 }

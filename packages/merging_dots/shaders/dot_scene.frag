@@ -29,7 +29,8 @@ uniform float uFlip;
 
 // Per layer:
 // color: premultiplied color.
-// look: opacity, smoothing in pixels, mode (0 over, 1 cut, 2 invert),
+// look: opacity, smoothing in pixels, mode (0 over, 1 cut, 2 invert, plus
+//       4 when the layer is clipped, painted on the first layer),
 //       smoothing of the edges it makes in the layers below, in pixels.
 // shape: offset in pixels, height scale, radius scale.
 uniform vec4 uColor0;
@@ -123,12 +124,16 @@ float smax(float a, float b, float k) {
 // Cuts `shape` out of d, or flips d inside it, as much as its layer does.
 float combine(float d, float shape, vec4 look) {
   float amount = clamp(look.x, 0.0, 1.0);
-  if (look.z < 0.5 || amount <= 0.0 || shape > 1e3) {
+  // A clipped layer lies inside the first one, so inverting it only cuts.
+  float mode = look.z > 3.5 ? min(look.z - 4.0, 1.0) : look.z;
+  if (mode < 0.5 || amount <= 0.0 || shape > 1e3) {
     return d;
   }
-  float k = look.w;
+  // A clipped layer lies inside the first one, so it has no corners to round
+  // where it meets the outline, and rounding would open the outline.
+  float k = look.z > 3.5 ? 0.0 : look.w;
   float result;
-  if (look.z < 1.5) {
+  if (mode < 1.5) {
     result = smax(d, -shape, k);
   } else {
     // Inside exactly one of the two.
@@ -175,6 +180,21 @@ void main() {
   float d1 = angularUnionDistance(u1);
   float d2 = angularUnionDistance(u2);
   float d3 = angularUnionDistance(u3);
+
+  // Clipped layers are painted on the first layer, and stay a hair inside
+  // its edge: an eye turned to the side wraps around the head instead of
+  // biting into its outline.
+  // The rim is a third of the layer's edge blend, and at least a pixel
+  // and a half.
+  if (uLook1.z > 3.5) {
+    d1 = max(d1, d0 + max(1.5 * uAa, uLook1.w / 3.0));
+  }
+  if (uLook2.z > 3.5) {
+    d2 = max(d2, d0 + max(1.5 * uAa, uLook2.w / 3.0));
+  }
+  if (uLook3.z > 3.5) {
+    d3 = max(d3, d0 + max(1.5 * uAa, uLook3.w / 3.0));
+  }
 
   d0 = combine(d0, d1, uLook1);
   d0 = combine(d0, d2, uLook2);

@@ -254,10 +254,13 @@ class DotLayerStyle {
   ///
   /// With [DotLayerMode.cut] or [DotLayerMode.invert], [edgeBlend] rounds
   /// the corners where the layer's edge crosses the edges below.
+  ///
+  /// A [clipped] layer stays inside the first layer.
   const DotLayerStyle({
     this.color,
     this.mode = DotLayerMode.over,
     this.edgeBlend = 4,
+    this.clipped = false,
   }) : assert(edgeBlend >= 0, 'edgeBlend must not be negative.');
 
   /// A layer that cuts holes into the layers below it, filled with
@@ -265,18 +268,22 @@ class DotLayerStyle {
   const DotLayerStyle.cut({
     this.color = const Color(0x00000000),
     this.edgeBlend = 4,
+    this.clipped = false,
   }) : mode = DotLayerMode.cut;
 
   /// A layer that flips the layers below it, see [DotLayerMode.invert].
-  const DotLayerStyle.invert({this.edgeBlend = 4})
-    : mode = DotLayerMode.invert,
-      color = const Color(0x00000000);
+  const DotLayerStyle.invert({
+    this.edgeBlend = 4,
+    this.clipped = false,
+  }) : mode = DotLayerMode.invert,
+       color = const Color(0x00000000);
 
   /// Reads a style written by [toJson].
   factory DotLayerStyle.fromJson(Map<String, Object?> json) => DotLayerStyle(
     color: json['color'] == null ? null : Color(json['color']! as int),
     mode: DotLayerMode.values.asNameMap()[json['mode']] ?? DotLayerMode.over,
     edgeBlend: (json['edgeBlend'] as num? ?? 4).toDouble(),
+    clipped: json['clipped'] as bool? ?? false,
   );
 
   /// The color of the layer. Defaults to the ambient `IconTheme` color for
@@ -290,11 +297,19 @@ class DotLayerStyle {
   /// below it, in canvas units.
   final double edgeBlend;
 
+  /// Whether the layer is painted on the first layer, staying just inside
+  /// its edge: eyelids that never show past a head, or eyes that stay on
+  /// it as it turns instead of peeking out.
+  ///
+  /// An inverting layer that is clipped only cuts, since it lies inside.
+  final bool clipped;
+
   /// A JSON representation, read by [DotLayerStyle.fromJson].
   Map<String, Object?> toJson() => {
     if (color case final color?) 'color': color.toARGB32(),
     if (mode != DotLayerMode.over) 'mode': mode.name,
     if (mode != DotLayerMode.over) 'edgeBlend': edgeBlend,
+    if (clipped) 'clipped': true,
   };
 
   @override
@@ -302,10 +317,11 @@ class DotLayerStyle {
       other is DotLayerStyle &&
       other.color == color &&
       other.mode == mode &&
-      other.edgeBlend == edgeBlend;
+      other.edgeBlend == edgeBlend &&
+      other.clipped == clipped;
 
   @override
-  int get hashCode => Object.hash(color, mode, edgeBlend);
+  int get hashCode => Object.hash(color, mode, edgeBlend, clipped);
 }
 
 /// How a `DotScene` is drawn: one [DotLayerStyle] per layer, bottom first.

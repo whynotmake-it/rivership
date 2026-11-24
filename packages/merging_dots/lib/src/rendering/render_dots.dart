@@ -787,8 +787,8 @@ class _CloudLayout {
 abstract interface class DotSceneModifier implements Listenable {
   /// Changes the channels of [count] layers in [layers] in place,
   /// [DotScene.stride] values per layer in the order of
-  /// [DotScene.writeChannels]: opacity, blend, offset x and y, squash and
-  /// scale.
+  /// [DotScene.writeChannels]: opacity, blend, offset x and y, squash,
+  /// scale, and turn yaw and pitch.
   ///
   /// Called whenever the scene paints. Notify listeners to repaint.
   void modifyLayers(Float32List layers, int count);
@@ -849,9 +849,6 @@ class RenderDotScene extends RenderDots<DotScene> {
 
   final _dots = DotDataTexture();
   final _layers = Float32List(DotScene.maxLayers * _sceneStride);
-  int _dataRevision = -1;
-  Object? _dataKey;
-  (Offset, double, int)? _upload;
 
   @override
   ui.FragmentProgram? get program => DotShaders.scene;
@@ -907,80 +904,135 @@ class RenderDotScene extends RenderDots<DotScene> {
   int get _layerCount =>
       math.min(animator.target.layers.length, DotScene.maxLayers);
 
-  /// Uploads the dots in local pixels. Returns their top left corner, the
-  /// span their values are fractions of, and how many there are.
-  (Offset, double, int)? _updateData(double scale, Offset origin) {
-    final key = (scale, origin);
-    if (_dataRevision == animator.revision && _dataKey == key) return _upload;
-    _dataRevision = animator.revision;
-    _dataKey = key;
+  /// Each dot in local pixels, after turning its layer in 3D: x, y,
+  /// radius, layer, and stretch x and y.
+  Float64List _projected = Float64List(0);
 
+  static const _projectedStride = 6;
+
+  /// Turns and projects the animator's dots with the layers in [_layers].
+  int _project(double scale, Offset origin) {
     final values = animator.values;
     final layers = _layerCount;
-    final count = math.min(
-      animator.dotCount - layers,
-      DotScene.maxDots,
-    );
+    final count = math.min(animator.dotCount - layers, DotScene.maxDots);
+    if (_projected.length < count * _projectedStride) {
+      _projected = Float64List(count * _projectedStride);
+    }
+    final pivot = animator.target.turnPivot;
+    final out = _projected;
+    for (var i = 0; i < count; i++) {
+      final o = (layers + i) * _sceneStride;
+      final p = i * _projectedStride;
+      var x = values[o] - pivot.dx;
+      var y = values[o + 1] - pivot.dy;
+      final r = values[o + 2];
+      final layer = values[o + 3].clamp(0, layers - 1).toDouble();
+      var sx = values[o + 4];
+      var sy = values[o + 5];
+      final z = values[o + 6];
+
+      // A dot between two layers turns between their turns.
+      final l0 = layer.floor();
+      final l1 = math.min(l0 + 1, layers - 1);
+      final t = layer - l0;
+      double mix(int channel) =>
+          _layers[l0 * _sceneStride + channel] * (1 - t) +
+          _layers[l1 * _sceneStride + channel] * t;
+      final yaw = mix(6);
+      final pitch = mix(7);
+      if (yaw != 0 || pitch != 0) {
+        final cy = math.cos(yaw);
+        final sinY = math.sin(yaw);
+        final cp = math.cos(pitch);
+        final sp = math.sin(pitch);
+        // Turns a point right by yaw, then tilts it up by pitch.
+        (double, double, double) turn(double x, double y, double z) {
+          final x1 = x * cy + z * sinY;
+          final z1 = -x * sinY + z * cy;
+          return (x1, y * cp - z1 * sp, y * sp + z1 * cp);
+        }
+
+        final (tx, ty, _) = turn(x, y, z);
+        final (ex, ey, _) = turn(x + sx, y + sy, z);
+        sx = ex - tx;
+        sy = ey - ty;
+        x = tx;
+        y = ty;
+      }
+      out
+        ..[p] = origin.dx + (pivot.dx + x) * scale
+        ..[p + 1] = origin.dy + (pivot.dy + y) * scale
+        ..[p + 2] = r * scale
+        ..[p + 3] = layer
+        ..[p + 4] = sx * scale
+        ..[p + 5] = sy * scale;
+    }
+    return count;
+  }
+
+  /// Uploads the projected dots. Returns their top left corner, the span
+  /// their values are fractions of, and how many there are.
+  (Offset, double, int)? _upload(double scale, Offset origin) {
+    final count = _project(scale, origin);
+    final dots = _projected;
     var left = double.infinity;
     var top = double.infinity;
     var right = double.negativeInfinity;
     var bottom = double.negativeInfinity;
     var visible = 0;
     for (var i = 0; i < count; i++) {
-      final o = (layers + i) * _sceneStride;
-      final r = values[o + 2] * scale;
+      final p = i * _projectedStride;
+      final r = dots[p + 2];
       if (r <= 0) continue;
-      final x = origin.dx + values[o] * scale;
-      final y = origin.dy + values[o + 1] * scale;
-      final x2 = x + values[o + 4] * scale;
-      final y2 = y + values[o + 5] * scale;
+      final x = dots[p];
+      final y = dots[p + 1];
+      final x2 = x + dots[p + 4];
+      final y2 = y + dots[p + 5];
       left = math.min(left, math.min(x, x2) - r);
       top = math.min(top, math.min(y, y2) - r);
       right = math.max(right, math.max(x, x2) + r);
       bottom = math.max(bottom, math.max(y, y2) + r);
       visible++;
     }
-    if (visible == 0) return _upload = null;
+    if (visible == 0) return null;
 
     final span = math.max<double>(math.max(right - left, bottom - top), 1);
     final data = Uint8List(visible * 4 * 4);
     int quantize(double v) => (v * 65535).round().clamp(0, 65535);
     var n = 0;
     for (var i = 0; i < count; i++) {
-      final o = (layers + i) * _sceneStride;
-      final r = values[o + 2] * scale;
+      final p = i * _projectedStride;
+      final r = dots[p + 2];
       if (r <= 0) continue;
-      final x = quantize((origin.dx + values[o] * scale - left) / span);
-      final y = quantize((origin.dy + values[o + 1] * scale - top) / span);
+      final x = quantize((dots[p] - left) / span);
+      final y = quantize((dots[p + 1] - top) / span);
       final radius = quantize(r / span);
-      final layer = quantize(
-        values[o + 3].clamp(0, layers - 1).toDouble() / 4,
-      );
+      final layer = quantize(dots[p + 3] / 4);
       // The stretch spans at most the content, so -span..span fits.
-      final sx = quantize(values[o + 4] * scale / span / 2 + 0.5);
-      final sy = quantize(values[o + 5] * scale / span / 2 + 0.5);
-      final p = n * 16;
+      final sx = quantize(dots[p + 4] / span / 2 + 0.5);
+      final sy = quantize(dots[p + 5] / span / 2 + 0.5);
+      final q = n * 16;
       data
-        ..[p] = x >> 8
-        ..[p + 1] = x & 0xFF
-        ..[p + 2] = y >> 8
-        ..[p + 3] = 255
-        ..[p + 4] = y & 0xFF
-        ..[p + 5] = radius >> 8
-        ..[p + 6] = radius & 0xFF
-        ..[p + 7] = 255
-        ..[p + 8] = layer >> 8
-        ..[p + 9] = layer & 0xFF
-        ..[p + 10] = sx >> 8
-        ..[p + 11] = 255
-        ..[p + 12] = sx & 0xFF
-        ..[p + 13] = sy >> 8
-        ..[p + 14] = sy & 0xFF
-        ..[p + 15] = 255;
+        ..[q] = x >> 8
+        ..[q + 1] = x & 0xFF
+        ..[q + 2] = y >> 8
+        ..[q + 3] = 255
+        ..[q + 4] = y & 0xFF
+        ..[q + 5] = radius >> 8
+        ..[q + 6] = radius & 0xFF
+        ..[q + 7] = 255
+        ..[q + 8] = layer >> 8
+        ..[q + 9] = layer & 0xFF
+        ..[q + 10] = sx >> 8
+        ..[q + 11] = 255
+        ..[q + 12] = sx & 0xFF
+        ..[q + 13] = sy >> 8
+        ..[q + 14] = sy & 0xFF
+        ..[q + 15] = 255;
       n++;
     }
     _dots.upload(data, visible * 4, 1);
-    return _upload = (Offset(left, top), span, visible);
+    return (Offset(left, top), span, visible);
   }
 
   @override
@@ -1002,7 +1054,7 @@ class RenderDotScene extends RenderDots<DotScene> {
       return;
     }
 
-    final upload = _updateData(scale, origin);
+    final upload = _upload(scale, origin);
     if (upload == null) return;
     final (dataOrigin, span, count) = upload;
 
@@ -1052,7 +1104,12 @@ class RenderDotScene extends RenderDots<DotScene> {
           base + 5,
           math.max(0, _layers[o + 1]) * scale * _blendToSmoothing,
         )
-        ..setFloat(base + 6, present ? layerStyle.mode.index.toDouble() : 0)
+        ..setFloat(
+          base + 6,
+          present
+              ? layerStyle.mode.index + (layerStyle.clipped && l > 0 ? 4.0 : 0)
+              : 0,
+        )
         ..setFloat(base + 7, layerStyle.edgeBlend * scale)
         ..setFloat(base + 8, _layers[o + 2] * scale)
         ..setFloat(base + 9, _layers[o + 3] * scale)
