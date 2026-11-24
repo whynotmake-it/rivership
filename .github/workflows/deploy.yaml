@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  # Each deploy publishes the whole site, so only the newest push matters.
+  cancel-in-progress: true
 
 jobs:
   deploy:
