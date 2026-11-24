@@ -31,7 +31,7 @@ class CoilFileThumbnail extends StatelessWidget {
   /// Shown without a preview; the name's extension when null.
   final Widget? placeholder;
 
-  /// The side length. (`size` is the size step elsewhere in coil.)
+  /// The side length. (`size` is the size step elsewhere in Coil.)
   final double dimension;
 
   /// Shows a remove button that calls this.

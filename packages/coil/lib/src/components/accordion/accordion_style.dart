@@ -1,12 +1,16 @@
+/// @docImport 'package:coil/accordion.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/accordion/accordion_item.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilAccordion` looks. Unset fields come from
-/// [CoilAccordionStyle.fallback], which derives them from the theme. Set a
-/// style app-wide or for a subtree with `CoilThemeData.withComponentStyle`,
-/// or per instance with `style:`.
+/// Overrides for how a [CoilAccordion] looks.
+///
+/// Unset fields come from [CoilAccordionStyle.fallback], which derives them
+/// from the theme. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [triggerFill], [label] and [expandedLabel] are resolved with
 /// [WidgetState.hovered], [WidgetState.focused], [WidgetState.pressed] and
@@ -28,10 +32,12 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
     this.motions,
   });
 
-  /// The defaults from the theme's tokens. Pointer triggers rest at
-  /// `mutedForeground`; touch triggers and [highContrast] ones rest at
-  /// `foreground`. In the [CoilAccordionVariant.group] variant the shared
-  /// highlight shows hover, so the trigger fills only for a touch press.
+  /// The defaults from the theme's tokens.
+  ///
+  /// Pointer triggers rest at [CoilColors.mutedForeground]; touch triggers and
+  /// [highContrast] ones rest at [CoilColors.foreground]. In the
+  /// [CoilAccordionVariant.group] variant the shared highlight shows hover, so
+  /// the trigger fills only for a touch press.
   factory CoilAccordionStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics, {
@@ -87,7 +93,9 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
   /// The label, glyph and chevron color of an open item.
   final WidgetStateProperty<Color?>? expandedLabel;
 
-  /// The trigger label's style. Its color comes from [label].
+  /// The trigger label's style.
+  ///
+  /// Its color comes from [label].
   final TextStyle? textStyle;
 
   /// The default text style of a panel.
@@ -99,16 +107,20 @@ class CoilAccordionStyle extends CoilComponentStyle<CoilAccordionStyle> {
   /// The corner radius of fills, tints and the highlight.
   final double? radius;
 
-  /// The widest the group variant grows. A narrower parent still wins.
+  /// The widest the group variant grows.
+  ///
+  /// A narrower parent still wins.
   final double? groupWidth;
 
   /// How far outside a trigger its focus ring sits.
   final double? focusRingOffset;
 
   /// Springs for the accordion's animated parts, keyed by
-  /// [CoilAccordionTrack]s: `{CoilAccordionTrack.height: const
-  /// Motion.bouncySpring()}`. An accordion's own `motions:` win over these;
-  /// these win over the motion tokens. [merge] combines the maps key by key.
+  /// [CoilAccordionTrack]s:
+  /// `{CoilAccordionTrack.height: const Motion.bouncySpring()}`.
+  ///
+  /// An accordion's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilAccordionTrack<Object>, Motion>? motions;
 
   @override

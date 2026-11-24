@@ -8,12 +8,15 @@ import 'package:flutter/widgets.dart';
 /// How a [CoilActionBar] lays out its buttons.
 enum CoilActionBarLayout {
   /// At their own width, trailing-aligned, Cancel before the primary
-  /// action; buttons that don't fit wrap onto another trailing row. The
-  /// pointer tier's and wide windows' layout.
+  /// action; buttons that don't fit wrap onto another trailing row.
+  ///
+  /// The pointer tier's and wide windows' layout.
   row,
 
   /// Each button the bar's full width, stacked with the primary action on
-  /// top and Cancel at the bottom. A phone's layout.
+  /// top and Cancel at the bottom.
+  ///
+  /// A phone's layout.
   stack,
 }
 
@@ -41,8 +44,9 @@ class CoilActionBar extends StatelessWidget {
   /// How the buttons lay out; null picks it with [layoutOf].
   final CoilActionBarLayout? layout;
 
-  /// The space between buttons, across and down. Null is the tier's
-  /// [CoilMetrics.gap].
+  /// The space between buttons, across and down.
+  ///
+  /// Null is the tier's [CoilMetrics.gap].
   final double? spacing;
 
   /// The layout actions at [context] get: [CoilActionBarLayout.stack] in a

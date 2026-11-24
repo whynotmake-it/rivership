@@ -75,11 +75,15 @@ class CoilDatePicker extends StatefulWidget {
   /// The picked date, or null.
   final DateTime? value;
 
-  /// Called with each date a popover applies, or the one the Done of a
-  /// panel or sheet confirms. Null disables the picker.
+  /// Called with each date a popover applies, or the one the Done of a panel or
+  /// sheet confirms.
+  ///
+  /// Null disables the picker.
   final ValueChanged<DateTime>? onChanged;
 
-  /// Shown, muted, in the field when no date is picked. Usually a [Text].
+  /// Shown, muted, in the field when no date is picked.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
   /// A leading glyph in the field.
@@ -97,10 +101,11 @@ class CoilDatePicker extends StatefulWidget {
   /// The weekday the calendar's rows start on.
   final int firstDayOfWeek;
 
-  /// Whether a time of day is picked too, in two columns under the
-  /// calendar. The popover then stays open after a day is picked, for the
-  /// time; every pick still applies at once, and closing it is done. Only
-  /// the panel and the sheet have a Done button.
+  /// Whether a time of day is picked too, in two columns under the calendar.
+  ///
+  /// The popover then stays open after a day is picked, for the time; every
+  /// pick still applies at once, and closing it is done. Only the panel and the
+  /// sheet have a Done button.
   final bool withTime;
 
   /// The minute step of the time columns.
@@ -113,7 +118,9 @@ class CoilDatePicker extends StatefulWidget {
   /// A heading for the floating panel and sheet presentations.
   final Widget? sheetTitle;
 
-  /// Pins the presentation. Null decides per open.
+  /// Pins the presentation.
+  ///
+  /// Null decides per open.
   final CoilPresentation? presentation;
 
   /// Pins the field's size step.
@@ -143,9 +150,10 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
   CoilPopupController? _ownPopup;
   final _states = WidgetStatesController();
 
-  /// What the open calendar has picked. Each open starts it from
-  /// [CoilDatePicker.value]. A popover reports it as it changes; a panel
-  /// or sheet holds it until Done, its footer following it.
+  /// What the open calendar has picked.
+  ///
+  /// Each open starts it from [CoilDatePicker.value]. A popover reports it as
+  /// it changes; a panel or sheet holds it until Done, its footer following it.
   final _draft = ValueNotifier<DateTime?>(null);
 
   /// Whether the open calendar is a popover, which applies picks at once.

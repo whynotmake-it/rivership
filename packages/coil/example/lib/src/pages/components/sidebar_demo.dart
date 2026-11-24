@@ -483,9 +483,9 @@ class WorkspaceList extends StatelessWidget {
       ('Support triage', '38 tickets routed in 2.9 s.', 'Succeeded'),
     ],
     'Evals': [
-      ('Tone of voice', '120 cases · last run 1h ago', '94 %'),
-      ('Refusals', '60 cases · last run yesterday', '98 %'),
-      ('Tool use', '85 cases · last run yesterday', '81 %'),
+      ('Tone of voice', '120 cases · last run 1h ago', '94%'),
+      ('Refusals', '60 cases · last run yesterday', '98%'),
+      ('Tool use', '85 cases · last run yesterday', '81%'),
     ],
   };
 
@@ -552,7 +552,12 @@ List<Widget> demoCallouts({
   required void Function(String id) onDismissed,
 }) => [
   for (final (id, title, line, glyph) in const [
-    ('agents', 'Agents are here', 'Automate the busywork.', Glyph.sparkles),
+    (
+      'agents',
+      'Agents are here',
+      'Run multi-step workflows automatically.',
+      Glyph.sparkles,
+    ),
     ('evals', 'Evals beta', 'Score every run.', Glyph.flask),
     ('docs', 'New docs', 'Guides for every part.', Glyph.book),
   ])

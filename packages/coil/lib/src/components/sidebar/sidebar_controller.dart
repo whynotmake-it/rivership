@@ -1,11 +1,14 @@
+/// @docImport 'package:coil/sidebar.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 
-/// The state of a `CoilSidebarScaffold`'s sidebar: whether it is open and
+/// The state of a [CoilSidebarScaffold]'s sidebar: whether it is open and
 /// how wide it is.
 ///
 /// Pass one to the scaffold to drive the sidebar from outside, or to keep
 /// its state between launches: listen to it, save [open] and [width], and
-/// create the next controller with the saved values. coil stores nothing
+/// create the next controller with the saved values. Coil stores nothing
 /// itself. The scaffold creates its own when you pass none.
 ///
 /// [open] is the sidebar beside the page. A phone's drawer and a peek are
@@ -26,7 +29,9 @@ class CoilSidebarController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The sidebar's width beside the page. Dragging its rail changes it.
+  /// The sidebar's width beside the page.
+  ///
+  /// Dragging its rail changes it.
   double get width => _width;
   set width(double value) {
     if (value == _width) return;
@@ -34,14 +39,17 @@ class CoilSidebarController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Opens or closes the sidebar. Where the scaffold shows it as a drawer,
-  /// this opens the drawer instead, and [open] stays as it is.
+  /// Opens or closes the sidebar.
+  ///
+  /// Where the scaffold shows it as a drawer, this opens the drawer instead,
+  /// and [open] stays as it is.
   void toggle() => _toggle != null ? _toggle!() : open = !open;
 }
 
-/// Lets a scaffold decide what [CoilSidebarController.toggle] does, or
-/// stop deciding with null. `sidebar.dart` hides it: only the scaffold
-/// calls it.
+/// Lets a scaffold decide what [CoilSidebarController.toggle] does, or stop
+/// deciding with null.
+///
+/// `sidebar.dart` hides it: only the scaffold calls it.
 void attachSidebarScaffold(
   CoilSidebarController controller,
   VoidCallback? toggle,

@@ -1,3 +1,6 @@
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/slider/slider.dart';
 import 'package:coil/src/components/slider/slider_core.dart';
@@ -6,7 +9,7 @@ import 'package:coil/src/components/slider/slider_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The two values of a [CoilRangeSlider], like Flutter's `RangeValues`.
+/// The two values of a [CoilRangeSlider], like Flutter's [RangeValues].
 @immutable
 class CoilRangeValues {
   /// Creates a range from [start] to [end].
@@ -97,8 +100,9 @@ class CoilRangeSlider extends StatelessWidget {
   /// The current range, with `start <= end`, between [min] and [max].
   final CoilRangeValues values;
 
-  /// Called with the new range, snapped to [divisions] or [steps]. Null
-  /// disables the slider.
+  /// Called with the new range, snapped to [divisions] or [steps].
+  ///
+  /// Null disables the slider.
   final ValueChanged<CoilRangeValues>? onChanged;
 
   /// The smallest value.
@@ -107,8 +111,9 @@ class CoilRangeSlider extends StatelessWidget {
   /// The largest value.
   final double max;
 
-  /// How many equal steps [min]..[max] is split into. Null, with no
-  /// [steps], is continuous.
+  /// How many equal steps [min]..[max] is split into.
+  ///
+  /// Null, with no [steps], is continuous.
   final int? divisions;
 
   /// The values the thumbs can take; see [CoilSlider.steps].
@@ -137,29 +142,34 @@ class CoilRangeSlider extends StatelessWidget {
   final double? Function(String text)? editParser;
 
   /// The pill, with or without step dots: [CoilSliderVariant.pill] or
-  /// [CoilSliderVariant.pillPips]. On the row, a range's handle lines would
-  /// sit in the label and value text.
+  /// [CoilSliderVariant.pillPips].
+  ///
+  /// On the row, a range's handle lines would sit in the label and value text.
   final CoilSliderVariant variant;
 
   /// Where the values show, and whether they can be typed.
   final CoilSliderValueDisplay valueDisplay;
 
-  /// Pins the slider to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the slider to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Whether the start thumb takes focus when first built.
   final bool autofocus;
 
-  /// Observes, and can force, hover/focus/press states. Focused means
-  /// either thumb has keyboard focus.
+  /// Observes, and can force, hover/focus/press states.
+  ///
+  /// Focused means either thumb has keyboard focus.
   final WidgetStatesController? statesController;
 
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
-  /// Per-part motions for this instance. [CoilSliderTrack.thumb] moves both
-  /// thumbs. They win over the style's [CoilSliderStyle.motions] and the
-  /// tokens.
+  /// Per-part motions for this instance.
+  ///
+  /// [CoilSliderTrack.thumb] moves both thumbs. They win over the style's
+  /// [CoilSliderStyle.motions] and the tokens.
   final Map<CoilSliderTrack<Object>, Motion>? motions;
 
   /// Overrides for this slider's look.

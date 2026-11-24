@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/foundation/adaptive.dart';
+library;
+
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/widgets.dart';
@@ -33,13 +36,17 @@ class CoilChoiceRow extends StatelessWidget {
   /// The label's text style; the color comes from [labelColor].
   final TextStyle labelStyle;
 
-  /// The label's current color. Changes fade.
+  /// The label's current color.
+  ///
+  /// Changes fade.
   final Color labelColor;
 
   /// The motion of the label's color and weight.
   final Motion labelMotion;
 
-  /// Pins the row to one size step. Null follows `CoilAdaptiveScope`.
+  /// Pins the row to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   @override

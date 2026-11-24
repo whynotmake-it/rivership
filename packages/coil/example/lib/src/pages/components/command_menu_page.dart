@@ -148,8 +148,8 @@ await showCoilCommandMenu(
               CatalogNote(
                 'Filtering',
                 'Each command is matched word by word against its '
-                    'searchText rather than fuzzily, and a group with no '
-                    'matches is hidden.',
+                    'searchText rather than using fuzzy matching, and a group '
+                    'with no matches is hidden.',
               ),
               CatalogNote(
                 'Touch',

@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/toggle_group.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/toggle_group/toggle_group.dart'
     show CoilToggleGroupTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilToggleGroup` looks. Unset fields come from
-/// [CoilToggleGroupStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilToggleGroup] looks.
+///
+/// Unset fields come from [CoilToggleGroupStyle.fallback], derived from the
+/// theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [label] is resolved with [WidgetState.selected], [WidgetState.hovered]
 /// and [WidgetState.focused].
@@ -68,23 +72,24 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
   /// The label style (color from [label]).
   final TextStyle? textStyle;
 
-  /// The corner radius of the segments: their blocks, the highlight and
-  /// the press fill. The row's corner is concentric with it, [padding]
-  /// out.
+  /// The corner radius of the segments: their blocks, the highlight and the
+  /// press fill.
+  ///
+  /// The row's corner is concentric with it, [padding] out.
   final double? radius;
 
   /// The row's 1 px outline; fully transparent draws none.
   final Color? border;
 
   /// The space between the row's edge and its segments
-  /// (`CoilMetrics.segmentPadding`).
+  /// ([CoilMetrics.segmentPadding]).
   final double? padding;
 
-  /// Springs for the group's animated parts, keyed by
-  /// [CoilToggleGroupTrack]s:
-  /// `{CoilToggleGroupTrack.selection: const Motion.bouncySpring()}`. A
-  /// group's own `motions:` win over these; these win over the motion
-  /// tokens. [merge] combines the maps key by key.
+  /// Springs for the group's animated parts, keyed by [CoilToggleGroupTrack]s:
+  /// `{CoilToggleGroupTrack.selection: const Motion.bouncySpring()}`.
+  ///
+  /// A group's own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
   final Map<CoilToggleGroupTrack<Object>, Motion>? motions;
 
   @override

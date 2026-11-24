@@ -6,9 +6,10 @@ import 'package:coil/src/components/banner/banner_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A banner's parts: [icon] text [actions] [✕]. The actions follow the
-/// title when they fit beside it and move under the text when they don't,
-/// or when there is a description.
+/// A banner's parts: [icon] text [actions] [✕].
+///
+/// The actions follow the title when they fit beside it and move under the text
+/// when they don't, or when there is a description.
 class BannerContent extends StatelessWidget {
   /// Lays out a banner's parts.
   const BannerContent({
@@ -47,7 +48,7 @@ class BannerContent extends StatelessWidget {
   final VoidCallback? onDismissRequested;
 
   /// Replaces the dismiss button's ✕: the theme's [CoilIcons.close], or
-  /// coil's drawn one.
+  /// Coil's drawn one.
   final Widget? dismissIcon;
 
   /// The dismiss button's name for assistive technology.

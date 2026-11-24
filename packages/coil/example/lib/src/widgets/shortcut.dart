@@ -9,8 +9,8 @@ bool usesCommandKey(BuildContext context) =>
     };
 
 /// The text of a shortcut for [CoilKbd] on the previewed platform: `⌘K` on
-/// Apple platforms, `Ctrl K` elsewhere.
+/// Apple platforms, `Ctrl+K` elsewhere.
 String shortcutOf(BuildContext context, String key, {bool shift = false}) =>
     usesCommandKey(context)
     ? '${shift ? '⇧' : ''}⌘$key'
-    : 'Ctrl ${shift ? 'Shift ' : ''}$key';
+    : 'Ctrl+${shift ? 'Shift+' : ''}$key';

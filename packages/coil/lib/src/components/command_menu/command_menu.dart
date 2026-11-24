@@ -7,20 +7,21 @@ import 'package:coil/scroll_area.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// Opens a command menu over the current route: a search field over
-/// [entries], filtered as the user types. The filter matches each row's
-/// `searchText`, so give every row one.
+/// Opens a command menu over the current route: a search field over [entries],
+/// filtered as the user types.
+///
+/// The filter matches each row's `searchText`, so give every row one.
 ///
 /// The arrows move through the matching rows and Enter runs one; picking a
 /// row closes the menu, then runs its action. Escape or a tap outside
 /// closes it. It opens near the top of a large window, with a [footer] of
 /// key hints, and as a floating panel on a phone. Opened from a button,
-/// pass the button's rect as [origin] (`CoilModalRoute.originOf` with the
+/// pass the button's rect as [origin] ([CoilModalRoute.originOf] with the
 /// button's context) and the floating panel shows it came from there.
 ///
 /// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
-/// the app's own, mapped in `Shortcuts` near the app's root (or registered
-/// with `ShortcutRegistry` from any screen) and handled by `Actions` below
+/// the app's own, mapped in [Shortcuts] near the app's root (or registered
+/// with [ShortcutRegistry] from any screen) and handled by [Actions] below
 /// it, so a screen can bind the intent to something else:
 ///
 /// ```dart
@@ -49,7 +50,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// )
 /// ```
 ///
-/// `CharacterActivator` matches the character the key types, so it follows
+/// [CharacterActivator] matches the character the key types, so it follows
 /// the keyboard layout.
 ///
 /// ```dart
@@ -117,7 +118,9 @@ class CoilCommandMenu extends StatelessWidget {
     this.motion,
   });
 
-  /// The rows and labels. The filter matches each row's `searchText`.
+  /// The rows and labels.
+  ///
+  /// The filter matches each row's `searchText`.
   final List<CoilMenuEntry> entries;
 
   /// The search field's hint, shown while it's empty.
@@ -129,17 +132,20 @@ class CoilCommandMenu extends StatelessWidget {
   /// What the list shows when nothing matches.
   final Widget empty;
 
-  /// The strip under the list in a dialog: a [CoilCommandMenuFooter] with
-  /// the default key hints, your own, or null for none. A sheet or floating
-  /// panel (a phone, with no keyboard to hint at) never shows it.
+  /// The strip under the list in a dialog: a [CoilCommandMenuFooter] with the
+  /// default key hints, your own, or null for none.
+  ///
+  /// A sheet or floating panel (a phone, with no keyboard to hint at) never
+  /// shows it.
   final Widget? footer;
 
   /// Motion tokens for the list, instead of the theme's.
   final CoilMotion? motion;
 
-  /// How a command menu shows at [context]: a floating panel on the touch
-  /// tier in a compact window, centered elsewhere. Pass it, with
-  /// [CoilModalAnchor.top], to the route that shows the menu.
+  /// How a command menu shows at [context]: a floating panel on the touch tier
+  /// in a compact window, centered elsewhere.
+  ///
+  /// Pass it, with [CoilModalAnchor.top], to the route that shows the menu.
   static CoilModalPresentation presentationOf(BuildContext context) =>
       CoilModalRoute.adaptivePresentationOf(context) ==
           CoilModalPresentation.sheet
@@ -164,9 +170,10 @@ class CoilCommandMenu extends StatelessWidget {
     CoilTier.touch => 52,
   };
 
-  /// [child] filling a floating panel's room, so the panel keeps its height
-  /// and the search line stays put while the results change. A sheet keeps
-  /// hugging its content.
+  /// [child] filling a floating panel's room, so the panel keeps its height and
+  /// the search line stays put while the results change.
+  ///
+  /// A sheet keeps hugging its content.
   static Widget _fillFloating(BuildContext context, Widget child) =>
       CoilModalRoute.presentationOf(context) == CoilModalPresentation.floating
       ? SizedBox(height: double.infinity, child: child)

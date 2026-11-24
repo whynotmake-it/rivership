@@ -27,7 +27,7 @@ import 'package:motor/motor.dart';
 ///
 /// The dots never advance on their own. A carousel that autoplays drives
 /// [value] and [progress] from its own clock, and stops that clock under
-/// reduced motion (`MediaQuery.disableAnimationsOf`).
+/// reduced motion ([MediaQuery.disableAnimationsOf]).
 class CoilCarouselDots extends StatefulWidget {
   /// Creates carousel dots.
   const CoilCarouselDots({
@@ -52,20 +52,27 @@ class CoilCarouselDots extends StatefulWidget {
   /// The index of the current slide.
   ///
   /// An index, not a generic value: the dots stand for positions in a
-  /// sequence, the way a `PageController` page does.
+  /// sequence, the way a [PageController] page does.
   final int value;
 
-  /// Called with the index of the slide to show. Null disables the dots.
+  /// Called with the index of the slide to show.
+  ///
+  /// Null disables the dots.
   final ValueChanged<int>? onChanged;
 
-  /// How far the current slide has played, from 0 to 1. The current pill
-  /// fills by this much. Null shows a solid pill.
+  /// How far the current slide has played, from 0 to 1.
+  ///
+  /// The current pill fills by this much. Null shows a solid pill.
   final double? progress;
 
-  /// The words screen readers hear. Pass translations for other locales.
+  /// The words screen readers hear.
+  ///
+  /// Pass translations for other locales.
   final CoilCarouselDotsLabels labels;
 
-  /// Pins the dots to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the dots to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for these
@@ -73,8 +80,8 @@ class CoilCarouselDots extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for these dots, keyed by [CoilCarouselDotsTrack]s.
-  /// They win over the style's [CoilCarouselDotsStyle.motions] and the
-  /// tokens.
+  ///
+  /// They win over the style's [CoilCarouselDotsStyle.motions] and the tokens.
   final Map<CoilCarouselDotsTrack<Object>, Motion>? motions;
 
   /// Overrides for these dots' look, on top of the theme's
@@ -305,9 +312,10 @@ class _CoilCarouselDotsState extends State<CoilCarouselDots> {
   }
 }
 
-/// One dot's own click target on the pointer tier. The dots share one
-/// focus node, so this is a [CoilInteractionDetector] rather than a
-/// focusable [CoilInteraction].
+/// One dot's own click target on the pointer tier.
+///
+/// The dots share one focus node, so this is a [CoilInteractionDetector] rather
+/// than a focusable [CoilInteraction].
 class _DotTarget extends StatefulWidget {
   const _DotTarget({required this.onPressed, required this.child});
 
@@ -342,7 +350,9 @@ class _DotTargetState extends State<_DotTarget> {
 }
 
 /// One dot in its round target: a resting dot, or the current pill with its
-/// fill. The pill's width springs on [motion].
+/// fill.
+///
+/// The pill's width springs on [motion].
 class _Dot extends StatelessWidget {
   const _Dot({
     required this.current,

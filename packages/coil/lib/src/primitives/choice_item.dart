@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/foundation/adaptive.dart';
+library;
+
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/interaction.dart';
@@ -6,7 +9,7 @@ import 'package:motor/motor.dart';
 
 /// One pressable item of a choice group.
 ///
-/// Wraps `CoilInteraction` with what every item shares: the disabled
+/// Wraps [CoilInteraction] with what every item shares: the disabled
 /// opacity and, on touch, a fill that shows while a finger presses (a
 /// hovering pointer already shows the group's highlight). Build the item's
 /// content in [builder] from the interaction states.
@@ -25,7 +28,9 @@ class CoilChoiceItem extends StatelessWidget {
     this.size,
   });
 
-  /// Called on tap, Enter or Space. Null disables the item.
+  /// Called on tap, Enter or Space.
+  ///
+  /// Null disables the item.
   final VoidCallback? onPressed;
 
   /// The item's focus node, from the group.
@@ -49,7 +54,9 @@ class CoilChoiceItem extends StatelessWidget {
   /// Builds the content.
   final ValueWidgetBuilder<Set<WidgetState>> builder;
 
-  /// Pins the item to one size step. Null follows `CoilAdaptiveScope`.
+  /// Pins the item to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   @override

@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/metrics.dart';
@@ -13,11 +16,12 @@ class CoilRadii {
     required this.focusRing,
   });
 
-  /// Controls, list rows and the fills that sit on them.
+  /// Controls, list rows, and the fills that sit on them.
   final double item;
 
-  /// Containers holding items: popovers, sheets, cards, groups. Concentric
-  /// with [item] at the popup inset.
+  /// Containers holding items: popovers, sheets, cards, and groups.
+  ///
+  /// Concentric with [item] at the popup inset.
   final double container;
 
   /// A focus ring drawn 2 px outside an item.
@@ -62,11 +66,11 @@ class CoilRadii {
   int get hashCode => Object.hash(item, container, focusRing);
 }
 
-/// The corner shape family: radii per tier. Touch controls are taller, so
-/// their corners grow to keep the same proportions.
+/// The corner shape family: radii per tier.
 ///
-/// Use one of [rounded] (the default), [pill] or [sharp], or define your
-/// own with two [CoilRadii].
+/// Touch controls are taller, so their corners grow to keep the same
+/// proportions. Use one of [rounded] (the default), [pill], or [sharp], or
+/// define your own with two [CoilRadii].
 @immutable
 class CoilShape {
   /// Creates a shape family with radii for each tier.
@@ -97,15 +101,17 @@ class CoilShape {
   /// The radii on the touch tier.
   final CoilRadii touch;
 
-  /// The radii for [tier]. `CoilTheme.radiiOf(context)` resolves the tier
-  /// for you.
+  /// The radii for [tier].
+  ///
+  /// [CoilTheme.radiiOf] resolves the tier for you.
   CoilRadii radii(CoilTier tier) => switch (tier) {
     CoilTier.pointer => pointer,
     CoilTier.touch => touch,
   };
 
   /// The radius of a surface inset by [inset] inside one of [outer] radius.
-  /// The inverse of [CoilRadii.concentric].
+  ///
+  /// This is the inverse of [CoilRadii.concentric].
   static double nested(double outer, double inset, [double borderWidth = 0]) =>
       (outer - inset - borderWidth).clamp(0, double.infinity);
 

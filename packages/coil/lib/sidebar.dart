@@ -1,4 +1,6 @@
-/// The coil sidebar: `CoilSidebarScaffold`, `CoilSidebar` and its parts.
+/// The Coil sidebar: [CoilSidebarScaffold], [CoilSidebar], and its parts.
+///
+/// @docImport 'package:coil/sidebar.dart';
 library;
 
 export 'src/components/sidebar/sidebar_callouts.dart';

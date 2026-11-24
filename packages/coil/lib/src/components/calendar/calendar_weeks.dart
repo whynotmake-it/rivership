@@ -86,8 +86,10 @@ class CalendarWeeks {
   }
 
   /// How many week rows come before chunk [index]: a chunk begins this many
-  /// rows from the top of the list. For an index past the last month this
-  /// goes on by the calendar, not by the tail.
+  /// rows from the top of the list.
+  ///
+  /// For an index past the last month this goes on by the calendar, not by the
+  /// tail.
   int weeksBefore(int index) => (_startDay(index) - _startDay(0)) ~/ 7;
 
   /// The row count at the end of chunk [index] counted as it's laid out:

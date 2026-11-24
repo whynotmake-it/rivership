@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/queued_stack.dart';
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/button.dart';
@@ -13,8 +17,10 @@ enum CoilMessageStatus {
   /// Ready to send.
   idle,
 
-  /// A reply is streaming in. The send button stops it, or queues the
-  /// draft when there is one and the composer has `onQueue`.
+  /// A reply is streaming in.
+  ///
+  /// The send button stops it, or queues the draft when there is one and the
+  /// composer has [CoilInputMessage.onQueue].
   streaming,
 }
 
@@ -31,7 +37,7 @@ enum CoilMessageStatus {
 /// hands the trimmed text to [onQueue], then clears the field. With an
 /// empty field the button stops the reply with [onStop]. Without
 /// [onQueue], nothing sends until the reply ends. Show the queue with a
-/// `CoilQueuedStack`, and send its front message when the reply ends.
+/// [CoilQueuedStack], and send its front message when the reply ends.
 class CoilInputMessage extends StatefulWidget {
   /// Creates a composer.
   const CoilInputMessage({
@@ -81,7 +87,9 @@ class CoilInputMessage extends StatefulWidget {
   /// The field's focus node.
   final FocusNode? focusNode;
 
-  /// Shown, muted, in the empty field. Usually a [Text].
+  /// Shown, muted, in the empty field.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
   /// Shown above the text, such as attached files' thumbnails.
@@ -99,8 +107,9 @@ class CoilInputMessage extends StatefulWidget {
   /// Stops a streaming reply.
   final VoidCallback? onStop;
 
-  /// Called with the trimmed text when the user sends while a reply
-  /// streams. Null keeps sending blocked until the reply ends.
+  /// Called with the trimmed text when the user sends while a reply streams.
+  ///
+  /// When null, sending stays blocked until the reply ends.
   final ValueChanged<String>? onQueue;
 
   /// How many lines the field starts with.
@@ -128,68 +137,85 @@ class CoilInputMessage extends StatefulWidget {
   final CoilMotion? motion;
 
   /// The space kept between the field and the screen edges (and the software
-  /// keyboard) when it scrolls itself into view. See
-  /// `TextField.scrollPadding`.
+  /// keyboard) when it scrolls itself into view.
+  ///
+  /// See [TextField.scrollPadding].
   final EdgeInsets scrollPadding;
 
-  /// The most characters the field accepts; null for no limit. See
-  /// `TextField.maxLength`.
+  /// The most characters the field accepts; null for no limit.
+  ///
+  /// See [TextField.maxLength].
   final int? maxLength;
 
-  /// How [maxLength] is enforced. Defaults to the platform's. See
-  /// `TextField.maxLengthEnforcement`.
+  /// How [maxLength] is enforced.
+  ///
+  /// Defaults to the platform's behavior. See [TextField.maxLengthEnforcement].
   final MaxLengthEnforcement? maxLengthEnforcement;
 
   /// Called when a pointer or a finger taps the field, never when focus
-  /// arrives some other way (Tab); see [CoilTextFieldCore.onTap].
+  /// arrives some other way (Tab).
+  ///
+  /// See [CoilTextFieldCore.onTap].
   final VoidCallback? onTap;
 
-  /// Called when a pointer taps outside the field. Null keeps the default.
-  /// See `TextField.onTapOutside`.
+  /// Called when a pointer taps outside the field.
+  ///
+  /// When null, keeps the default behavior. See [TextField.onTapOutside].
   final TapRegionCallback? onTapOutside;
 
-  /// How the text, and the placeholder, align horizontally. See
-  /// `TextField.textAlign`.
+  /// How the text and the placeholder align horizontally.
+  ///
+  /// See [TextField.textAlign].
   final TextAlign textAlign;
 
-  /// The text's direction. Defaults to the ambient [Directionality]. See
-  /// `TextField.textDirection`.
+  /// The text's direction.
+  ///
+  /// Defaults to the ambient [Directionality]. See [TextField.textDirection].
   final TextDirection? textDirection;
 
-  /// The undo history controller; one is created if null. See
-  /// `TextField.undoController`.
+  /// The undo history controller; one is created if null.
+  ///
+  /// See [TextField.undoController].
   final UndoHistoryController? undoController;
 
-  /// Scrolls the field's text; one is created if null. See
-  /// `TextField.scrollController`.
+  /// Scrolls the field's text; one is created if null.
+  ///
+  /// See [TextField.scrollController].
   final ScrollController? scrollController;
 
-  /// Builds the selection toolbar. Null shows no menu. See
-  /// `TextField.contextMenuBuilder`.
+  /// Builds the selection toolbar.
+  ///
+  /// When null, shows no menu. See [TextField.contextMenuBuilder].
   final EditableTextContextMenuBuilder? contextMenuBuilder;
 
-  /// Whether the text can be selected and the toolbar shown. See
-  /// `TextField.enableInteractiveSelection`.
+  /// Whether the text can be selected and the toolbar shown.
+  ///
+  /// See [TextField.enableInteractiveSelection].
   final bool enableInteractiveSelection;
 
-  /// The software keyboard's brightness. Defaults to the theme's. See
-  /// `TextField.keyboardAppearance`.
+  /// The software keyboard's brightness.
+  ///
+  /// Defaults to the theme's brightness. See [TextField.keyboardAppearance].
   final Brightness? keyboardAppearance;
 
-  /// The id the field saves its state under for restoration. See
-  /// `TextField.restorationId`.
+  /// The id the field saves its state under for restoration.
+  ///
+  /// See [TextField.restorationId].
   final String? restorationId;
 
-  /// How spell check runs and shows its results. See
-  /// `TextField.spellCheckConfiguration`.
+  /// How spell check runs and shows its results.
+  ///
+  /// See [TextField.spellCheckConfiguration].
   final SpellCheckConfiguration? spellCheckConfiguration;
 
-  /// Whether the keyboard replaces dashes with typographic ones. See
-  /// `TextField.smartDashesType`.
+  /// Whether the keyboard replaces dashes with typographic ones.
+  ///
+  /// See [TextField.smartDashesType].
   final SmartDashesType? smartDashesType;
 
-  /// Whether the keyboard replaces quotes with typographic ones. See
-  /// `TextField.smartQuotesType`.
+  /// Whether the keyboard replaces quotes with typographic ones.
+  ///
+  /// See [TextField.smartQuotesType].
   final SmartQuotesType? smartQuotesType;
 
   @override
@@ -465,7 +491,7 @@ class _NestedShape extends StatelessWidget {
 }
 
 /// The send button's icon: the theme's [CoilIcons.send] or
-/// [CoilIcons.stop], else coil's drawn arrow or square, which blur-fade with
+/// [CoilIcons.stop], else Coil's drawn arrow or square, which blur-fade with
 /// their icon presence.
 class _SendGlyph extends StatelessWidget {
   const _SendGlyph(this.role, {super.key});

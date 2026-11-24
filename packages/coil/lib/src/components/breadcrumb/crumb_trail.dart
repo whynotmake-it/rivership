@@ -23,7 +23,7 @@ class CrumbTrailHandle {
 ///
 /// [children] are the "…" crumb first, then the crumbs in order (the
 /// current page last). [gates] holds one focus node per child, wrapping it
-/// with `Focus.withExternalFocusNode`. A hidden child (and "…" while
+/// with [Focus.withExternalFocusNode]. A hidden child (and "…" while
 /// nothing is hidden) is laid out at zero size and skipped by paint, hit
 /// testing and semantics; its gate stops focus from reaching it.
 ///
@@ -150,11 +150,13 @@ class RenderCrumbTrail extends RenderBox
     ];
   }
 
-  /// The widths the shown children get: their natural widths if they fit,
-  /// else every child wider than a common cap is cut to it, with the cap
-  /// chosen so the row fills [maxWidth]. Long labels truncate first and
-  /// short ones keep their full text. Only the labels give way: a crumb
-  /// keeps at least its minimum width (padding, glyph, separator).
+  /// The widths the shown children get: their natural widths if they fit, else
+  /// every child wider than a common cap is cut to it, with the cap chosen so
+  /// the row fills [maxWidth].
+  ///
+  /// Long labels truncate first and short ones keep their full text. Only the
+  /// labels give way: a crumb keeps at least its minimum width (padding, glyph,
+  /// separator).
   List<double> _widths(List<RenderBox> shown, double maxWidth) {
     final natural = [for (final c in shown) _natural(c)];
     final total = natural.fold<double>(0, (a, b) => a + b);

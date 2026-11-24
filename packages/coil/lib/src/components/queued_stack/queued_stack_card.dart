@@ -1,6 +1,9 @@
 // Internal to CoilQueuedStack; not exported.
 // ignore_for_file: public_member_api_docs
 
+/// @docImport 'package:coil/queued_stack.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/button.dart';
@@ -26,7 +29,7 @@ const _liftScale = 0.03;
 /// The inset around attachment previews.
 const _thumbInset = 8.0;
 
-/// One card of a `CoilQueuedStack`: its place, its arrival and departure,
+/// One card of a [CoilQueuedStack]: its place, its arrival and departure,
 /// and its content.
 class QueuedStackCard extends StatelessWidget {
   /// Creates a card.
@@ -169,11 +172,12 @@ class _CardBodyState extends State<_CardBody> {
     super.dispose();
   }
 
-  /// The actions' end padding and look: the remove button sits as far
-  /// in from the trailing edge as from the top and bottom of a card of
-  /// the minimum height, at the radius nested in the card's corner, so the
-  /// two are concentric. A family that nests square (`sharp`) keeps the
-  /// buttons' own radius.
+  /// The actions' end padding and look: the remove button sits as far in from
+  /// the trailing edge as from the top and bottom of a card of the minimum
+  /// height, at the radius nested in the card's corner, so the two are
+  /// concentric.
+  ///
+  /// A family that nests square (`sharp`) keeps the buttons' own radius.
   ({double end, CoilButtonStyle? style}) _actionCorner(BuildContext context) {
     final look = widget.card.look;
     final tier = widget.card.metrics.tier;

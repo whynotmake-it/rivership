@@ -19,22 +19,28 @@ const thinkingStepsEntry = CatalogEntry(
 const _research = [
   CoilThinkingStep(
     leading: CatalogIcon(Glyph.search),
-    title: Text('Searching for profiles'),
-    sources: [Text('x.com'), Text('instagram.com'), Text('github.com')],
+    title: Text('Searching biographical archives'),
+    sources: [
+      Text('wikipedia.org'),
+      Text('britannica.com'),
+      Text('bodleian.ox.ac.uk'),
+    ],
   ),
   CoilThinkingStep(
-    leading: CatalogIcon(Glyph.user),
-    title: Text('Found a profile photo'),
-    detail: Text('The newest one, from x.com.'),
+    leading: CatalogIcon(Glyph.fileText),
+    title: Text('Found her 1843 translation'),
+    detail: Text('Includes Note G with the Bernoulli numbers algorithm.'),
   ),
   CoilThinkingStep(
     leading: CatalogIcon(Glyph.globe),
-    title: Text('Reading the portfolio'),
+    title: Text('Checking primary letters'),
   ),
   CoilThinkingStep(
     leading: CatalogIcon(Glyph.brain),
-    title: Text('Analyzing results'),
-    detail: Text('Compiling findings into a summary.'),
+    title: Text('Cross-checking dates'),
+    detail: Text(
+      'Confirmed collaboration with Charles Babbage on the Analytical Engine.',
+    ),
   ),
   CoilThinkingStep(
     leading: CatalogIcon(Glyph.sparkles),
@@ -84,9 +90,9 @@ CoilThinkingSteps(
       ),
       CatalogNote(
         'Motion',
-        'The list opens on standard. A step that arrives later grows in on '
-            'gentle and fades in 80 ms after that, and source badges pop in '
-            'from 0.85 with a blur.',
+        'The list springs open and closed. Steps that arrive later grow in '
+            'gently and fade in 80 ms later, while source badges pop in from '
+            '85% scale with a subtle blur.',
       ),
       CatalogNote(
         "Do / Don't",

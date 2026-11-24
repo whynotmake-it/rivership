@@ -101,18 +101,22 @@ class _SliderCoreState extends State<SliderCore>
   List<double> _fractions() => [for (var i = 0; i < _count; i++) _at(i)];
 
   /// The snapped fraction under a hover-capable pointer, null when there is
-  /// none. It follows the pointer during a drag too, so it is current the
-  /// moment the drag ends.
+  /// none.
+  ///
+  /// It follows the pointer during a drag too, so it is current the moment the
+  /// drag ends.
   final _hover = ValueNotifier<double?>(null);
 
-  /// Where a hover-capable pointer last was, as a fraction of the range,
-  /// not snapped: the hover bubble's position. It stays there while the
-  /// bubble fades out.
+  /// Where a hover-capable pointer last was, as a fraction of the range, not
+  /// snapped: the hover bubble's position.
+  ///
+  /// It stays there while the bubble fades out.
   final _hoverAt = ValueNotifier<double>(0);
 
-  /// The hover bubble's glide once it has joined the preview. It springs
-  /// on the preview's motion toward [_hoverAt], so with steps the bubble
-  /// keeps moving with the pointer while the preview snaps to steps. A
+  /// The hover bubble's glide once it has joined the preview.
+  ///
+  /// It springs on the preview's motion toward [_hoverAt], so with steps the
+  /// bubble keeps moving with the pointer while the preview snaps to steps. A
   /// continuous slider's bubble rides the preview itself, which targets the
   /// same place.
   late final _follow = TrackController(
@@ -121,24 +125,30 @@ class _SliderCoreState extends State<SliderCore>
   );
   double get _followAt => _follow.value(CoilSliderTrack.thumb);
 
-  /// The hover preview bar's end. It springs from the nearest thumb toward
-  /// the hover, set by pointer events rather than by builds.
+  /// The hover preview bar's end.
+  ///
+  /// It springs from the nearest thumb toward the hover, set by pointer events
+  /// rather than by builds.
   late final _preview = TrackController(
     vsync: this,
     debugLabel: 'CoilSlider.preview',
   );
   double get _previewAt => _preview.value(CoilSliderTrack.preview);
 
-  /// Whether the hover bubble has met the preview. A bubble appears on the
-  /// hover at once; until the springing preview reaches it, the bubble
-  /// follows the hover directly. Once they meet, it rides the preview.
+  /// Whether the hover bubble has met the preview.
+  ///
+  /// A bubble appears on the hover at once; until the springing preview reaches
+  /// it, the bubble follows the hover directly. Once they meet, it rides the
+  /// preview.
   bool _joined = false;
 
   /// Which side of the hover the preview was on, to see them cross.
   double? _side;
 
   /// The value bubbles' presence, 0 hidden to 1 shown, on
-  /// [CoilSliderTrack.bubble]. Pointer, press and focus events drive it.
+  /// [CoilSliderTrack.bubble].
+  ///
+  /// Pointer, press and focus events drive it.
   late final _bubble = TrackController(
     vsync: this,
     debugLabel: 'CoilSlider.bubble',
@@ -152,15 +162,18 @@ class _SliderCoreState extends State<SliderCore>
   late final Listenable _paintMoves = Listenable.merge([..._thumbs, _preview]);
 
   /// Moves each thumb's value bubble: its thumb, the press and the settle.
-  /// Each bubble listens only to what its position reads, so one thumb's
-  /// tick doesn't rebuild the other's bubble.
+  ///
+  /// Each bubble listens only to what its position reads, so one thumb's tick
+  /// doesn't rebuild the other's bubble.
   late final List<Listenable> _thumbBubbleMoves = [
     for (var i = 0; i < _count; i++)
       Listenable.merge([_thumbs[i], _pressAt, _settle]),
   ];
 
   /// Moves the hover bubble: the pointer, the preview that follows it, the
-  /// press and the settle. Not the thumbs.
+  /// press and the settle.
+  ///
+  /// Not the thumbs.
   late final Listenable _hoverBubbleMoves = Listenable.merge([
     _preview,
     _follow,
@@ -192,33 +205,38 @@ class _SliderCoreState extends State<SliderCore>
   bool _tied = false;
   double _downFraction = 0;
 
-  /// Whether a press on the track is changing the value. It opens at the
-  /// first change (a tap-down or a drag start) and closes at whichever
-  /// comes first: the tap, the drag's end, or the drag's cancel (a scroll
-  /// won, or the pointer lifted). So a press that becomes a drag is one
-  /// change. A quick tap's drag cancel comes before its tap-down, which is
-  /// why the tap closes it too.
+  /// Whether a press on the track is changing the value.
+  ///
+  /// It opens at the first change (a tap-down or a drag start) and closes at
+  /// whichever comes first: the tap, the drag's end, or the drag's cancel (a
+  /// scroll won, or the pointer lifted). So a press that becomes a drag is one
+  /// change. A quick tap's drag cancel comes before its tap-down, which is why
+  /// the tap closes it too.
   bool _pressing = false;
 
   /// The values this press last asked for, which its end reports.
   List<double> _asked = const [];
 
-  /// The value under the pointer while the track is pressed: the snapped
-  /// press or drag position, kept from crossing the other thumb. The value
-  /// bubble shows it, and it doesn't change when the parent refuses the
-  /// change.
+  /// The value under the pointer while the track is pressed: the snapped press
+  /// or drag position, kept from crossing the other thumb.
+  ///
+  /// The value bubble shows it, and it doesn't change when the parent refuses
+  /// the change.
   double _pressValue = 0;
 
-  /// Where the pointer pressing the track is, as a fraction of the range,
-  /// not snapped, kept from crossing the other thumb. The value bubble
-  /// belongs to the pointer, so it sits here while pressed: with steps the
-  /// value snaps, but the bubble moves with the finger, and the thumb
-  /// springs underneath from step to step.
+  /// Where the pointer pressing the track is, as a fraction of the range, not
+  /// snapped, kept from crossing the other thumb.
+  ///
+  /// The value bubble belongs to the pointer, so it sits here while pressed:
+  /// with steps the value snaps, but the bubble moves with the finger, and the
+  /// thumb springs underneath from step to step.
   final _pressAt = ValueNotifier<double>(0);
 
-  /// The released bubble's distance from where it lands, springing to 0 on
-  /// the thumb's motion. A released press bubble lands on the snapped value,
-  /// a tooltip bubble on its thumb ([_settled]).
+  /// The released bubble's distance from where it lands, springing to 0 on the
+  /// thumb's motion.
+  ///
+  /// A released press bubble lands on the snapped value, a tooltip bubble on
+  /// its thumb ([_settled]).
   late final _settle = TrackController(
     vsync: this,
     debugLabel: 'CoilSlider.settle',
@@ -228,9 +246,10 @@ class _SliderCoreState extends State<SliderCore>
   /// The thumb whose tooltip bubble [_settle] moves.
   int _settled = 0;
 
-  /// Whether the text and editable bubble shows the last press rather than
-  /// the hover: from a press until a hover-capable pointer takes it back. So
-  /// a finger's bubble stays on its press while it fades out.
+  /// Whether the text and editable bubble shows the last press rather than the
+  /// hover: from a press until a hover-capable pointer takes it back.
+  ///
+  /// So a finger's bubble stays on its press while it fades out.
   bool _fromPress = false;
 
   /// The thumb whose value is being typed, if any.
@@ -331,9 +350,10 @@ class _SliderCoreState extends State<SliderCore>
   }
 
   /// Builds [_singleReserve] and [_pairReserve] when the stops changed, and
-  /// clears them when there are none to hold. They are kept between builds
-  /// because a running motion rebuilds the track every frame, and an
-  /// identical widget stops the rebuild at the reserve.
+  /// clears them when there are none to hold.
+  ///
+  /// They are kept between builds because a running motion rebuilds the track
+  /// every frame, and an identical widget stops the rebuild at the reserve.
   void _syncReserve() {
     final values = _stopValues;
     if (values == null) {
@@ -397,10 +417,11 @@ class _SliderCoreState extends State<SliderCore>
     _syncBubble();
   }
 
-  /// Whether a value bubble shows. Tooltip mode keeps the values over the
-  /// thumbs while the slider is hovered, pressed or keyboard-focused.
-  /// Otherwise one bubble shows the hovered value, or the pressed thumb's
-  /// value under a finger.
+  /// Whether a value bubble shows.
+  ///
+  /// Tooltip mode keeps the values over the thumbs while the slider is hovered,
+  /// pressed or keyboard-focused. Otherwise one bubble shows the hovered value,
+  /// or the pressed thumb's value under a finger.
   bool get _wantsBubble {
     if (!_enabled) return false;
     final states = _states.value;
@@ -458,10 +479,11 @@ class _SliderCoreState extends State<SliderCore>
     _syncFocused();
   }
 
-  /// The slider is focused while either thumb has the primary focus from
-  /// the keyboard, the detector's rule. The slider writes it, not the
-  /// detector: one detector covers both thumbs, and the thumb with focus
-  /// changes on a focus event, not while building.
+  /// The slider is focused while either thumb has the primary focus from the
+  /// keyboard, the detector's rule.
+  ///
+  /// The slider writes it, not the detector: one detector covers both thumbs,
+  /// and the thumb with focus changes on a focus event, not while building.
   void _syncFocused() {
     var thumb = false;
     for (var i = 0; i < _count; i++) {
@@ -560,8 +582,10 @@ class _SliderCoreState extends State<SliderCore>
     widget.onChangeEnd?.call(values);
   }
 
-  /// The thumb a press at [f] moves: the nearest one. Between two stacked
-  /// thumbs, the side of the press decides, and on them the drag does.
+  /// The thumb a press at [f] moves: the nearest one.
+  ///
+  /// Between two stacked thumbs, the side of the press decides, and on them the
+  /// drag does.
   int _pick(double f) {
     _tied = false;
     if (!_range) return 0;
@@ -623,9 +647,10 @@ class _SliderCoreState extends State<SliderCore>
     metrics,
   ).merge(CoilTheme.styleOf<CoilSliderStyle>(context)).merge(widget.style);
 
-  /// The row's range spans its full width; the pill's stops half a knob
-  /// short of each end, so the knob's edge meets the end of the track. The
-  /// knob's box, which is its hit area, may reach past the track.
+  /// The row's range spans its full width; the pill's stops half a knob short
+  /// of each end, so the knob's edge meets the end of the track.
+  ///
+  /// The knob's box, which is its hit area, may reach past the track.
   SliderReach _reach(CoilSliderStyle style) =>
       SliderReach(_compactTrack ? style.knobSize! / 2 : 0);
 
@@ -692,9 +717,11 @@ class _SliderCoreState extends State<SliderCore>
       ]);
   }
 
-  /// Whether the pressed thumb's tooltip bubble follows the pointer rather
-  /// than the thumb. A continuous thumb is under the pointer anyway, and
-  /// stays put when the parent refuses the change, so its bubble does too.
+  /// Whether the pressed thumb's tooltip bubble follows the pointer rather than
+  /// the thumb.
+  ///
+  /// A continuous thumb is under the pointer anyway, and stays put when the
+  /// parent refuses the change, so its bubble does too.
   bool get _followsPress => !_scale.continuous;
 
   /// The fraction [f] for thumb [i], kept from crossing the other thumb.
@@ -738,8 +765,9 @@ class _SliderCoreState extends State<SliderCore>
     _editFocus.requestFocus();
   }
 
-  /// Applies the typed value, clamped and snapped. Text that isn't a number
-  /// changes nothing.
+  /// Applies the typed value, clamped and snapped.
+  ///
+  /// Text that isn't a number changes nothing.
   void _commitEdit({bool refocus = true}) {
     final i = _editing;
     if (i == null) return;
@@ -753,8 +781,10 @@ class _SliderCoreState extends State<SliderCore>
     if (_editing case final i?) _endEdit(i, refocus: true);
   }
 
-  /// Closes the field. Done and Esc hand focus back to the thumb, so the
-  /// keyboard carries on from where it was.
+  /// Closes the field.
+  ///
+  /// Done and Esc hand focus back to the thumb, so the keyboard carries on from
+  /// where it was.
   void _endEdit(int i, {required bool refocus}) {
     setState(() => _editing = null);
     if (refocus) _focusOf(i).requestFocus();
@@ -1154,8 +1184,9 @@ class _SliderCoreState extends State<SliderCore>
     ),
   );
 
-  /// The value text: one value, or two around a dash. When editable, a tap
-  /// on a value turns it into a field.
+  /// The value text: one value, or two around a dash.
+  ///
+  /// When editable, a tap on a value turns it into a field.
   Widget _valueText(
     CoilThemeData theme,
     CoilMetrics metrics,

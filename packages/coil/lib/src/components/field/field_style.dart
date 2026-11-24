@@ -1,12 +1,17 @@
+/// @docImport 'package:coil/field.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/field/field.dart' show CoilFieldTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how fields look: `CoilField`, `CoilFieldSet`,
-/// `CoilFieldGroup` and `CoilFieldSeparator`. Unset fields come from
-/// [CoilFieldStyle.fallback]. Set a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Style overrides for [CoilField], [CoilFieldSet], [CoilFieldGroup], and
+/// [CoilFieldSeparator].
+///
+/// Unset fields fall back to [CoilFieldStyle.fallback]. Set a style app-wide
+/// or for a subtree with [CoilThemeData.withComponentStyle], or per instance
+/// with `style:`.
 class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
   /// Creates a style.
   const CoilFieldStyle({
@@ -76,8 +81,10 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
     CoilTheme.metricsOf(context, size: size),
   ).merge(CoilTheme.styleOf<CoilFieldStyle>(context)).merge(style);
 
-  /// The label's text style. Its color comes from [labelColor] or
-  /// [besideLabelColor]; an invalid field uses the [errorStyle] color.
+  /// The label's text style.
+  ///
+  /// Its color comes from [labelColor] or [besideLabelColor]; an invalid field
+  /// uses the [errorStyle] color.
   final TextStyle? labelStyle;
 
   /// The label color above a control.
@@ -95,7 +102,9 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
   /// The description's text style.
   final TextStyle? descriptionStyle;
 
-  /// The error's text style. Its icon takes the same color.
+  /// The error's text style.
+  ///
+  /// Its icon takes the same color.
   final TextStyle? errorStyle;
 
   /// The error icon's size, before text scaling.
@@ -128,20 +137,22 @@ class CoilFieldStyle extends CoilComponentStyle<CoilFieldStyle> {
   /// Control to description to error.
   final double? messageGap;
 
-  /// Label to control in a horizontal field: the tier's `gap` (8
+  /// Label to control in a horizontal field: the tier's [CoilMetrics.gap] (8
   /// pointer, 12 touch) by default.
   final double? besideGap;
 
-  /// Field to field, in a set, group or input group.
+  /// Field to field, in a set, group, or input group.
   final double? fieldGap;
 
   /// The width from which a responsive field lays out horizontally.
   final double? responsiveBreakpoint;
 
-  /// Springs for the field's animated parts, keyed by [CoilFieldTrack]s:
-  /// `{CoilFieldTrack.message: const Motion.bouncySpring()}`. A field's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// Springs for the field's animated parts, keyed by [CoilFieldTrack] values.
+  ///
+  /// For example, `{CoilFieldTrack.message: const Motion.bouncySpring()}`.
+  /// [CoilField.motions] takes precedence over these, and these take
+  /// precedence over the theme motion tokens. [merge] combines the maps key
+  /// by key.
   final Map<CoilFieldTrack<Object>, Motion>? motions;
 
   @override

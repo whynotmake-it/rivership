@@ -91,7 +91,7 @@ CoilField(
             'textInputAction and autofillHints for each input.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'A placeholder is a hint and should not stand in for the label. The '
             'slots can hold an icon, a unit or a compact button without '
             'making the input any taller.',

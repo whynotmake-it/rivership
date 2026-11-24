@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/interaction.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/option.dart';
@@ -34,7 +37,7 @@ typedef CoilChoiceItemBuilder<T> =
 ///
 /// The group paints the selection behind the items: merged blocks or one
 /// gliding fill ([selection]). Items are built by [itemBuilder] and should
-/// use `CoilInteraction` with the node and states they are given.
+/// use [CoilInteraction] with the node and states they are given.
 class CoilChoiceGroup<T> extends StatefulWidget {
   /// Creates a choice group.
   const CoilChoiceGroup({
@@ -88,12 +91,15 @@ class CoilChoiceGroup<T> extends StatefulWidget {
   /// How the selected items are marked.
   final CoilChoiceSelection selection;
 
-  /// Which items Tab reaches. With [CoilRovingTabStops.one] it is the first
-  /// selected item, else the first.
+  /// Which items Tab reaches.
+  ///
+  /// With [CoilRovingTabStops.one] it is the first selected item, else the
+  /// first.
   final CoilRovingTabStops tabStops;
 
-  /// Whether the items can take part in hover and focus. Items whose option
-  /// is disabled never do.
+  /// Whether the items can take part in hover and focus.
+  ///
+  /// Items whose option is disabled never do.
   final bool enabled;
 
   /// Called with the value of the item that an arrow key, Home or End moved
@@ -252,9 +258,11 @@ class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
   }
 }
 
-/// A row of items at their natural widths. When they don't all fit, the
-/// widest are cut to a common cap so the row fills its room (their labels
-/// ellipsize); short items keep their full width.
+/// A row of items at their natural widths.
+///
+/// When they don't all fit, the widest are cut to a common cap so the row
+/// fills its room (their labels ellipsize); short items keep their full
+/// width.
 class _FitRow extends MultiChildRenderObjectWidget {
   const _FitRow({required super.children});
 

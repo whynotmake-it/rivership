@@ -62,14 +62,14 @@ CoilReveal(
       DemoSection(
         title: 'Subtle',
         description:
-            'The steps sit two thirds of a stagger apart, for quieter '
-            'screens.',
+            'Uses a shorter stagger between steps, for quieter screens.',
         child: _RevealDemo(preset: CoilRevealPreset.subtle),
       ),
       DemoSection(
         title: 'Landing',
         description:
-            'Each child rises 12 and grows from 0.94 on gentle, 100 ms apart.',
+            'Each child rises 12 px and scales up gently from 94%, 100 ms '
+            'apart.',
         child: _RevealDemo(preset: CoilRevealPreset.landing),
       ),
       DemoSection(
@@ -93,7 +93,7 @@ CoilReveal(
 const _panels = [
   ('Revenue', r'$48,200 this month'),
   ('Active users', '1,284 today'),
-  ('Churn', '2.1 %, down from 2.4 %'),
+  ('Churn', '2.1%, down from 2.4%'),
 ];
 
 const _rows = [

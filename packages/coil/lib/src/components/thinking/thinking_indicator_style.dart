@@ -1,10 +1,14 @@
+/// @docImport 'package:coil/thinking.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// Overrides for how a `CoilThinkingIndicator` looks. Unset fields come
-/// from [CoilThinkingIndicatorStyle.fallback], which derives them from the
-/// theme. Set a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilThinkingIndicator] looks.
+///
+/// Unset fields come from [CoilThinkingIndicatorStyle.fallback], which derives
+/// them from the theme. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 class CoilThinkingIndicatorStyle
     extends CoilComponentStyle<CoilThinkingIndicatorStyle> {
   /// Creates a style.

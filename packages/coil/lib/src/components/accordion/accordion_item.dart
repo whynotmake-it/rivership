@@ -1,29 +1,35 @@
+/// @docImport 'package:coil/accordion.dart';
+/// @docImport 'package:coil/foundation.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// How many items of a `CoilAccordion` can be open at once.
+/// How many items of a [CoilAccordion] can be open at once.
 enum CoilAccordionMode {
-  /// At most one. Opening an item closes the open one.
+  /// At most one item open at a time.
+  ///
+  /// Opening an item closes the currently open one.
   single,
 
-  /// Any number.
+  /// Any number of items open at once.
   multiple,
 }
 
-/// How a `CoilAccordion` looks.
+/// Visual layout and hover treatment for a [CoilAccordion].
 enum CoilAccordionVariant {
-  /// Full width. Each trigger shows its own hover fill.
+  /// Full-width layout where each trigger shows its own hover fill.
   plain,
 
-  /// Narrow, with one hover highlight shared by the triggers and a tint
+  /// Narrow layout with a shared hover highlight across triggers and a tint
   /// behind open items.
   group,
 }
 
-/// One section of a `CoilAccordion`.
+/// A single expandable section in a [CoilAccordion].
 @immutable
 class CoilAccordionItem<T> {
-  /// Creates an item.
+  /// Creates an accordion item.
   const CoilAccordionItem({
     required this.value,
     required this.label,
@@ -33,8 +39,9 @@ class CoilAccordionItem<T> {
     this.enabled = true,
   });
 
-  /// What the accordion reports when this item opens or closes. It also
-  /// identifies the item, so it must be unique within the accordion.
+  /// Identifier reported when this item opens or closes.
+  ///
+  /// Must be unique within the accordion.
   final T value;
 
   /// The trigger's label, usually a [Text].
@@ -49,57 +56,71 @@ class CoilAccordionItem<T> {
   /// An optional glyph before the label, styled by [IconTheme].
   final Widget? leading;
 
-  /// Whether the item can be toggled. Arrow keys skip disabled items.
+  /// Whether the item can be toggled.
+  ///
+  /// Arrow keys skip disabled items.
   final bool enabled;
 }
 
-/// The animated parts of a `CoilAccordion`. Use them as keys of
-/// `CoilAccordion.motions` or `CoilAccordionStyle.motions`.
+/// The animated parts of a [CoilAccordion].
+///
+/// Use these as keys of [CoilAccordion.motions] or
+/// [CoilAccordionStyle.motions].
 final class CoilAccordionTrack<T extends Object> extends Track<T> {
   CoilAccordionTrack._(super.converter, {required String super.debugLabel});
 
-  /// The chevron's quarter turn. Default motion: `quick` opening,
-  /// `quickExit` closing.
+  /// The chevron's quarter turn.
+  ///
+  /// Defaults to [CoilMotion.quick] opening and [CoilMotion.quickExit] closing.
   static final chevron = CoilAccordionTrack<double>._(
     .single,
     debugLabel: 'CoilAccordion.chevron',
   );
 
-  /// How open a panel is, 0 to 1. Default motion: `standard` opening,
-  /// `standardExit` closing.
+  /// How open a panel is, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.standard] opening and [CoilMotion.standardExit]
+  /// closing.
   static final height = CoilAccordionTrack<double>._(
     .single,
     debugLabel: 'CoilAccordion.height',
   );
 
-  /// A panel's opacity. Default motion: `fade` opening, `fadeExit`
-  /// closing.
+  /// A panel's opacity.
+  ///
+  /// Defaults to [CoilMotion.fade] opening and [CoilMotion.fadeExit] closing.
   static final opacity = CoilAccordionTrack<double>._(
     .single,
     debugLabel: 'CoilAccordion.opacity',
   );
 
-  /// The tint behind an open item of the group variant. Default motion:
-  /// `fade` showing, `fadeExit` clearing.
+  /// The tint behind an open item of the group variant.
+  ///
+  /// Defaults to [CoilMotion.fade] showing and [CoilMotion.fadeExit] clearing.
   static final tint = CoilAccordionTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilAccordion.tint',
   );
 
-  /// A trigger's own fill. Default motion: `fade` showing, `fadeExit`
-  /// clearing.
+  /// A trigger's own fill.
+  ///
+  /// Defaults to [CoilMotion.fade] showing and [CoilMotion.fadeExit] clearing.
   static final fill = CoilAccordionTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilAccordion.fill',
   );
 
-  /// A trigger's label color. Default motion: `fade`.
+  /// A trigger's label color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final label = CoilAccordionTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilAccordion.label',
   );
 
-  /// A trigger's label weight, normal to semibold. Default motion: `fade`.
+  /// A trigger's label weight, from normal to semibold.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final weight = CoilAccordionTrack<double>._(
     .single,
     debugLabel: 'CoilAccordion.weight',

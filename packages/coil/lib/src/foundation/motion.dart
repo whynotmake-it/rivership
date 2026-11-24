@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/src/components/reveal/reveal.dart';
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:fixed_ticker/fixed_ticker.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:motor/motor.dart';
 
-/// coil's motion tokens: Motor springs, plus durations
-/// ([minPressDuration], [acknowledgeDuration], [stagger]) that time motion
-/// rather than animate it. All are runtime theme data.
+/// Coil's motion tokens: Motor springs, plus durations ([minPressDuration],
+/// [acknowledgeDuration], [stagger]) that time motion rather than animate it.
 ///
-/// Every token is a spring, exits included. An exit is a tighter spring
-/// (shorter, never bouncy) rather than a curve, so a transition reversed
-/// half-way keeps its velocity instead of restarting.
+/// All tokens are runtime theme data. Every token is a spring, exits included.
+/// An exit is a tighter spring (shorter, never bouncy) rather than a curve, so
+/// a transition reversed half-way keeps its velocity instead of restarting.
 ///
 /// | Token | Default | Moves |
 /// |---|---|---|
@@ -15,25 +19,25 @@ import 'package:motor/motor.dart';
 /// | [standard] | 120 ms, no bounce | tab pill, switch thumb, merge/split, touch popovers |
 /// | [gentle] | 220 ms, no bounce | sheets, dialogs, panels |
 /// | [fade] | 120 ms, no bounce | opacity and color |
-/// | [stagger] | 60 ms, a delay | siblings arriving in turn (`CoilReveal`) |
+/// | [stagger] | 60 ms, a delay | siblings arriving in turn ([CoilReveal]) |
 ///
 /// Durations are [CupertinoMotion] durations: the perceptual length of the
 /// spring, after which it has ended (about 99% of the way); it settles a
 /// little later.
 ///
-/// Set them on `CoilThemeData.motion` (app-wide or for a subtree) or pass a
+/// Set them on [CoilThemeData.motion] (app-wide or for a subtree) or pass a
 /// copy to a component's `motion:` parameter. Components read them with
-/// `CoilTheme.motionOf(context)` on every animation, which applies
-/// [reduced] when the platform asks for reduced motion, so a change takes
-/// effect on the next animation without recreating anything.
+/// [CoilTheme.motionOf] on every animation, which applies [reduced] when the
+/// platform asks for reduced motion, so a change takes effect on the next
+/// animation without recreating anything.
 ///
-/// coil's springs tick every frame by default. Wrap coil components in
-/// a `TickerRateScope` to run all of coil's motion at a fixed rate such as
-/// `TickerRate.fps(30)`, which saves frame work on 120 Hz screens and for
+/// Coil's springs tick every frame by default. Wrap Coil components in a
+/// [TickerRateScope] to run all of Coil's motion at a fixed rate such as
+/// [TickerRate.fps], which saves frame work on 120 Hz screens and for
 /// low-priority motion. [reduced] motion still applies.
 @immutable
 class CoilMotion with Diagnosticable {
-  /// Creates motion tokens; unset tokens keep coil's defaults.
+  /// Creates motion tokens; unset tokens keep Coil's defaults.
   const CoilMotion({
     this.quick = const CupertinoMotion(duration: Duration(milliseconds: 70)),
     this.quickExit = const CupertinoMotion(
@@ -59,34 +63,36 @@ class CoilMotion with Diagnosticable {
   });
 
   /// Small travel that should feel immediate: the hover highlight gliding
-  /// between rows, a button's press collapse, a thumb squishing, a
+  /// between rows, a button's press collapse, a thumb squishing, and a
   /// popover opening on the pointer tier.
   final Motion quick;
 
-  /// The exit of [quick]: a highlight leaving, a press releasing, a
+  /// The exit of [quick]: a highlight leaving, a press releasing, and a
   /// pointer popover closing.
   final Motion quickExit;
 
   /// Indicators that must land exactly: the tab pill, the switch thumb,
-  /// merge/split selection, popovers opening on the touch tier.
+  /// merge/split selection, and popovers opening on the touch tier.
   final Motion standard;
 
-  /// The exit of [standard]: a touch popover closing, an indicator leaving.
+  /// The exit of [standard]: a touch popover closing or an indicator leaving.
   final Motion standardExit;
 
-  /// Large surfaces: sheets, dialogs, side panels. The only token with a
-  /// little bounce, so big things feel physical.
+  /// Large surfaces: sheets, dialogs, and side panels.
   final Motion gentle;
 
-  /// The exit of [gentle]: a dialog or panel dismissing. Sheets use
-  /// [gentle] both ways.
+  /// The exit of [gentle]: a dialog or panel dismissing.
+  ///
+  /// Sheets use [gentle] both ways.
   final Motion gentleExit;
 
-  /// Opacity and color: tints, focus rings, label colors, a check drawing
-  /// in. Kept under reduced motion.
+  /// Opacity and color: tints, focus rings, label colors, and a check drawing
+  /// in.
+  ///
+  /// Kept under reduced motion.
   final Motion fade;
 
-  /// The exit of [fade]: a tint, ring or check going away.
+  /// The exit of [fade]: a tint, ring, or check going away.
   final Motion fadeExit;
 
   /// How long a press stays visible after a quick tap, so a tap that lifts
@@ -98,13 +104,16 @@ class CoilMotion with Diagnosticable {
   final Duration acknowledgeDuration;
 
   /// The delay between siblings that arrive one after another, such as the
-  /// panels of a screen fading in on first build (`CoilReveal`). Zero
-  /// under reduced motion, so they arrive together.
+  /// panels of a screen fading in on first build ([CoilReveal]).
+  ///
+  /// Zero under reduced motion, so they arrive together.
   final Duration stagger;
 
-  /// These tokens for reduced motion: every spatial token instant, no
-  /// [stagger], [fade] and [fadeExit] kept. Reduced motion is fewer and
-  /// gentler movements, not none.
+  /// Returns these tokens for reduced motion: every spatial token becomes
+  /// instant, [stagger] becomes [Duration.zero], and [fade] and [fadeExit]
+  /// are kept.
+  ///
+  /// Reduced motion means fewer and gentler movements, not none.
   CoilMotion reduced() => copyWith(
     quick: const Motion.instant(),
     quickExit: const Motion.instant(),

@@ -1,12 +1,16 @@
+/// @docImport 'package:coil/breadcrumb.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/breadcrumb/breadcrumb.dart'
     show CoilBreadcrumbTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilBreadcrumb` and its "…" menu look. Unset fields
-/// come from [CoilBreadcrumbStyle.fallback], which derives them from the
-/// theme's tokens.
+/// Overrides for how a [CoilBreadcrumb] and its "…" menu look.
+///
+/// Unset fields come from [CoilBreadcrumbStyle.fallback], which derives them
+/// from the theme's tokens.
 ///
 /// [label] resolves with [WidgetState.hovered], [WidgetState.focused]
 /// (keyboard focus), [WidgetState.pressed], [WidgetState.selected] (the
@@ -74,8 +78,10 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   /// The fill under a crumb or menu row while a finger presses it.
   final Color? pressFill;
 
-  /// The "…" popover's fill. Null is the color of its level: two above
-  /// the surface it opens from (3 on the page).
+  /// The "…" popover's fill.
+  ///
+  /// Null is the color of its level: two above the surface it opens from (3 on
+  /// the page).
   final Color? surface;
 
   /// The corner radius of crumbs, rows and their fills.
@@ -84,7 +90,9 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
   /// The crumb text style (its color comes from [label]).
   final TextStyle? textStyle;
 
-  /// The minimum crumb height. Crumbs grow with the text.
+  /// The minimum crumb height.
+  ///
+  /// Crumbs grow with the text.
   final double? minHeight;
 
   /// The horizontal padding inside a crumb.
@@ -102,8 +110,9 @@ class CoilBreadcrumbStyle extends CoilComponentStyle<CoilBreadcrumbStyle> {
 
   /// Springs for the breadcrumb's animated parts, keyed by
   /// [CoilBreadcrumbTrack]s:
-  /// `{CoilBreadcrumbTrack.highlight: const Motion.bouncySpring()}`. A
-  /// breadcrumb's own `motions:` win over these; these win over the motion
+  /// `{CoilBreadcrumbTrack.highlight: const Motion.bouncySpring()}`.
+  ///
+  /// A breadcrumb's own `motions:` win over these; these win over the motion
   /// tokens. [merge] combines the maps key by key.
   final Map<CoilBreadcrumbTrack<Object>, Motion>? motions;
 

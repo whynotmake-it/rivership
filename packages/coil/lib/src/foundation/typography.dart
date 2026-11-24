@@ -1,3 +1,8 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:flutter/services.dart';
+/// @docImport 'package:flutter/widgets.dart';
+library;
+
 import 'dart:convert';
 
 import 'package:coil/src/foundation/colors.dart';
@@ -11,7 +16,7 @@ import 'package:flutter/widgets.dart'
 /// The text roles of one size set, as plain [TextStyle]s.
 ///
 /// [CoilTypography] holds one for each tier and size step. Read the one for
-/// a widget's place with `CoilTheme.textOf`, which also puts the theme's
+/// a widget's place with [CoilTheme.textOf], which also puts the theme's
 /// foreground color on every role:
 ///
 /// ```dart
@@ -20,7 +25,7 @@ import 'package:flutter/widgets.dart'
 /// Text('Synced 2 min ago', style: text.muted.caption);
 /// ```
 ///
-/// Each role is a [TextStyle] like any other, so `copyWith`, `merge` and
+/// Each role is a [TextStyle] like any other, so `copyWith`, `merge`, and
 /// [TextStyle.lerp] work on it as usual.
 @immutable
 class CoilTextTheme with Diagnosticable {
@@ -46,35 +51,38 @@ class CoilTextTheme with Diagnosticable {
     required this.micro,
   });
 
-  /// Page titles. Bold.
+  /// Bold page titles.
   final TextStyle display;
 
-  /// Dialog, sheet and card titles. Semibold.
+  /// Semibold dialog, sheet, and card titles.
   final TextStyle title;
 
-  /// Chat bubbles, legends and the command input.
+  /// Chat bubbles, legends, and the command input.
   final TextStyle subtitle;
 
-  /// Controls, rows and paragraphs.
+  /// Controls, rows, and paragraphs.
   final TextStyle body;
 
-  /// Editable text. On touch, never smaller than 16, below which iOS zooms
-  /// into a focused field.
+  /// Editable text.
+  ///
+  /// On touch, never smaller than 16, below which iOS zooms into a focused
+  /// field.
   final TextStyle field;
 
-  /// Descriptions, group labels, tooltips and badges.
+  /// Descriptions, group labels, tooltips, and badges.
   final TextStyle caption;
 
-  /// Counters, compact badges and key caps.
+  /// Counters, compact badges, and key caps.
   final TextStyle micro;
 
   /// The theme's colors, when this text theme came from
   /// [CoilTypography.colored].
   final CoilColors? _colors;
 
-  /// The weight that marks emphasis: the [title]'s. Selected tabs and
-  /// rows, and buttons, set their label in it, so it follows the
-  /// typography.
+  /// The weight that marks emphasis: the [title]'s weight.
+  ///
+  /// Selected tabs and rows, and buttons, set their label in it, so it follows
+  /// the typography.
   FontWeight get emphasis => title.fontWeight ?? FontWeight.w600;
 
   /// The roles in `--muted-foreground`, for secondary text.
@@ -191,12 +199,11 @@ class CoilTextTheme with Diagnosticable {
   }
 }
 
-/// The text of the whole system, as theme data
-/// (`CoilThemeData.typography`): the roles of [CoilTextTheme] for each tier
-/// and size step.
+/// The text of the whole system, as theme data ([CoilThemeData.typography]):
+/// the roles of [CoilTextTheme] for each tier and size step.
 ///
 /// The default is the platform's UI font (San Francisco on Apple platforms,
-/// Roboto on Android) on coil's type scale. coil bundles no font. For a
+/// Roboto on Android) on Coil's type scale. Coil bundles no font. For a
 /// font of your own, put it under the scale with [CoilTypography.from]:
 ///
 /// ```dart
@@ -204,7 +211,7 @@ class CoilTextTheme with Diagnosticable {
 /// ```
 ///
 /// [CoilTypography.allo] and [CoilTypography.inter] are tuned for those
-/// fonts. The app bundles the font itself, and in debug builds coil reports
+/// fonts. The app bundles the font itself, and in debug builds Coil reports
 /// a font that a typography names but the app doesn't bundle.
 ///
 /// Every role's optical size (`opsz`) follows its font size, as CSS does on
@@ -212,8 +219,9 @@ class CoilTextTheme with Diagnosticable {
 /// ignore it.
 @immutable
 class CoilTypography with Diagnosticable {
-  /// Creates typography from a text theme per tier and size step. The
-  /// default is the platform font on coil's type scale.
+  /// Creates typography from a text theme per tier and size step.
+  ///
+  /// The default is the platform font on Coil's type scale.
   const CoilTypography({
     this.pointer = _pointer,
     this.pointerCompact = _pointerCompact,
@@ -221,8 +229,8 @@ class CoilTypography with Diagnosticable {
     this.touchCompact = _touchCompact,
   });
 
-  /// coil's type scale on [base]: [base]'s family, axes and features under
-  /// every role, and each role's size, line height and weight on top.
+  /// Coil's type scale on [base]: [base]'s family, axes, and features under
+  /// every role, and each role's size, line height, and weight on top.
   ///
   /// The axes of [base] and of a role combine by tag, the role's winning.
   /// Every role gets `opsz` at its font size, unless [base] sets `opsz`.
@@ -255,9 +263,9 @@ class CoilTypography with Diagnosticable {
   /// below 13), so Allo sets as evenly across the scale as the Inter it was
   /// tuned on.
   /// * [singleStoryA] (`ss01`) draws a single-story a.
-  /// * [disambiguate] (`ss02`) draws a serifed I, a tailed l, a footed 1 and
+  /// * [disambiguate] (`ss02`) draws a serifed I, a tailed l, a footed 1, and
   ///   a slashed zero, so they can't be mistaken for each other.
-  /// * [openFigures] (`ss03`) opens the 4, 6 and 9.
+  /// * [openFigures] (`ss03`) opens the 4, 6, and 9.
   ///
   /// Contextual alternates stay on, as the font intends: typed arrows
   /// (`->`) and punctuation that lifts beside capitals.
@@ -316,7 +324,7 @@ class CoilTypography with Diagnosticable {
   ///   spacing.
   /// * [disambiguate] (`ss02`) draws letters and figures that can't be
   ///   mistaken for each other, such as a tailed l and a slashed zero.
-  /// * [openFigures] (`ss01`) opens the 4, 6 and 9.
+  /// * [openFigures] (`ss01`) opens the 4, 6, and 9.
   factory CoilTypography.inter({
     String family = 'Inter',
     String? package,
@@ -337,7 +345,7 @@ class CoilTypography with Diagnosticable {
     ),
   );
 
-  /// The platform's UI font on coil's type scale. The default.
+  /// The platform's UI font on Coil's type scale (the default).
   static const platform = CoilTypography();
 
   /// The pointer tier, regular size step.
@@ -352,10 +360,11 @@ class CoilTypography with Diagnosticable {
   /// The touch tier, compact size step.
   final CoilTextTheme touchCompact;
 
-  /// The text theme for [tier] and [size].
   /// The text theme for [tier] and [size] in [colors]: every role in the
-  /// foreground color, with the `muted`, `brand` and `destructive`
-  /// variants. `CoilTheme.textOf` reads it for a widget's place.
+  /// foreground color, with the `muted`, `brand`, and `destructive`
+  /// variants.
+  ///
+  /// [CoilTheme.textOf] reads it for a widget's place.
   CoilTextTheme colored(CoilTier tier, CoilSize size, CoilColors colors) {
     assert(() {
       debugCheckFontsBundled();
@@ -397,8 +406,10 @@ class CoilTypography with Diagnosticable {
     touchCompact: touchCompact ?? this.touchCompact,
   );
 
-  /// Interpolates every role, so a change of weight, size or axis, such as
-  /// Allo's roundness, animates. A change of font family switches halfway.
+  /// Interpolates every role, so a change of weight, size, or axis, such as
+  /// Allo's roundness, animates.
+  ///
+  /// A change of font family switches halfway.
   // A static lerp, like TextStyle.lerp.
   // ignore: prefer_constructors_over_static_methods
   static CoilTypography lerp(CoilTypography a, CoilTypography b, double t) {
@@ -412,8 +423,10 @@ class CoilTypography with Diagnosticable {
   }
 
   /// Whether [debugCheckFontsBundled] reports a font family the app doesn't
-  /// bundle. Tests that load fonts with a `FontLoader` instead of the asset
-  /// bundle turn it off.
+  /// bundle.
+  ///
+  /// Tests that load fonts with a [FontLoader] instead of the asset bundle
+  /// turn it off.
   static bool debugCheckFonts = true;
 
   static Future<Set<String>>? _bundledFamilies;
@@ -506,15 +519,19 @@ class CoilTypography with Diagnosticable {
 }
 
 /// Allo's optical size for [size]: the size itself up to 14, where Allo
-/// opens its spacing for small text, then half as fast. Allo's display
-/// design tightens faster than Inter's, so following the size all the way
-/// would set titles and display text noticeably tighter than the body.
+/// opens its spacing for small text, then half as fast.
+///
+/// Allo's display design tightens faster than Inter's, so following the size
+/// all the way would set titles and display text noticeably tighter than the
+/// body.
 double _alloOpticalSize(double size) =>
     size <= 14 ? size : 14 + (size - 14) / 2;
 
-/// Allo's letter spacing for [size], in em. Even at its text size Allo runs
-/// about 2% narrower than Inter, the font coil's scale was tuned on; this
-/// opens it up so every role sets within about ±0.5% of Inter's width.
+/// Allo's letter spacing for [size], in em.
+///
+/// Even at its text size Allo runs about 2% narrower than Inter, the font
+/// Coil's scale was tuned on; this opens it up so every role sets within
+/// about ±0.5% of Inter's width.
 double _alloTracking(double size) {
   if (size < 13) return 0;
   if (size < 14) return 0.005;
@@ -523,8 +540,8 @@ double _alloTracking(double size) {
   return 0.002;
 }
 
-/// [role] on top of [base]: the role's size, line height and weight over
-/// the base's family, axes and features, with axes and features combined by
+/// [role] on top of [base]: the role's size, line height, and weight over
+/// the base's family, axes, and features, with axes and features combined by
 /// tag, the role's winning, and `opsz` at the font size unless set.
 TextStyle _place(TextStyle base, TextStyle role) {
   // A role that doesn't inherit would replace the base entirely.
@@ -549,9 +566,11 @@ TextStyle _place(TextStyle base, TextStyle role) {
   );
 }
 
-/// A role of coil's type scale: a font size on a line box of
-/// [lineHeight], with even leading, at a weight. Only for coil's own scale,
-/// so it can be const; any change to a role makes a plain [TextStyle].
+/// A role of Coil's type scale: a font size on a line box of [lineHeight],
+/// with even leading, at a weight.
+///
+/// Only for Coil's own scale, so it can be const; any change to a role makes
+/// a plain [TextStyle].
 class _Role extends TextStyle {
   const _Role(double fontSize, double lineHeight, [FontWeight? weight])
     : super(
@@ -615,14 +634,14 @@ const _touchCompact = CoilTextTheme(
   micro: _Role(11, 14),
 );
 
-/// Small helpers for the text styles coil's roles produce.
+/// Small helpers for the text styles Coil's roles produce.
 extension CoilTextStyleTools on TextStyle {
-  /// The height of one line box: [fontSize] × [height], as coil's roles
+  /// The height of one line box: [fontSize] × [height], as Coil's roles
   /// set them.
   double get lineHeight => (fontSize ?? 14) * (height ?? 1);
 
   /// This style with tabular figures, for numbers that line up: times,
-  /// table cells, counters.
+  /// table cells, and counters.
   TextStyle get tabular => copyWith(
     fontFeatures: [
       for (final feature in [...?fontFeatures])
@@ -645,9 +664,9 @@ abstract final class CoilIconWeight {
   static const double emphasis = 1600 / 3;
 }
 
-/// The size a painted glyph should draw at, the way Flutter's `Icon` sizes
+/// The size a painted glyph should draw at, the way Flutter's [Icon] sizes
 /// itself: the ambient [IconTheme]'s size, scaled by the ambient
-/// `TextScaler` when [IconThemeData.applyTextScaling] is true (coil's
+/// [TextScaler] when [IconThemeData.applyTextScaling] is true (Coil's
 /// icon themes set it, so slot icons and drawn glyphs grow with text).
 abstract final class CoilIconSize {
   /// The glyph size at [context]; [fallback] when the theme has none.

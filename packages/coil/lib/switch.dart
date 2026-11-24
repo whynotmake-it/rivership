@@ -1,4 +1,6 @@
-/// The coil `CoilSwitch` component.
+/// The Coil [CoilSwitch] component.
+///
+/// @docImport 'package:coil/switch.dart';
 library;
 
 export 'src/components/switch/switch.dart';

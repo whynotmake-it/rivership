@@ -1,7 +1,10 @@
+/// @docImport 'package:coil/dialog.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// How wide a `CoilDialog` gets.
+/// Maximum width preset for a [CoilDialog].
 enum CoilDialogSize {
   /// 400 at most: confirmations and short forms.
   sm(400),
@@ -18,10 +21,14 @@ enum CoilDialogSize {
   final double maxWidth;
 }
 
-/// The look of a `CoilDialog`.
+/// Style overrides for a [CoilDialog].
+///
+/// Unset fields fall back to [CoilDialogStyle.fallback].
 @immutable
 class CoilDialogStyle extends CoilComponentStyle<CoilDialogStyle> {
-  /// Creates a dialog style. Null fields fall back to the theme.
+  /// Creates a dialog style.
+  ///
+  /// Null fields fall back to the theme.
   const CoilDialogStyle({
     this.titleStyle,
     this.descriptionStyle,
@@ -33,7 +40,7 @@ class CoilDialogStyle extends CoilComponentStyle<CoilDialogStyle> {
     this.windowMargin,
   });
 
-  /// coil's defaults at [metrics].
+  /// Coil's defaults at [metrics].
   factory CoilDialogStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     final typography = theme.typography;

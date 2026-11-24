@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/primitives.dart';
+/// @docImport 'package:coil/slider.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 
 /// How far one [CoilSliderStepIntent] step goes.
@@ -9,11 +13,12 @@ enum CoilSliderIncrement {
   page,
 }
 
-/// Moves the focused slider thumb by [steps] increments. The arrow keys
-/// (a [CoilSliderIncrement.step]) and Shift+arrows, Page Up and Page Down
-/// (a [CoilSliderIncrement.page]) map to it.
+/// Moves the focused slider thumb by [steps] increments.
 ///
-/// `CoilSlider` and `CoilRangeSlider` handle it with a `CoilDefaultAction`,
+/// The arrow keys (a [CoilSliderIncrement.step]) and Shift+arrows, Page Up and
+/// Page Down (a [CoilSliderIncrement.page]) map to it.
+///
+/// [CoilSlider] and [CoilRangeSlider] handle it with a [CoilDefaultAction],
 /// so an [Actions] entry for this intent above the slider replaces what
 /// the keys do, for example to snap to values of the app's own:
 ///
@@ -52,9 +57,10 @@ enum CoilSliderLimit {
   max,
 }
 
-/// Moves the focused slider thumb to the [limit] of its range. Home and End
-/// map to it. Like [CoilSliderStepIntent], an [Actions] entry above the
-/// slider replaces it.
+/// Moves the focused slider thumb to the [limit] of its range.
+///
+/// Home and End map to it. Like [CoilSliderStepIntent], an [Actions] entry
+/// above the slider replaces it.
 class CoilSliderLimitIntent extends Intent {
   /// Moves to [limit].
   const CoilSliderLimitIntent(this.limit);

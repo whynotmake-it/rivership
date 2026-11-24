@@ -1,9 +1,12 @@
+/// @docImport 'package:coil/slider.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/slider/slider.dart' show CoilSliderTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilSlider` looks; unset fields come from
+/// Overrides for how a [CoilSlider] looks; unset fields come from
 /// [CoilSliderStyle.fallback].
 ///
 /// [handle], [label] and [value] resolve [WidgetState.hovered],
@@ -142,8 +145,9 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   /// The pill track's height.
   final double? pillHeight;
 
-  /// The narrowest the pill track gets beside the label and the value. A
-  /// row that can't keep it moves the label and value to a line above the
+  /// The narrowest the pill track gets beside the label and the value.
+  ///
+  /// A row that can't keep it moves the label and value to a line above the
   /// track.
   final double? pillMinTrack;
 
@@ -167,14 +171,16 @@ class CoilSliderStyle extends CoilComponentStyle<CoilSliderStyle> {
   final double? handleInset;
 
   /// Springs for the slider's animated parts, keyed by [CoilSliderTrack]s:
-  /// `{CoilSliderTrack.thumb: const Motion.bouncySpring()}`. A slider's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// `{CoilSliderTrack.thumb: const Motion.bouncySpring()}`.
+  ///
+  /// A slider's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilSliderTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

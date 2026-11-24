@@ -43,7 +43,7 @@ const _releases = <_Release>[
   (
     version: '2.2.3',
     date: '9 Oct',
-    notes: 'Touch buttons keep their 44 hit target when compact.',
+    notes: 'Touch buttons keep their 44 px hit target when compact.',
   ),
   (
     version: '2.2.0',
@@ -159,9 +159,9 @@ CoilScrollArea(
       notes: const [
         CatalogNote(
           'Pointer',
-          'The scrollbar is 4 wide, widens to 6 on hover and hides 600 ms '
-              'after scrolling stops. The edges fade in over up to 32 as '
-              'content scrolls out of view.',
+          'The scrollbar is 4 px wide, widens to 6 px on hover, and hides '
+              '600 ms after scrolling stops. The edges fade in over up to '
+              '32 px as content scrolls out of view.',
         ),
         CatalogNote(
           'Touch',

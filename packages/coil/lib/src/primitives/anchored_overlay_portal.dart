@@ -12,7 +12,7 @@ import 'package:flutter/widgets.dart';
 /// the layout builder comes back, laid out at the current size, once the
 /// anchor is onstage again.
 ///
-/// Internal to coil; not exported.
+/// Internal to Coil; not exported.
 class AnchoredOverlayPortal extends StatelessWidget {
   /// Creates a portal showing [overlayChildBuilder]'s widget while
   /// [controller] shows it and [child] is onstage.

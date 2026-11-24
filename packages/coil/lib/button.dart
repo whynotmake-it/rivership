@@ -1,4 +1,6 @@
-/// The coil `CoilButton` component.
+/// The Coil [CoilButton] component.
+///
+/// @docImport 'package:coil/button.dart';
 library;
 
 export 'src/components/button/button.dart';

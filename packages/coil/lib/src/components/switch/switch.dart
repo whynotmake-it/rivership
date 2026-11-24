@@ -10,36 +10,47 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilSwitch], as Motor tracks. Use them as keys
-/// of [CoilSwitch.motions] or [CoilSwitchStyle.motions].
+/// The animated parts of a [CoilSwitch], as Motor tracks.
+///
+/// Use them as keys of [CoilSwitch.motions] or [CoilSwitchStyle.motions].
 final class CoilSwitchTrack<T extends Object> extends Track<T> {
   CoilSwitchTrack._(super.converter, {required String super.debugLabel});
 
-  /// The thumb's position, 0 (off) to 1 (on). Default motion: `standard`.
+  /// The thumb's position, 0 (off) to 1 (on).
+  ///
+  /// Default motion: [CoilMotion.standard].
   static final thumb = CoilSwitchTrack<double>._(
     .single,
     debugLabel: 'CoilSwitch.thumb',
   );
 
-  /// How pressed the thumb is, 0 to 1. Default motion: `quick`.
+  /// How pressed the thumb is, 0 to 1.
+  ///
+  /// Default motion: [CoilMotion.quick].
   static final squish = CoilSwitchTrack<double>._(
     .single,
     debugLabel: 'CoilSwitch.squish',
   );
 
-  /// The track color, 0 (off) to 1 (on). Default motion: `fade`.
+  /// The track color, 0 (off) to 1 (on).
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final tint = CoilSwitchTrack<double>._(
     .single,
     debugLabel: 'CoilSwitch.tint',
   );
 
-  /// How hovered the thumb and track are, 0 to 1. Default motion: `quick`.
+  /// How hovered the thumb and track are, 0 to 1.
+  ///
+  /// Default motion: [CoilMotion.quick].
   static final hover = CoilSwitchTrack<double>._(
     .single,
     debugLabel: 'CoilSwitch.hover',
   );
 
-  /// The label color. Default motion: `fade`.
+  /// The label color.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final label = CoilSwitchTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilSwitch.label',
@@ -73,13 +84,19 @@ class CoilSwitch extends StatefulWidget {
   /// Whether the switch is on.
   final bool value;
 
-  /// Called with the new value. Null disables the switch.
+  /// Called with the new value.
+  ///
+  /// Null disables the switch.
   final ValueChanged<bool>? onChanged;
 
-  /// A label after the track. Muted while off.
+  /// A label after the track.
+  ///
+  /// Muted while off.
   final Widget? label;
 
-  /// Pins the switch to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the switch to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// The focus node.
@@ -96,9 +113,10 @@ class CoilSwitch extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this instance, keyed by [CoilSwitchTrack]s:
-  /// `motions: {.thumb: const .bouncySpring()}`. They win over the style's
-  /// [CoilSwitchStyle.motions] and the tokens; reduced motion still makes
-  /// the thumb and squish instant.
+  /// `motions: {.thumb: const .bouncySpring()}`.
+  ///
+  /// They win over the style's [CoilSwitchStyle.motions] and the tokens;
+  /// reduced motion still makes the thumb and squish instant.
   final Map<CoilSwitchTrack<Object>, Motion>? motions;
 
   /// Overrides for this switch's look, on top of the theme's
@@ -114,7 +132,7 @@ class CoilSwitch extends StatefulWidget {
 
 /// The most the stretch's overshoot approaches, in travels, however far a
 /// drag or a spring goes past either end: it is rubber-banded toward this
-/// (`coilRubberBand`), never clamped at it.
+/// ([coilRubberBand]), never clamped at it.
 const _overdrag = 0.15;
 
 /// How strongly the stretch resists: the overshoot is divided by this
@@ -255,7 +273,7 @@ class _CoilSwitchState extends State<CoilSwitch>
       _enabled &&
       (_states.value.contains(WidgetState.pressed) || _containerPressed);
 
-  /// A field row around the switch is pressed (`CoilFieldRow`).
+  /// A field row around the switch is pressed ([CoilFieldRow]).
   bool _containerPressed = false;
 
   @override
@@ -448,10 +466,11 @@ class _CoilSwitchState extends State<CoilSwitch>
   }
 }
 
-/// A switch's reliefs at rest and fully hovered for one plasticity,
-/// brightness and enabled state: what a switch at rest or hovered paints
-/// while its thumb travels and its track tints. Only a hover in between
-/// and a press resolve per frame.
+/// A switch's reliefs at rest and fully hovered for one plasticity, brightness
+/// and enabled state: what a switch at rest or hovered paints while its thumb
+/// travels and its track tints.
+///
+/// Only a hover in between and a press resolve per frame.
 @immutable
 class _SwitchReliefs {
   _SwitchReliefs._resolve(

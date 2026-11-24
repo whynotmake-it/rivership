@@ -1,4 +1,6 @@
-/// The coil `CoilSkeleton` component.
+/// The Coil [CoilSkeleton] component.
+///
+/// @docImport 'package:coil/skeleton.dart';
 library;
 
 export 'src/components/skeleton/skeleton.dart';

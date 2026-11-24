@@ -43,19 +43,22 @@ class CoilCollapsible extends StatefulWidget {
   /// changed to that state.
   final VoidCallback? onEnd;
 
-  /// The height's motion. Defaults to `standard` opening and
-  /// `standardExit` closing.
+  /// The height's motion.
+  ///
+  /// Defaults to `standard` opening and `standardExit` closing.
   final Motion? heightMotion;
 
-  /// The opacity's motion. Defaults to `fade` opening and `fadeExit`
-  /// closing.
+  /// The opacity's motion.
+  ///
+  /// Defaults to `fade` opening and `fadeExit` closing.
   final Motion? opacityMotion;
 
   /// How long the fade in waits after the height starts to open.
   final Duration opacityDelay;
 
-  /// Whether the content fades with the height. Turn it off when the
-  /// content brings its own exit, such as a blur-fade.
+  /// Whether the content fades with the height.
+  ///
+  /// Turn it off when the content brings its own exit, such as a blur-fade.
   final bool fade;
 
   /// Overrides the theme's motion tokens for the default motions.

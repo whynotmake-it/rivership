@@ -69,7 +69,7 @@ CoilInputGroup(
         'Accessibility',
         'Each error sits under its own field and is announced with it, and '
             'a button inside one input never makes that field taller than '
-            'its neighbours.',
+            'its neighbors.',
       ),
     ],
     children: [

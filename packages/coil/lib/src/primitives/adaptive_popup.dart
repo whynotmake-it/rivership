@@ -95,8 +95,10 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// Opens and closes the popup.
   final CoilPopupController controller;
 
-  /// What the popup is, for [presentationOf]. Called when it opens, so
-  /// it can describe what the owner shows then (a count decided in layout).
+  /// What the popup is, for [presentationOf].
+  ///
+  /// Called when it opens, so it can describe what the owner shows then (a
+  /// count decided in layout).
   final ValueGetter<CoilOverlayTraits> traits;
 
   /// Pins the presentation instead of deciding it.
@@ -114,24 +116,27 @@ class CoilAdaptivePopup extends StatefulWidget {
   /// The anchor.
   final Widget child;
 
-  /// Minimum popover width; see [CoilPopover.minWidth]. Null matches the
-  /// anchor's width; 0 lets the popover hug its content.
+  /// Minimum popover width; see [CoilPopover.minWidth].
+  ///
+  /// Null matches the anchor's width; 0 lets the popover hug its content.
   final double? minWidth;
 
   /// Maximum popover height.
   final double maxHeight;
 
-  /// Whether the popover takes focus; see [CoilPopover.takeFocus]. A sheet
-  /// or a floating panel always does.
+  /// Whether the popover takes focus; see [CoilPopover.takeFocus].
+  ///
+  /// A sheet or a floating panel always does.
   final bool takeFocus;
 
   /// Motion tokens for the popup's enter and exit, instead of the theme's.
   final CoilMotion? motion;
 
-  /// Where a floating panel sits: under the top safe area (the default,
-  /// for search lists, so the field stays put) or centered in the room
-  /// above the keyboard (a date picker). Either hugs its content. A popover
-  /// or a sheet ignores it.
+  /// Where a floating panel sits: under the top safe area (the default, for
+  /// search lists, so the field stays put) or centered in the room above
+  /// the keyboard (a date picker).
+  ///
+  /// Either hugs its content. A popover or a sheet ignores it.
   final CoilModalAnchor floatingAnchor;
 
   /// The most rows a phone shows in an anchored touch popover.
@@ -160,9 +165,10 @@ class CoilAdaptivePopup extends StatefulWidget {
   }
 
   /// Whether [context] is a phone, held either way: the touch tier in a
-  /// window whose shorter side is under [compactWidth]. A phone in
-  /// landscape is wide but short, and still a phone; an iPad in a narrow
-  /// split view is one too.
+  /// window whose shorter side is under [compactWidth].
+  ///
+  /// A phone in landscape is wide but short, and still a phone; an iPad in
+  /// a narrow split view is one too.
   static bool isPhone(BuildContext context) =>
       CoilTheme.tierOf(context) == CoilTier.touch &&
       MediaQuery.sizeOf(context).shortestSide < compactWidth;
@@ -204,9 +210,11 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
   /// The last popup shown: an exiting popover still builds with it.
   _Handle? _shown;
 
-  /// Rebuilds an open sheet's content. A popover is a descendant and
-  /// rebuilds with this widget; a sheet is a route of its own, so it is
-  /// told when the owner passes new options or values.
+  /// Rebuilds an open sheet's content.
+  ///
+  /// A popover is a descendant and rebuilds with this widget; a sheet is a
+  /// route of its own, so it is told when the owner passes new options or
+  /// values.
   final _sheetContent = _Revision();
   bool _sheetRebuildScheduled = false;
 
@@ -282,9 +290,10 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     }
   }
 
-  /// Pushes the sheet, or the floating panel that lays out like it. The
-  /// floating panel shows where it came from: the trigger, or [position]
-  /// in it.
+  /// Pushes the sheet, or the floating panel that lays out like it.
+  ///
+  /// The floating panel shows where it came from: the trigger, or
+  /// [position] in it.
   void _pushModal(_Handle handle, Offset? position) {
     final navigator = Navigator.of(context);
     final trigger = CoilModalRoute.originOf(context);

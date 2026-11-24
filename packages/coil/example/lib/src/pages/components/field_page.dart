@@ -73,7 +73,7 @@ CoilField(
             'without moving anything.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'Put one control in each field and group related fields in a '
             'field set. A placeholder is a hint for the input and does not '
             'replace the label.',
@@ -84,8 +84,8 @@ CoilField(
         title: 'Playground',
         description:
             'The auto orientation stacks the label above the control when the '
-            'field is narrower than 448 and puts them side by side when it is '
-            'wider.',
+            'field is narrower than 448 px and puts them side by side when it '
+            'is wider.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -169,7 +169,7 @@ CoilField(
             ),
             CoilField(
               label: const Text('Usage alerts'),
-              description: const Text('When you pass 80 % of your quota.'),
+              description: const Text('When you pass 80% of your quota.'),
               orientation: CoilFieldOrientation.horizontal,
               child: CoilSwitch(
                 value: _usage,
@@ -194,7 +194,9 @@ CoilField(
             CoilChoiceCard(
               selected: _kubernetes,
               title: const Text('Kubernetes'),
-              description: const Text('Run GPU workloads on a K8s cluster.'),
+              description: const Text(
+                'Orchestrate containers across an auto-scaling cluster.',
+              ),
               control: CoilCheckbox(
                 value: _kubernetes,
                 onChanged: (v) => setState(() => _kubernetes = v ?? false),
@@ -203,7 +205,9 @@ CoilField(
             CoilChoiceCard(
               selected: _vm,
               title: const Text('Virtual machine'),
-              description: const Text('Access a cluster to run GPU workloads.'),
+              description: const Text(
+                'Run workloads on a dedicated virtual server with root access.',
+              ),
               control: CoilCheckbox(
                 value: _vm,
                 onChanged: (v) => setState(() => _vm = v ?? false),

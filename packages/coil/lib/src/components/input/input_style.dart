@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/input.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -5,9 +8,10 @@ import 'package:coil/src/components/input/input.dart' show CoilInputTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilInput` looks, single-line or multi-line. Unset
-/// fields come from [CoilInputStyle.fallback]. Set a style app-wide or for a
-/// subtree with `CoilThemeData.withComponentStyle`, or per instance with
+/// Overrides for how a [CoilInput] looks, single-line or multi-line.
+///
+/// Unset fields come from [CoilInputStyle.fallback]. Set a style app-wide or
+/// for a subtree with [CoilThemeData.withComponentStyle], or per instance with
 /// `style:`.
 ///
 /// [fill] and [border] resolve [WidgetState.hovered], [WidgetState.focused]
@@ -93,23 +97,29 @@ class CoilInputStyle extends CoilComponentStyle<CoilInputStyle> {
   /// The corner radius of a multi-line field.
   final double? multilineRadius;
 
-  /// The minimum height. The field grows with its text.
+  /// The minimum height.
+  ///
+  /// The field grows with its text.
   final double? minHeight;
 
-  /// The least space between a slot placed into the padding (a button) and
-  /// the field's edge. The field grows when the slot and this inset on each
-  /// side don't fit [minHeight].
+  /// The least space between a slot placed into the padding (a button) and the
+  /// field's edge.
+  ///
+  /// The field grows when the slot and this inset on each side don't fit
+  /// [minHeight].
   final double? slotInset;
 
   /// Springs for the field's animated parts, keyed by [CoilInputTrack]s:
-  /// `{CoilInputTrack.border: const Motion.smoothSpring()}`. A field's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// `{CoilInputTrack.border: const Motion.smoothSpring()}`.
+  ///
+  /// A field's own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
   final Map<CoilInputTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

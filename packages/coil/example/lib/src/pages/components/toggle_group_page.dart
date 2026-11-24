@@ -60,7 +60,7 @@ class _ToggleGroupPageState extends State<ToggleGroupPage> {
       title: 'ToggleGroup',
       summary:
           'A row of segments that each turn on and off on their own, where '
-          'selected neighbours merge into one block. For picking a single '
+          'selected neighbors merge into one block. For picking a single '
           'option, use Tabs or a RadioGroup instead.',
       hero: const _NoteEditor(),
       usage: '''
@@ -85,11 +85,11 @@ CoilToggleGroup<Format>(
           'Keyboard',
           'The group takes one tab stop and focus roves inside it, so Left '
               'and Right move between segments and Space toggles the focused '
-              'one. The editor above also binds Ctrl or Cmd with B, I and U.',
+              'one. The editor above also binds Ctrl or Cmd with B, I, and U.',
         ),
         CatalogNote(
           'Motion',
-          'Selected segments merge and split on the standard spring, and a '
+          'Selected segments merge and split smoothly on a spring, and a '
               'segment whose label changes cross-fades while springing to its '
               'new width.',
         ),
@@ -100,7 +100,7 @@ CoilToggleGroup<Format>(
               'option to be named.',
         ),
         CatalogNote(
-          'Do / Don’t',
+          "Do / Don't",
           'It fits formatting and other switches that can be on at the same '
               'time. When only one option can apply, use Tabs or a '
               'RadioGroup.',

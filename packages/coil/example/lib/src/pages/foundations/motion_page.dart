@@ -79,39 +79,35 @@ class _MotionPageState extends State<MotionPage> {
     return CatalogPage(
       title: 'Motion',
       summary:
-          'Every token is a spring, including its exit. Pressing play runs '
-          'the enter springs and pressing it again runs the exits, and '
-          'tapping one mid-flight makes it reverse from its current velocity '
-          'rather than restart.',
+          'Every token is a spring, including its exit. Press play to run the '
+          'enter springs, and press again for the exits. Tapping mid-flight '
+          'reverses from the current velocity instead of restarting.',
       usage: _tokenSnippet,
       notes: const [
         CatalogNote(
           'Motor',
-          "coil's motion runs on Motor 2.0, the package its springs come "
-              'from, so each token is a Motor CupertinoMotion you can reuse '
-              'directly.',
+          "Coil's motion runs on Motor 2.0, so each token is a Motor "
+              'CupertinoMotion you can reuse directly.',
         ),
         CatalogNote(
           'Motion',
-          "coil's springs follow the nearest TickerRateScope, so a fixed "
-              'rate saves frame work for low-priority motion. The frame-rate '
-              'setting in the preview settings applies one to everything.',
+          "Coil's springs follow the nearest TickerRateScope, so a fixed rate "
+              'reduces per-frame work for low-priority motion. Use the '
+              'frame-rate option in preview settings to test it.',
         ),
         CatalogNote(
           'Accessibility',
-          'Reduced motion makes the spatial tokens instant and keeps the '
-              'fade, and slow motion in the preview settings stretches them '
-              'five times.',
+          'Reduced motion makes spatial tokens instant while keeping fades. '
+              'Slow motion in preview settings runs them 5× slower.',
         ),
       ],
       children: [
         DemoSection(
           title: 'Tokens side by side',
           description: reduced
-              ? 'Reduced motion is on, so the spatial tokens are instant and '
+              ? 'Reduced motion is on, so spatial tokens are instant and '
                     'only the fade still plays.'
-              : 'Slow motion in the settings stretches all of them five '
-                    'times.',
+              : 'Slow motion in preview settings runs them 5× slower.',
           child: DemoColumn(
             children: [
               Align(
@@ -131,8 +127,8 @@ class _MotionPageState extends State<MotionPage> {
           title: 'Frame rates',
           description:
               'The same spring ticked at four rates. A lower rate samples the '
-              'spring less often and does less frame work, and the motion '
-              'still takes just as long.',
+              'spring less often and reduces per-frame work, while the motion '
+              'takes the same total time.',
           child: DemoColumn(
             children: [
               Align(

@@ -117,14 +117,14 @@ CoilChatMessage(
         ),
         CatalogNote(
           'Motion',
-          'A new message fades in, rising 8 and growing from 0.96 out of its '
-              'sender corner on standard, while the ones above it slide to '
-              'make room. Use an entrance of none for messages that were '
+          'A new message fades in, rising 8 px and scaling up from 96% out '
+              'of its sender corner on a spring, while the ones above it slide '
+              'to make room. Use an entrance of none for messages that were '
               'already in the transcript.',
         ),
         CatalogNote(
           'Accessibility',
-          'Each message is a single container labelled with its sender and '
+          'Each message is a single container labeled with its sender and '
               'time, and Copy uses the shared copy feedback, so its icon '
               'turns into a check.',
         ),

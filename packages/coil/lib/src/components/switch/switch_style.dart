@@ -1,9 +1,12 @@
+/// @docImport 'package:coil/switch.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/switch/switch.dart' show CoilSwitchTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilSwitch` looks; unset fields come from
+/// Overrides for how a [CoilSwitch] looks; unset fields come from
 /// [CoilSwitchStyle.fallback].
 ///
 /// [track] is resolved for the four ends the switch blends between:
@@ -60,18 +63,22 @@ class CoilSwitchStyle extends CoilComponentStyle<CoilSwitchStyle> {
   /// The label style (its color comes from [label]).
   final TextStyle? textStyle;
 
-  /// The track's corner radius. The thumb is always a pill.
+  /// The track's corner radius.
+  ///
+  /// The thumb is always a pill.
   final double? radius;
 
   /// Springs for the switch's animated parts, keyed by [CoilSwitchTrack]s:
-  /// `{CoilSwitchTrack.thumb: const Motion.bouncySpring()}`. A switch's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// `{CoilSwitchTrack.thumb: const Motion.bouncySpring()}`.
+  ///
+  /// A switch's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilSwitchTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

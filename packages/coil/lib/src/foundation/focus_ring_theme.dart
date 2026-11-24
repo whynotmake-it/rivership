@@ -1,3 +1,8 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:coil/src/primitives/focus_ring.dart';
+/// @docImport 'package:coil/src/primitives/layer.dart';
+library;
+
 import 'dart:ui' show lerpDouble;
 
 import 'package:coil/src/foundation/colors.dart';
@@ -7,12 +12,12 @@ import 'package:flutter/painting.dart';
 /// Marks a copyWith argument that wasn't passed.
 const Object _keep = Object();
 
-/// How focus rings look (`CoilThemeData.focusRing`): the ring that keyboard
+/// How focus rings look ([CoilThemeData.focusRing]): the ring that keyboard
 /// focus draws around a control, concentric with the control's shape.
 ///
 /// By default the ring is 1 px wide and sits 2 px outside the control, so
 /// its inner edge has the control's radius + 2. Every control draws it the
-/// same way: a single control with `CoilFocusRing`, a list or group whose
+/// same way: a single control with [CoilFocusRing], a list or group whose
 /// one ring travels between rows with [decorationAround] on a highlight
 /// grown by [extent].
 ///
@@ -39,12 +44,14 @@ class CoilFocusRingTheme with Diagnosticable {
   final double offset;
 
   /// How far the ring's outer edge reaches outside the control: [offset]
-  /// plus [width]. Room a parent keeps clear for the ring.
+  /// plus [width].
+  ///
+  /// This is the room a parent keeps clear for the ring.
   double get extent => offset + width;
 
   /// The ring around a control whose corners have [radius], as a
   /// decoration for the control's box grown by [extent] on every side (a
-  /// `CoilHighlight` with `inflate: extent`): a [width] line along that
+  /// [CoilHighlight] with `inflate: extent`): a [width] line along that
   /// box's edge, [offset] clear of the control and concentric with it.
   ShapeDecoration decorationAround(
     CoilColors colors, {
@@ -60,11 +67,12 @@ class CoilFocusRingTheme with Diagnosticable {
   final Color? color;
 
   /// The ring's color in [colors]: [color], or the brand as a mark
-  /// (`CoilColors.brandMark`, moved only as far as 3 : 1 needs).
+  /// ([CoilColors.brandMark], moved only as far as 3 : 1 needs).
   Color colorOf(CoilColors colors) => color ?? colors.brandMark;
 
-  /// Returns a copy with the given fields replaced. Pass `color: null` to go
-  /// back to the brand color.
+  /// Returns a copy with the given fields replaced.
+  ///
+  /// Pass `color: null` to go back to the brand color.
   CoilFocusRingTheme copyWith({
     double? width,
     double? offset,

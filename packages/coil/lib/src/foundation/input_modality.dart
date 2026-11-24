@@ -12,13 +12,14 @@ enum CoilModality {
 }
 
 /// Tracks the last input modality app-wide, to decide when focus should be
-/// visible. The one modality tracker in coil.
+/// visible.
 ///
-/// This is what browsers do for `:focus-visible`, minus their quirks: focus
-/// is visible only while the last input was a key press. A tap or a click
-/// anywhere hides the ring; the next key press brings it back if something
-/// is focused. Unlike [FocusManager.highlightMode], a mouse click counts as
-/// pointer input here, so clicking a control never shows its ring.
+/// This is the one modality tracker in Coil. It mirrors what browsers do for
+/// `:focus-visible`, minus their quirks: focus is visible only while the last
+/// input was a key press. A tap or a click anywhere hides the ring; the next
+/// key press brings it back if something is focused. Unlike
+/// [FocusManager.highlightMode], a mouse click counts as pointer input here,
+/// so clicking a control never shows its ring.
 class CoilInputModality extends ValueNotifier<CoilModality> {
   CoilInputModality._() : super(CoilModality.pointer) {
     HardwareKeyboard.instance.addHandler(_onKey);
@@ -33,7 +34,7 @@ class CoilInputModality extends ValueNotifier<CoilModality> {
   static CoilInputModality get instance => _instance ??= CoilInputModality._();
 
   /// Whether a pointer of [kind] can hover, i.e. can produce a hover state
-  /// without touching the screen: mice, trackpads and hovering styluses.
+  /// without touching the screen: mice, trackpads, and hovering styluses.
   ///
   /// Touch never hovers. A pen only reports enter/hover events while it
   /// actually hovers above the screen, so those are real hovers.
@@ -82,8 +83,10 @@ class CoilInputModality extends ValueNotifier<CoilModality> {
   static bool _isModifier(LogicalKeyboardKey key) => _modifiers.contains(key);
 
   /// Drops the app-wide tracker so the next [instance] registers fresh
-  /// handlers. Test bindings reset keyboard handlers between tests; call
-  /// this in `setUp`.
+  /// handlers.
+  ///
+  /// Test bindings reset keyboard handlers between tests; call this in
+  /// `setUp`.
   @visibleForTesting
   static void debugReset() {
     final old = _instance;

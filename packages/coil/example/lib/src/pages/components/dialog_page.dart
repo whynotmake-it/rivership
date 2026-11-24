@@ -262,14 +262,14 @@ final confirmed = await showCoilDialog<bool>(
       ),
       CatalogNote(
         'Motion',
-        'The scrim fades in while the panel blurs in from 97 % scale. A '
+        'The scrim fades in while the panel blurs in from 97% scale. A '
             'dialog that is not dismissible ignores taps on the scrim, the '
-            'back button and the sheet drag.',
+            'back button, and the sheet drag.',
       ),
       CatalogNote(
         'Screen readers',
-        'The dialog is a modal route that scopes the screen for assistive '
-            'technology, and its title is read as its name.',
+        'The dialog is a modal route that keeps screen reader focus inside '
+            'the dialog, and its title is read as its name.',
       ),
       CatalogNote(
         "Do / Don't",

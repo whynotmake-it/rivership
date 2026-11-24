@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/src/foundation/motion.dart';
+/// @docImport 'package:coil/src/primitives/focus_within.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -9,18 +13,18 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// Writes a control's interaction states into [states], by coil's rules.
+/// Writes a control's interaction states into [states], by Coil's rules.
 ///
 /// * [WidgetState.hovered]: only from pointers that can hover (mouse,
 ///   trackpad, hovering pen). A touch never hovers, so nothing stays lit
 ///   where a finger lifted.
 /// * [WidgetState.pressed]: while a pointer is down on [child]. It clears on
 ///   release, on cancel, and when the touch turns into a scroll. A quick tap
-///   still shows it for `CoilMotion.minPressDuration`.
+///   still shows it for [CoilMotion.minPressDuration].
 /// * [WidgetState.focused]: when [focusNode] itself has the primary focus
 ///   and the last input was the keyboard. Taps and clicks never show it. A
 ///   focused descendant doesn't count: a container that shows focus inside
-///   it uses `CoilFocusWithin`.
+///   it uses [CoilFocusWithin].
 ///
 /// The detector writes [states] only from events: pointers, focus changes
 /// and the input modality. It never writes while building, so a widget that
@@ -52,16 +56,20 @@ class CoilInteractionDetector extends StatefulWidget {
   /// The interactive area.
   final Widget child;
 
-  /// Whether the control is enabled. A disabled control starts no hover or
-  /// press; [statesFor] hides one it already had.
+  /// Whether the control is enabled.
+  ///
+  /// A disabled control starts no hover or press; [statesFor] hides one it
+  /// already had.
   final bool enabled;
 
   /// The node whose primary focus drives [WidgetState.focused], if any.
   final FocusNode? focusNode;
 
   /// The states a control shows: [raw] from its controller, with
-  /// [WidgetState.disabled] when not [enabled]. A disabled control neither
-  /// hovers nor presses, even while a pointer still rests or presses on it.
+  /// [WidgetState.disabled] when not [enabled].
+  ///
+  /// A disabled control neither hovers nor presses, even while a pointer
+  /// still rests or presses on it.
   static Set<WidgetState> statesFor(
     Set<WidgetState> raw, {
     required bool enabled,
@@ -77,18 +85,22 @@ class CoilInteractionDetector extends StatefulWidget {
 
   /// Called where a press lands, at the moment the press shows: when the
   /// tap wins, or once a competing gesture (a scroll) has had
-  /// `kPressTimeout` to win. A press another gesture wins first never calls
-  /// it. For a control that acts on the way down, like a slider jumping to
-  /// the press.
+  /// `kPressTimeout` to win.
+  ///
+  /// A press another gesture wins first never calls it. For a control that
+  /// acts on the way down, like a slider jumping to the press.
   final GestureTapDownCallback? onPressDown;
 
-  /// Whether to recognize taps and report [WidgetState.pressed]. Off for
-  /// controls that handle their own gestures (a text field).
+  /// Whether to recognize taps and report [WidgetState.pressed].
+  ///
+  /// Off for controls that handle their own gestures (a text field).
   final bool trackPress;
 
-  /// The mouse cursor over [child]. Null gives an enabled detector with an
-  /// [onTap] the theme's `CoilThemeData.controlCursor`, and defers to the
-  /// cursor beneath otherwise.
+  /// The mouse cursor over [child].
+  ///
+  /// Null gives an enabled detector with an [onTap] the theme's
+  /// [CoilThemeData.controlCursor], and defers to the cursor beneath
+  /// otherwise.
   final MouseCursor? cursor;
 
   /// Whether to leave the tap action out of semantics.
@@ -240,7 +252,9 @@ class CoilInteraction extends StatefulWidget {
     this.excludeFromSemantics = false,
   });
 
-  /// Called when the control is activated. Null disables it.
+  /// Called when the control is activated.
+  ///
+  /// Null disables it.
   final VoidCallback? onPressed;
 
   /// Builds the visual from the current states.
@@ -258,14 +272,16 @@ class CoilInteraction extends StatefulWidget {
   /// Observes, and can force, the interaction states.
   final WidgetStatesController? statesController;
 
-  /// The cursor over the control. Defaults to the theme's
-  /// `CoilThemeData.controlCursor` when enabled.
+  /// The cursor over the control.
+  ///
+  /// Defaults to the theme's [CoilThemeData.controlCursor] when enabled.
   final MouseCursor? mouseCursor;
 
-  /// The smallest square the hit area may be. A smaller visual is centered
-  /// in it. The visual still takes the size its parent sets, so a button
-  /// stretched across a column fills it.
-  /// See [CoilMetrics.minHitTarget].
+  /// The smallest square the hit area may be.
+  ///
+  /// A smaller visual is centered in it. The visual still takes the size
+  /// its parent sets, so a button stretched across a column fills it. See
+  /// [CoilMetrics.minHitTarget].
   final double minHitTarget;
 
   /// Called when the control gains or loses focus (by any means).
@@ -362,7 +378,7 @@ class _CoilInteractionState extends State<CoilInteraction> {
 /// Grows the hit area to at least [size] square around a smaller child,
 /// centered in it.
 ///
-/// Unlike a `ConstrainedBox` around a `Center`, the child is laid out with
+/// Unlike a [ConstrainedBox] around a [Center], the child is laid out with
 /// the parent's own constraints: a tight width (a button stretched across
 /// a column) sizes the child, not just the hit area.
 class _MinHitTarget extends SingleChildRenderObjectWidget {

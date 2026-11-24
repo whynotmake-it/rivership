@@ -25,13 +25,17 @@ class CoilTypeahead extends StatefulWidget {
     this.timeout = const Duration(seconds: 1),
   });
 
-  /// The plain text of each item, in order. Null never matches.
+  /// The plain text of each item, in order.
+  ///
+  /// Null never matches.
   final List<String?> searchTexts;
 
   /// The item the search starts after (the active item), or null.
   final int? current;
 
-  /// Whether the item at an index can be matched. Null: all can.
+  /// Whether the item at an index can be matched.
+  ///
+  /// Null: all can.
   final bool Function(int index)? isEnabled;
 
   /// Called with the index of the matched item.

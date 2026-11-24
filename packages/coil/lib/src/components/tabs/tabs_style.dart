@@ -1,12 +1,16 @@
+/// @docImport 'package:coil/tabs.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/tabs/tabs.dart' show CoilTabsTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilTabs` looks. Unset fields come from
-/// [CoilTabsStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilTabs] looks.
+///
+/// Unset fields come from [CoilTabsStyle.fallback], derived from the theme's
+/// tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [label] is resolved with [WidgetState.selected] and
 /// [WidgetState.hovered].
@@ -50,8 +54,9 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// The selected pill.
   final Color? pill;
 
-  /// The hover pill's color, before [hoverPillOpacity]. Neutral, so only
-  /// the selected tab is marked in the brand.
+  /// The hover pill's color, before [hoverPillOpacity].
+  ///
+  /// Neutral, so only the selected tab is marked in the brand.
   final Color? hoverPill;
 
   /// How strong the hover pill is, as a fraction of [hoverPill].
@@ -73,9 +78,10 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   final double? edgeFade;
 
   /// Springs for the tabs' animated parts, keyed by [CoilTabsTrack]s:
-  /// `{CoilTabsTrack.selected: const Motion.bouncySpring()}`. A tab bar's
-  /// own `motions:` win over these; these win over the motion tokens.
-  /// [merge] combines the maps key by key.
+  /// `{CoilTabsTrack.selected: const Motion.bouncySpring()}`.
+  ///
+  /// A tab bar's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilTabsTrack<Object>, Motion>? motions;
 
   @override

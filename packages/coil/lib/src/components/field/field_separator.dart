@@ -8,7 +8,9 @@ class CoilFieldSeparator extends StatelessWidget {
   /// Creates a separator.
   const CoilFieldSeparator({super.key, this.label, this.size, this.style});
 
-  /// A short caption in the middle of the line. Usually a [Text].
+  /// A short caption in the middle of the line.
+  ///
+  /// Usually a [Text].
   final Widget? label;
 
   /// Pins the caption to one size step.

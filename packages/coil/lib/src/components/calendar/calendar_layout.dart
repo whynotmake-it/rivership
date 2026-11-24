@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/calendar.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -8,8 +11,9 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The side of a calendar cell or a time row for [style] at [context]:
-/// the control height, grown by as much as the text scale grows the line
-/// box. The padding around the line stays the same, as gaps don't scale.
+/// the control height, grown by as much as the text scale grows the line box.
+///
+/// The padding around the line stays the same, as gaps don't scale.
 double calendarCellExtent(
   BuildContext context,
   CoilMetrics metrics,
@@ -44,8 +48,8 @@ Motion calendarSnapMotion(Motion motion) => switch (motion) {
 /// of the chunk, plus the spring a snap settles on.
 ///
 /// A scroll position keeps the physics it was created with, so the
-/// calendar creates one snap and keeps it current (`motion`,
-/// `wheelThreshold`, and the geometry its functions read) instead of
+/// calendar creates one snap and keeps it current ([motion],
+/// [wheelThreshold], and the geometry its functions read) instead of
 /// passing the physics new values.
 class CalendarSnap {
   /// Creates the boundaries from [offsetOf] and [indexAt].
@@ -57,13 +61,15 @@ class CalendarSnap {
   /// The last chunk whose top is at or above `offset`; 0 before the first.
   final int Function(double offset) indexAt;
 
-  /// The spring a snap settles on: the theme's `standard`.
+  /// The spring a snap settles on: the theme's [CoilMotion.standard].
   Motion motion = const Motion.instant();
 
   /// How far a mouse wheel has to move before it steps to the next
-  /// boundary: half a row of cells. A notch is never less than a row (53 px
-  /// at the least, a day row is 28 to 57), so every notch steps; the finer
-  /// events of a smooth wheel add up to it.
+  /// boundary: half a row of cells.
+  ///
+  /// A notch is never less than a row (53 px at the least, a day row is 28 to
+  /// 57), so every notch steps; the finer events of a smooth wheel add up to
+  /// it.
   double wheelThreshold = 0;
 
   /// Closer than this, an offset is at a boundary: half a pixel.
@@ -114,7 +120,7 @@ class CalendarSnap {
 ///   momentum.
 /// - **Overscroll** at either end is the parent's.
 ///
-/// A mouse wheel doesn't come through here: see `CalendarScrollPosition`.
+/// A mouse wheel doesn't come through here: see [CalendarScrollPosition].
 class CalendarSnapPhysics extends ScrollPhysics {
   /// Creates snapping physics onto [snap].
   const CalendarSnapPhysics({required this.snap, super.parent});
@@ -122,13 +128,16 @@ class CalendarSnapPhysics extends ScrollPhysics {
   /// The boundaries.
   final CalendarSnap snap;
 
-  /// Slower than this, a decay takes more than 2.4 s to reach 95 %
-  /// (`ln 20 / k`): the platform's friction takes about 1.5 s to, so this
-  /// allows for 60 % of its pace; slower would hang. Per second.
+  /// Slower than this, a decay takes more than 2.4 s to reach 95%
+  /// (`ln 20 / k`), per second.
+  ///
+  /// The platform's friction takes about 1.5 s, so this allows for 60% of its
+  /// pace; slower would hang.
   static const slowestDecay = 1.25;
 
-  /// Quicker than this, a decay has gone 95 % of the way in 120 ms, which is
-  /// a stop, not a coast: the spring does it better. Per second.
+  /// Quicker than this, a decay has gone 95% of the way in 120 ms, per second.
+  ///
+  /// That is a stop rather than a coast, so the spring handles it instead.
   static const quickestDecay = 25.0;
 
   /// The platform's friction, for a parent that gives no simulation:
@@ -215,12 +224,13 @@ class CalendarSnapPhysics extends ScrollPhysics {
 }
 
 /// A fling's friction aimed at [target]: `x(t) = start + v/k · (1 − e^(−kt))`
-/// with `k = decay = v / (target − start)`, so it starts at [velocity],
-/// slows exponentially and stops on [target]. It is done, and exactly on
-/// [target], once what's left is under half a pixel, where a platform scroll
-/// view stops too: an exponential never arrives, and a scroll view ignores
-/// taps on its content while it moves, so a longer tail would leave the days
-/// untappable for seconds after a fling.
+/// with `k = decay = v / (target − start)`, so it starts at [velocity], slows
+/// exponentially and stops on [target].
+///
+/// It is done, and exactly on [target], once what's left is under half a pixel,
+/// where a platform scroll view stops too: an exponential never arrives, and a
+/// scroll view ignores taps on its content while it moves, so a longer tail
+/// would leave the days untappable for seconds after a fling.
 class _SnapDecay extends Simulation {
   _SnapDecay({
     required this.start,
@@ -471,10 +481,11 @@ class CalendarWheelPhysics extends FixedExtentScrollPhysics {
   SpringDescription get spring => calendarSnapSpring(motion);
 }
 
-/// The height of a time column's row for [style] at [context]: the line
-/// box grown with the text scale, and the tier's gap around it. Tighter
-/// than a control (28 pointer, 34 touch at 1×): the column, not a row, is
-/// the touch target.
+/// The height of a time column's row for [style] at [context]: the line box
+/// grown with the text scale, and the tier's gap around it.
+///
+/// Tighter than a control (28 pointer, 34 touch at 1×): the column, not a row,
+/// is the touch target.
 double calendarTimeRowExtent(
   BuildContext context,
   CoilMetrics metrics,
@@ -514,11 +525,12 @@ const calendarMaxCellScale = 1.3;
   );
 }
 
-/// Sizes a calendar's six weeks: as wide as it's given (seven [cell]s and
-/// the insets when unbounded) and six rows as tall as the columns inside
-/// [inset] on each side are wide, so every day is square. It answers
-/// intrinsic sizes itself, so the scroll view inside (a viewport, which can't)
-/// fits in a popover that hugs its content.
+/// Sizes a calendar's six weeks: as wide as it's given (seven [cell]s and the
+/// insets when unbounded) and six rows as tall as the columns inside [inset] on
+/// each side are wide, so every day is square.
+///
+/// It answers intrinsic sizes itself, so the scroll view inside (a viewport,
+/// which can't) fits in a popover that hugs its content.
 class CalendarGridBox extends SingleChildRenderObjectWidget {
   /// Sizes [child] as a calendar grid of [cell]-sized days.
   const CalendarGridBox({
@@ -653,10 +665,11 @@ class RenderCalendarInsetHit extends RenderProxyBox {
   }
 }
 
-/// Gives [child] (a calendar, or a calendar and its time columns) its
-/// width: [natural] when the parent lets it choose; more when the parent
-/// asks for more (a sheet's stretch), up to [max]; less when that's all
-/// there is. Past [max], [child] centers in the width it's asked to fill.
+/// Gives [child] (a calendar, or a calendar and its time columns) its width:
+/// [natural] when the parent lets it choose; more when the parent asks for more
+/// (a sheet's stretch), up to [max]; less when that's all there is.
+///
+/// Past [max], [child] centers in the width it's asked to fill.
 class CalendarWidthBox extends SingleChildRenderObjectWidget {
   /// Sizes [child] between [natural] and [max].
   const CalendarWidthBox({
@@ -765,7 +778,7 @@ class RenderCalendarWidthBox extends RenderShiftedBox {
   }
 }
 
-/// Tells a `CoilCalendar` below it that it is given its height (by a
+/// Tells a [CoilCalendar] below it that it is given its height (by a
 /// [CalendarHeightBox]) and fills it, its rows sharing what the caption and
 /// weekday row leave, instead of being as tall as square cells make it.
 class CalendarFillsHeight extends InheritedWidget {

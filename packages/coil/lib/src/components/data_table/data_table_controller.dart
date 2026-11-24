@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/data_table.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/table.dart';
@@ -6,7 +9,7 @@ import 'package:flutter/foundation.dart';
 /// The state of a data table, without any UI: which [rows] match the
 /// [query], how they're sorted, which are selected, and which page shows.
 ///
-/// [view] is what a table shows. Use it with `CoilDataTable`, or drive your
+/// [view] is what a table shows. Use it with [CoilDataTable], or drive your
 /// own table with it.
 class CoilDataTableController<T> extends ChangeNotifier {
   /// Creates a controller over [rows].

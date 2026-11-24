@@ -4,7 +4,9 @@ import 'package:coil/src/components/dropdown/dropdown_style.dart';
 import 'package:coil/src/components/dropdown/menu_popup.dart';
 import 'package:flutter/widgets.dart';
 
-/// Builds a dropdown's trigger. Call `controller.open()` to show the menu.
+/// Builds a dropdown's trigger.
+///
+/// Call `controller.open()` to show the menu.
 typedef CoilDropdownTriggerBuilder =
     Widget Function(BuildContext context, CoilPopupController controller);
 
@@ -63,8 +65,9 @@ class CoilDropdown extends StatefulWidget {
   /// Pins the presentation instead of deciding it when the menu opens.
   final CoilPresentation? presentation;
 
-  /// Shows a field over the rows that filters them by label. On a phone a
-  /// menu with search opens as a sheet.
+  /// Shows a field over the rows that filters them by label.
+  ///
+  /// On a phone a menu with search opens as a sheet.
   final CoilMenuSearch? search;
 
   /// Overrides the theme's dropdown style.

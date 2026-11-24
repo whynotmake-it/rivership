@@ -226,22 +226,23 @@ CoilDataTable<Member>(
       notes: const [
         CatalogNote(
           'Keyboard',
-          'The arrow keys move the active row, Space selects it and Shift '
-              'extends the selection. Enter opens a row, Ctrl or ⌘ with A '
-              'selects every row, Escape clears the selection and Shift+F10 '
+          'The arrow keys move the active row, Space selects it, and Shift '
+              'extends the selection. Enter opens a row, Ctrl or Cmd with A '
+              'selects every row, Esc clears the selection, and Shift+F10 '
               'opens the row’s actions.',
         ),
         CatalogNote(
           'Touch',
-          'Rows are 44 tall, and a row’s actions open from its ⋯ button or a '
-              'long press. Once something is selected, an action bar appears '
-              'above the safe area.',
+          'Rows are 44 px tall, and a row’s actions open from its ⋯ button '
+              'or a long press. Once something is selected, an action bar '
+              'appears above the safe area.',
         ),
         CatalogNote(
           'Pointer',
-          'Search starts as an icon and springs open into a 224 wide field. '
-              'Each header has a menu that sorts ascending or descending, and '
-              'the highlight glides to the row under the pointer.',
+          'Search starts as an icon and springs open into a 224 px wide '
+              'field. Each header has a menu that sorts ascending or '
+              'descending, and the highlight glides to the row under the '
+              'pointer.',
         ),
         CatalogNote(
           'Accessibility',

@@ -14,13 +14,16 @@ import 'package:motor/motor.dart';
 /// Which side of a [CoilPresentSlot]'s content its gap sits on.
 enum CoilPresentSlotGap {
   /// The gap comes first along the axis: an error under a control, a
-  /// trailing icon after a label. The content stays against the start edge
-  /// and the room opens away from the neighbor.
+  /// trailing icon after a label.
+  ///
+  /// The content stays against the start edge and the room opens away from
+  /// the neighbor.
   before,
 
-  /// The gap comes last: a leading icon before a label. The content stays
-  /// against the end edge, so it travels with the neighbor as the room
-  /// opens.
+  /// The gap comes last: a leading icon before a label.
+  ///
+  /// The content stays against the end edge, so it travels with the
+  /// neighbor as the room opens.
   after,
 }
 
@@ -28,7 +31,7 @@ enum CoilPresentSlotGap {
 ///
 /// The slot's layout size along [axis] is the content's extent *plus the
 /// [gap] that separates it from its neighbor*, scaled by a 0 to 1
-/// presence. That is why the gap lives here: a `Column`'s `spacing` is
+/// presence. That is why the gap lives here: a [Column]'s `spacing` is
 /// there whether or not the part is, and can't animate, so a part that
 /// comes and goes owns the space beside it. An error slot under a field
 /// contributes `(messageGap + errorHeight) × presence`.
@@ -85,19 +88,25 @@ class CoilPresentSlot extends StatefulWidget {
   final VoidCallback? onEnd;
 
   /// The room's motion entering, and leaving too unless
-  /// [presenceExitMotion] is set. Defaults to `standard`.
+  /// [presenceExitMotion] is set.
+  ///
+  /// Defaults to `standard`.
   final Motion? presenceMotion;
 
-  /// The room's motion leaving. Defaults to [presenceMotion], else
-  /// `standardExit`.
+  /// The room's motion leaving.
+  ///
+  /// Defaults to [presenceMotion], else `standardExit`.
   final Motion? presenceExitMotion;
 
   /// The content's fade entering, and leaving too unless [fadeExitMotion]
-  /// is set. Defaults to `fade`.
+  /// is set.
+  ///
+  /// Defaults to `fade`.
   final Motion? fadeMotion;
 
-  /// The content's fade leaving. Defaults to [fadeMotion], else
-  /// `fadeExit`.
+  /// The content's fade leaving.
+  ///
+  /// Defaults to [fadeMotion], else `fadeExit`.
   final Motion? fadeExitMotion;
 
   /// Overrides the theme's motion tokens for the defaults.

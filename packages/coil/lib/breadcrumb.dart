@@ -1,4 +1,6 @@
-/// The coil `CoilBreadcrumb` component.
+/// The Coil [CoilBreadcrumb] component.
+///
+/// @docImport 'package:coil/breadcrumb.dart';
 library;
 
 export 'src/components/breadcrumb/breadcrumb.dart';

@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/dropdown.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/dropdown/dropdown_style.dart';
@@ -9,7 +12,7 @@ import 'package:flutter/widgets.dart';
 /// press on a touch screen at the finger, and Shift+F10 or the Menu key
 /// next to [child].
 ///
-/// It is a `CoilDropdown` opened at a point, with the same rows, keys and
+/// It is a [CoilDropdown] opened at a point, with the same rows, keys and
 /// [CoilDropdownStyle]. A long press lifts [child] with a haptic while the
 /// menu is open; on a phone a long menu opens as a sheet instead.
 ///
@@ -47,8 +50,9 @@ class CoilContextMenu extends StatefulWidget {
   /// Pins the presentation instead of deciding it when the menu opens.
   final CoilPresentation? presentation;
 
-  /// Shows a field over the rows that filters them by label. On a phone a
-  /// menu with search opens as a sheet.
+  /// Shows a field over the rows that filters them by label.
+  ///
+  /// On a phone a menu with search opens as a sheet.
   final CoilMenuSearch? search;
 
   /// Overrides the theme's dropdown style.

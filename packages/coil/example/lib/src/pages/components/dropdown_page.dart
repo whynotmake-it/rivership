@@ -88,9 +88,9 @@ CoilDropdown(
       ),
       CatalogNote(
         'Pointer',
-        'A submenu opens after 100 ms of hover, and a safe triangle lets '
-            'the pointer cut across other rows on its way there without '
-            'closing it. The highlight glides from row to row.',
+        'A submenu opens after 100 ms of hover, and moving diagonally toward '
+            'it lets the pointer cross other rows without closing it. The '
+            'highlight glides from row to row.',
       ),
       CatalogNote(
         'Touch',

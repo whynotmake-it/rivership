@@ -81,15 +81,16 @@ CoilSidebarScaffold(
       ),
       CatalogNote(
         'Pointer',
-        'Drag the rail to resize the sidebar between 160 and 360, and drag 56 '
-            'past the minimum to fold it. There is no icon-only rail, because '
-            'peeking brings back the real sidebar instead.',
+        'Drag the rail to resize the sidebar between 160 px and 360 px, and '
+            'drag 56 px past the minimum to fold it. There is no icon-only '
+            'rail, because peeking brings back the real sidebar instead.',
       ),
       CatalogNote(
         'Touch',
-        'Below 768 the sidebar becomes a drawer, and the page slides aside to '
-            'reveal it when you drag the page sideways anywhere. A row shows '
-            'only its last action on touch, and a long press opens them all.',
+        'Below 768 px the sidebar becomes a drawer, and the page slides aside '
+            'to reveal it when you drag the page sideways anywhere. A row '
+            'shows only its last action on touch, and a long press opens them '
+            'all.',
       ),
       CatalogNote(
         'Accessibility',
@@ -134,11 +135,11 @@ CoilSidebarScaffold(
         title: 'Header and footer',
         description:
             'Stacked gives every part its own row and turns actions into menu '
-            'rows, while horizontal packs them into 24 pixel icon buttons.',
+            'rows, while horizontal packs them into 24 px icon buttons.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
-              label: 'Parts',
+              label: 'Layout',
               value: _bar,
               values: _Bar.values,
               labelOf: (v) => v.label,
@@ -154,7 +155,7 @@ CoilSidebarScaffold(
       DemoSection(
         title: 'Callouts',
         description:
-            'Hovering an inline pile fans it out into a list, and dismissing '
+            'Hovering an inline stack fans it out into a list, and dismissing '
             'one brings the next to the front. Banners stay stacked and do '
             'not fan out.',
         controls: DemoControls(

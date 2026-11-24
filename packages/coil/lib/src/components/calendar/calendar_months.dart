@@ -11,9 +11,11 @@ import 'package:flutter/widgets.dart';
 
 /// The month view a calendar zooms out to: a vertical scroll of years, each
 /// year's twelve months three across and four down, four rows to the year
-/// and the viewport exactly one year tall. It scrolls like the days do, and
-/// lands on a year boundary (`CalendarSnapPhysics`). The calendar's title
-/// names the year, so the months take the room.
+/// and the viewport exactly one year tall.
+///
+/// It scrolls like the days do, and lands on a year boundary
+/// ([CalendarSnapPhysics]). The calendar's title names the year, so the months
+/// take the room.
 ///
 /// It opens on [month]'s year. Months outside [firstMonth] and [lastMonth]
 /// are dimmed and can't be picked; the scroll ends at their years. The
@@ -179,8 +181,8 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
     widget.onShown(month);
   }
 
-  /// Scrolls to [year]: on the `standard` spring to a neighbor, keeping the
-  /// speed it's moving at, in one step (a cut) further away.
+  /// Scrolls to [year]: on the [CoilMotion.standard] spring to a neighbor,
+  /// keeping the speed it's moving at, in one step (a cut) further away.
   void _turnTo(int year) {
     if (!_scroll.hasClients) return;
     final position = _scroll.position as CalendarScrollPosition;
@@ -474,8 +476,10 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
 }
 
 /// One month's cell: its name, semibold for this month and inverted when
-/// selected. The layer paints the fills inside [gap] on each side; the
-/// whole cell takes the tap.
+/// selected.
+///
+/// The layer paints the fills inside [gap] on each side; the whole cell takes
+/// the tap.
 class _MonthCell extends StatefulWidget {
   const _MonthCell({
     required this.index,

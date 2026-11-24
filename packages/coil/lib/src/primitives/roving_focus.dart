@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/interaction.dart';
+library;
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -6,7 +9,9 @@ enum CoilRovingTabStops {
   /// Only the item at `tabStop`: a radio group, tab list or toolbar.
   one,
 
-  /// Every item. The arrow keys still move focus: a checkbox group.
+  /// Every item.
+  ///
+  /// The arrow keys still move focus: a checkbox group.
   each,
 }
 
@@ -19,7 +24,7 @@ enum CoilRovingTabStops {
 /// [Directionality], so Right moves backwards in RTL.
 ///
 /// The caller owns [nodes] (usually one per item, passed to each item's
-/// `CoilInteraction.focusNode`) and decides [tabStop] (usually the selected
+/// [CoilInteraction.focusNode]) and decides [tabStop] (usually the selected
 /// item). Moving focus does not activate an item; listen to the nodes for
 /// that.
 class CoilRovingFocus extends StatefulWidget {
@@ -38,8 +43,9 @@ class CoilRovingFocus extends StatefulWidget {
   /// The items' focus nodes, in order.
   final List<FocusNode> nodes;
 
-  /// The index of the item Tab reaches. Null or out of range: the first
-  /// focusable item.
+  /// The index of the item Tab reaches.
+  ///
+  /// Null or out of range: the first focusable item.
   final int? tabStop;
 
   /// The arrow keys that move focus: Left/Right or Up/Down.
@@ -48,12 +54,15 @@ class CoilRovingFocus extends StatefulWidget {
   /// Whether moving past the last item goes to the first, and back.
   final bool wrap;
 
-  /// Which items Tab reaches. With [CoilRovingTabStops.each], `tabStop` is
-  /// ignored.
+  /// Which items Tab reaches.
+  ///
+  /// With [CoilRovingTabStops.each], `tabStop` is ignored.
   final CoilRovingTabStops tabStops;
 
-  /// Called with the index of the item an arrow key, Home or End moved focus
-  /// to, after the request. Not called for other focus changes.
+  /// Called with the index of the item an arrow key, Home or End moved
+  /// focus to, after the request.
+  ///
+  /// Not called for other focus changes.
   final ValueChanged<int>? onMoved;
 
   /// The items, anywhere below.
@@ -227,9 +236,10 @@ class _RoveVerticalIntent extends _RoveIntent {
   const _RoveVerticalIntent(super.move);
 }
 
-/// Moves focus for a [_RoveIntent]. Disabled while focus is outside the
-/// group's items, and for Home and End when no item can take focus, so the
-/// key goes on to whatever is above.
+/// Moves focus for a [_RoveIntent].
+///
+/// Disabled while focus is outside the group's items, and for Home and End
+/// when no item can take focus, so the key goes on to whatever is above.
 class _RoveAction extends Action<_RoveIntent> {
   _RoveAction(this.state);
 

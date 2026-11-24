@@ -1,4 +1,6 @@
-/// The coil `CoilCheckboxGroup` component.
+/// The Coil [CoilCheckboxGroup] component.
+///
+/// @docImport 'package:coil/checkbox_group.dart';
 library;
 
 export 'src/components/checkbox_group/checkbox_group.dart';

@@ -1,13 +1,19 @@
+/// @docImport 'package:coil/chat_message.dart';
+/// @docImport 'package:coil/input_copy.dart';
+/// @docImport 'package:coil/primitives.dart';
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 
-/// An action on a `CoilChatMessage`, such as Copy or Retry.
+/// An action on a [CoilChatMessage], such as Copy or Retry.
 ///
 /// Each action shows as an icon-only ghost button in the meta row; a mouse
 /// hovering it shows [label] in a tooltip. On touch, long-pressing the
 /// message lists the same actions in a menu, each row named by [label].
 ///
-/// As with `IconButton`, the icon names the icon-only button for screen
-/// readers: give it a `semanticLabel` (`Icon`, `CoilIcon`), or wrap one
+/// As with [IconButton], the icon names the icon-only button for screen
+/// readers: give it a `semanticLabel` ([Icon], [CoilIcon]), or wrap one
 /// without it in `Semantics(label: …)`.
 ///
 /// ```dart
@@ -18,8 +24,8 @@ import 'package:flutter/widgets.dart';
 /// )
 /// ```
 ///
-/// For Copy, use coil's copy feedback so the icon shows a check after a
-/// copy, as `CoilInputCopy` does:
+/// For Copy, use Coil's copy feedback so the icon shows a check after a
+/// copy, as [CoilInputCopy] does:
 ///
 /// ```dart
 /// CoilChatMessageAction(
@@ -44,11 +50,14 @@ class CoilChatMessageAction {
   /// row's text, and the tooltip of the meta row's icon-only button.
   final Widget label;
 
-  /// The button's icon, styled through [IconTheme]. Give it a
-  /// `semanticLabel`, as for an `IconButton`: it is the icon-only button's
-  /// name for screen readers.
+  /// The button's icon, styled through [IconTheme].
+  ///
+  /// Give it a `semanticLabel`, as for an [IconButton]: it is the icon-only
+  /// button's name for screen readers.
   final Widget icon;
 
-  /// Called when the action runs. Null disables it.
+  /// Called when the action runs.
+  ///
+  /// Null disables it.
   final VoidCallback? onPressed;
 }

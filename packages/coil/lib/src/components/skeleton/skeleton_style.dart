@@ -1,11 +1,15 @@
+/// @docImport 'package:coil/skeleton.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/skeleton/skeleton.dart'
     show CoilSkeletonTrack;
 import 'package:flutter/painting.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilSkeleton` looks. Unset fields come from
-/// [CoilSkeletonStyle.fallback].
+/// Overrides for how a [CoilSkeleton] looks.
+///
+/// Unset fields come from [CoilSkeletonStyle.fallback].
 class CoilSkeletonStyle extends CoilComponentStyle<CoilSkeletonStyle> {
   /// Creates a skeleton style.
   const CoilSkeletonStyle({
@@ -25,7 +29,7 @@ class CoilSkeletonStyle extends CoilComponentStyle<CoilSkeletonStyle> {
     textHeightFactor: 0.6,
   );
 
-  /// The block color (the `hover` tint).
+  /// The block color (the [CoilColors.hover] tint).
   final Color? fill;
 
   /// The corner radius of a block.
@@ -34,8 +38,9 @@ class CoilSkeletonStyle extends CoilComponentStyle<CoilSkeletonStyle> {
   /// A text line's height as a fraction of the body line box.
   final double? textHeightFactor;
 
-  /// Springs for the skeleton's animated parts, keyed by
-  /// [CoilSkeletonTrack]s: `{CoilSkeletonTrack.swap: const Motion.instant()}`.
+  /// Springs for the skeleton's animated parts, keyed by [CoilSkeletonTrack]s:
+  /// `{CoilSkeletonTrack.swap: const Motion.instant()}`.
+  ///
   /// A skeleton's own `motions:` win over these; these win over the motion
   /// tokens. [merge] combines the maps key by key.
   final Map<CoilSkeletonTrack<Object>, Motion>? motions;

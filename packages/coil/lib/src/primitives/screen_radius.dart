@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/drawer.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -7,9 +10,9 @@ import 'package:flutter/widgets.dart';
 
 /// The corner radii of the device's screen, for a surface that moves away
 /// from the screen's edges and should keep the screen's shape, such as the
-/// page a reveal `CoilDrawer` pushes aside.
+/// page a reveal [CoilDrawer] pushes aside.
 ///
-/// The radii come from `corner_radius_plugin`, the one place coil reads
+/// The radii come from `corner_radius_plugin`, the one place Coil reads
 /// them: Android 12+ reports them through `RoundedCorner`, iOS 26+ through
 /// UIKit's corner configuration, and older iPhones and iPads through a
 /// bundled table of device bezels. Asking is asynchronous and happens once
@@ -38,12 +41,13 @@ abstract final class CoilScreenRadius {
   /// the activity is attached).
   static const _maxAttempts = 2;
 
-  /// The largest radius taken as real, in logical pixels. Phones today are
-  /// about 24 to 56; anything past this is a wrong unit (the plugin's
-  /// pre-Android 12 path reports physical pixels) or garbage.
+  /// The largest radius taken as real, in logical pixels.
+  ///
+  /// Phones today are about 24 to 56; anything past this is a wrong unit
+  /// (the plugin's pre-Android 12 path reports physical pixels) or garbage.
   static const maxPlausibleRadius = 64.0;
 
-  /// What the plugin answers when it has nothing to report: coil asks for
+  /// What the plugin answers when it has nothing to report: Coil asks for
   /// a negative default so it can't be mistaken for a square screen.
   static const _unknown = -1.0;
 
@@ -57,13 +61,17 @@ abstract final class CoilScreenRadius {
     return _notifier.value;
   }
 
-  /// Notifies when the radii become known. Listening doesn't start the
-  /// query; read [value] or call [resolve] for that.
+  /// Notifies when the radii become known.
+  ///
+  /// Listening doesn't start the query; read [value] or call [resolve] for
+  /// that.
   static ValueListenable<BorderRadius?> get listenable => _notifier;
 
   /// Asks the platform for the radii and completes with them (null when
-  /// unknown). Later calls return the same future, except that a query
-  /// that found nothing runs once more on the next call.
+  /// unknown).
+  ///
+  /// Later calls return the same future, except that a query that found
+  /// nothing runs once more on the next call.
   static Future<BorderRadius?> resolve() => _request ??= _ask();
 
   /// Whether this platform can report its radii at all.

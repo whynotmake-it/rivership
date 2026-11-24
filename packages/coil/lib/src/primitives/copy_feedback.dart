@@ -26,7 +26,7 @@ enum CoilCopyStatus {
 }
 
 /// Copies text and holds the result for [resetDelay], the one state
-/// machine behind every copy affordance in coil.
+/// machine behind every copy affordance in Coil.
 ///
 /// - [copy] from idle shows [CoilCopyStatus.copied] and starts the timer.
 /// - [copy] while the result shows keeps it (nothing animates again) and
@@ -52,9 +52,10 @@ class CoilCopyController extends ValueNotifier<CoilCopyStatus> {
   Timer? _reset;
   var _disposed = false;
 
-  /// Copies [text] and shows the result. Returns the result: any failure
-  /// to set the clipboard (not only a `PlatformException`) shows and
-  /// returns [CoilCopyStatus.failed].
+  /// Copies [text] and shows the result.
+  ///
+  /// Returns the result: any failure to set the clipboard (not only a
+  /// [PlatformException]) shows and returns [CoilCopyStatus.failed].
   ///
   /// With [context], announces [copiedLabel] or [failedLabel] when the
   /// shown result changes, and plays the copy haptic on every success.
@@ -92,8 +93,9 @@ class CoilCopyController extends ValueNotifier<CoilCopyStatus> {
     return status;
   }
 
-  /// Shows [status] and, unless it's idle, restarts the timer back to
-  /// idle. Showing the status already shown only restarts the timer.
+  /// Shows [status] and, unless it's idle, restarts the timer back to idle.
+  ///
+  /// Showing the status already shown only restarts the timer.
   void show(CoilCopyStatus status) {
     _reset?.cancel();
     value = status;
@@ -111,22 +113,27 @@ class CoilCopyController extends ValueNotifier<CoilCopyStatus> {
   }
 }
 
-/// The animated parts of a copy affordance. Use them as keys of
-/// [CoilCopySwitcher.motions] and [CoilCopyGlyph.motions].
+/// The animated parts of a copy affordance.
+///
+/// Use them as keys of [CoilCopySwitcher.motions] and
+/// [CoilCopyGlyph.motions].
 final class CoilCopyTrack<T extends Object> extends Track<T> {
   CoilCopyTrack._(super.converter, {required String super.debugLabel});
 
   /// The swap between the copy icon and the result: the two icons'
-  /// presences crossing (`CoilIconPresence`). Default motion: `quick` in,
-  /// `quickExit` out; an override applies to both. Under reduced motion
-  /// the icons swap at once.
+  /// presences crossing ([CoilIconPresence]).
+  ///
+  /// Default motion: `quick` in, `quickExit` out; an override applies to
+  /// both. Under reduced motion the icons swap at once.
   static final swap = CoilCopyTrack<double>._(
     .single,
     debugLabel: 'CoilCopy.swap',
   );
 
-  /// coil's drawn check or × drawing itself in. Default motion: `fade`,
-  /// which reduced motion keeps (the swap around it is instant).
+  /// Coil's drawn check or × drawing itself in.
+  ///
+  /// Default motion: `fade`, which reduced motion keeps (the swap around it
+  /// is instant).
   static final draw = CoilCopyTrack<double>._(
     .single,
     debugLabel: 'CoilCopy.draw',
@@ -134,9 +141,11 @@ final class CoilCopyTrack<T extends Object> extends Track<T> {
 }
 
 /// Cross-fades a copy affordance's content as its [status] changes: a
-/// blur-fade at scale 0.8 on [CoilCopyTrack.swap], the contents lined up
-/// at the start. For the label of a copy
-/// button; the icon beside it is a [CoilCopyGlyph], which swaps itself.
+/// blur-fade at scale 0.8 on [CoilCopyTrack.swap], the contents lined up at
+/// the start.
+///
+/// For the label of a copy button; the icon beside it is a [CoilCopyGlyph],
+/// which swaps itself.
 ///
 /// Each status is one child, keyed by the status alone, so a repeated
 /// copy (same status) never replays the swap, and a result that comes back
@@ -162,8 +171,9 @@ class CoilCopySwitcher extends StatelessWidget {
   final CoilMotion? motion;
 
   /// Per-track motions, keyed by [CoilCopyTrack]s; this widget reads
-  /// [CoilCopyTrack.swap]. They win over the tokens; reduced motion still
-  /// makes them instant.
+  /// [CoilCopyTrack.swap].
+  ///
+  /// They win over the tokens; reduced motion still makes them instant.
   final Map<CoilCopyTrack<Object>, Motion>? motions;
 
   @override
@@ -199,9 +209,9 @@ class CoilCopySwitcher extends StatelessWidget {
 /// copy, an × after a refused one, swapped as [status] changes.
 ///
 /// The icons are the theme's [CoilIcons.copy], [CoilIcons.check] and
-/// [CoilIcons.failed] ([icon] wins for the copy icon), else coil's drawn
+/// [CoilIcons.failed] ([icon] wins for the copy icon), else Coil's drawn
 /// glyphs, so there is always a visible button. A swap is two
-/// `CoilIconPresence`s crossing on [CoilCopyTrack.swap]: coil's glyphs
+/// [CoilIconPresence]s crossing on [CoilCopyTrack.swap]: Coil's glyphs
 /// blur-fade with it, and its check and × also draw themselves in
 /// ([CoilCopyTrack.draw]); an icon that reads its presence animates
 /// itself, and any other fades and scales.
@@ -234,15 +244,17 @@ class CoilCopyGlyph extends StatelessWidget {
   /// [CoilCopyGlyph.listening].
   final CoilCopyController? controller;
 
-  /// The copy icon at rest. Null shows the theme's [CoilIcons.copy], else
-  /// coil's drawn [CoilGlyph.copy].
+  /// The copy icon at rest.
+  ///
+  /// Null shows the theme's [CoilIcons.copy], else Coil's drawn
+  /// [CoilGlyph.copy].
   final Widget? icon;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
   /// Per-track motions, keyed by [CoilCopyTrack]s: [CoilCopyTrack.swap]
-  /// for the swap, [CoilCopyTrack.draw] for coil's check or ×.
+  /// for the swap, [CoilCopyTrack.draw] for Coil's check or ×.
   final Map<CoilCopyTrack<Object>, Motion>? motions;
 
   @override
@@ -299,7 +311,7 @@ class CoilCopyGlyph extends StatelessWidget {
   }
 }
 
-/// coil's drawn copy, check and ×: they blur-fade at scale 0.8 with their
+/// Coil's drawn copy, check and ×: they blur-fade at scale 0.8 with their
 /// icon presence, and with [draw], draw themselves in from nothing.
 class _SwapGlyph extends StatelessWidget {
   const _SwapGlyph(this.glyph, {this.draw});

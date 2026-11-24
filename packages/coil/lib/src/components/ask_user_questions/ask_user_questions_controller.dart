@@ -1,7 +1,10 @@
+/// @docImport 'package:coil/ask_user_questions.dart';
+library;
+
 import 'package:coil/src/components/ask_user_questions/question.dart';
 import 'package:flutter/foundation.dart';
 
-/// The state of a `CoilAskUserQuestions`: which question shows, and the
+/// The state of a [CoilAskUserQuestions]: which question shows, and the
 /// answers so far.
 ///
 /// Pass one to read or drive the flow from outside, for example to restore
@@ -9,7 +12,7 @@ import 'package:flutter/foundation.dart';
 /// widget keeps its own.
 class CoilAskUserQuestionsController<T> extends ChangeNotifier {
   /// Creates a controller at [step] with [answers], keyed by
-  /// `CoilQuestion.id`.
+  /// [CoilQuestion.id].
   CoilAskUserQuestionsController({
     int step = 0,
     Map<Object, CoilAnswer<T>> answers = const {},
@@ -29,7 +32,7 @@ class CoilAskUserQuestionsController<T> extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The answers so far, keyed by `CoilQuestion.id`.
+  /// The answers so far, keyed by [CoilQuestion.id].
   Map<Object, CoilAnswer<T>> get answers => Map.unmodifiable(_answers);
 
   /// The answer to the question with [id]; empty when there is none.

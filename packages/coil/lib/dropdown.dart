@@ -1,4 +1,6 @@
-/// The coil `CoilDropdown` component.
+/// The Coil [CoilDropdown] component.
+///
+/// @docImport 'package:coil/dropdown.dart';
 library;
 
 export 'src/components/dropdown/dropdown.dart';

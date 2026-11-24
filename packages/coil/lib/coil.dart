@@ -1,6 +1,8 @@
-/// coil: a Flutter design system on Motor springs, inspired by Fluid
-/// Functionalism. Exports every layer; import `foundation.dart`,
-/// `primitives.dart` or a single component's library to depend on less.
+/// Coil: a Flutter design system on Motor springs, inspired by Fluid
+/// Functionalism.
+///
+/// Exports every layer; import `foundation.dart`, `primitives.dart`, or a
+/// single component's library to depend on less.
 library;
 
 export 'accordion.dart';

@@ -1,5 +1,7 @@
-/// The coil data table: `CoilDataTable` and its headless
-/// `CoilDataTableController`.
+/// The Coil data table: [CoilDataTable] and its headless
+/// [CoilDataTableController].
+///
+/// @docImport 'package:coil/data_table.dart';
 library;
 
 export 'src/components/data_table/data_table.dart';

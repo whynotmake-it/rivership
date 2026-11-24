@@ -11,12 +11,16 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilScrollArea]. Use them as keys of
-/// [CoilScrollArea.motions] or [CoilScrollAreaStyle.motions].
+/// The animated parts of a [CoilScrollArea].
+///
+/// Use these as keys of [CoilScrollArea.motions] or
+/// [CoilScrollAreaStyle.motions].
 final class CoilScrollAreaTrack<T extends Object> extends Track<T> {
   CoilScrollAreaTrack._(super.converter, {required String super.debugLabel});
 
-  /// A keyboard scroll. Default motion: `standard`.
+  /// A keyboard scroll.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final scroll = CoilScrollAreaTrack<double>._(
     .single,
     debugLabel: 'CoilScrollArea.scroll',
@@ -25,7 +29,7 @@ final class CoilScrollAreaTrack<T extends Object> extends Track<T> {
 
 /// Whether a [CoilScrollArea] draws a scrollbar.
 enum CoilScrollbarVisibility {
-  /// coil's scrollbar for the tier: on pointer it shows while scrolling or
+  /// Coil's scrollbar for the tier: on pointer it shows while scrolling or
   /// hovered; on touch it is a thin bar while scrolling.
   auto,
 
@@ -33,16 +37,16 @@ enum CoilScrollbarVisibility {
   none,
 }
 
-/// Which edges of a [CoilScrollArea] fade.
+/// Edge-fade behavior along the scroll axis of a [CoilScrollArea].
 enum CoilEdgeFades {
-  /// Edges with more content fade out over the style's `fadeExtent`.
+  /// Edges with more content fade out over [CoilScrollAreaStyle.fadeExtent].
   auto,
 
   /// No fades.
   none,
 }
 
-/// Gives a scrollable coil's scrollbar, edge fades and keyboard scrolling.
+/// Gives a scrollable Coil's scrollbar, edge fades, and keyboard scrolling.
 ///
 /// [child] is the scrollable: a [ListView], [GridView], [CustomScrollView],
 /// [SingleChildScrollView] or any other. The area never builds one itself.
@@ -62,7 +66,7 @@ enum CoilEdgeFades {
 /// It scrolls the way the app does: physics, overscroll and which pointers
 /// drag the content come from the ambient [ScrollBehavior] (the
 /// platform's, unless the app sets its own with [ScrollConfiguration]).
-/// coil only draws its own scrollbar in place of the behavior's.
+/// Coil only draws its own scrollbar in place of the behavior's.
 ///
 /// The edge fades follow the child's scroll notifications, so they work
 /// with any scrollable along [axis].
@@ -72,7 +76,7 @@ enum CoilEdgeFades {
 /// and Home and End go to the ends. Keys pressed in a focused descendant,
 /// such as a text field, stay with it.
 class CoilScrollArea extends StatefulWidget {
-  /// Gives [child], a scrollable along [axis], coil's scrollbar, fades and
+  /// Gives [child], a scrollable along [axis], Coil's scrollbar, fades, and
   /// keyboard scrolling.
   const CoilScrollArea({
     required this.child,
@@ -89,11 +93,15 @@ class CoilScrollArea extends StatefulWidget {
     this.motions,
   });
 
-  /// The scrollable. Wrap plain content in a [SingleChildScrollView].
+  /// The scrollable.
+  ///
+  /// Wrap plain content in a [SingleChildScrollView].
   final Widget child;
 
-  /// The controller [child] scrolls with. If null, the area provides one
-  /// through [PrimaryScrollController]; if set, pass it to [child] too.
+  /// The controller [child] scrolls with.
+  ///
+  /// If null, the area provides one through [PrimaryScrollController]; if set,
+  /// pass it to [child] too.
   final ScrollController? controller;
 
   /// The axis [child] scrolls along.
@@ -105,9 +113,10 @@ class CoilScrollArea extends StatefulWidget {
   /// Whether to draw a scrollbar.
   final CoilScrollbarVisibility scrollbar;
 
-  /// Whether the area is a tab stop that scrolls with the keys. Turn it off
-  /// when the content is the tab stop and handles the keys itself, as a
-  /// table does.
+  /// Whether the area is a tab stop that scrolls with the keys.
+  ///
+  /// Turn it off when the content is the tab stop and handles the keys itself,
+  /// as a table does.
   final bool keyboard;
 
   /// The viewport's focus node (it takes focus only when it scrolls).
@@ -122,8 +131,10 @@ class CoilScrollArea extends StatefulWidget {
   /// Overrides the theme's motion tokens for keyboard scrolling.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilScrollAreaTrack]. They win over the
-  /// style's [CoilScrollAreaStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilScrollAreaTrack].
+  ///
+  /// These take precedence over [CoilScrollAreaStyle.motions] and the theme
+  /// tokens.
   final Map<CoilScrollAreaTrack<Object>, Motion>? motions;
 
   @override
@@ -222,10 +233,12 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
           .merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context))
           .merge(widget.style);
 
-  /// Whether a key scrolls now: while the viewport itself has focus, or
-  /// the viewport of an area nested in it (a key that area leaves alone,
-  /// such as Down in a horizontal area, scrolls this one). Keys from any
-  /// other focused descendant, such as a text field, pass on to it.
+  /// Whether a key scrolls now: while the viewport itself has focus, or the
+  /// viewport of an area nested in it (a key that area leaves alone, such as
+  /// Down in a horizontal area, scrolls this one).
+  ///
+  /// Keys from any other focused descendant, such as a text field, pass on to
+  /// it.
   bool get _canScroll {
     if (!_controller.hasClients) return false;
     if (_focusNode.hasPrimaryFocus) return true;
@@ -396,9 +409,10 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
   }
 }
 
-/// The app's [ambient] behavior, without the scrollbar of the one
-/// scrollable that scrolls with [controller]: coil draws that one's, or
-/// none. Every other scrollable gets the ambient behavior unchanged.
+/// The app's [ambient] behavior, without the scrollbar of the one scrollable
+/// that scrolls with [controller]: Coil draws that one's, or none.
+///
+/// Every other scrollable gets the ambient behavior unchanged.
 class _AreaScrollBehavior extends ScrollBehavior {
   const _AreaScrollBehavior(this.ambient, this.controller);
 
@@ -457,9 +471,10 @@ class _AreaScrollBehavior extends ScrollBehavior {
 /// How far a key scrolls a [CoilScrollArea].
 enum _ScrollStep { lineBack, lineForward, pageBack, pageForward, start, end }
 
-/// Scrolls a [CoilScrollArea] by a [_ScrollStep]. Not Flutter's
-/// `ScrollIntent`: the app's default action for that one would answer for
-/// the area while a field inside it has focus.
+/// Scrolls a [CoilScrollArea] by a [_ScrollStep].
+///
+/// Not Flutter's [ScrollIntent]: the app's default action for that one would
+/// answer for the area while a field inside it has focus.
 ///
 /// Each axis has its own intent type, [_VerticalScrollIntent] and
 /// [_HorizontalScrollIntent], and an area handles only its own. Actions are

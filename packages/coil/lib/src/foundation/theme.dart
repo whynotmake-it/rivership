@@ -20,10 +20,10 @@ const Object _keep = Object();
 /// Changes a parent theme for a subtree. See [CoilTheme.override].
 typedef CoilThemeTransform = CoilThemeData Function(CoilThemeData parent);
 
-/// Every token coil components read, as one runtime-changeable object.
+/// Every token Coil components read, as one runtime-changeable object.
 @immutable
 class CoilThemeData with Diagnosticable {
-  /// Creates theme data. Unset fields keep coil's defaults.
+  /// Creates theme data; unset fields keep Coil's defaults.
   const CoilThemeData({
     this.colors = CoilColors.light,
     this.shape = CoilShape.rounded,
@@ -52,51 +52,67 @@ class CoilThemeData with Diagnosticable {
   /// The corner shape family.
   final CoilShape shape;
 
-  /// The size tokens for every tier and size step. Components read the
-  /// entry for theirs with [CoilTheme.metricsOf].
+  /// The size tokens for every tier and size step.
+  ///
+  /// Components read the entry for theirs with [CoilTheme.metricsOf].
   final CoilMetricsTable metrics;
 
   /// The size tier, or null to latch it from the platform
-  /// ([CoilTier.forPlatform]). A [CoilAdaptiveScope] overrides it.
+  /// ([CoilTier.forPlatform]).
+  ///
+  /// A [CoilAdaptiveScope] overrides it.
   final CoilTier? tier;
 
-  /// The motion tokens. Components read them on every animation, so a
-  /// change applies to the next one.
+  /// The motion tokens.
+  ///
+  /// Components read them on every animation, so a change applies to the next
+  /// one.
   final CoilMotion motion;
 
-  /// The text roles for every tier and size step. Read them with
-  /// [CoilTheme.textOf]. Defaults to the platform font; coil bundles none.
+  /// The text roles for every tier and size step.
+  ///
+  /// Read them with [CoilTheme.textOf]. Defaults to the platform font; Coil
+  /// bundles none.
   final CoilTypography typography;
 
   /// How focus rings look.
   final CoilFocusRingTheme focusRing;
 
   /// Which haptic each event plays, or null for the platform's conventions
-  /// ([CoilHaptics.platform]). [CoilHaptics.none] turns them off.
+  /// ([CoilHaptics.platform]).
+  ///
+  /// [CoilHaptics.none] turns them off.
   final CoilHaptics? haptics;
 
   /// The mouse cursor over an enabled control that acts on a click:
-  /// buttons, rows, toggles, cards. Defaults to the arrow, the desktop
-  /// convention. [SystemMouseCursors.click] gives every control the web's
-  /// pointing hand. Links always use the pointing hand, text the I-beam,
-  /// and disabled controls the cursor beneath them.
+  /// buttons, rows, toggles, and cards.
+  ///
+  /// Defaults to the arrow, the desktop convention. [SystemMouseCursors.click]
+  /// gives every control the web's pointing hand. Links always use the
+  /// pointing hand, text the I-beam, and disabled controls the cursor beneath
+  /// them.
   final MouseCursor controlCursor;
 
-  /// How lit interactive controls look: [CoilPlasticity.flat] (the default)
-  /// paints no lighting; a higher `amount` ([CoilPlasticity.subtle] is 0.5,
-  /// 1 the most) adds a gradient edge, a top highlight, a sheen and a drop
-  /// shadow that respond to hover and press. Components read it through
-  /// their style's `plasticity`, so one component type can differ with
-  /// [withComponentStyle], and resolve it with [CoilTheme.reliefOf].
+  /// How lit interactive controls look.
+  ///
+  /// [CoilPlasticity.flat] (the default) paints no lighting; a higher
+  /// [CoilPlasticity.amount] ([CoilPlasticity.subtle] is 0.5, 1 the most) adds
+  /// a gradient edge, a top highlight, a sheen, and a drop shadow that respond
+  /// to hover and press. Components read it through their style's `plasticity`,
+  /// so one component type can differ with [withComponentStyle], and resolve it
+  /// with [CoilTheme.reliefOf].
   final CoilPlasticity plasticity;
 
-  /// Whether selected states carry the brand: the selected radio's dot is
-  /// `brand`, the selected tab's pill and the selected toggle-group
-  /// segments sit on `brandWash` under `brandInk` labels, and the text
-  /// cursor is `brand`. Off by default, so coil stays monochrome unless
-  /// asked: selections use the neutral `active` fill and `foreground`.
+  /// Whether selected states carry the brand color.
   ///
-  /// Hover, the switch, the slider fill and the checkbox tick never change.
+  /// When enabled (and [CoilColors.brandIsChromatic] is true), the selected
+  /// radio dot and text cursor use [CoilColors.brandMark], and the selected
+  /// tab pill and toggle-group segments sit on [CoilColors.brandWash] under
+  /// [CoilColors.brandInk] labels. Off by default, so Coil stays monochrome
+  /// unless asked: selections use the neutral [CoilColors.active] fill and
+  /// [CoilColors.foreground].
+  ///
+  /// Hover, the switch, the slider fill, and the checkbox tick never change.
   /// Turn it on for the whole app in the root theme, or for one subtree
   /// with a nested theme:
   ///
@@ -109,22 +125,26 @@ class CoilThemeData with Diagnosticable {
   final bool brandSelection;
 
   /// Whether selected states actually show the brand: [brandSelection] is
-  /// on and the brand has color to show ([CoilColors.brandIsChromatic]). A
-  /// grey brand, such as graphite, keeps the neutral selection, since a grey
-  /// wash under grey text would only lower its contrast. Components read
-  /// this, not [brandSelection].
+  /// on and the brand has color to show ([CoilColors.brandIsChromatic]).
+  ///
+  /// A grey brand, such as graphite, keeps the neutral selection, since a grey
+  /// wash under grey text would only lower its contrast. Components read this,
+  /// not [brandSelection].
   bool get selectsInBrand => brandSelection && colors.brandIsChromatic;
 
   /// The icons components show, by role: an app's own icon set in place of
-  /// coil's drawn glyphs. Roles left null keep coil's; a component's own
-  /// slot wins over this. Add a partial set with
-  /// `theme.copyWith(icons: theme.icons.merge(mine))`. See [CoilIcons].
+  /// Coil's drawn glyphs.
+  ///
+  /// Roles left null keep Coil's; a component's own slot wins over this. Add a
+  /// partial set with `theme.copyWith(icons: theme.icons.merge(mine))`. See
+  /// [CoilIcons].
   final CoilIcons icons;
 
   /// Per-component-type style overrides, keyed by style type:
-  /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`. Prefer
-  /// [withComponentStyle], which merges with an existing entry. Components
-  /// read them with [CoilTheme.styleOf].
+  /// `{CoilButtonStyle: CoilButtonStyle(radius: 12)}`.
+  ///
+  /// Prefer [withComponentStyle], which merges with an existing entry.
+  /// Components read them with [CoilTheme.styleOf].
   ///
   /// A style's `motions` sets springs for that component's animated parts
   /// app-wide: `CoilSwitchStyle(motions: {CoilSwitchTrack.thumb:
@@ -145,10 +165,10 @@ class CoilThemeData with Diagnosticable {
     },
   );
 
-  /// This theme for high contrast: [CoilColors.highContrast], and a 2 px
-  /// focus ring in a color with at least 3:1 contrast against the
-  /// background. [CoilTheme.of] applies it when `MediaQuery.highContrastOf`
-  /// is true.
+  /// Returns this theme adapted for high contrast: [CoilColors.highContrast]
+  /// and a 2 px focus ring with at least 3:1 contrast against the background.
+  ///
+  /// [CoilTheme.of] applies it when [MediaQuery.highContrastOf] is true.
   CoilThemeData highContrast() {
     final contrasted = colors.highContrast();
     return copyWith(
@@ -164,10 +184,11 @@ class CoilThemeData with Diagnosticable {
     );
   }
 
-  /// This theme for the platform's bold text setting: every text role
-  /// lighter than semibold becomes semibold (a variable font's `wght` axis
-  /// too), as DESIGN.md asks. [CoilTheme.of] applies it when
-  /// `MediaQuery.boldTextOf` is true.
+  /// Returns this theme adapted for the platform's bold text setting, raising
+  /// every text role lighter than semibold (and variable font `wght` axes) to
+  /// semibold.
+  ///
+  /// [CoilTheme.of] applies it when [MediaQuery.boldTextOf] is true.
   CoilThemeData boldText() => copyWith(
     typography: typography.map((role) {
       final weight = role.fontWeight ?? FontWeight.normal;
@@ -190,8 +211,9 @@ class CoilThemeData with Diagnosticable {
   /// Light or dark.
   Brightness get brightness => colors.brightness;
 
-  /// Returns a copy with the given fields replaced. Pass `tier: null` or
-  /// `haptics: null` to go back to the platform's.
+  /// Returns a copy with the given fields replaced.
+  ///
+  /// Pass `tier: null` or `haptics: null` to go back to the platform's.
   CoilThemeData copyWith({
     CoilColors? colors,
     CoilShape? shape,
@@ -222,9 +244,10 @@ class CoilThemeData with Diagnosticable {
     components: components ?? this.components,
   );
 
-  /// Interpolates two themes, for animated theme changes. Colors, text
-  /// styles, motion and the focus ring blend; everything else (icons too)
-  /// switches at the midpoint.
+  /// Interpolates two themes, for animated theme changes.
+  ///
+  /// Colors, text styles, motion, and the focus ring blend; everything else
+  /// (icons too) switches at the midpoint.
   // A static lerp, like Color.lerp and TextStyle.lerp.
   // ignore: prefer_constructors_over_static_methods
   static CoilThemeData lerp(CoilThemeData a, CoilThemeData b, double t) =>
@@ -320,15 +343,14 @@ class CoilThemeData with Diagnosticable {
 ///
 /// Optional: without one, components use [CoilThemeData.light] or
 /// [CoilThemeData.dark] by platform brightness. Works under any
-/// `WidgetsApp`; it also sets a [DefaultTextStyle], an [IconTheme] color and
+/// [WidgetsApp]; it also sets a [DefaultTextStyle], an [IconTheme] color, and
 /// [DefaultSelectionStyle] so plain [Text] and [Icon] in slots match the
-/// system. Without the icon color, a bare `WidgetsApp` draws icons black,
+/// system. Without the icon color, a bare [WidgetsApp] draws icons black,
 /// unreadable on a dark surface.
 ///
-/// Resolution, lowest to highest: package defaults,
-/// the platform tier, the root theme, subtree [CoilTheme.override]s, a
-/// component's own `motion:`, high contrast ([of]), reduced motion
-/// ([motionOf]).
+/// Resolution, lowest to highest: package defaults, the platform tier, the
+/// root theme, subtree [CoilTheme.override]s, a component's own `motion:`,
+/// high contrast ([of]), and reduced motion ([motionOf]).
 class CoilTheme extends StatelessWidget {
   /// Provides [data] to [child].
   const CoilTheme({
@@ -384,10 +406,12 @@ class CoilTheme extends StatelessWidget {
   }
 
   /// The theme at [context], resolved for bold text and high contrast when
-  /// the platform asks for them (`MediaQuery.boldTextOf`,
-  /// `MediaQuery.highContrastOf`). Inside an elevated
-  /// [CoilPlasticityScope] (a card, popover, dialog or sheet), its
-  /// plasticity is [CoilPlasticity.flat]: controls there aren't lit.
+  /// the platform asks for them ([MediaQuery.boldTextOf],
+  /// [MediaQuery.highContrastOf]).
+  ///
+  /// Inside an elevated [CoilPlasticityScope] (a card, popover, dialog, or
+  /// sheet), its plasticity is [CoilPlasticity.flat]: controls there aren't
+  /// lit.
   static CoilThemeData of(BuildContext context) {
     var data = _raw(context);
     if (!data.plasticity.isFlat && CoilPlasticityScope.elevatedOf(context)) {
@@ -405,9 +429,9 @@ class CoilTheme extends StatelessWidget {
 
   /// The lighting of a [role] shape at [context], or null for none: the
   /// theme's plasticity (or [override], a component style's `plasticity`)
-  /// resolved for the theme's brightness. See [CoilPlasticity.resolve] for
-  /// [hover], [press] and [enabled].
+  /// resolved for the theme's brightness.
   ///
+  /// See [CoilPlasticity.resolve] for [hover], [press], and [enabled].
   /// Controls read the plasticity [of] returns, which is flat on an
   /// elevated surface.
   static CoilRelief? reliefOf(
@@ -429,17 +453,19 @@ class CoilTheme extends StatelessWidget {
   }
 
   /// The theme's plasticity at [context] as set, before an elevated
-  /// [CoilPlasticityScope] flattens it. Controls read [of]'s instead; a
-  /// surface reads this one for [CoilPlasticity.flattenAbove].
+  /// [CoilPlasticityScope] flattens it.
+  ///
+  /// Controls read [of]'s instead; a surface reads this one for
+  /// [CoilPlasticity.flattenAbove].
   static CoilPlasticity plasticityOf(BuildContext context) =>
       _raw(context).plasticity;
 
   /// The motion tokens at [context]: [override] (a component's `motion:`)
   /// or the theme's, made [CoilMotion.reduced] when the platform asks for
-  /// reduced motion. Reduced motion is always applied last.
+  /// reduced motion.
   ///
-  /// Read it where an animation starts and pass it to that animation, so
-  /// runtime changes apply to the next one.
+  /// Reduced motion is always applied last. Read it where an animation starts
+  /// and pass it to that animation, so runtime changes apply to the next one.
   static CoilMotion motionOf(BuildContext context, {CoilMotion? override}) {
     final motion = override ?? of(context).motion;
     return MediaQuery.maybeDisableAnimationsOf(context) ?? false
@@ -447,8 +473,9 @@ class CoilTheme extends StatelessWidget {
         : motion;
   }
 
-  /// The theme's style override for type [S] at [context], if any. A
-  /// component computes its style as
+  /// The theme's style override for type [S] at [context], if any.
+  ///
+  /// A component computes its style as
   /// `S.fallback(...).merge(CoilTheme.styleOf<S>(context))` and then merges
   /// its own `style:` on top.
   static S? styleOf<S extends CoilComponentStyle<S>>(BuildContext context) =>
@@ -458,9 +485,11 @@ class CoilTheme extends StatelessWidget {
   /// component's own `motions:` entry ([instance]), else its resolved
   /// style's `motions` entry ([styled]: the component's `style:` merged
   /// over the theme's [CoilThemeData.components] entry), else [token]
-  /// (already resolved through [motionOf]). Maps compare by value, so a
-  /// rebuilt literal never redirects an animation. Under reduced motion a
-  /// [spatial] track is instant whatever was configured.
+  /// (already resolved through [motionOf]).
+  ///
+  /// Maps compare by value, so a rebuilt literal never redirects an animation.
+  /// Under reduced motion a [spatial] track is instant whatever was
+  /// configured.
   static Motion trackMotionOf(
     BuildContext context,
     Track<Object> track, {
@@ -477,7 +506,7 @@ class CoilTheme extends StatelessWidget {
 
   /// The text roles at [context]: the theme's typography for [tierOf] and
   /// the size step of the nearest [CoilAdaptiveScope], in the foreground
-  /// color, with `muted`, `brand` and `destructive` variants.
+  /// color, with `muted`, `brand`, and `destructive` variants.
   ///
   /// ```dart
   /// final text = CoilTheme.textOf(context);
@@ -510,8 +539,9 @@ class CoilTheme extends StatelessWidget {
 
   /// The theme's metrics at [context]: for [tier] if given, else [tierOf];
   /// for [size] if given, else the nearest [CoilAdaptiveScope]'s size, else
-  /// [CoilSize.regular]. Read every size through this, so an app's metrics
-  /// reach every component.
+  /// [CoilSize.regular].
+  ///
+  /// Read every size through this, so an app's metrics reach every component.
   static CoilMetrics metricsOf(
     BuildContext context, {
     CoilSize? size,

@@ -180,20 +180,20 @@ CoilAskUserQuestions<String>(
         CatalogNote(
           'Keyboard',
           'The keys 1 to 9 pick the matching row, Up and Down move between '
-              'rows and Enter picks the active one. Escape goes back a '
-              'question, and Ctrl or ⌘ with Enter continues.',
+              'rows and Enter picks the active one. Esc goes back a '
+              'question, and Ctrl or Cmd with Enter continues.',
         ),
         CatalogNote(
           'Touch',
-          'The number keys and the submit arrow are hidden, and rows are 44 '
-              'tall with a fill while pressed. Picking a row never takes '
+          'The number keys and the submit arrow are hidden, and rows are '
+              '44 px tall with a fill while pressed. Picking a row never takes '
               'focus, so the keyboard stays down until you tap a field.',
         ),
         CatalogNote(
           'Motion',
-          'Moving to the next question springs the card to its new height on '
-              'the standard spring, while the old question fades out and the '
-              'new one fades in.',
+          'Moving to the next question smoothly springs the card to its new '
+              'height, while the old question fades out and the new one fades '
+              'in.',
         ),
         CatalogNote(
           'Accessibility',

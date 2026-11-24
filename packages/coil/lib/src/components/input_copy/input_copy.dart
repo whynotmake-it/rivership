@@ -1,6 +1,9 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
+/// @docImport 'package:coil/field.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/input_copy/input_copy_style.dart';
@@ -8,58 +11,74 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilInputCopy], as Motor tracks. Use them as
-/// keys of [CoilInputCopy.motions] or [CoilInputCopyStyle.motions].
+/// The animated parts of a [CoilInputCopy], as Motor tracks.
+///
+/// Use these as keys of [CoilInputCopy.motions] or
+/// [CoilInputCopyStyle.motions].
 final class CoilInputCopyTrack<T extends Object> extends Track<T> {
   CoilInputCopyTrack._(super.converter, {required String super.debugLabel});
 
-  /// The row's press fill. Default motion: `fade`.
+  /// The row's press fill.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final fill = CoilInputCopyTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilInputCopy.fill',
   );
 
-  /// The highlight behind the value. Default motion: `fade`.
+  /// The highlight behind the value.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final mark = CoilInputCopyTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilInputCopy.mark',
   );
 
-  /// The action's icon and text color. Default motion: `fade`.
+  /// The action's icon and text color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final action = CoilInputCopyTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilInputCopy.action',
   );
 
-  /// The action icon's weight. Default motion: `fade`.
+  /// The action icon's weight.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final weight = CoilInputCopyTrack<double>._(
     .single,
     debugLabel: 'CoilInputCopy.weight',
   );
 
-  /// The swap between the copy icon and the result. Default motion: `quick`
-  /// in, `quickExit` out; an override applies to both.
+  /// The swap between the copy icon and the result.
+  ///
+  /// Defaults to [CoilMotion.quick] in and [CoilMotion.quickExit] out; an
+  /// override applies to both.
   static final swap = CoilInputCopyTrack<double>._(
     .single,
     debugLabel: 'CoilInputCopy.swap',
   );
 
   /// The width of the action's label as it goes from "Copy" to "Copied" and
-  /// back: the row springs between the labels' real widths. Default motion:
-  /// `standard`.
+  /// back.
+  ///
+  /// The row springs between the labels' real widths; defaults to
+  /// [CoilMotion.standard].
   static final size = CoilInputCopyTrack<double>._(
     .single,
     debugLabel: 'CoilInputCopy.size',
   );
 
-  /// The check or × drawing itself in. Default motion: `fade`.
+  /// The check or × drawing itself in.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final draw = CoilInputCopyTrack<double>._(
     .single,
     debugLabel: 'CoilInputCopy.draw',
   );
 }
 
-/// How a [CoilInputCopy] shows its copy action.
+/// Visual style of the copy trigger in a [CoilInputCopy].
 enum CoilInputCopyVariant {
   /// The icon alone.
   icon,
@@ -77,9 +96,10 @@ enum CoilInputCopyAlign {
   start,
 }
 
-/// What a [CoilInputCopy] shows and announces. The widgets are what the
-/// button variant shows, usually a [Text]; the `*Label` strings are for
-/// screen readers. The defaults are English.
+/// Display and accessibility labels for a [CoilInputCopy].
+///
+/// The widgets are what [CoilInputCopyVariant.button] shows, usually a [Text];
+/// the `*Label` strings are for screen readers. Defaults to English.
 @immutable
 class CoilInputCopyLabels {
   /// Creates the labels.
@@ -102,7 +122,7 @@ class CoilInputCopyLabels {
   /// The button's label after a failed copy.
   final Widget failed;
 
-  /// The spoken name inside a `CoilField`.
+  /// The spoken name inside a [CoilField].
   final String copyLabel;
 
   /// Announced after a copy.
@@ -111,7 +131,7 @@ class CoilInputCopyLabels {
   /// Announced after a failed copy.
   final String copyFailedLabel;
 
-  /// The spoken name outside a `CoilField`.
+  /// The spoken name outside a [CoilField].
   final String copyToClipboardLabel;
 
   @override
@@ -140,7 +160,7 @@ class CoilInputCopyLabels {
 /// A read-only value with a copy button: an API key, an invite link.
 ///
 /// The whole row copies [value] on a tap, click, Enter or Space, and so does
-/// a tap on its `CoilField` label. The result shows inline for 2 s on every
+/// a tap on its [CoilField] label. The result shows inline for 2 s on every
 /// platform, so touch users see it too: the icon becomes a check (or a red ×
 /// if the clipboard refused), and the [CoilInputCopyVariant.button] label
 /// reads "Copied". Copying again while the result shows only restarts the
@@ -174,10 +194,11 @@ class CoilInputCopy extends StatefulWidget {
   /// The text shown and copied.
   final String value;
 
-  /// The copy icon. Null shows the theme's [CoilIcons.copy], else coil's
-  /// drawn copy glyph, so the action always shows. The check and × after a
-  /// copy are [CoilIcons.check] and [CoilIcons.failed] (see
-  /// [CoilCopyGlyph]).
+  /// The copy icon.
+  ///
+  /// When null, shows the theme's [CoilIcons.copy], else Coil's drawn copy
+  /// glyph, so the action always shows. The check and × after a copy are
+  /// [CoilIcons.check] and [CoilIcons.failed] (see [CoilCopyGlyph]).
   final Widget? icon;
 
   /// Icon only, or icon and a "Copy" label.
@@ -195,8 +216,9 @@ class CoilInputCopy extends StatefulWidget {
   /// The texts shown and announced.
   final CoilInputCopyLabels labels;
 
-  /// The spoken name at rest, such as "Copy API key". Inside a `CoilField`
-  /// the field's label is read with it.
+  /// The spoken name at rest, such as "Copy API key".
+  ///
+  /// Inside a [CoilField] the field's label is read with it.
   final String? semanticLabel;
 
   /// The focus node; one is created if null.
@@ -205,21 +227,25 @@ class CoilInputCopy extends StatefulWidget {
   /// Whether to take focus when first built.
   final bool autofocus;
 
-  /// Pins the row to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the row to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens for this row.
   final CoilMotion? motion;
 
-  /// Per-track motions for this row, keyed by [CoilInputCopyTrack]s. They
-  /// win over the style's [CoilInputCopyStyle.motions] and [motion].
+  /// Per-track motions for this row, keyed by [CoilInputCopyTrack]s.
+  ///
+  /// They win over the style's [CoilInputCopyStyle.motions] and [motion].
   final Map<CoilInputCopyTrack<Object>, Motion>? motions;
 
   /// Overrides for this row's look.
   final CoilInputCopyStyle? style;
 
-  /// How long a copy result shows after the last copy, as DESIGN.md names
-  /// it. Not configurable.
+  /// How long a copy result shows after the last copy, as DESIGN.md names it.
+  ///
+  /// Not configurable.
   static const resetDelay = CoilCopyController.defaultResetDelay;
 
   @override

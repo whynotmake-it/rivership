@@ -50,8 +50,8 @@ CoilField(
       ),
       CatalogNote(
         'Pointer',
-        'Hovering grows the thumb by 2 and pressing widens it, and dragging '
-            'past either end stretches the track a little.',
+        'Hovering grows the thumb by 2 px and pressing widens it, and '
+            'dragging past either end stretches the track a little.',
       ),
       CatalogNote(
         'Touch',
@@ -65,7 +65,7 @@ CoilField(
             'semanticLabel when it has no visible label.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'A choice that is only saved when the form is submitted is better '
             'as a checkbox, because a switch implies the change has already '
             'taken effect.',

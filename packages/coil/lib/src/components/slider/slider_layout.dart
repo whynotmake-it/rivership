@@ -65,6 +65,7 @@ class SliderPillLayout
   }
 }
 
+/// Render object for [SliderPillLayout].
 class RenderSliderPill extends RenderBox
     with SlottedContainerRenderObjectMixin<SliderPillSlot, RenderBox> {
   RenderSliderPill({

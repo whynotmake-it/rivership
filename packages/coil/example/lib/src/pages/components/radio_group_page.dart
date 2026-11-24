@@ -62,7 +62,7 @@ CoilRadioGroup<String>(
             'field set legend. Nothing is selected until value is non-null.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'CoilRadioGroup.custom lays the radios out as choice cards when '
             'rows are too plain. Beyond about 7 options, switch to a Select.',
       ),
@@ -86,7 +86,7 @@ CoilRadioGroup<String>(
               }),
             ),
             DemoControl.toggle(
-              label: 'Large off',
+              label: 'Disable Large',
               value: _unavailable,
               onChanged: (v) => setState(() => _unavailable = v),
             ),
@@ -172,7 +172,7 @@ class _ShippingSpeedState extends State<_ShippingSpeed> {
                   ),
                 const CoilOption(
                   value: 'pickup',
-                  label: Text('Store pickup, unavailable'),
+                  label: Text('Store pickup (unavailable)'),
                   enabled: false,
                 ),
               ],

@@ -208,8 +208,9 @@ class SliderRowPaint extends CoilLayerPaint {
   }
 }
 
-/// Paints the pill track's outline, fill, hover preview and step dots. One
-/// thumb fills from the start; two fill between them. Dots under the fill
+/// Paints the pill track's outline, fill, hover preview and step dots.
+///
+/// One thumb fills from the start; two fill between them. Dots under the fill
 /// fade out over 2 px past its edge, so the fill hides them.
 class SliderPillPaint extends CoilLayerPaint {
   const SliderPillPaint({

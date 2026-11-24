@@ -28,8 +28,9 @@ class CoilContextRequest {
   /// What asked for it.
   final CoilContextSource source;
 
-  /// Where, in the child's local coordinates. Null for the keyboard: the
-  /// menu then opens next to the child.
+  /// Where, in the child's local coordinates.
+  ///
+  /// Null for the keyboard: the menu then opens next to the child.
   final Offset? position;
 }
 
@@ -140,8 +141,10 @@ class _ContextMenuIntent extends Intent {
   const _ContextMenuIntent();
 }
 
-/// A Control-click with the primary button. It claims the pointer when it
-/// goes down, so the click doesn't also reach the child.
+/// A Control-click with the primary button.
+///
+/// It claims the pointer when it goes down, so the click doesn't also reach
+/// the child.
 class _ControlClickRecognizer extends OneSequenceGestureRecognizer {
   _ControlClickRecognizer({super.debugOwner});
 

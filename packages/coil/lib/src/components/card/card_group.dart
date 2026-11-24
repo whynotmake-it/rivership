@@ -46,8 +46,9 @@ class CoilCardGroup extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions for the group, keyed by [CoilCardTrack]s. Only
-  /// [CoilCardTrack.highlight] applies to the group; the cards take their
+  /// Per-track motions for the group, keyed by [CoilCardTrack]s.
+  ///
+  /// Only [CoilCardTrack.highlight] applies to the group; the cards take their
   /// own. They win over the style's [CoilCardStyle.motions] and the tokens.
   final Map<CoilCardTrack<Object>, Motion>? motions;
 
@@ -153,8 +154,9 @@ class _CoilCardGroupState extends State<CoilCardGroup> {
   }
 }
 
-/// The hairlines below and after one card of a divided group. They hide
-/// next to the lit card, so the highlight reads as one shape.
+/// The hairlines below and after one card of a divided group.
+///
+/// They hide next to the lit card, so the highlight reads as one shape.
 class _Divider extends StatelessWidget {
   const _Divider({
     required this.index,

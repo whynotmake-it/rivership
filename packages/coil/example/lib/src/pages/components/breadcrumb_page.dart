@@ -146,17 +146,17 @@ CoilBreadcrumb(
       ),
       CatalogNote(
         'Touch',
-        'On a phone the trail keeps the first crumb, the "…" button and the '
-            'last two, and every crumb takes a 44 hit target.',
+        'On a phone the trail keeps the first crumb, the "…" button, and the '
+            'last two, and every crumb keeps a 44 px hit target.',
       ),
       CatalogNote(
         'Pointer',
-        'One highlight glides between crumbs on the quick spring. A long name '
-            'truncates in the trail and reads in full in the menu.',
+        'One highlight glides smoothly between crumbs. A long name truncates '
+            'in the trail and reads in full in the menu.',
       ),
       CatalogNote(
         'Screen readers',
-        'The trail is a navigation region labelled Breadcrumb, and the '
+        'The trail is a navigation region labeled Breadcrumb, and the '
             'current page is plain text marked as selected.',
       ),
     ],

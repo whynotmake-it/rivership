@@ -1,22 +1,30 @@
+/// @docImport 'package:coil/ask_user_questions.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// What kind of answer a [CoilQuestion] asks for.
 enum CoilQuestionKind {
-  /// Pick one option. Picking it answers the question and moves on.
+  /// Pick one option.
+  ///
+  /// Picking it answers the question and moves on.
   single,
 
   /// Pick any number of options, then continue.
   multiple,
 
-  /// Type an answer. There are no options.
+  /// Type an answer.
+  ///
+  /// There are no options.
   freeText,
 }
 
 /// How a [CoilQuestion] lays out an option's label and description.
 enum CoilQuestionLayout {
-  /// The description follows the label on the same line, muted. The row
-  /// stays one line and truncates.
+  /// The description follows the label on the same line, muted.
+  ///
+  /// The row stays one line and truncates.
   inline,
 
   /// The description sits under the label in the caption role and wraps.
@@ -28,8 +36,9 @@ enum CoilQuestionKeyPosition {
   /// At the end of the row: right, or left in RTL.
   end,
 
-  /// At the start of the row, before the label. A single-choice row then
-  /// shows its submit arrow at the end.
+  /// At the start of the row, before the label.
+  ///
+  /// A single-choice row then shows its submit arrow at the end.
   start,
 }
 
@@ -46,20 +55,23 @@ class CoilQuestionOption<T> {
   /// What picking this option reports in [CoilAnswer.values].
   final T value;
 
-  /// The option, usually a [Text]. The row styles it and reads it to
-  /// screen readers.
+  /// The option, usually a [Text].
+  ///
+  /// The row styles it and reads it to screen readers.
   final Widget label;
 
-  /// More detail, muted, usually a [Text]. Where it goes depends on
-  /// [CoilQuestion.layout].
+  /// More detail, muted, usually a [Text].
+  ///
+  /// Where it goes depends on [CoilQuestion.layout].
   final Widget? description;
 }
 
-/// One step of a `CoilAskUserQuestions`.
+/// One step of a [CoilAskUserQuestions].
 @immutable
 class CoilQuestion<T> {
-  /// A question that takes one option. Picking an option answers it and
-  /// moves to the next question.
+  /// A question that takes one option.
+  ///
+  /// Picking an option answers it and moves to the next question.
   ///
   /// With [otherPlaceholder], a last row takes a typed answer instead,
   /// submitted with Enter or the keyboard's action button.
@@ -121,11 +133,14 @@ class CoilQuestion<T> {
        layout = CoilQuestionLayout.inline,
        keyPosition = CoilQuestionKeyPosition.end;
 
-  /// Identifies the question in the answers. Unique within a flow.
+  /// Identifies the question in the answers.
+  ///
+  /// Unique within a flow.
   final Object id;
 
-  /// The question, usually a [Text]. It's styled in the title role and is
-  /// a header for screen readers.
+  /// The question, usually a [Text].
+  ///
+  /// It's styled in the title role and is a header for screen readers.
   final Widget title;
 
   /// The question as plain text, which names the option group and the
@@ -135,11 +150,14 @@ class CoilQuestion<T> {
   /// What kind of answer it takes.
   final CoilQuestionKind kind;
 
-  /// The choices. Empty for [CoilQuestionKind.freeText].
+  /// The choices.
+  ///
+  /// Empty for [CoilQuestionKind.freeText].
   final List<CoilQuestionOption<T>> options;
 
-  /// The placeholder of the typed "other" row, usually a [Text]. Null: no
-  /// such row.
+  /// The placeholder of the typed "other" row, usually a [Text].
+  ///
+  /// Null: no such row.
   final Widget? otherPlaceholder;
 
   /// Names the "other" field for screen readers, which don't read the
@@ -149,8 +167,9 @@ class CoilQuestion<T> {
   /// Whether Skip is offered.
   final bool skippable;
 
-  /// The label of the button that answers the question. Null: "Continue",
-  /// or "Finish" on the last question.
+  /// The label of the button that answers the question.
+  ///
+  /// Null: "Continue", or "Finish" on the last question.
   final Widget? nextLabel;
 
   /// How option rows lay out their descriptions.
@@ -165,8 +184,10 @@ class CoilQuestion<T> {
   /// How tall the free-text field starts, in lines. 1 makes it single-line.
   final int lines;
 
-  /// Checks a free-text answer when it's submitted. It returns a message
-  /// (usually a [Text]) that blocks the submit, or null to allow it.
+  /// Checks a free-text answer when it's submitted.
+  ///
+  /// It returns a message (usually a [Text]) that blocks the submit, or null to
+  /// allow it.
   final Widget? Function(String text)? validator;
 }
 
@@ -186,7 +207,9 @@ class CoilAnswer<T> {
   /// The typed answer: the "other" row or a free-text question.
   final String text;
 
-  /// Whether the question was skipped. Picks made before skipping stay.
+  /// Whether the question was skipped.
+  ///
+  /// Picks made before skipping stay.
   final bool skipped;
 
   /// Whether nothing is picked or typed.

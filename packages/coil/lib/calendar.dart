@@ -1,4 +1,6 @@
-/// The coil `CoilCalendar` component.
+/// The Coil [CoilCalendar] component.
+///
+/// @docImport 'package:coil/calendar.dart';
 library;
 
 export 'src/components/calendar/calendar.dart';

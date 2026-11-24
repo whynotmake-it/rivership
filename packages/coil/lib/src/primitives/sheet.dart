@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/src/foundation/colors.dart';
+/// @docImport 'package:coil/src/primitives/action_bar.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/icons.dart';
@@ -29,22 +33,22 @@ export 'package:stupid_simple_sheet/stupid_simple_sheet.dart'
         SnapPhysics,
         StupidSimpleSheetController;
 
-/// coil's sheet: a `stupid_simple_sheet` route (drag to dismiss, scroll
-/// handoff, keyboard insets) with coil's own surface, corner and scrim.
+/// Coil's sheet: a `stupid_simple_sheet` route (drag to dismiss, scroll
+/// handoff, keyboard insets) with Coil's own surface, corner and scrim.
 ///
 /// `context` is read once, while the route is created, for:
 ///
 /// - the motion: the theme's `gentle`, both in and out (a drag that
 ///   dismisses hands its fling velocity to it);
 /// - the surface: two levels above the one `context` sits on
-///   (`CoilSurface.popoverOffset`), its fill, shadow and dark-mode edge;
+///   ([CoilSurface.popoverOffset]), its fill, shadow and dark-mode edge;
 ///   [child] sits on it too, clipped to its corners. The surface runs a
 ///   window's height past the sheet's bottom edge, so a sheet dragged up
 ///   past its rest shows its own fill below it, not the page;
 /// - the top corners: a superellipse of the glass sheet's
 ///   [glassRadius] (36) for the `rounded` and `pill` shapes, scaled down
 ///   with tighter shapes;
-/// - the scrim: the theme's `CoilColors.scrim`, with no blur;
+/// - the scrim: the theme's [CoilColors.scrim], with no blur;
 /// - the themes [child] inherits.
 ///
 /// The sheet hugs its content: short content makes a short sheet on the
@@ -55,7 +59,7 @@ export 'package:stupid_simple_sheet/stupid_simple_sheet.dart'
 /// A sheet opened from another sheet slides over it with its own scrim.
 ///
 /// The sheet takes drags from its content; wrap content that needs its own
-/// (a map, a canvas, a draggable card) in `ExcludeScrollDrag`.
+/// (a map, a canvas, a draggable card) in [ExcludeScrollDrag].
 ///
 /// Put a [CoilSheetPanel] in it for an optional title, a pinned footer and
 /// the safe area.
@@ -64,7 +68,7 @@ export 'package:stupid_simple_sheet/stupid_simple_sheet.dart'
 /// stops, [dragHandoff] decides when a scroll view hands its drag to the
 /// sheet, [dismissalMode] how it leaves, [draggable] whether it follows
 /// the finger, and [backgroundSnapshotMode] whether the page below is
-/// snapshotted. Every default is coil's own behavior. To move the sheet
+/// snapshotted. Every default is Coil's own behavior. To move the sheet
 /// from code, read a [StupidSimpleSheetController] with
 /// `StupidSimpleSheetController.maybeOf(context)` inside [child].
 class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
@@ -72,7 +76,7 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   ///
   /// With [barrierDismissible] false, tapping the scrim and pressing Esc
   /// don't close it; dragging and back still do unless [child] blocks them
-  /// with a `PopScope`.
+  /// with a [PopScope].
   ///
   /// [snappingConfig] sets the stops the sheet rests at, as fractions of
   /// its open height (`SheetSnappingConfig([0.5, 1.0], initialSnap: 0.5)`
@@ -136,7 +140,7 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   static const maxWidth = 560.0;
 
   /// The top corner radius of `stupid_simple_sheet`'s glass sheet
-  /// (`StupidSimpleGlassSheetRoute.glassShape`), which coil's sheet uses
+  /// ([StupidSimpleGlassSheetRoute.glassShape]), which Coil's sheet uses
   /// for its default shape.
   static final double glassRadius = StupidSimpleGlassSheetRoute
       .glassShape
@@ -150,7 +154,7 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   static const topGapFraction = 0.05;
 
   /// [context]'s scroll behavior without scrollbars, for a scrollable that
-  /// takes its own behavior (a `PageView`, a `ListWheelScrollView`), so
+  /// takes its own behavior (a [PageView], a [ListWheelScrollView]), so
   /// that inside a sheet it still hands drags off to the sheet.
   ///
   /// Those scrollables copy the ambient behavior by default, and while the
@@ -172,7 +176,7 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   /// The sheet's outline: a superellipse with rounded top corners.
   final RoundedSuperellipseBorder shape;
 
-  /// The sheet's top corner radius at [context]: [glassRadius] for coil's
+  /// The sheet's top corner radius at [context]: [glassRadius] for Coil's
   /// default shape, scaled with the theme's touch container radius and
   /// capped at [glassRadius].
   static double cornerRadiusOf(BuildContext context) {
@@ -240,14 +244,14 @@ class CoilSheetRoute<T> extends StupidSimpleSheetRoute<T> {
   }
 }
 
-/// The sheet's surface: coil's fill, shadow and edge at the popover level,
+/// The sheet's surface: Coil's fill, shadow and edge at the popover level,
 /// in [shape], clipping [child] to it.
 ///
 /// The surface runs a window's height past the sheet's bottom edge, so a
 /// sheet dragged up past its rest still shows its own fill below, not the
 /// page. [child] keeps the sheet's size and is laid out as without it.
-/// This is how `stupid_simple_sheet`'s `SheetBackground` extends its fill,
-/// done on coil's surface.
+/// This is how `stupid_simple_sheet`'s [SheetBackground] extends its fill,
+/// done on Coil's surface.
 class _SheetSurface extends StatelessWidget {
   const _SheetSurface({required this.shape, required this.child});
 
@@ -282,7 +286,9 @@ enum CoilSheetHeaderLayout {
 
   /// The title at the start, aligned with the rows' text, and the close
   /// button in the trailing corner, as Material's sheets put their close
-  /// affordance in the header. Android and the other platforms.
+  /// affordance in the header.
+  ///
+  /// Android and the other platforms.
   start;
 
   /// The layout [platform]'s own sheets use.
@@ -329,11 +335,12 @@ class CoilSheetPanel extends StatefulWidget {
   final Widget? title;
 
   /// The close button, in the header's corner: by default a
-  /// [CoilSheetCloseButton] that pops the route, so every sheet shows a
-  /// way out. Pass one with your own `onPressed` or label, any other
-  /// widget, or null for none. The default hides itself where the route
-  /// can't be popped (a `PopScope` that blocks it, as a non-dismissible
-  /// dialog has).
+  /// [CoilSheetCloseButton] that pops the route, so every sheet shows a way
+  /// out.
+  ///
+  /// Pass one with your own `onPressed` or label, any other widget, or null
+  /// for none. The default hides itself where the route can't be popped (a
+  /// [PopScope] that blocks it, as a non-dismissible dialog has).
   final Widget? close;
 
   /// Where the header puts the title and [close]; null follows the
@@ -343,15 +350,18 @@ class CoilSheetPanel extends StatefulWidget {
   /// The contents, usually a list.
   final Widget child;
 
-  /// Pinned under [child]: the sheet's buttons, usually a `CoilActionBar`
-  /// with horizontal padding. It stays put while [child] scrolls and rides
-  /// on the keyboard with the sheet. The panel keeps it above the home
-  /// indicator, with [footerBottomGap] below it at least (the safe area
-  /// counts toward it, and 8 always separates the two).
+  /// Pinned under [child]: the sheet's buttons, usually a [CoilActionBar]
+  /// with horizontal padding.
+  ///
+  /// It stays put while [child] scrolls and rides on the keyboard with the
+  /// sheet. The panel keeps it above the home indicator, with
+  /// [footerBottomGap] below it at least (the safe area counts toward it,
+  /// and 8 always separates the two).
   final Widget? footer;
 
-  /// The space above [child] when there's no header. A sheet has no
-  /// grabber; the drag works anywhere on it.
+  /// The space above [child] when there's no header.
+  ///
+  /// A sheet has no grabber; the drag works anywhere on it.
   static const topGap = 12.0;
 
   /// The least space between the close button and the sheet's top and
@@ -679,9 +689,9 @@ class CoilSheetCloseSlot extends StatelessWidget {
 /// tier's compact control height (36) across, grows with the text as its
 /// glyph does ([sizeOf]), and takes taps on a square of at least the touch
 /// hit target (44). The fill is the secondary button's `tint`, `tintHover`
-/// while hovered, and pressing collapses it by 1 px, as coil's buttons do.
+/// while hovered, and pressing collapses it by 1 px, as Coil's buttons do.
 /// Tab reaches it; Enter and Space press it. It plays no haptic, like
-/// coil's other buttons and the platforms' own close buttons.
+/// Coil's other buttons and the platforms' own close buttons.
 class CoilSheetCloseButton extends StatelessWidget {
   /// Creates a sheet's close button.
   const CoilSheetCloseButton({
@@ -692,12 +702,13 @@ class CoilSheetCloseButton extends StatelessWidget {
     this.focusNode,
   });
 
-  /// Called on a press; null pops the route with `Navigator.maybePop`,
-  /// which a `PopScope` can block.
+  /// Called on a press; null pops the route with [Navigator.maybePop],
+  /// which a [PopScope] can block.
   final VoidCallback? onPressed;
 
   /// The glyph; the theme's [CoilIcons.close], else a drawn ✕, when null.
-  /// Sized and colored by `IconTheme`.
+  ///
+  /// Sized and colored by [IconTheme].
   final Widget? icon;
 
   /// The button's name for screen readers.

@@ -82,7 +82,9 @@ class SliderValueText extends StatelessWidget {
 }
 
 /// One value typed in place of its text: as wide as the widest value
-/// ([reserve]), with a hairline under it. Done submits; Esc cancels.
+/// ([reserve]), with a hairline under it.
+///
+/// Done submits; Esc cancels.
 class SliderValueField extends StatelessWidget {
   const SliderValueField({
     required this.controller,

@@ -7,30 +7,40 @@ import 'package:coil/src/components/checkbox_group/checkbox_group_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilCheckboxGroup], as Motor tracks. Use them as
-/// keys of [CoilCheckboxGroup.motions] or [CoilCheckboxGroupStyle.motions].
+/// The animated parts of a [CoilCheckboxGroup], as Motor tracks.
+///
+/// Use them as keys of [CoilCheckboxGroup.motions] or
+/// [CoilCheckboxGroupStyle.motions].
 final class CoilCheckboxGroupTrack<T extends Object> extends Track<T> {
   CoilCheckboxGroupTrack._(super.converter, {required String super.debugLabel});
 
-  /// The merged selection blocks. Default motion: `standard`.
+  /// The merged selection blocks.
+  ///
+  /// Default motion: [CoilMotion.standard].
   static final selection = CoilCheckboxGroupTrack<double>._(
     .single,
     debugLabel: 'CoilCheckboxGroup.selection',
   );
 
-  /// The focus ring travelling between rows. Default motion: `quick`.
+  /// The focus ring travelling between rows.
+  ///
+  /// Default motion: [CoilMotion.quick].
   static final ring = CoilCheckboxGroupTrack<double>._(
     .single,
     debugLabel: 'CoilCheckboxGroup.ring',
   );
 
-  /// The label color and weight. Default motion: `fade`.
+  /// The label color and weight.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final label = CoilCheckboxGroupTrack<double>._(
     .single,
     debugLabel: 'CoilCheckboxGroup.label',
   );
 
-  /// The touch press fill. Default motion: `fade`.
+  /// The touch press fill.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final press = CoilCheckboxGroupTrack<double>._(
     .single,
     debugLabel: 'CoilCheckboxGroup.press',
@@ -68,7 +78,9 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
   /// The values of the checked rows.
   final Set<T> values;
 
-  /// Called with the new set of checked values. Null disables the group.
+  /// Called with the new set of checked values.
+  ///
+  /// Null disables the group.
   final ValueChanged<Set<T>>? onChanged;
 
   /// Pins the group to one size step.
@@ -77,8 +89,9 @@ class CoilCheckboxGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCheckboxGroupTrack]s. They win over the
-  /// style's [CoilCheckboxGroupStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilCheckboxGroupTrack]s.
+  ///
+  /// They win over the style's [CoilCheckboxGroupStyle.motions] and the tokens.
   final Map<CoilCheckboxGroupTrack<Object>, Motion>? motions;
 
   /// Overrides for this group's look, on top of the theme's

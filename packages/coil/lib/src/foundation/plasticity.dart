@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:coil/src/primitives/surface.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/color_mix.dart';
@@ -12,54 +16,60 @@ import 'package:flutter/widgets.dart';
 /// popovers, dialogs) have no role: they are never lit.
 enum CoilReliefRole {
   /// A neutral control standing off the surface: secondary and
-  /// destructive buttons, the switch thumb, the slider knob, the select
-  /// trigger. Selection indicators (a tab's pill, a toggle group's
-  /// segment) mark the current item rather than something to press, and
-  /// are never lit.
+  /// destructive buttons, the switch thumb, the slider knob, and the select
+  /// trigger.
+  ///
+  /// Selection indicators (a tab's pill, a toggle group's segment) mark the
+  /// current item rather than something to press, and are never lit.
   raised,
 
   /// A control with a strong fill: the primary and brand buttons, an on
-  /// switch, a selected radio dot. Its sheen and edges are tuned for dark and
-  /// saturated fills.
+  /// switch, and a selected radio dot.
+  ///
+  /// Its sheen and edges are tuned for dark and saturated fills.
   filled,
 
   /// A control that only shows a surface on hover or press, or is drawn
-  /// with a hairline: tertiary and ghost buttons. Not lit: they have no
-  /// surface of their own to light.
+  /// with a hairline: tertiary and ghost buttons.
+  ///
+  /// Not lit: they have no surface of their own to light.
   quiet,
 
   /// A well a mark sits in: the switch's off track, the checkbox and
   /// radio boxes.
   recessed,
 
-  /// A text field. Lit like [recessed].
+  /// A text field, lit like [recessed].
   field,
 
-  /// A slider's track, under its thumb. Not lit: lighting it read as
-  /// noise next to the knob.
+  /// A slider's track, under its thumb.
+  ///
+  /// Not lit: lighting it read as noise next to the knob.
   track,
 }
 
-/// How lit coil's controls are: one [amount] from 0 (flat, the default)
-/// to 1. A token group on `CoilThemeData.plasticity`.
+/// Surface lighting intensity for Coil's interactive controls, from `0` (flat,
+/// the default) to `1`.
+///
+/// Configured on [CoilThemeData.plasticity].
 ///
 /// The light has one character, kept to what you press: a hairline edge lit
 /// at the top and darker at the bottom, a faint top highlight, a 1 px drop
-/// shadow and a light sheen on buttons, thumbs and the select trigger; a
+/// shadow, and a light sheen on buttons, thumbs, and the select trigger; a
 /// hairline of shade in wells (checkbox, radio, the off switch), barely any
-/// on fields; slider tracks, quiet buttons and containers stay flat.
+/// on fields; slider tracks, quiet buttons, and containers stay flat.
 /// [amount] sets how much of it:
 ///
-/// - 0 ([flat]) paints nothing, and components keep their flat look
+/// - `0` ([flat]) paints nothing, and components keep their flat look
 ///   untouched.
-/// - 0.5 ([subtle]) is the recipe as tuned.
-/// - 1 has slightly brighter highlights (the top rim and edge) and a
-///   slightly stronger sheen; the shadows and wells stay as at 0.5.
+/// - `0.5` ([subtle]) is the recipe as tuned.
+/// - `1` has slightly brighter highlights (the top rim and edge) and a
+///   slightly stronger sheen; the shadows and wells stay as at `0.5`.
 ///
-/// Amounts in between interpolate. coil turns the amount into concrete
+/// Amounts in between interpolate. Coil turns the amount into concrete
 /// colors and shadows per [CoilReliefRole] and brightness with [resolve],
 /// so one setting reads right on a black button, a gray one, a red one, a
-/// blue switch and in dark mode.
+/// blue switch, and in dark mode.
 ///
 /// The light comes from above. Hover brightens it, a press flattens it and
 /// turns the top edge into a shadow (the control sinks in), and a disabled
@@ -78,32 +88,35 @@ enum CoilReliefRole {
 ///
 /// Controls on a raised surface (a card, popover, dialog) stay flat, so
 /// they don't compete with it: [flattenAbove] sets the highest surface
-/// level that is still lit (1, the page, by default), and
-/// `CoilPlasticityScope(elevated: false)` lights one subtree anyway.
+/// level that is still lit (1, the page, by default), and a
+/// [CoilPlasticityScope] with `elevated: false` lights one subtree anyway.
 @immutable
 class CoilPlasticity with Diagnosticable {
-  /// Creates a plasticity of [amount], 0 (flat) to 1.
+  /// Creates a plasticity of [amount], `0` (flat) to `1`.
   const CoilPlasticity({this.amount = 0, this.flattenAbove = 1})
     : assert(amount >= 0 && amount <= 1, 'amount must be 0 to 1'),
       assert(flattenAbove >= 1, 'flattenAbove must be 1 (the page) or more');
 
-  /// No lighting: coil's flat look. The default.
+  /// No lighting: Coil's flat default.
   static const flat = CoilPlasticity();
 
-  /// Half way: coil's lighting as tuned, at 0.5.
+  /// Coil's default lighting recipe, at an [amount] of `0.5`.
   static const subtle = CoilPlasticity(amount: 0.5);
 
-  /// How lit controls are, 0 (flat) to 1. 0.5 is [subtle].
+  /// The lighting intensity for interactive controls, from `0` (flat) to `1`.
+  ///
+  /// `0.5` is [subtle].
   final double amount;
 
-  /// The highest surface level whose controls are still lit. Controls on a
-  /// `CoilSurface` above it read a flat plasticity (see
+  /// The highest surface level whose controls are still lit.
+  ///
+  /// Controls on a [CoilSurface] above it read a flat plasticity (see
   /// [CoilPlasticityScope]).
   ///
   /// 1, the default, lights only what sits on the page: anything on a card,
-  /// popover, menu, dialog or sheet is flat. 3 also lights controls on a
+  /// popover, menu, dialog, or sheet is flat. 3 also lights controls on a
   /// card or a popover opened from the page (level 3), and keeps a dialog's
-  /// (level 5) flat. Surface levels are `CoilSurface.levelOf`.
+  /// (level 5) flat. Surface levels are read with [CoilSurface.levelOf].
   final int flattenAbove;
 
   /// Whether this paints nothing, so components keep their flat look
@@ -442,7 +455,7 @@ class CoilRelief {
   ///
   /// [base]'s shape must be a [RoundedSuperellipseBorder], or a
   /// [CoilReliefBorder], whose relief this one replaces: applying twice
-  /// lights the shape once. Any other shape is a mistake (coil's shapes
+  /// lights the shape once. Any other shape is a mistake (Coil's shapes
   /// are superellipses); in release builds it is returned unlit.
   ShapeDecoration apply(ShapeDecoration base) {
     final shape = switch (base.shape) {
@@ -473,8 +486,10 @@ class CoilRelief {
 
   /// Paints [shadows] around [shape], outside it only, like CSS
   /// `box-shadow`: a see-through fill (a tint, a ghost button) never shows
-  /// its own shadow through it. So it can be painted before or after the
-  /// fill. A [ShapeDecoration] from [apply] does it itself.
+  /// its own shadow through it.
+  ///
+  /// Because it clips out [shape], it can be painted before or after the fill.
+  /// A [ShapeDecoration] from [apply] does this automatically.
   void paintShadows(Canvas canvas, RSuperellipse shape) {
     if (shadows.isEmpty) return;
     var reach = 0.0;
@@ -502,7 +517,7 @@ class CoilRelief {
     canvas.restore();
   }
 
-  /// Paints the sheen, rims and edge inside [shape], over its fill.
+  /// Paints the sheen, rims, and edge inside [shape], over its fill.
   void paint(Canvas canvas, RSuperellipse shape) {
     final rect = shape.outerRect;
     if (rect.isEmpty) return;
@@ -665,7 +680,7 @@ class CoilRelief {
     );
   }
 
-  /// Interpolates two reliefs. A null side is no lighting.
+  /// Interpolates two reliefs, treating a null side as no lighting.
   static CoilRelief? lerp(CoilRelief? a, CoilRelief? b, double t) {
     if (a == null && b == null) return null;
     if (t <= 0 && a != null) return a;
@@ -729,8 +744,10 @@ class CoilRelief {
 }
 
 /// A [RoundedSuperellipseBorder] that also paints a [CoilRelief] over the
-/// fill: the sheen, the rims and the gradient edge, after [shape]'s own
-/// side. Made by [CoilRelief.apply].
+/// fill: the sheen, the rims, and the gradient edge, after [shape]'s own
+/// side.
+///
+/// Created by [CoilRelief.apply].
 class CoilReliefBorder extends OutlinedBorder {
   /// Wraps [shape] with [relief].
   CoilReliefBorder({required this.relief, required this.shape})
@@ -843,17 +860,19 @@ class CoilReliefBorder extends OutlinedBorder {
 }
 
 /// Marks a subtree that sits on a surface above the page: a card, a
-/// popover, a menu, a dialog, a sheet. `CoilSurface` places one for its
-/// content, `elevated` when its level is above the theme plasticity's
-/// [CoilPlasticity.flattenAbove] (1, the page, by default).
+/// popover, a menu, a dialog, or a sheet.
+///
+/// [CoilSurface] places one for its content, `elevated` when its level is
+/// above the theme plasticity's [CoilPlasticity.flattenAbove] (1, the page,
+/// by default).
 ///
 /// Lighting belongs on controls that sit on the page. On a surface that is
-/// itself raised, lit controls compete with it, so `CoilTheme.of` reads a
-/// [CoilPlasticity.flat] plasticity inside an elevated scope. A
-/// component's style still wins: `CoilButtonStyle(plasticity: …)`, per
-/// instance or through `CoilThemeData.withComponentStyle`, lights it
-/// anyway. Wrap a subtree in `CoilPlasticityScope(elevated: false)` to
-/// light it again.
+/// itself raised, lit controls compete with it, so [CoilTheme.of] reads a
+/// [CoilPlasticity.flat] plasticity inside an elevated scope. A component's
+/// style still wins: `CoilButtonStyle(plasticity: …)`, per instance or
+/// through [CoilThemeData.withComponentStyle], lights it anyway. Wrap a
+/// subtree in a [CoilPlasticityScope] with `elevated: false` to light it
+/// again.
 class CoilPlasticityScope extends InheritedTheme {
   /// Marks [child] as [elevated] or not.
   const CoilPlasticityScope({

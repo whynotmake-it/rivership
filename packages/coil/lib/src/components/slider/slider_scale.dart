@@ -47,8 +47,9 @@ class SliderScale {
     return n == null ? null : [for (var i = 0; i <= n; i++) i / n];
   }
 
-  /// [value] limited to the range and put on the nearest allowed value. A
-  /// value halfway between two steps goes to the lower one.
+  /// [value] limited to the range and put on the nearest allowed value.
+  ///
+  /// A value halfway between two steps goes to the lower one.
   double snap(double value) {
     final clamped = value.clamp(min, max);
     if (steps case final steps?) {
@@ -64,8 +65,10 @@ class SliderScale {
     return (min + ((clamped - min) / size).round() * size).clamp(min, max);
   }
 
-  /// The value [by] steps from [value], or [by] pages with [page]. With a
-  /// step list an arrow walks the list, and a page moves at least one entry.
+  /// The value [by] steps from [value], or [by] pages with [page].
+  ///
+  /// With a step list an arrow walks the list, and a page moves at least one
+  /// entry.
   double move(double value, int by, {bool page = false}) {
     final steps = this.steps;
     if (steps == null) {

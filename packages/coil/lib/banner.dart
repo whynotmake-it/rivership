@@ -1,4 +1,6 @@
-/// The coil `CoilBanner` component.
+/// The Coil [CoilBanner] component.
+///
+/// @docImport 'package:coil/banner.dart';
 library;
 
 export 'src/components/banner/banner.dart';

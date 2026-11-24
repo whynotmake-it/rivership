@@ -59,11 +59,11 @@ CoilSkeletonSwitcher(
             'announces its semanticLabel as a live region.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'Match the line count and widths of the final layout so that nothing '
             'moves when the content arrives, and let CoilSkeletonSwitcher do '
             'the swap rather than replacing one widget with the other '
-            'yourself. Text lines vary between 55 and 82 % of the width, as '
+            'yourself. Text lines vary between 55% and 82% of the width, as '
             'real text does, and a skeleton never shimmers.',
       ),
     ],
@@ -184,11 +184,8 @@ class _FeedCardState extends State<_FeedCard> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Both first loads start from an empty card: the 100 ms one finishes '
-          'inside the 160 ms grace period, so no skeleton ever appears, while '
-          'the 2 s one waits the grace out and fades its skeleton in. Reload '
-          'replaces a post that is already on screen, so the skeleton takes '
-          'over from it at once.',
+          'Compare a fast 100 ms load (no skeleton flashes), a 2 s first '
+          'load, and reloading content already on screen.',
           style: text.muted.caption,
         ),
       ],

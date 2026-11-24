@@ -54,9 +54,9 @@ class _ButtonPageState extends State<ButtonPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'Button',
     summary:
-        'Buttons respond to a mouse, a finger and the keyboard alike. When '
-        'you press one, its fill draws in by a pixel on each side, and the '
-        'focus ring appears only when you move to it with Tab.',
+        'Buttons respond to mouse, touch, and keyboard input. Pressing one '
+        'subtly insets the fill, and the focus ring appears only when '
+        'navigating with Tab.',
     hero: const _ReleaseCard(),
     usage: '''
 CoilButton(
@@ -64,6 +64,29 @@ CoilButton(
   onPressed: publish,
   child: Text(published ? 'Published' : 'Publish'),
 )''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        'Each enabled button is a tab stop. Enter and Space trigger the '
+            'action, while loading and disabled buttons skip activation.',
+      ),
+      CatalogNote(
+        'Touch',
+        'Every button keeps at least a 44 px hit target on touch devices, '
+            'including compact and icon-only buttons.',
+      ),
+      CatalogNote(
+        'Motion',
+        'Hover and press fills spring into place, and changing labels or '
+            'loading state cross-fades while springing smoothly to the new '
+            'width.',
+      ),
+      CatalogNote(
+        'Screen readers',
+        'Announced as a button with its label, selected state, and enabled '
+            'state. Icon-only buttons require a semanticLabel.',
+      ),
+    ],
     children: [
       DemoSection(
         title: 'Playground',
@@ -107,9 +130,9 @@ CoilButton(
       DemoSection(
         title: 'Variants',
         description:
-            'Use one primary or brand button per view: brand is the primary '
-            "in the theme's brand color, lit in its own hue. A destructive "
-            'action gets a red tint rather than a solid red fill.',
+            'Use one primary or brand button per view: brand uses the '
+            "theme's brand color with accessible label contrast. Destructive "
+            'actions use a red tint rather than a solid red fill.',
         child: DemoWrap(
           children: [
             for (final variant in CoilButtonVariant.values)

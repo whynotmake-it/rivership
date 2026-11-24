@@ -1,5 +1,11 @@
-/// What a banner reports. It sets the icon's hue, and `tinted` banners
-/// take it as their fill.
+/// @docImport 'package:coil/banner.dart';
+/// @docImport 'package:flutter/widgets.dart';
+library;
+
+/// Semantic severity reported by a [CoilBanner].
+///
+/// Sets the icon's hue, and [CoilBannerVariant.tinted] banners use it for
+/// their fill.
 enum CoilBannerStatus {
   /// A plain notice, in the foreground color.
   neutral,
@@ -17,22 +23,24 @@ enum CoilBannerStatus {
   destructive,
 }
 
-/// How strongly a banner shows its status.
+/// Visual emphasis for a [CoilBanner]'s status hue.
 enum CoilBannerVariant {
-  /// A quiet neutral fill; only the icon carries the status hue.
+  /// A quiet neutral fill where only the icon carries the status hue.
   plain,
 
-  /// The status hue at 8 % as the fill.
+  /// The status hue blended at 8% as the banner's fill.
   tinted,
 }
 
-/// Where a banner sits.
+/// Layout placement and corner treatment for a [CoilBanner].
 enum CoilBannerPlacement {
-  /// In the page flow, with rounded corners.
+  /// Placed in the page flow, with rounded corners.
   inline,
 
-  /// A full-width bar at the top of the screen. It pads itself below the
-  /// top safe area and has square corners. Place it at the top of the page
-  /// yourself, for example as the first child of a `Column`.
+  /// A full-width bar anchored at the top of the screen.
+  ///
+  /// Pads itself below the top safe area and uses square corners. Place it at
+  /// the top of the page yourself, for example as the first child of a
+  /// [Column].
   fixed,
 }

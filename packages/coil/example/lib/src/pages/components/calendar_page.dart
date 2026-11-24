@@ -91,13 +91,13 @@ CoilCalendar(
         ),
         CatalogNote(
           'Motion',
-          'The title zooms out to a year of months and back on the standard '
+          'The title zooms smoothly out to a year of months and back on a '
               'spring. The grid always draws six rows, so its height never '
               'jumps as you move between months.',
         ),
         CatalogNote(
           'Accessibility',
-          'Each cell is labelled with its full date, the previous and next '
+          'Each cell is labeled with its full date, the previous and next '
               'month are exposed as actions, and the title is a button that '
               'reads as "November 2026".',
         ),

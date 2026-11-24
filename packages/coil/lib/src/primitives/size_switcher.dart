@@ -5,8 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// A box that cross-fades its content and springs to its size: coil's
-/// [MotionSizeSwitcher] with `immediateResize` and coil's tokens.
+/// A box that cross-fades its content and springs to its size: Coil's
+/// [MotionSizeSwitcher] with `immediateResize` and Coil's tokens.
 ///
 /// [child] is swapped when its key (or type) changes, the old content
 /// blur-fades out where it is while the new one fades in, and the box springs
@@ -22,7 +22,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// content that makes the box wider stays nearly transparent until the width
 /// has arrived, so no half-drawn glyph shows; see [MotionSizeSwitcher].
 ///
-/// A [child] that changes without a new key (a `Text` whose string changed)
+/// A [child] that changes without a new key (a [Text] whose string changed)
 /// is the same content: the box springs to its size, with no cross-fade.
 /// Key it by what it shows to cross-fade.
 class CoilSizeSwitcher extends StatefulWidget {
@@ -41,7 +41,7 @@ class CoilSizeSwitcher extends StatefulWidget {
     this.debugLabel,
   });
 
-  /// What [child] shows, when it can't carry a key of its own: a `Text`
+  /// What [child] shows, when it can't carry a key of its own: a [Text]
   /// (see [contentKeyOf]) or a widget whose key you don't control, such as
   /// one a caller passed in.
   static Object? contentKeyOf(Widget? child) => switch (child) {
@@ -50,12 +50,15 @@ class CoilSizeSwitcher extends StatefulWidget {
     _ => null,
   };
 
-  /// The content. Give it a key that names what it shows.
+  /// The content.
+  ///
+  /// Give it a key that names what it shows.
   final Widget? child;
 
-  /// Names what [child] shows: content with another name cross-fades. Null
-  /// uses [contentKeyOf] of the child, so a `Text` cross-fades when its
-  /// string changes and any other widget by its own key.
+  /// Names what [child] shows: content with another name cross-fades.
+  ///
+  /// Null uses [contentKeyOf] of the child, so a [Text] cross-fades when
+  /// its string changes and any other widget by its own key.
   final Object? contentKey;
 
   /// Where the content sits while the box is another size.
@@ -64,14 +67,20 @@ class CoilSizeSwitcher extends StatefulWidget {
   /// How the content is clipped while it overflows the box.
   final Clip clipBehavior;
 
-  /// The size's motion. Defaults to `standard`; the same motion shrinking
-  /// and growing, since the box keeps its velocity either way.
+  /// The size's motion.
+  ///
+  /// Defaults to `standard`; the same motion shrinking and growing, since
+  /// the box keeps its velocity either way.
   final Motion? sizeMotion;
 
-  /// The entering content's motion. Defaults to `fade`.
+  /// The entering content's motion.
+  ///
+  /// Defaults to `fade`.
   final Motion? fadeMotion;
 
-  /// The leaving content's motion. Defaults to `fadeExit`.
+  /// The leaving content's motion.
+  ///
+  /// Defaults to `fadeExit`.
   final Motion? fadeExitMotion;
 
   /// Overrides the theme's motion tokens for the defaults.

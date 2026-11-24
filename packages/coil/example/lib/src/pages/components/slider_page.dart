@@ -94,7 +94,7 @@ CoilSlider(
         'Touch',
         'Touch has no preview, so a bubble follows your finger just above '
             'the track and springs onto the thumb when you let go. A stepped '
-            'slider plays a haptic tick for each step you cross.',
+            'slider plays a haptic tap for each step you cross.',
       ),
       CatalogNote(
         'Screen readers',
@@ -107,8 +107,8 @@ CoilSlider(
       DemoSection(
         title: 'Playground',
         description:
-            'The row styles draw the label and value inside the track, while '
-            'the pill styles put them on either side of it.',
+            'Scrubber and Pips draw the label and value inside the track, '
+            'while Pill and Pill pips place them on either side.',
         controls: DemoControls(
           children: [
             DemoControl.choice(
@@ -145,7 +145,7 @@ CoilSlider(
           max: 100,
           divisions: 10,
           value: _opacity,
-          valueBuilder: (_, v) => Text('${v.round()} %'),
+          valueBuilder: (_, v) => Text('${v.round()}%'),
           semanticFormatter: (v) => '${v.round()} percent',
           onChanged: _disabled ? null : (v) => setState(() => _opacity = v),
         ),
@@ -213,7 +213,7 @@ class _ClipSettingsState extends State<_ClipSettings> {
   static String _speedSpoken(double v) =>
       '${v == v.roundToDouble() ? v.round() : v}× speed';
 
-  static String _percent(double v) => '${(v * 100).round()} %';
+  static String _percent(double v) => '${(v * 100).round()}%';
 
   static String _time(double v) {
     final seconds = v.round();

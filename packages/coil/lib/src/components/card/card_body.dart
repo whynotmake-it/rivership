@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/card.dart';
+library;
+
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -6,7 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// Where a `CoilCard` puts its media.
+/// Layout orientation for a [CoilCard]'s media and content slots.
 enum CoilCardVariant {
   /// Media on top, full-bleed at 16:9; the text below.
   stacked,
@@ -273,7 +276,7 @@ class CardDismissButton extends StatelessWidget {
   /// Whether it shows.
   final bool visible;
 
-  /// Replaces the ✕: the theme's [CoilIcons.close], or coil's drawn one.
+  /// Replaces the ✕: the theme's [CoilIcons.close], or Coil's drawn one.
   final Widget? icon;
 
   /// The name for assistive technology.

@@ -33,11 +33,14 @@ class CoilSidebarRail extends StatefulWidget {
   /// The rail's name for screen readers.
   final String semanticLabel;
 
-  /// The tooltip's first line. Null is "**Drag** to resize".
+  /// The tooltip's first line.
+  ///
+  /// Null is "**Drag** to resize".
   final Widget? resizeHint;
 
-  /// The tooltip's second line, before the key. Null is "**Click** to
-  /// collapse".
+  /// The tooltip's second line, before the key.
+  ///
+  /// Null is "**Click** to collapse".
   final Widget? collapseHint;
 
   /// How far past the minimum a drag folds the sidebar.

@@ -130,7 +130,7 @@ class CoilSelectTrigger extends StatelessWidget {
   }
 }
 
-/// coil's trigger chevron, drawn in the [IconTheme]'s size and color with a
+/// Coil's trigger chevron, drawn in the [IconTheme]'s size and color with a
 /// fixed 2 stroke; the theme's [CoilIcons.chevronDown] replaces it.
 class _Chevron extends StatelessWidget {
   const _Chevron();

@@ -22,10 +22,12 @@ enum InputSlotLines {
   multi,
 }
 
-/// Lays out a text field's box: `[leading] field [trailing]`, inside the
-/// field's border. Its padding, [minHeight] and [minInset] are measured
-/// from the border's inner edge, which is the same all round, so a slot
-/// even inset here is even inset from the field's outer edge too.
+/// Lays out a text field's box (`[leading] field [trailing]`) inside the
+/// field's border.
+///
+/// Its padding, [minHeight] and [minInset] are measured from the border's
+/// inner edge, which is the same all round, so a slot evenly inset here is
+/// evenly inset from the field's outer edge too.
 ///
 /// Each slot is measured, then placed, in this one layout pass, so the
 /// first frame is already right and nothing rebuilds:
@@ -146,6 +148,7 @@ typedef _Layout = ({
   _Placed? trailing,
 });
 
+/// Render object for [InputSlotLayout].
 class RenderInputSlotLayout extends RenderBox
     with SlottedContainerRenderObjectMixin<InputSlot, RenderBox> {
   RenderInputSlotLayout({
@@ -277,8 +280,10 @@ class RenderInputSlotLayout extends RenderBox
 
   /// A [ChildLayouter] that answers from a child's intrinsics, for this
   /// layout's own intrinsic sizes, so children that can't lay out dry still
-  /// answer them. A child takes its max intrinsic width up to the
-  /// constraints and [heightAt] that width.
+  /// answer them.
+  ///
+  /// A child takes its max intrinsic width up to the constraints and [heightAt]
+  /// that width.
   static ChildLayouter _intrinsic(
     double Function(RenderBox child, double width) heightAt,
   ) => (child, constraints) {
@@ -386,8 +391,9 @@ class RenderInputSlotLayout extends RenderBox
     }
   }
 
-  /// Lays the field out with [layoutChild]. Offsets are left to right;
-  /// [performLayout] mirrors them for right to left.
+  /// Lays the field out with [layoutChild].
+  ///
+  /// Offsets are left to right; [performLayout] mirrors them for right to left.
   _Layout _compute(BoxConstraints constraints, ChildLayouter layoutChild) {
     final leading = _leading;
     final trailing = _trailing;

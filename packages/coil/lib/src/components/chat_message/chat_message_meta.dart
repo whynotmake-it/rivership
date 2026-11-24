@@ -2,9 +2,10 @@ import 'package:coil/src/components/chat_message/chat_message_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A chat message's meta row: the time and the action buttons. It keeps
-/// its height while hidden, so showing it never moves the transcript, and
-/// Tab and screen readers still reach the buttons.
+/// A chat message's meta row: the time and the action buttons.
+///
+/// It keeps its height while hidden, so showing it never moves the transcript,
+/// and Tab and screen readers still reach the buttons.
 class ChatMessageMeta extends StatelessWidget {
   /// Creates the meta row.
   const ChatMessageMeta({

@@ -1,5 +1,7 @@
-/// The coil text inputs: `CoilInput` (single- and multi-line) and
-/// `CoilInputGroup`.
+/// The Coil text inputs: [CoilInput] (single- and multi-line) and
+/// [CoilInputGroup].
+///
+/// @docImport 'package:coil/input.dart';
 library;
 
 export 'src/components/input/input.dart';

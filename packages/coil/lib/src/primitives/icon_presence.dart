@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
@@ -7,17 +10,17 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// How present an icon is while a component animates it in or out, for an
 /// icon that wants to animate itself.
 ///
-/// Wherever coil shows an icon that appears, disappears or swaps with
+/// Wherever Coil shows an icon that appears, disappears or swaps with
 /// another (a checkbox's tick, a select's checkmark, the copy feedback,
 /// the composer's send and stop), it wraps the icon in a
 /// [CoilIconPresence] carrying [presence]: 0 when the icon is absent, 1
 /// when it is fully there. A swap is two presences crossing: the outgoing
 /// icon's goes from 1 to 0 while the incoming icon's goes from 0 to 1.
 ///
-/// - An icon that reads [maybeOf] animates itself from it, and coil leaves
+/// - An icon that reads [maybeOf] animates itself from it, and Coil leaves
 ///   it alone: a Lottie with the presence as its controller, or a painter
-///   that repaints with it. coil's own drawn tick works this way.
-/// - An icon that doesn't read it gets coil's fallback: it fades and grows
+///   that repaints with it. Coil's own drawn tick works this way.
+/// - An icon that doesn't read it gets Coil's fallback: it fades and grows
 ///   from [absentScale] as the presence rises, and back as it falls.
 /// - Outside an animation, [maybeOf] is null and an icon is static.
 ///
@@ -78,13 +81,15 @@ class CoilIconPresence extends InheritedWidget {
   /// 0 when the icon is absent, 1 when it is fully there; clamped.
   final Animation<double> presence;
 
-  /// The presence of the icon at [context], or null when coil isn't
-  /// animating it. Reading it means the icon animates itself: coil applies
-  /// no fallback to it.
+  /// The presence of the icon at [context], or null when Coil isn't
+  /// animating it.
+  ///
+  /// Reading it means the icon animates itself: Coil applies no fallback to
+  /// it.
   static Animation<double>? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<CoilIconPresence>()?.presence;
 
-  /// A `MotionSwitcher` or `AnimatedSwitcher` transition that gives each
+  /// A [MotionSwitcher] or [AnimatedSwitcher] transition that gives each
   /// child its switcher presence, so a swap is two presences crossing.
   static Widget transition(Widget child, Animation<double> animation) =>
       CoilIconPresence(presence: animation, child: child);
@@ -150,7 +155,7 @@ class _ClampedAnimation extends Animation<double>
   int get hashCode => identityHashCode(parent);
 }
 
-/// coil's fallback for an icon that doesn't read its presence.
+/// Coil's fallback for an icon that doesn't read its presence.
 class _IconFallback extends SingleChildRenderObjectWidget {
   const _IconFallback({required super.child});
 
@@ -314,7 +319,7 @@ class _RenderIconFallback extends RenderProxyBox {
 /// while the old one leaves on [exitMotion], two presences crossing; a
 /// null [child] lets the icon leave.
 ///
-/// Pass motions from `CoilTheme.motionOf` (and a component's track
+/// Pass motions from [CoilTheme.motionOf] (and a component's track
 /// motions). Under reduced motion every presence jumps to its end.
 ///
 /// ```dart
@@ -333,15 +338,17 @@ class CoilIconSwitcher extends StatelessWidget {
     this.child,
   });
 
-  /// The icon shown, or null for none. Give icons of the same type
-  /// different keys to swap them.
+  /// The icon shown, or null for none.
+  ///
+  /// Give icons of the same type different keys to swap them.
   final Widget? child;
 
   /// The spring an incoming icon's presence follows to 1.
   final Motion motion;
 
-  /// The spring an outgoing icon's presence follows to 0. Defaults to
-  /// [motion].
+  /// The spring an outgoing icon's presence follows to 0.
+  ///
+  /// Defaults to [motion].
   final Motion? exitMotion;
 
   @override

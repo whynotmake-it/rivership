@@ -20,8 +20,10 @@ const _down = CoilSliderStepIntent(-1);
 const _pageUp = CoilSliderStepIntent(1, increment: .page);
 const _pageDown = CoilSliderStepIntent(-1, increment: .page);
 
-/// The slider's key bindings. Left and right follow the reading direction.
-/// With [edit], Enter opens the value field.
+/// The slider's key bindings.
+///
+/// Left and right follow the reading direction. With [edit], Enter opens the
+/// value field.
 Map<ShortcutActivator, Intent> sliderShortcuts({
   required bool rtl,
   bool edit = false,
@@ -57,8 +59,9 @@ Map<ShortcutActivator, Intent> sliderShortcuts({
   };
 }
 
-/// The value field's key bindings: Esc leaves without a change. Enter is the
-/// field's own submit action.
+/// The value field's key bindings: Esc leaves without a change.
+///
+/// Enter is the field's own submit action.
 const sliderFieldShortcuts = <ShortcutActivator, Intent>{
   SingleActivator(LogicalKeyboardKey.escape): SliderCancelEditIntent(),
 };

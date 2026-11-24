@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/calendar.dart';
+library;
+
 import 'dart:async';
 
 import 'package:coil/foundation.dart';
@@ -10,7 +13,7 @@ import 'package:flutter/widgets.dart';
 /// A time of day, picked in snapping columns: hours and minutes, and AM or
 /// PM on a 12-hour clock.
 ///
-/// The clock follows the locale (`MediaQuery.alwaysUse24HourFormatOf`):
+/// The clock follows the locale ([MediaQuery.alwaysUse24HourFormatOf]):
 /// hours 00 to 23, or 1 to 12 with a short AM and PM column after the
 /// minutes.
 ///
@@ -43,7 +46,7 @@ import 'package:flutter/widgets.dart';
 /// pointer, 34 on touch. The picked row sits in an `active` band with the
 /// day cells' radius; the rows fade out toward the top and bottom edges.
 ///
-/// A pointer has `CoilTimeField` to type in instead.
+/// A pointer has [CoilTimeField] to type in instead.
 class CoilTimeColumns extends StatefulWidget {
   /// Creates the time columns.
   const CoilTimeColumns({
@@ -78,7 +81,8 @@ class CoilTimeColumns extends StatefulWidget {
   /// The AM and PM column's name for screen readers.
   final String periodLabel;
 
-  /// Overrides the theme's motion tokens; a column settles on `standard`.
+  /// Overrides the theme's motion tokens; a column settles on
+  /// [CoilMotion.standard].
   final CoilMotion? motion;
 
   /// How many rows the columns show: the picked one and two on each side.
@@ -460,16 +464,22 @@ class _Column extends StatefulWidget {
   final FocusNode focusNode;
   final ValueChanged<int>? onChanged;
 
-  /// A digit typed on the keyboard. Null: the column takes none.
+  /// A digit typed on the keyboard.
+  ///
+  /// Null: the column takes none.
   final ValueChanged<int>? onDigit;
 
-  /// "a" or "p" typed on the keyboard. Null: the column takes none.
+  /// "a" or "p" typed on the keyboard.
+  ///
+  /// Null: the column takes none.
   final ValueChanged<bool>? onPeriod;
 
   /// Left or Right: to the previous or the next column, -1 or 1.
   final ValueChanged<int> onMove;
 
-  /// A tap on the picked row. Null: it does nothing.
+  /// A tap on the picked row.
+  ///
+  /// Null: it does nothing.
   final VoidCallback? onCenterTap;
 
   /// A tap on another row.
@@ -525,7 +535,7 @@ class _ColumnState extends State<_Column> {
     unawaited(_glideTo(_scroll.selectedItem + delta));
   }
 
-  /// Springs to [item] on the theme's `standard` spring.
+  /// Springs to [item] on the theme's [CoilMotion.standard] spring.
   Future<void> _glideTo(int item) async {
     final motion = calendarSnapMotion(
       CoilTheme.motionOf(context, override: widget.motion).standard,

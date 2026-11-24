@@ -7,93 +7,111 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The animated parts of a [CoilSlider] or a [CoilRangeSlider], as Motor
-/// tracks. Use them as keys of their `motions` or of
-/// [CoilSliderStyle.motions].
+/// tracks.
 ///
-/// A custom motion replaces both the enter and the exit of its part.
+/// Use these as keys of [CoilSlider.motions], [CoilRangeSlider.motions], or
+/// [CoilSliderStyle.motions]. A custom motion replaces both the enter and the
+/// exit of its part.
 final class CoilSliderTrack<T extends Object> extends Track<T> {
   CoilSliderTrack._(super.converter, {required String super.debugLabel});
 
-  /// A thumb and the fill moving to a new value. While dragging a continuous
-  /// slider they follow the pointer directly; with steps they spring to each
-  /// step. Both thumbs of a range use it. Default motion: `standard`.
+  /// A thumb and the fill moving to a new value.
+  ///
+  /// While dragging a continuous slider they follow the pointer directly; with
+  /// steps they spring to each step. Both thumbs of a range use it. Defaults
+  /// to [CoilMotion.standard].
   static final thumb = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.thumb',
   );
 
   /// The hover preview bar's end, springing from the nearest thumb toward
-  /// the hover. The hover bubble rides it once the two meet. Default
-  /// motion: `quick`.
+  /// the hover.
+  ///
+  /// The hover bubble rides it once the two meet. Defaults to
+  /// [CoilMotion.quick].
   static final preview = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.preview',
   );
 
-  /// The preview bar's opacity. Default motion: `fade`.
+  /// The preview bar's opacity.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final previewOpacity = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.previewOpacity',
   );
 
-  /// The value bubble's or the value tooltips' opacity. Default motion:
-  /// `fade`.
+  /// The value bubble's or the value tooltips' opacity.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final bubble = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.bubble',
   );
 
-  /// A handle line's color. Default motion: `fade`.
+  /// A handle line's color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final handle = CoilSliderTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilSlider.handle',
   );
 
-  /// The pill's step dots growing while the slider is hovered. Default
-  /// motion: `standard`.
+  /// The pill's step dots growing while the slider is hovered.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final dots = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.dots',
   );
 
   /// The label and value turning foreground and semibold, and the handle
-  /// growing. Default motion: `fade`.
+  /// growing.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final emphasis = CoilSliderTrack<double>._(
     .single,
     debugLabel: 'CoilSlider.emphasis',
   );
 }
 
-/// How a [CoilSlider] draws its track.
+/// Visual track and thumb style for a [CoilSlider] or [CoilRangeSlider].
 enum CoilSliderVariant {
   /// A full-width row with a continuous fill and a handle line.
   scrubber,
 
-  /// Like [scrubber], plus a dot at every step. Needs `divisions` or
-  /// `steps`.
+  /// Like [scrubber], plus a dot at every step.
+  ///
+  /// Requires [CoilSlider.divisions] or [CoilSlider.steps].
   pips,
 
   /// A thin pill track with a knob, between the label and the value.
   pill,
 
   /// Like [pill], plus a small dot at every step, hidden under the fill.
-  /// Needs `divisions` or `steps`.
+  ///
+  /// Requires [CoilSlider.divisions] or [CoilSlider.steps].
   pillPips,
 }
 
-/// Where a slider shows its value.
+/// How and where a [CoilSlider] or [CoilRangeSlider] displays its value.
 enum CoilSliderValueDisplay {
   /// As text at the end of the row, or after the pill.
   text,
 
-  /// As [text]; a click or tap on a value, or Enter on a focused thumb,
-  /// turns it into a field. Enter or Done applies the typed number, clamped
-  /// to the range and snapped to a step; Esc leaves it unchanged. Leaving
-  /// the field applies it too.
+  /// As [text], turning into an editable field on click, tap, or Enter on a
+  /// focused thumb.
+  ///
+  /// Enter or Done applies the typed number, clamped to the range and snapped
+  /// to a step; Escape leaves it unchanged. Leaving the field applies it too.
   editable,
 
-  /// In a tooltip over each thumb while the slider is hovered, pressed or
-  /// focused with the keyboard. There is no value text.
+  /// In a tooltip over each thumb while the slider is hovered, pressed, or
+  /// focused with the keyboard.
+  ///
+  /// No separate value text is shown.
   tooltip,
 }
 
@@ -107,15 +125,15 @@ enum CoilSliderValueDisplay {
 /// value above the thumb.
 ///
 /// Values snap to [divisions] equal steps, or to the values in [steps]. A
-/// stepped slider ticks a `step` haptic as a drag or tap moves it to another
-/// step ([CoilHapticEvent.step]); keys and screen readers don't.
+/// stepped slider triggers [CoilHapticEvent.step] as a drag or tap moves it
+/// to another step; keys and screen readers don't.
 ///
 /// Arrows step by one step, or 1 % when continuous. Shift+arrow, Page Up
 /// and Page Down move 10 %. Home and End go to [min] and [max]. Left and
 /// right follow the reading direction.
 ///
 /// For two values, use [CoilRangeSlider]. The animated parts are
-/// [CoilSliderTrack]s; override them with [motions].
+/// [CoilSliderTrack] values; override them with [motions].
 class CoilSlider extends StatelessWidget {
   /// Creates a slider.
   const CoilSlider({
@@ -163,8 +181,9 @@ class CoilSlider extends StatelessWidget {
   /// The current value, between [min] and [max].
   final double value;
 
-  /// Called with the new value, snapped to [divisions] or [steps]. Null
-  /// disables the slider.
+  /// Called with the new value, snapped to [divisions] or [steps].
+  ///
+  /// Null disables the slider.
   final ValueChanged<double>? onChanged;
 
   /// The smallest value.
@@ -173,13 +192,16 @@ class CoilSlider extends StatelessWidget {
   /// The largest value.
   final double max;
 
-  /// How many equal steps [min]..[max] is split into. Null, with no
-  /// [steps], is continuous.
+  /// How many equal steps [min]..[max] is split into.
+  ///
+  /// Null, with no [steps], is continuous.
   final int? divisions;
 
-  /// The values the slider can take, at any spacing, between [min] and
-  /// [max]; usually the first is [min] and the last is [max]. The order
-  /// doesn't matter. Arrows walk the list, and pips sit at each value.
+  /// The values the slider can take, at any spacing, between [min] and [max];
+  /// usually the first is [min] and the last is [max].
+  ///
+  /// The order doesn't matter. Arrows walk the list, and pips sit at each
+  /// value.
   final List<double>? steps;
 
   /// Called with the current value when a change starts: a drag, a tap, a
@@ -189,29 +211,36 @@ class CoilSlider extends StatelessWidget {
   /// Called with the new value when that change ends.
   final ValueChanged<double>? onChangeEnd;
 
-  /// The text before the track. It is built once, so a [GlobalKey] on it is
-  /// safe.
+  /// The text before the track.
+  ///
+  /// It is built once, so a [GlobalKey] on it is safe.
   final Widget? label;
 
   /// Builds the value for the value text and the bubbles, styled by the
-  /// slider's text style. The default is a [Text] with up to two decimals
-  /// and no trailing zeros, with a `.` decimal mark; it isn't localized.
+  /// slider's text style.
+  ///
+  /// The default is a [Text] with up to two decimals and no trailing zeros,
+  /// with a `.` decimal mark; it isn't localized.
   ///
   /// The value text keeps the width of the widest value it can show, so it
   /// never moves the track: with up to 50 stops that is every stop, and
   /// beyond that only the ends and the current value.
   final Widget Function(BuildContext context, double value)? valueBuilder;
 
-  /// The value as screen readers announce it. Defaults to the same plain
-  /// number as [valueBuilder]'s default, so set both when the shown value
-  /// isn't that number (a unit, a name).
+  /// The value as screen readers announce it.
+  ///
+  /// Defaults to the same plain number as [valueBuilder]'s default, so set both
+  /// when the shown value isn't that number (a unit, a name).
   final String Function(double value)? semanticFormatter;
 
   /// The text a value field opens with, under
-  /// [CoilSliderValueDisplay.editable]. Defaults to the plain number.
+  /// [CoilSliderValueDisplay.editable].
+  ///
+  /// Defaults to the plain number.
   final String Function(double value)? editFormatter;
 
   /// Reads a typed value back, under [CoilSliderValueDisplay.editable].
+  ///
   /// Null means the text isn't a value, and nothing changes. Defaults to
   /// [double.tryParse].
   final double? Function(String text)? editParser;
@@ -222,7 +251,9 @@ class CoilSlider extends StatelessWidget {
   /// Where the value shows, and whether it can be typed.
   final CoilSliderValueDisplay valueDisplay;
 
-  /// Pins the slider to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the slider to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// The focus node.
@@ -238,8 +269,9 @@ class CoilSlider extends StatelessWidget {
   /// instance.
   final CoilMotion? motion;
 
-  /// Per-part motions for this instance, keyed by [CoilSliderTrack]s. They
-  /// win over the style's [CoilSliderStyle.motions] and the tokens.
+  /// Per-part motions for this instance, keyed by [CoilSliderTrack]s.
+  ///
+  /// They win over the style's [CoilSliderStyle.motions] and the tokens.
   final Map<CoilSliderTrack<Object>, Motion>? motions;
 
   /// Overrides for this slider's look.

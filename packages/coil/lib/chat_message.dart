@@ -1,4 +1,6 @@
-/// The coil `CoilChatMessage` component.
+/// The Coil [CoilChatMessage] component.
+///
+/// @docImport 'package:coil/chat_message.dart';
 library;
 
 export 'src/components/chat_message/chat_message.dart';

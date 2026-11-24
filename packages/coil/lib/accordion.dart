@@ -1,4 +1,6 @@
-/// coil's `CoilAccordion`.
+/// Coil's [CoilAccordion] component.
+///
+/// @docImport 'package:coil/accordion.dart';
 library;
 
 export 'src/components/accordion/accordion.dart';

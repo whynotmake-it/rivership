@@ -29,7 +29,7 @@ double comboboxChipExtent(CoilMetrics metrics) => switch ((
 /// field's chrome, before the text, which takes the rest of the chips' last
 /// row and wraps with them.
 ///
-/// It draws a `CoilInput`'s chrome (the same [CoilInputStyle], fill, border
+/// It draws a [CoilInput]'s chrome (the same [CoilInputStyle], fill, border
 /// and relief) around the one text-editing primitive, and lays the chips
 /// and the text out in runs with [ComboboxChipsRun]. The field's height
 /// springs as chips wrap.
@@ -392,7 +392,9 @@ class ComboboxChipsRun extends MultiChildRenderObjectWidget {
 /// The parent data of a [RenderComboboxChipsRun]'s child.
 class ComboboxChipsParentData extends ContainerBoxParentData<RenderBox> {}
 
-/// A run of chips with the text last. See [ComboboxChipsRun].
+/// A run of chips with the text last.
+///
+/// See [ComboboxChipsRun].
 class RenderComboboxChipsRun extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, ComboboxChipsParentData>,
@@ -541,8 +543,9 @@ class RenderComboboxChipsRun extends RenderBox
     }
   }
 
-  /// Lays the chips out in runs, then the text in what's left of the last
-  /// one. Offsets run left to right; [performLayout] mirrors them.
+  /// Lays the chips out in runs, then the text in what's left of the last one.
+  ///
+  /// Offsets run left to right; [performLayout] mirrors them.
   ({Size size, List<(RenderBox, Offset)> offsets}) _layout(
     BoxConstraints constraints,
     Size Function(RenderBox, BoxConstraints) layoutChild,

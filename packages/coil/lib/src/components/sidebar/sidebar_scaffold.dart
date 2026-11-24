@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/sidebar.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -12,65 +15,81 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilSidebarScaffold]. Use them as keys of
-/// [CoilSidebarScaffold.motions] or [CoilSidebarStyle.motions].
+/// The animated parts of a [CoilSidebarScaffold].
+///
+/// Use these as keys of [CoilSidebarScaffold.motions] or
+/// [CoilSidebarStyle.motions].
 final class CoilSidebarTrack<T extends Object> extends Track<T> {
   CoilSidebarTrack._(super.converter, {required String super.debugLabel});
 
-  /// How open the sidebar is beside the page, 0 to 1; the space it takes
-  /// is this times its width. Default motion: `gentle` opening,
-  /// `gentleExit` closing, and `standard` / `standardExit` when a rail drag
+  /// How open the sidebar is beside the page, from 0 to 1; the space it takes
+  /// is this times its width.
+  ///
+  /// Defaults to [CoilMotion.gentle] opening, [CoilMotion.gentleExit] closing,
+  /// and [CoilMotion.standard] / [CoilMotion.standardExit] when a rail drag
   /// folds or reopens it.
   static final fold = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.fold',
   );
 
-  /// The sidebar's width when the controller sets it. Default motion:
-  /// `gentle`. A rail drag sets it directly, so it follows the pointer.
+  /// The sidebar's width when the controller sets it.
+  ///
+  /// Defaults to [CoilMotion.gentle]. A rail drag sets it directly, so it
+  /// follows the pointer.
   static final width = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.width',
   );
 
-  /// How far a peek has floated out, 0 to 1. Default motion: `standard`
-  /// in, `standardExit` out.
+  /// How far a peek has floated out, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.standard] in and [CoilMotion.standardExit] out.
   static final peek = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.peek',
   );
 
   /// A callout pile fanning out, and each card moving to its place in it.
-  /// Default motion: `standard`, and `standardExit` as the pile folds.
+  ///
+  /// Defaults to [CoilMotion.standard], and [CoilMotion.standardExit] as the
+  /// pile folds.
   static final callouts = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.callouts',
   );
 
-  /// The hover fill gliding between menu rows. Default motion: `quick`.
+  /// The hover fill gliding between menu rows.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final highlight = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.highlight',
   );
 
-  /// The selected row's fill gliding when the selection moves. Default
-  /// motion: `standard`.
+  /// The selected row's fill gliding when the selection moves.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final selection = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.selection',
   );
 
-  /// A group or a sub-tree folding open or closed. Default motion:
-  /// `standard`, and `standardExit` as it closes.
+  /// A group or a sub-tree folding open or closed.
+  ///
+  /// Defaults to [CoilMotion.standard], and [CoilMotion.standardExit] as it
+  /// closes.
   static final expand = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.expand',
   );
 
   /// The phone drawer opening and closing: the page sliding aside, or the
-  /// panel sliding over it. Default motion: `standard` opening,
-  /// `standardExit` closing. A drag follows the finger and its release
-  /// velocity carries into the spring.
+  /// panel sliding over it.
+  ///
+  /// Defaults to [CoilMotion.standard] opening and [CoilMotion.standardExit]
+  /// closing. A drag follows the finger and its release velocity carries into
+  /// the spring.
   static final drawer = CoilSidebarTrack<double>._(
     .single,
     debugLabel: 'CoilSidebar.drawer',
@@ -81,10 +100,10 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
 ///
 /// The sidebar sits on [side] in the way [variant] describes. With
 /// [CoilSidebarCollapsible.offcanvas], it folds off the edge and back:
-/// through a `CoilSidebarTrigger`, the [rail], the [shortcuts] while focus
+/// through a [CoilSidebarTrigger], the [rail], the [shortcuts] while focus
 /// is inside the scaffold, or the [controller]. Folded, its edge can
 /// [peek] it back over the page. Below [drawerBreakpoint] it hides and
-/// opens as a drawer instead (a `CoilDrawer`): on touch the page slides
+/// opens as a drawer instead (a [CoilDrawer]): on touch the page slides
 /// aside to reveal it from behind ([drawerReveal]) and a horizontal drag
 /// anywhere on the page opens it ([drawerDrag]). A pick in a sidebar menu,
 /// a press on the page, Escape, a drag or system back closes it.
@@ -92,8 +111,8 @@ final class CoilSidebarTrack<T extends Object> extends Track<T> {
 /// For a sidebar on each side, nest two scaffolds: one with
 /// [CoilSidebarSide.start] whose body is one with [CoilSidebarSide.end].
 /// Their drawers act as one: a drag moves whichever side it heads for, and
-/// opening one closes the other. A `CoilSidebarTrigger` with a `side`
-/// reaches either from the page.
+/// opening one closes the other. A [CoilSidebarTrigger] with a
+/// [CoilSidebarTrigger.side] reaches either from the page.
 ///
 /// There is no icon-only rail on purpose: folded means gone, and [peek]
 /// brings the whole sidebar back, labels and all.
@@ -125,14 +144,15 @@ class CoilSidebarScaffold extends StatefulWidget {
     this.motions,
   });
 
-  /// The sidebar, usually a `CoilSidebar`.
+  /// The sidebar, usually a [CoilSidebar].
   final Widget sidebar;
 
   /// The page.
   final Widget body;
 
-  /// Whether the sidebar is open, and its width. The scaffold creates one
-  /// when null.
+  /// Whether the sidebar is open, and its width.
+  ///
+  /// The scaffold creates one when null.
   final CoilSidebarController? controller;
 
   /// The edge the sidebar sits on.
@@ -148,7 +168,8 @@ class CoilSidebarScaffold extends StatefulWidget {
   final CoilSidebarPeek peek;
 
   /// The handle on the sidebar's inner edge, usually a [CoilSidebarRail].
-  /// Null shows none; the trigger and the shortcuts still toggle.
+  ///
+  /// When null, shows none; the trigger and shortcuts still toggle.
   final Widget? rail;
 
   /// The keys that toggle the sidebar while focus is inside the scaffold,
@@ -160,8 +181,10 @@ class CoilSidebarScaffold extends StatefulWidget {
   final Set<ShortcutActivator>? shortcuts;
 
   /// Whether the scaffold takes focus when nothing else has it, so the
-  /// [shortcuts] answer right after launch. A scaffold inside another one
-  /// never does; turn it off where several sit side by side.
+  /// [shortcuts] answer right after launch.
+  ///
+  /// A scaffold inside another one never does; turn it off where several sit
+  /// side by side.
   final bool autofocus;
 
   /// Below this width, the scaffold's own and not the window's, the
@@ -174,27 +197,34 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// The widest the rail resizes the sidebar to.
   final double maxWidth;
 
-  /// How the drawer meets the page. Null reveals it from behind the page
-  /// on the touch tier ([CoilDrawerReveal.behind]), and slides it over the
-  /// page on the pointer tier, as in a narrow desktop window
-  /// ([CoilDrawerReveal.over]). Its look (corner radius, scrim, shadow) is
-  /// in [CoilSidebarStyle]'s `drawer…` fields, and how the page and the
-  /// sidebar move with the slide in [drawerTransition].
+  /// How the drawer meets the page.
+  ///
+  /// When null, reveals it from behind the page on the touch tier
+  /// ([CoilDrawerReveal.behind]), and slides it over the page on the pointer
+  /// tier, as in a narrow desktop window ([CoilDrawerReveal.over]). Its look
+  /// (corner radius, scrim, shadow) is in [CoilSidebarStyle]'s `drawer…`
+  /// fields, and how the page and the sidebar move with the slide in
+  /// [drawerTransition].
   final CoilDrawerReveal? drawerReveal;
 
-  /// Which drags open and close the drawer. Null: on touch, a drag anywhere
-  /// on the page opens it (horizontal scrollables keep their drags and hand
-  /// over at their edge), except that on a route iOS can swipe back, a
-  /// drawer on the start side leaves that swipe to the route and only
-  /// closes by drag; on the pointer tier, drags only close it.
+  /// Which drags open and close the drawer.
+  ///
+  /// When null: on touch, a drag anywhere on the page opens it (horizontal
+  /// scrollables keep their drags and hand over at their edge), except that
+  /// on a route iOS can swipe back, a drawer on the start side leaves that
+  /// swipe to the route and only closes by drag; on the pointer tier, drags
+  /// only close it.
   final CoilDrawerDrag? drawerDrag;
 
-  /// The drawer's width. Null is 85 % of the scaffold's width, at most 320
-  /// (`CoilDrawer.widthFraction`, `CoilDrawer.maxWidth`).
+  /// The drawer's width.
+  ///
+  /// When null, uses 85% of the scaffold's width, at most 320
+  /// ([CoilDrawer.widthFraction], [CoilDrawer.maxWidth]).
   final double? drawerWidth;
 
-  /// How the page and the sidebar move as the drawer slides from behind:
-  /// by default the page keeps its size and the sidebar fades in from 40 %
+  /// How the page and the sidebar move as the drawer slides from behind.
+  ///
+  /// By default the page keeps its size and the sidebar fades in from 40%
   /// and grows from 0.95 at the page's edge.
   final CoilDrawerTransition drawerTransition;
 
@@ -210,8 +240,10 @@ class CoilSidebarScaffold extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions for this instance, keyed by [CoilSidebarTrack]s.
-  /// They win over the style's [CoilSidebarStyle.motions] and the tokens.
+  /// Per-track motions for this instance, keyed by [CoilSidebarTrack] values.
+  ///
+  /// These take precedence over [CoilSidebarStyle.motions] and the theme
+  /// tokens.
   final Map<CoilSidebarTrack<Object>, Motion>? motions;
 
   /// The controller of the nearest scaffold.
@@ -248,9 +280,10 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
 
   bool _drawerOpen = false;
 
-  /// The scaffold is a focus scope, so focus that a folding sidebar drops
-  /// lands on the scaffold and the shortcuts keep answering. Tab still
-  /// flows on past its edges.
+  /// The scaffold is a focus scope, so focus that a folding sidebar drops lands
+  /// on the scaffold and the shortcuts keep answering.
+  ///
+  /// Tab still flows on past its edges.
   final _focusScope = FocusScopeNode(
     debugLabel: 'CoilSidebarScaffold',
     traversalEdgeBehavior: TraversalEdgeBehavior.parentScope,
@@ -550,9 +583,10 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
   TextDirection get _rowDirection =>
       _physicalLeft ? TextDirection.ltr : TextDirection.rtl;
 
-  /// The page, framed as a card for the inset variant. [open] is how much
-  /// of the sidebar shows, 0 to 1: the card's margin on the sidebar's side
-  /// gives way as it opens.
+  /// The page, framed as a card for the inset variant.
+  ///
+  /// [open] is how much of the sidebar shows, 0 to 1: the card's margin on the
+  /// sidebar's side gives way as it opens.
   Widget _page(CoilSidebarStyle look, {required double open}) {
     final body = widget.body;
     if (widget.variant != CoilSidebarVariant.inset) return body;
@@ -710,8 +744,10 @@ class _CoilSidebarScaffoldState extends State<CoilSidebarScaffold> {
     );
   }
 
-  /// [child] with the phone drawer around it. The drawer stays put if the
-  /// window widens while it is open, until it is closed.
+  /// [child] with the phone drawer around it.
+  ///
+  /// The drawer stays put if the window widens while it is open, until it is
+  /// closed.
   Widget _withDrawer(CoilSidebarStyle look, Widget child) {
     final motion = CoilTheme.motionOf(context, override: widget.motion);
     final edge = widget.side == CoilSidebarSide.start

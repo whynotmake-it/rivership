@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/components/scroll_area/scroll_area_style.dart';
+library;
+
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/theme.dart';
@@ -5,8 +8,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The colors and sizes of a coil scrollbar. The owner resolves it, for
-/// example from a `CoilScrollAreaStyle`.
+/// The colors and sizes of a Coil scrollbar.
+///
+/// The owner resolves it, for example from a [CoilScrollAreaStyle].
 @immutable
 class CoilScrollbarLook {
   /// Creates a scrollbar look.
@@ -70,7 +74,7 @@ class CoilScrollbarLook {
   );
 }
 
-/// coil's scrollbar: a [RawScrollbar] with a superellipse pill thumb.
+/// Coil's scrollbar: a [RawScrollbar] with a superellipse pill thumb.
 ///
 /// On the pointer tier the thumb is 4 wide. It springs to 6 while a mouse
 /// hovers it or drags it. It shows while scrolling or hovered and hides

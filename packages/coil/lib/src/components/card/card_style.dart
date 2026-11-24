@@ -1,12 +1,16 @@
+/// @docImport 'package:coil/card.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/card/card.dart' show CoilCardTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilCard` and a `CoilCardGroup` look. Unset fields
-/// come from [CoilCardStyle.fallback], derived from the theme's tokens. Set
-/// a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilCard] and a [CoilCardGroup] look.
+///
+/// Unset fields come from [CoilCardStyle.fallback], derived from the theme's
+/// tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [overlay] is resolved with [WidgetState.hovered] and
 /// [WidgetState.pressed].
@@ -36,8 +40,10 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     this.motions,
   });
 
-  /// The defaults from the theme's tokens. The fill and shadow are left
-  /// null: a card takes them from the level it sits on.
+  /// The defaults from the theme's tokens.
+  ///
+  /// The fill and shadow are left null: a card takes them from the level it
+  /// sits on.
   factory CoilCardStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     final light = c.brightness == Brightness.light;
@@ -68,15 +74,18 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
     );
   }
 
-  /// The card's fill. Null is the color of the card's level: two above
-  /// the surface it sits on in light (3 on the page), one in dark (2).
+  /// The card's fill.
+  ///
+  /// Null is the color of the card's level: two above the surface it sits on in
+  /// light (3 on the page), one in dark (2).
   final Color? surface;
 
   /// The card's outline (a hairline in dark, none in light).
   final BorderSide? border;
 
-  /// The card's shadow. Null is its level's shadow in light and none in
-  /// dark.
+  /// The card's shadow.
+  ///
+  /// Null is its level's shadow in light and none in dark.
   final List<BoxShadow>? shadows;
 
   /// The corner radius of cards, group blocks and the group highlight.
@@ -134,6 +143,7 @@ class CoilCardStyle extends CoilComponentStyle<CoilCardStyle> {
 
   /// Springs for the animated parts of cards and card groups, keyed by
   /// [CoilCardTrack]s: `{CoilCardTrack.overlay: const Motion.bouncySpring()}`.
+  ///
   /// A card's or group's own `motions:` win over these; these win over the
   /// motion tokens. [merge] combines the maps key by key.
   final Map<CoilCardTrack<Object>, Motion>? motions;

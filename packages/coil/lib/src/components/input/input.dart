@@ -1,3 +1,8 @@
+/// @docImport 'package:coil/button.dart';
+/// @docImport 'package:coil/field.dart';
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/input/input_group.dart';
@@ -8,18 +13,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilInput], as Motor tracks. Use them as keys of
-/// [CoilInput.motions] or [CoilInputStyle.motions].
+/// The animated parts of a [CoilInput], as Motor tracks.
+///
+/// Use these as keys of [CoilInput.motions] or [CoilInputStyle.motions].
 final class CoilInputTrack<T extends Object> extends Track<T> {
   CoilInputTrack._(super.converter, {required String super.debugLabel});
 
-  /// The hairline color. Default motion: `fade`.
+  /// The hairline color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final border = CoilInputTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilInput.border',
   );
 
-  /// The background color. Default motion: `fade`.
+  /// The background color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final fill = CoilInputTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilInput.fill',
@@ -32,7 +42,7 @@ final class CoilInputTrack<T extends Object> extends Track<T> {
 /// gestures and handles, the magnifier and the native edit menu.
 ///
 /// Focus darkens the border, whether it came from a tap or the keyboard. A
-/// hovering mouse adds a faint fill; touch never does. Inside a `CoilField`,
+/// hovering mouse adds a faint fill; touch never does. Inside a [CoilField],
 /// it takes the field's invalid state and focuses when the label is tapped.
 /// Give it a field label: the placeholder is an example, not a label.
 class CoilInput extends StatefulWidget {
@@ -157,7 +167,9 @@ class CoilInput extends StatefulWidget {
   /// The focus node; one is created if null.
   final FocusNode? focusNode;
 
-  /// Shown, muted, while the field is empty. Usually a [Text].
+  /// Shown, muted, while the field is empty.
+  ///
+  /// Usually a [Text].
   final Widget? placeholder;
 
   /// A widget before the text, usually a muted icon.
@@ -168,41 +180,52 @@ class CoilInput extends StatefulWidget {
   /// A widget after the text: an icon, a unit such as "EUR", or a button.
   ///
   /// A slot that fits a line of text sits beside it. A taller one, such as
-  /// a `CoilButton`, goes into the field's padding instead, centered and as
+  /// a [CoilButton], goes into the field's padding instead, centered and as
   /// far from the side as from the top and bottom, so the field keeps its
   /// height: a compact button sits 4 in from a regular field's edges. The
-  /// field grows only when the slot doesn't fit. A `CoilButton` here is
+  /// field grows only when the slot doesn't fit. A [CoilButton] here is
   /// compact by default, with its corners concentric with the field's. The
   /// slot is measured in the same layout pass as the text, so the first
   /// frame is right. [trailingPlacement] overrides the choice.
   final Widget? trailing;
 
-  /// Where [leading] goes. Null is [CoilInputSlotPlacement.auto].
+  /// Where [leading] goes.
+  ///
+  /// When null, defaults to [CoilInputSlotPlacement.auto].
   final CoilInputSlotPlacement? leadingPlacement;
 
-  /// Where [trailing] goes. Null is [CoilInputSlotPlacement.auto]:
-  /// beside the text if it fits a line, into the padding if it's taller.
+  /// Where [trailing] goes.
+  ///
+  /// When null, defaults to [CoilInputSlotPlacement.auto]: beside the text if
+  /// it fits a line, into the padding if it's taller.
   final CoilInputSlotPlacement? trailingPlacement;
 
-  /// The lines a multi-line input shows when empty. Null for single-line.
+  /// The lines a multi-line input shows when empty.
+  ///
+  /// Null for single-line inputs.
   final int? minLines;
 
-  /// The lines a multi-line input grows to before it scrolls; null grows
-  /// without limit. 1 for single-line.
+  /// The lines a multi-line input grows to before it scrolls.
+  ///
+  /// Null grows without limit; 1 for single-line inputs.
   final int? maxLines;
 
   /// Whether the field accepts input and focus.
   final bool enabled;
 
-  /// Whether the text can be selected but not changed. A read-only field
-  /// doesn't show hover.
+  /// Whether the text can be selected but not changed.
+  ///
+  /// A read-only field doesn't show hover.
   final bool readOnly;
 
-  /// Shows the invalid border (focus wins). A `CoilField` with an error sets
-  /// it for you.
+  /// Shows the invalid border (focus wins).
+  ///
+  /// A [CoilField] with an error sets this for you.
   final bool invalid;
 
-  /// Hides the text, for passwords. Autocorrect and suggestions turn off.
+  /// Hides the text, for passwords.
+  ///
+  /// Disables autocorrect and suggestions.
   final bool obscureText;
 
   /// Whether to take focus when first built.
@@ -211,7 +234,9 @@ class CoilInput extends StatefulWidget {
   /// The software keyboard type.
   final TextInputType? keyboardType;
 
-  /// The keyboard's action button. A multi-line input defaults to newline.
+  /// The keyboard's action button.
+  ///
+  /// A multi-line input defaults to [TextInputAction.newline].
   final TextInputAction? textInputAction;
 
   /// How the software keyboard capitalizes.
@@ -232,90 +257,114 @@ class CoilInput extends StatefulWidget {
   /// Called when the text changes.
   final ValueChanged<String>? onChanged;
 
-  /// Called when the keyboard's action button submits the input. A
-  /// multi-line input only submits if [textInputAction] isn't newline. Never
-  /// called for a Return that only commits an IME composition.
+  /// Called when the keyboard's action button submits the input.
+  ///
+  /// A multi-line input only submits if [textInputAction] isn't
+  /// [TextInputAction.newline]. Never called for a Return that only commits an
+  /// IME composition.
   final ValueChanged<String>? onSubmitted;
 
   /// Called when a pointer or a finger taps the input, never when focus
-  /// arrives some other way (Tab); see [CoilTextFieldCore.onTap].
+  /// arrives some other way (Tab).
+  ///
+  /// See [CoilTextFieldCore.onTap].
   final VoidCallback? onTap;
 
-  /// The most characters the input accepts; null for no limit. See
-  /// `TextField.maxLength`.
+  /// The most characters the input accepts; null for no limit.
+  ///
+  /// See [TextField.maxLength].
   final int? maxLength;
 
-  /// How [maxLength] is enforced. Defaults to the platform's. See
-  /// `TextField.maxLengthEnforcement`.
+  /// How [maxLength] is enforced.
+  ///
+  /// Defaults to the platform's behavior. See [TextField.maxLengthEnforcement].
   final MaxLengthEnforcement? maxLengthEnforcement;
 
-  /// Called when the user finishes editing, before [onSubmitted]. See
-  /// `TextField.onEditingComplete`.
+  /// Called when the user finishes editing, before [onSubmitted].
+  ///
+  /// See [TextField.onEditingComplete].
   final VoidCallback? onEditingComplete;
 
-  /// Called when a pointer taps outside the input. Null keeps the default.
-  /// See `TextField.onTapOutside`.
+  /// Called when a pointer taps outside the input.
+  ///
+  /// When null, keeps the default behavior. See [TextField.onTapOutside].
   final TapRegionCallback? onTapOutside;
 
-  /// How the text, and the placeholder, align horizontally. See
-  /// `TextField.textAlign`.
+  /// How the text and the placeholder align horizontally.
+  ///
+  /// See [TextField.textAlign].
   final TextAlign textAlign;
 
-  /// The text's direction. Defaults to the ambient [Directionality]. See
-  /// `TextField.textDirection`.
+  /// The text's direction.
+  ///
+  /// Defaults to the ambient [Directionality]. See [TextField.textDirection].
   final TextDirection? textDirection;
 
-  /// The undo history controller; one is created if null. See
-  /// `TextField.undoController`.
+  /// The undo history controller; one is created if null.
+  ///
+  /// See [TextField.undoController].
   final UndoHistoryController? undoController;
 
-  /// The character shown for each obscured character. See
-  /// `TextField.obscuringCharacter`.
+  /// The character shown for each obscured character.
+  ///
+  /// See [TextField.obscuringCharacter].
   final String obscuringCharacter;
 
-  /// Scrolls a multi-line input's text; null for single-line. See
-  /// `TextField.scrollController`.
+  /// Scrolls a multi-line input's text; null for single-line.
+  ///
+  /// See [TextField.scrollController].
   final ScrollController? scrollController;
 
-  /// Builds the selection toolbar. Null shows no menu. See
-  /// `TextField.contextMenuBuilder`.
+  /// Builds the selection toolbar.
+  ///
+  /// When null, shows no menu. See [TextField.contextMenuBuilder].
   final EditableTextContextMenuBuilder? contextMenuBuilder;
 
-  /// Whether the text can be selected and the toolbar shown. See
-  /// `TextField.enableInteractiveSelection`.
+  /// Whether the text can be selected and the toolbar shown.
+  ///
+  /// See [TextField.enableInteractiveSelection].
   final bool enableInteractiveSelection;
 
-  /// The software keyboard's brightness. Defaults to the theme's. See
-  /// `TextField.keyboardAppearance`.
+  /// The software keyboard's brightness.
+  ///
+  /// Defaults to the theme's brightness. See [TextField.keyboardAppearance].
   final Brightness? keyboardAppearance;
 
-  /// The id the input saves its state under for restoration. See
-  /// `TextField.restorationId`.
+  /// The id the input saves its state under for restoration.
+  ///
+  /// See [TextField.restorationId].
   final String? restorationId;
 
-  /// How spell check runs and shows its results. See
-  /// `TextField.spellCheckConfiguration`.
+  /// How spell check runs and shows its results.
+  ///
+  /// See [TextField.spellCheckConfiguration].
   final SpellCheckConfiguration? spellCheckConfiguration;
 
-  /// Whether the keyboard replaces dashes with typographic ones. See
-  /// `TextField.smartDashesType`.
+  /// Whether the keyboard replaces dashes with typographic ones.
+  ///
+  /// See [TextField.smartDashesType].
   final SmartDashesType? smartDashesType;
 
-  /// Whether the keyboard replaces quotes with typographic ones. See
-  /// `TextField.smartQuotesType`.
+  /// Whether the keyboard replaces quotes with typographic ones.
+  ///
+  /// See [TextField.smartQuotesType].
   final SmartQuotesType? smartQuotesType;
 
   /// The space kept between the input and the screen edges (and the software
-  /// keyboard) when it scrolls itself into view. See
-  /// `TextField.scrollPadding`.
+  /// keyboard) when it scrolls itself into view.
+  ///
+  /// See [TextField.scrollPadding].
   final EdgeInsets scrollPadding;
 
   /// Keys mapped to intents for the field's owner, such as arrows that move
-  /// a list's active row. They are off while an IME composes, so Enter
-  /// commits the composition first.
+  /// a list's active row.
+  ///
+  /// Disabled while an IME composes, so Enter commits the composition first.
   final Map<ShortcutActivator, Intent> shortcuts;
 
-  /// Pins the field to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the field to one size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Observes, and can force, the hovered and focused looks.
@@ -324,14 +373,15 @@ class CoilInput extends StatefulWidget {
   /// Overrides the theme's motion tokens for this field.
   final CoilMotion? motion;
 
-  /// Per-track motions for this field, keyed by [CoilInputTrack]s. They win
-  /// over the style's [CoilInputStyle.motions] and [motion].
+  /// Per-track motions for this field, keyed by [CoilInputTrack] values.
+  ///
+  /// These take precedence over [CoilInputStyle.motions] and [motion].
   final Map<CoilInputTrack<Object>, Motion>? motions;
 
   /// Overrides for this field's look.
   final CoilInputStyle? style;
 
-  /// A label for screen readers when there's no `CoilField` label.
+  /// A label for screen readers when there's no [CoilField] label.
   final String? semanticLabel;
 
   bool get _multiline => maxLines != 1;

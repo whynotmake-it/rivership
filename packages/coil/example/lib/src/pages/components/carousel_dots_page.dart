@@ -83,17 +83,17 @@ CoilCarouselDots(
       ),
       CatalogNote(
         'Pointer',
-        'Each dot has its own 18 click target, and a single highlight glides '
-            'between them.',
+        'Each dot has its own 18 px click target, and a single highlight '
+            'glides between them.',
       ),
       CatalogNote(
         'Touch',
-        'The row is one 44 high control, so you can tap or drag along it to '
-            'scrub, and swiping the pager itself still pages.',
+        'The row is one 44 px tall control, so you can tap or drag along it '
+            'to scrub, and swiping the pager itself still pages.',
       ),
       CatalogNote(
         'Motion',
-        'The pill grows from 6 to 24 on standard. The dots never advance by '
+        'The pill springs from 6 px to 24 px. The dots never advance by '
             'themselves: an autoplaying carousel drives the progress, and '
             'stops under reduced motion.',
       ),

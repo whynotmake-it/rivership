@@ -1,4 +1,6 @@
-/// The coil `CoilInputCopy` component.
+/// The Coil [CoilInputCopy] component.
+///
+/// @docImport 'package:coil/input_copy.dart';
 library;
 
 export 'src/components/input_copy/input_copy.dart';

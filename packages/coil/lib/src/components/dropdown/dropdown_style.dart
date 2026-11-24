@@ -1,10 +1,17 @@
+/// @docImport 'package:coil/dropdown.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// The look of a `CoilDropdown`.
+/// Style overrides for a [CoilDropdown].
+///
+/// Unset fields fall back to [CoilDropdownStyle.fallback].
 @immutable
 class CoilDropdownStyle extends CoilComponentStyle<CoilDropdownStyle> {
-  /// Creates a dropdown style. Null fields fall back to the theme.
+  /// Creates a dropdown style.
+  ///
+  /// Null fields fall back to the theme.
   const CoilDropdownStyle({
     this.surface,
     this.highlight,
@@ -14,7 +21,7 @@ class CoilDropdownStyle extends CoilComponentStyle<CoilDropdownStyle> {
     this.maxHeight,
   });
 
-  /// coil's defaults at [metrics].
+  /// Coil's defaults at [metrics].
   factory CoilDropdownStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics,
@@ -29,8 +36,10 @@ class CoilDropdownStyle extends CoilComponentStyle<CoilDropdownStyle> {
     );
   }
 
-  /// The popup's fill. Null is the color of its level: two above the
-  /// surface it opens from (3 on the page).
+  /// The popup's fill.
+  ///
+  /// Null is the color of its level: two above the surface it opens from (3 on
+  /// the page).
   final Color? surface;
 
   /// The hover highlight behind a row.

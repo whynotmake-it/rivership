@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/kbd.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
@@ -9,8 +12,10 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The sidebar's row height per tier and size: 32 / 28 on pointer, 44 /
-/// 36 on touch. Heights are minimums.
+/// The sidebar's row height per tier and size: 32 / 28 on pointer, 44 / 36 on
+/// touch.
+///
+/// Heights are minimums.
 double coilSidebarRowHeight(CoilMetrics metrics) =>
     switch ((metrics.tier, metrics.size)) {
       (CoilTier.pointer, CoilSize.regular) => 32,
@@ -32,7 +37,7 @@ CoilSidebarStyle _styleOf(BuildContext context, CoilSidebarStyle? style) =>
 /// The sidebar's panel: a [header], scrolling [children] and a [footer].
 ///
 /// The header and footer stay put while the children scroll, with edge
-/// fades. Stack the header's or footer's parts in a `Column` (each on its
+/// fades. Stack the header's or footer's parts in a [Column] (each on its
 /// own row, actions as menu rows) or a [CoilSidebarBar] (the primary part
 /// with icon actions beside it).
 class CoilSidebar extends StatelessWidget {
@@ -55,8 +60,9 @@ class CoilSidebar extends StatelessWidget {
   /// Below the scrolling content, such as callouts and the signed-in user.
   final Widget? footer;
 
-  /// Names the sidebar for screen readers and makes it a navigation
-  /// landmark. Each sidebar on screen needs its own name.
+  /// Names the sidebar for screen readers and makes it a navigation landmark.
+  ///
+  /// Each sidebar on screen needs its own name.
   final String? semanticLabel;
 
   /// Overrides the theme's sidebar style.
@@ -170,13 +176,15 @@ class CoilSidebarAction extends StatelessWidget {
   /// Names the action for screen readers.
   final String semanticLabel;
 
-  /// Called on tap, Enter or Space. Null disables the action.
+  /// Called on tap, Enter or Space.
+  ///
+  /// Null disables the action.
   final VoidCallback? onPressed;
 
   /// The tooltip, usually a [Text].
   final Widget? tooltip;
 
-  /// A shortcut the tooltip shows after [tooltip], usually a `CoilKbd`,
+  /// A shortcut the tooltip shows after [tooltip], usually a [CoilKbd],
   /// such as `CoilKbd.activator(activator)`.
   final Widget? shortcut;
 
@@ -301,21 +309,26 @@ class CoilSidebarGroup extends StatefulWidget {
   });
 
   /// The section's caption.
+  ///
   /// The section's caption, usually a [Text], styled by [DefaultTextStyle].
   final Widget? label;
 
-  /// The caption for screen readers. Null reads the text of a [Text]
-  /// [label]; give it for any other widget.
+  /// The caption for screen readers.
+  ///
+  /// Null reads the text of a [Text] [label]; give it for any other widget.
   final String? semanticLabel;
 
   /// One to three [CoilSidebarAction]s on the label's row, always shown.
   final List<Widget> actions;
 
-  /// Whether [child] shows. Only a group with [onExpandedChanged] folds.
+  /// Whether [child] shows.
+  ///
+  /// Only a group with [onExpandedChanged] folds.
   final bool expanded;
 
-  /// Called with the new [expanded] when the label is pressed. Null keeps
-  /// the label a static caption.
+  /// Called with the new [expanded] when the label is pressed.
+  ///
+  /// Null keeps the label a static caption.
   final ValueChanged<bool>? onExpandedChanged;
 
   /// The section's content.

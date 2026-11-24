@@ -1,4 +1,6 @@
-/// The coil `CoilCarouselDots` component.
+/// The Coil [CoilCarouselDots] component.
+///
+/// @docImport 'package:coil/carousel_dots.dart';
 library;
 
 export 'src/components/carousel_dots/carousel_dots.dart';

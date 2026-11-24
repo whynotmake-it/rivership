@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/calendar.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -12,12 +15,12 @@ import 'package:motor/motor.dart';
 
 /// A time of day typed into segments, like macOS's date field: "14:30"
 /// on a 24-hour clock, "2:30 PM" on a 12-hour one (the locale's, as
-/// `MediaQuery.alwaysUse24HourFormatOf` says).
+/// [MediaQuery.alwaysUse24HourFormatOf] says).
 ///
-/// It looks like a `CoilInput`: a hairline field of the control height that
+/// It looks like a [CoilInput]: a hairline field of the control height that
 /// darkens its border on focus and shows a faint fill under a hovering
 /// pointer. The figures are tabular. It is for a pointer and a hardware
-/// keyboard; a phone picks with `CoilTimeColumns`, which also types on the
+/// keyboard; a phone picks with [CoilTimeColumns], which also types on the
 /// number pad.
 ///
 /// The field is one tab stop. Click a segment, or Tab in (at the hour), and
@@ -70,12 +73,14 @@ class CoilTimeField extends StatefulWidget {
   /// The time shown, in 24-hour form.
   final ({int hour, int minute}) value;
 
-  /// Called with the new time, in 24-hour form, as a segment changes. Null
-  /// disables the field.
+  /// Called with the new time, in 24-hour form, as a segment changes.
+  ///
+  /// Null disables the field.
   final ValueChanged<({int hour, int minute})>? onChanged;
 
-  /// The step of the arrow keys and the Page keys on the minute. It
-  /// doesn't limit typed minutes.
+  /// The step of the arrow keys and the Page keys on the minute.
+  ///
+  /// It doesn't limit typed minutes.
   final int minuteInterval;
 
   /// The hour segment's name for screen readers.
@@ -96,7 +101,9 @@ class CoilTimeField extends StatefulWidget {
   /// Whether to take focus when first built.
   final bool autofocus;
 
-  /// The field's size. Defaults to the ambient one.
+  /// The field's size.
+  ///
+  /// Defaults to the ambient one.
   final CoilSize? size;
 
   /// Overrides how the field looks; it is a [CoilInputStyle], as the

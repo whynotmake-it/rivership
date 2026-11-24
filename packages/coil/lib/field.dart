@@ -1,5 +1,7 @@
-/// The coil field components: `CoilField`, `CoilFieldSet`, `CoilFieldGroup`,
-/// `CoilFieldSeparator` and `CoilChoiceCard`.
+/// The Coil field components: [CoilField], [CoilFieldSet], [CoilFieldGroup],
+/// [CoilFieldSeparator], and [CoilChoiceCard].
+///
+/// @docImport 'package:coil/field.dart';
 library;
 
 export 'src/components/field/choice_card.dart';

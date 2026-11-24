@@ -61,17 +61,25 @@ class CoilAccordion<T> extends StatefulWidget {
        _onValueChanged = null,
        _onValuesChanged = onChanged;
 
-  /// The sections, in order. Each item's `value` identifies it, so an open
-  /// item stays open, and keeps its panel's state, when the list reorders.
+  /// The sections, in order.
+  ///
+  /// Each item's `value` identifies it, so an open item stays open, and keeps
+  /// its panel's state, when the list reorders.
   final List<CoilAccordionItem<T>> items;
 
-  /// Whether one or several items can be open. Set by the constructor.
+  /// Whether one or several items can be open.
+  ///
+  /// Set by the constructor.
   final CoilAccordionMode mode;
 
-  /// The open item in [CoilAccordionMode.single]. Null when none is open.
+  /// The open item in [CoilAccordionMode.single].
+  ///
+  /// Null when none is open.
   final T? value;
 
-  /// The open items in [CoilAccordionMode.multiple]. Null in single mode.
+  /// The open items in [CoilAccordionMode.multiple].
+  ///
+  /// Null in single mode.
   final Set<T>? values;
 
   /// In single mode, whether pressing the open item closes it.
@@ -80,18 +88,21 @@ class CoilAccordion<T> extends StatefulWidget {
   /// The look.
   final CoilAccordionVariant variant;
 
-  /// Replaces the chevron ([CoilIcons.chevronEnd]). It turns a quarter
-  /// when its item opens.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]).
+  ///
+  /// It turns a quarter when its item opens.
   final Widget? indicator;
 
-  /// Pins the accordion to one size step. Null follows
-  /// [CoilAdaptiveScope].
+  /// Pins the accordion to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
   /// Per-track motions for this accordion, keyed by [CoilAccordionTrack]s.
+  ///
   /// They win over the style's [CoilAccordionStyle.motions] and the tokens.
   final Map<CoilAccordionTrack<Object>, Motion>? motions;
 

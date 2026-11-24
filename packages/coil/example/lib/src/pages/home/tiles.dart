@@ -430,10 +430,10 @@ class NowPlayingTile extends StatefulWidget {
 
 class _NowPlayingTileState extends State<NowPlayingTile> {
   static const _tracks = <_Track>[
-    (title: 'Coastline', artist: 'Mara Vey', length: 214),
+    (title: 'Coastline', artist: 'Hannah Park', length: 214),
     (title: 'Paper Planes', artist: 'The Lowlands', length: 187),
-    (title: 'Golden Hour', artist: 'Sability', length: 203),
-    (title: 'Night Drive', artist: 'Juno Reef', length: 231),
+    (title: 'Golden Hour', artist: 'David Morales', length: 203),
+    (title: 'Night Drive', artist: 'Claire Bennett', length: 231),
   ];
 
   var _current = 0;
@@ -837,7 +837,7 @@ class _InboxTileState extends State<InboxTile> {
           empty: Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              'Inbox zero. Everything is triaged.',
+              'Inbox zero. All caught up.',
               textAlign: TextAlign.center,
               style: text.muted.body,
             ),
@@ -1075,7 +1075,7 @@ class _PreferencesTileState extends State<PreferencesTile> {
     'ja': '日本語',
   };
 
-  static String _percent(double v) => '${(v * 100).round()} %';
+  static String _percent(double v) => '${(v * 100).round()}%';
 
   static String _qualityName(double v) => switch (v.round()) {
     1 => 'Draft',
@@ -1388,11 +1388,11 @@ class EditorTile extends StatefulWidget {
 class _EditorTileState extends State<EditorTile> {
   final _focus = FocusNode();
   final _note = _NoteController(const [
-    ('Ship the ', 0),
-    ('drawer', 1),
-    (' on ', 0),
+    ('Send the ', 0),
+    ('onboarding', 1),
+    (' notes before ', 0),
     ('Friday', 4),
-    ('. Tighten the exits ', 0),
+    ('. Review the timeline ', 0),
     ('first', 2),
     ('.', 0),
   ]);
@@ -1747,7 +1747,7 @@ class _ProjectsTileState extends State<ProjectsTile> {
         CoilCard(
           icon: const CatalogIcon(Glyph.lightbulb),
           title: const Text('Tip'),
-          description: const Text('Search finds any page: ⌘K or Ctrl K.'),
+          description: const Text('Search finds any page: ⌘K or Ctrl+K.'),
           onDismissed: () => setState(() => _tipShown = false),
         ),
       ],
