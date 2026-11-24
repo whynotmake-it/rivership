@@ -2,19 +2,20 @@
 
 [![Pub Version](https://img.shields.io/pub/v/rivership)](https://pub.dev/packages/rivership)
 [![Coverage](./coverage.svg)](./test/)
-[![lintervention_badge]][lintervention_link]
+[![lints by lintervention][lintervention_badge]][lintervention_link]
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
 Rivership is a set of opinionated tools that will get you shipping your Flutter app in no time if you are using [`riverpod`](https://pub.dev/packages/hooks_riverpod) and [`flutter_hooks`](https://pub.dev/packages/flutter_hooks).
 
-## Installation 💻
+## Installation
 
 ```sh
 flutter pub add rivership
 ```
 
-## What's included 📦
-Rivership includes a diverse set of hooks, type extensions, and utilities that will help you build your app faster and more efficiently. Everything is documented extensively, but here's a quick overview over the highlights:
+## What's included
+
+Rivership includes a diverse set of hooks, type extensions, and utilities that help you build your app faster. Everything is documented in code, and here is a quick overview of the highlights:
 
 ### Hooks
 
@@ -121,16 +122,18 @@ Widget build(BuildContext context, WidgetRef ref) {
 }
 ```
 
-> [!WARNING] Be mindful of rebuilds
-> Similar to hooks like `useAnimation`, this hook will trigger a rebuild on every frame while the page is being dragged or animating.
-> Make sure to call this from a widget that is cheap to rebuild, ideally a leaf of your widget tree.
+> [!WARNING]
+> **Be mindful of rebuilds**
+> Similar to hooks like `useAnimation`, this hook triggers a rebuild on every frame while the page is being dragged or animating.
+> Call it from a widget that is cheap to rebuild — ideally a leaf of your widget tree.
 
 ### Design Utilities
-Rivership includes a few helper tools for working with Colors and other UI properties.
+
+Rivership includes a few helper tools for working with colors and other UI properties.
 
 #### `SimpleWidgetStates`
 A subclass of `WidgetStateProperty` that purposefully trades flexibility for simplicity.
-Simply define states like this:
+Define states like this:
 
 ```dart
 return TextButton(
@@ -146,16 +149,7 @@ return TextButton(
 );
 ```
 
-The values you don't pass will fall back to those you did pass, so you can define only the states you need.
+The values you don't pass fall back to those you did pass, so you only need to define the states you care about.
 
----
-
-
-[dart_install_link]: https://dart.dev/get-dart
-[github_actions_link]: https://docs.github.com/en/actions/learn-github-actions
-[license_badge]: https://img.shields.io/badge/license-MIT-blue.svg
-[license_link]: https://opensource.org/licenses/MIT
-[mason_link]: https://github.com/felangel/mason
-[very_good_ventures_link]: https://verygood.ventures
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
 [lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40

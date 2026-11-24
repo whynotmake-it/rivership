@@ -223,7 +223,7 @@ a base and use integer tick generations to align slower rates. Setting
 In fixed-rate mode, the periodic timer does not compute elapsed time itself. Each timer tick schedules a frame callback through the parent `Ticker`, and the parent computes elapsed from Flutter's monotonic frame timestamp. This means:
 
 - **No mode-switch clock drift:** fixed and vsync modes use the same frame timestamp clock
-- **`TickerMode` works seamlessly:** wrapping a subtree in `TickerMode(enabled: false)` mutes `FixedTicker` the same way it mutes a normal `Ticker`. The timer stops, but elapsed time keeps advancing on the frame clock, so animations may jump ahead when re-enabled.
+- **`TickerMode` works as expected:** wrapping a subtree in `TickerMode(enabled: false)` mutes `FixedTicker` the same way it mutes a normal `Ticker`. The timer stops, but elapsed time keeps advancing on the frame clock, so animations may jump ahead when re-enabled.
 - **Tests follow Flutter frame semantics:** use `tester.pump()` to advance timers and deliver the scheduled frame callbacks
 
 ## Known limitations
