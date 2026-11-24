@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+
+import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons_300.dart';
 import 'package:lucide_icons_flutter/lucide_icons_400.dart';
+import 'package:motor/motor.dart';
 
 /// A Lucide glyph in two stroke weights: 1.5 at rest, 2 when a control
 /// emphasizes its icon (coil raises `IconTheme.weight` from 400 to 533).
@@ -207,4 +211,118 @@ class CatalogIcon extends StatelessWidget {
       semanticLabel: semanticLabel,
     );
   }
+}
+
+/// Lucide's heart, drawn rather than set from the font so it can fill:
+/// the outline at rest, and a fill that springs in from the center when
+/// [filled] turns on (and leaves the same way), with a small lift of the
+/// whole glyph on the way. It follows [IconTheme] for size, color and
+/// stroke weight like [CatalogIcon].
+class HeartGlyph extends StatelessWidget {
+  const HeartGlyph({required this.filled, super.key, this.semanticLabel});
+
+  final bool filled;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = IconTheme.of(context);
+    final size = icon.size ?? 16;
+    final color = icon.color ?? const Color(0xFF000000);
+    final emphasis = (icon.weight ?? 400) > 450;
+    final motion = CoilTheme.motionOf(context);
+    return Semantics(
+      label: semanticLabel,
+      excludeSemantics: semanticLabel == null,
+      child: SizedBox.square(
+        dimension: size,
+        child: SingleMotionBuilder(
+          value: filled ? 1 : 0,
+          motion: filled ? motion.gentle : motion.standardExit,
+          debugLabel: 'HeartGlyph',
+          builder: (context, t, _) => CustomPaint(
+            painter: _HeartPainter(
+              fill: t.clamp(0, 1.2),
+              color: color,
+              stroke: emphasis ? 2 : 1.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeartPainter extends CustomPainter {
+  const _HeartPainter({
+    required this.fill,
+    required this.color,
+    required this.stroke,
+  });
+
+  /// 0 empty to 1 full; the spring may overshoot a little.
+  final double fill;
+  final Color color;
+
+  /// In Lucide's 24-unit grid.
+  final double stroke;
+
+  // Lucide's heart, in its 24-unit grid.
+  static final _heart = Path()
+    ..moveTo(19, 14)
+    ..relativeCubicTo(1.49, -1.46, 3, -3.21, 3, -5.5)
+    ..arcToPoint(
+      const Offset(16.5, 3),
+      radius: const Radius.circular(5.5),
+      clockwise: false,
+    )
+    ..relativeCubicTo(-1.76, 0, -3, 0.5, -4.5, 2)
+    ..relativeCubicTo(-1.5, -1.5, -2.74, -2, -4.5, -2)
+    ..arcToPoint(
+      const Offset(2, 8.5),
+      radius: const Radius.circular(5.5),
+      clockwise: false,
+    )
+    ..relativeCubicTo(0, 2.3, 1.5, 4.05, 3, 5.5)
+    ..relativeLineTo(7, 7)
+    ..close();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final unit = size.width / 24;
+    // A lift that peaks half-way through filling and settles at 1.
+    final lift = 1 + 0.16 * math.sin(math.pi * fill.clamp(0, 1));
+    canvas
+      ..save()
+      ..translate(size.width / 2, size.height / 2)
+      ..scale(unit * lift)
+      ..translate(-12, -12);
+    if (fill > 0) {
+      canvas
+        ..save()
+        ..translate(12, 12)
+        ..scale(fill)
+        ..translate(-12, -12)
+        ..drawPath(
+          _heart,
+          Paint()..color = color.withValues(alpha: color.a * fill.clamp(0, 1)),
+        )
+        ..restore();
+    }
+    canvas
+      ..drawPath(
+        _heart,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round,
+      )
+      ..restore();
+  }
+
+  @override
+  bool shouldRepaint(_HeartPainter old) =>
+      old.fill != fill || old.color != color || old.stroke != stroke;
 }
