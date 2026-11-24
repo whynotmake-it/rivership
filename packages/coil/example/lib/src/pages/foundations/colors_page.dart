@@ -8,7 +8,9 @@ const colorsEntry = CatalogEntry(
   slug: 'colors',
   title: 'Colors',
   group: CatalogGroup.foundations,
-  summary: 'Surfaces, neutrals, state tints, brand and status, both themes.',
+  summary:
+      'The surface, neutral, state-tint and status colors, shown in both '
+      'themes.',
   page: ColorsPage.new,
 );
 
@@ -54,37 +56,41 @@ class ColorsPage extends StatelessWidget {
   Widget build(BuildContext context) => const CatalogPage(
     title: 'Colors',
     summary:
-        'Both themes side by side. Turn on high contrast in the settings to '
-        'see borders, accent and the focus ring strengthen.',
+        'Every token is shown in both themes side by side, and turning on '
+        'high contrast in the settings strengthens the borders, accent and '
+        'focus ring.',
     children: [
       _TokenSection(
         title: 'Surfaces',
         description:
-            'Level 1 is the page. Popovers and sheets sit 2 above what opened '
-            'them, dialogs 4.',
+            'Level 1 is the page, popovers and sheets sit two levels above '
+            'whatever opened them, and dialogs four.',
         tokens: _TokenGroup.surfaces,
       ),
       _TokenSection(
         title: 'Neutrals',
-        description: 'Text, quiet fills and hairlines.',
+        description: 'The colors for text, quiet fills and hairlines.',
         tokens: _TokenGroup.neutrals,
       ),
       _TokenSection(
         title: 'State tints',
         description:
-            'Hover is 4 %, pressed and selected 7 %. '
-            'Never derived from accent.',
+            'Hover sits at 4 % and pressed or selected at 7 %, and none of '
+            'them are derived from the accent color.',
         tokens: _TokenGroup.tints,
       ),
       _TokenSection(
         title: 'Brand and status',
-        description: 'Color is spent only on meaning.',
+        description:
+            'These colors carry meaning, so coil spends them only where the '
+            'meaning matters.',
         tokens: _TokenGroup.brand,
       ),
       DemoSection(
         title: 'Elevation',
         description:
-            'Surface N pairs with shadow N. Dark surfaces add an inset ring.',
+            'Each surface level pairs with the shadow of the same level, and '
+            'in dark mode the surfaces add an inset ring.',
         child: _Elevation(),
       ),
     ],

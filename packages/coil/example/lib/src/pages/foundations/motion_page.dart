@@ -1,7 +1,9 @@
 import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
+import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -9,16 +11,35 @@ const motionEntry = CatalogEntry(
   slug: 'motion',
   title: 'Motion',
   group: CatalogGroup.foundations,
-  summary: 'Trigger and compare quick, standard, gentle and fade.',
+  summary:
+      'Compare the quick, standard, gentle and fade springs, and the '
+      'frame rates they tick at.',
   page: MotionPage.new,
 );
 
+/// Overriding the motion tokens on a theme.
+const _tokenSnippet = '''
+CoilThemeData(
+  motion: CoilMotion(
+    standard: CupertinoMotion(
+      duration: Duration(milliseconds: 180),
+    ),
+  ),
+)''';
+
+/// Pinning a subtree's springs to a fixed frame rate.
+const _rateSnippet = '''
+TickerRateScope(
+  rate: TickerRate.fps(30),
+  child: const ActivityFeed(),
+)''';
+
 /// One motion token pair and how a lane shows it.
 enum _Lane {
-  quick('quick', 'Hover glide, press collapse, focus ring travel'),
-  standard('standard', 'Tab pill, switch thumb, merge/split, popovers'),
-  gentle('gentle', 'Sheets, dialogs, large surfaces. The only bounce'),
-  fade('fade', 'Opacity and color. Kept under reduced motion');
+  quick('quick', 'The hover highlight, a press and the focus ring'),
+  standard('standard', 'Tab pills, switch thumbs, merging rows and popovers'),
+  gentle('gentle', 'Sheets, dialogs and large surfaces, and the only bounce'),
+  fade('fade', 'Opacity and color, kept under reduced motion');
 
   const _Lane(this.label, this.use);
 
@@ -42,6 +63,14 @@ class MotionPage extends StatefulWidget {
 
 class _MotionPageState extends State<MotionPage> {
   var _atEnd = false;
+  var _ratesAtEnd = false;
+
+  static final _rates = <(String, TickerRate)>[
+    ('Display rate', const TickerRate.vsync()),
+    ('60 fps', TickerRate.fps(60)),
+    ('30 fps', TickerRate.fps(30)),
+    ('15 fps', TickerRate.fps(15)),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -50,15 +79,39 @@ class _MotionPageState extends State<MotionPage> {
     return CatalogPage(
       title: 'Motion',
       summary:
-          'Every token is a spring, exits included. Play runs the enter '
-          'springs, play again runs the exits. Tap mid-flight to see a '
-          'spring reverse with its velocity instead of restarting.',
+          'Every token is a spring, including its exit. Pressing play runs '
+          'the enter springs and pressing it again runs the exits, and '
+          'tapping one mid-flight makes it reverse from its current velocity '
+          'rather than restart.',
+      usage: _tokenSnippet,
+      notes: const [
+        CatalogNote(
+          'Motor',
+          "coil's motion runs on Motor 2.0, the package its springs come "
+              'from, so each token is a Motor CupertinoMotion you can reuse '
+              'directly.',
+        ),
+        CatalogNote(
+          'Motion',
+          "coil's springs follow the nearest TickerRateScope, so a fixed "
+              'rate saves frame work for low-priority motion. The frame-rate '
+              'setting in the preview settings applies one to everything.',
+        ),
+        CatalogNote(
+          'Accessibility',
+          'Reduced motion makes the spatial tokens instant and keeps the '
+              'fade, and slow motion in the preview settings stretches them '
+              'five times.',
+        ),
+      ],
       children: [
         DemoSection(
           title: 'Tokens side by side',
           description: reduced
-              ? 'Reduced motion is on: spatial tokens are instant, fade stays.'
-              : 'Slow motion in the settings stretches all of them 5×.',
+              ? 'Reduced motion is on, so the spatial tokens are instant and '
+                    'only the fade still plays.'
+              : 'Slow motion in the settings stretches all of them five '
+                    'times.',
           child: DemoColumn(
             children: [
               Align(
@@ -75,8 +128,39 @@ class _MotionPageState extends State<MotionPage> {
           ),
         ),
         DemoSection(
+          title: 'Frame rates',
+          description:
+              'The same spring ticked at four rates. A lower rate samples the '
+              'spring less often and does less frame work, and the motion '
+              'still takes just as long.',
+          child: DemoColumn(
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: CoilButton(
+                  leading: const CatalogIcon(Glyph.play),
+                  onPressed: () => setState(() => _ratesAtEnd = !_ratesAtEnd),
+                  child: Text(_ratesAtEnd ? 'Play back' : 'Play'),
+                ),
+              ),
+              for (final (label, rate) in _rates)
+                _RateTrack(
+                  label: label,
+                  rate: rate,
+                  motion: motion.gentle,
+                  atEnd: _ratesAtEnd,
+                ),
+              const SizedBox(height: 4),
+              const UsageSnippet(code: _rateSnippet),
+              const _MotorExampleLink(),
+            ],
+          ),
+        ),
+        DemoSection(
           title: 'Holds',
-          description: 'Durations next to the springs.',
+          description:
+              'The two timing tokens that hold a state for a moment, shown '
+              'with their durations.',
           child: DemoColumn(
             spacing: 8,
             children: [
@@ -94,6 +178,27 @@ class _MotionPageState extends State<MotionPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A ghost button to the Motor example, shown only when the catalog runs
+/// inside the aggregate app that can open it.
+class _MotorExampleLink extends StatelessWidget {
+  const _MotorExampleLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final open = CatalogHome.openPackageOf(context, 'motor');
+    if (open == null) return const SizedBox.shrink();
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: CoilButton(
+        variant: CoilButtonVariant.ghost,
+        trailing: const CatalogIcon(Glyph.arrowUpRight),
+        onPressed: open,
+        child: const Text('Open the Motor example'),
+      ),
     );
   }
 }
@@ -210,6 +315,75 @@ class _Hold extends StatelessWidget {
           TextSpan(text: use, style: text.muted.caption),
         ],
       ),
+    );
+  }
+}
+
+/// One spring on its own track, ticked at [rate] by a [TickerRateScope].
+class _RateTrack extends StatelessWidget {
+  const _RateTrack({
+    required this.label,
+    required this.rate,
+    required this.motion,
+    required this.atEnd,
+  });
+
+  final String label;
+  final TickerRate rate;
+  final Motion motion;
+  final bool atEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final dot = MediaQuery.textScalerOf(context).scale(20);
+    final text = CoilTheme.textOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: text.body.copyWith(fontWeight: text.emphasis),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: dot + 8,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: colors.muted,
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular((dot + 8) / 2),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: TickerRateScope(
+                rate: rate,
+                child: SingleMotionBuilder(
+                  value: atEnd ? 1 : 0,
+                  motion: motion,
+                  debugLabel: 'MotionPage.rate $label',
+                  builder: (context, t, child) => Align(
+                    alignment: AlignmentDirectional(-1 + 2 * t, 0),
+                    child: child,
+                  ),
+                  child: SizedBox.square(
+                    dimension: dot,
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: colors.foreground,
+                        shape: RoundedSuperellipseBorder(
+                          borderRadius: BorderRadius.circular(dot / 2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
