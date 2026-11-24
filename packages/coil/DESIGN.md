@@ -227,6 +227,7 @@ How lit controls look: `CoilThemeData.plasticity`, a `CoilPlasticity(amount:)` f
 - **One amount, three checkpoints:** 0 (`CoilPlasticity.flat`, the default) paints nothing and components keep their decorations untouched; 0.5 (`CoilPlasticity.subtle`) is the lighting as tuned; 1 has a slightly brighter top rim and edge and a slightly stronger sheen, with the same shadows and wells. Amounts in between interpolate. There are no other presets and no per-ingredient knobs.
 - **Light from above.** Each shape has a role (`CoilReliefRole`): `raised` and `filled` controls (buttons, thumbs, the select trigger, an on switch) catch light on the top edge and cast a shadow below; `recessed` wells (checkbox, radio, the off switch) and `field`s are shaded at the top and lit at the bottom. `quiet` buttons (tertiary, ghost) and slider `track`s are never lit. Containers (cards, popovers, dialogs) have no role and are never lit. Shadows paint outside the shape only, so a see-through fill never shows its own.
 - **Resolved per role and brightness** into a `CoilRelief` (a gradient edge, top and bottom rims, a sheen and the drops) with `CoilTheme.reliefOf(context, role)`, and painted by `CoilRelief.decorate` on a superellipse. One setting reads right on white, black, gray, red and blue fills.
+- **Saturated fills keep their color** (`CoilRelief.tintedOver`, used by the brand button): the white and black layers become the opaque colors they would blend to, at the same Oklab lightness but in the fill's chroma and hue, so a blue's highlights don't grey and an orange's don't drift toward yellow. Shades of yellow-to-lime hues lean up to 25° toward orange (`CoilColorMix.warmShadeHue`), amber instead of olive, and the drop shadow takes the fill's hue.
 - **What you press is lit evenly:** the primary (black or white fill), secondary (gray tint) and destructive (red tint) buttons read equally lit in light and dark. Raised controls are at 0.78 and filled ones at 0.8 of the recipe, wells at 0.35, fields at 0.2.
 - **States:** hover brightens the light, a press flattens it and moves the shade to the top edge (the control sinks in), half way in both cases, and a disabled control is flat.
 - **Selection indicators are never lit** (the tabs pill, toggle-group segments, merged selection blocks): they mark the current item, they aren't pressed.
@@ -592,6 +593,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   | Variant | Rest | Hover | Pressed / selected | Label |
   |---|---|---|---|---|
   | primary | `foreground` | 90 % Oklab toward background | 80 % | `background` |
+  | brand | `brandFill` | 0.03 lighter in Oklch, chroma kept | 0.03 darker | `onBrandFill` |
   | secondary | `tint` | `tintHover` | `tint` | foreground |
   | tertiary | clear, hairline | `hover` | `active` | foreground |
   | ghost | clear | `hover` | `active` | muted → foreground |
@@ -603,8 +605,9 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Disabled: 50 %.
 - **Motion:** fill and label colors on `fade`; press collapse on `quick` (release on `standard`); icon weight on `fade`; leading/loading swap with the blur-fade on `quick`. The width springs on `standard` (`standardExit` shrinking) when the label changes (cross-fading on `fade`) or a leading part, a trailing part or the loading spinner comes or goes, each with its gap and the padding it changes (`CoilButtonTrack.size`). A change of the room around the button relayouts at once.
 - **Keyboard:** Enter or Space activates.
-- **Do:** one primary per view; destructive actions as `destructive` with a confirm.
-- **Don't:** scale on press; ripple; a solid red button; two primaries side by side.
+- **Brand:** the primary in the theme's brand color, for the one main action of a branded view (an upgrade, a checkout). Its fill and label are `brandFill` / `onBrandFill` (§2.3), so the label holds 4.5 : 1 at rest, hovered and pressed under the accessible policy. It moves in Oklch rather than toward the background so it never greys or washes out. Lit, it's the `filled` role with every layer recolored in the brand's hue (§6.1). The focus ring stays `brand`; its 2 px gap keeps it apart from the fill.
+- **Do:** one primary or brand button per view; destructive actions as `destructive` with a confirm.
+- **Don't:** scale on press; ripple; a solid red button; two primaries side by side, or a primary beside a brand button.
 
 #### Badge
 
