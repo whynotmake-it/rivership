@@ -2,6 +2,8 @@
 
 A Flutter design system built on [Motor](https://pub.dev/packages/motor) motion. Coil works under any `WidgetsApp` with no Material or Cupertino app shell, and adapts to mouse, touch, keyboard, and screen readers on every platform.
 
+![Coil component bento: buttons, controls, tabs, forms, chat, and feedback](./doc/coil_hero_bento.png)
+
 - **Complete component set:** Controls, forms, menus, overlays, tables, sidebars, calendars, and chat interfaces.
 - **Physics-based transitions:** Every animation runs on a spring, so interrupting a transition carries its velocity instead of restarting.
 - **Consistent look, native feel:** One visual language across platforms, while respecting platform conventions for menus, scrolling, text selection, haptics, and back gestures.
@@ -45,6 +47,8 @@ void main() => runApp(
 
 ## Components
 
+![Coil interactive components in motion: tabs, switch, checkbox, slider, and accordion](./doc/coil_interactions_bento.gif)
+
 | Category | Components |
 |---|---|
 | Controls | `CoilButton`, `CoilBadge`, `CoilKbd`, `CoilCheckbox`, `CoilSwitch`, `CoilSlider`, `CoilRangeSlider`, `CoilInput` (and `.multiline`), `CoilInputGroup`, `CoilInputCopy`, `CoilSkeleton` |
@@ -56,6 +60,8 @@ void main() => runApp(
 The underlying building blocks — `CoilInteraction`, `CoilFocusRing`, `CoilPopover`, `CoilSheetRoute`, `CoilTextFieldCore`, and friends — are public in `package:coil/primitives.dart` so you can build custom components with the same behavior. Browse every component live in [`example/`](example) or [online](https://whynotmake-it.github.io/rivership/#/coil).
 
 ## Theming
+
+![Coil theming comparison: Light Rounded, Dark Pill, and Light Sharp](./doc/coil_theming_bento.png)
 
 Start with `CoilThemeData` before overriding individual widgets:
 
