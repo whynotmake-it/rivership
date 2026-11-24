@@ -399,7 +399,6 @@ void main() {
       await tester.pump(CoilInputCopy.resetDelay);
       await tester.pump(const Duration(milliseconds: 16));
       await tester.pump(const Duration(milliseconds: 16));
-      await tester.pump(const Duration(milliseconds: 16));
       final leaving = presence(tester);
       expect(leaving, inExclusiveRange(0.05, 0.95), reason: 'mid-exit');
       expect(copyGlyph, findsOneWidget, reason: 'the icon is entering');

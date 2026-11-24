@@ -252,9 +252,9 @@ How lit controls look: `CoilThemeData.plasticity`, a `CoilPlasticity(amount:)` f
 
 | Token | Default (`CupertinoMotion`) | Moves |
 |---|---|---|
-| `quick` / `quickExit` | 100 ms / 80 ms, no bounce | hover highlight glide, press collapse, focus-ring travel, chevron rotate, tooltip and chip enter, switch squish, popover open/close on the pointer tier |
-| `standard` / `standardExit` | 180 ms / 140 ms, no bounce | indicators that must land: tab pill, switch thumb, radio selected fill, merge/split, popover open/close on the touch tier, collapse heights, month snapping, drawer, slider thumb settle, a floating panel settling after a swipe, list reorder |
-| `gentle` / `gentleExit` | 340 ms, bounce 0.1 / 260 ms | large surfaces: sheets (`gentle` both ways), dialogs, floating panels (§13.6), full-screen pages, sidebar rail open/close, Banner appear |
+| `quick` / `quickExit` | 70 ms / 60 ms, no bounce | hover highlight glide, press collapse, focus-ring travel, chevron rotate, tooltip and chip enter, switch squish, popover open/close on the pointer tier |
+| `standard` / `standardExit` | 120 ms / 100 ms, no bounce | indicators that must land: tab pill, switch thumb, radio selected fill, merge/split, popover open/close on the touch tier, collapse heights, month snapping, drawer, slider thumb settle, a floating panel settling after a swipe, list reorder |
+| `gentle` / `gentleExit` | 220 ms, no bounce / 180 ms | large surfaces: sheets (`gentle` both ways), dialogs, floating panels (§13.6), full-screen pages, sidebar rail open/close, Banner appear |
 | `fade` / `fadeExit` | 120 ms / 90 ms, no bounce | opacity and color: label colors, tints, rings fading, check and dash drawing, scrollbar visibility |
 
 Two durations sit next to the springs:
@@ -271,7 +271,7 @@ Named holds that aren't tokens:
 
 ### 7.2 Rules
 
-- **The bigger the thing, the softer the spring.** Only `gentle` bounces. No component invents a duration.
+- **The bigger the thing, the softer the spring.** No component invents a duration.
 - **Exits are tighter springs, never curves**, so a reversed transition keeps its velocity. Enter always outlasts exit.
 - **Overlays enter with the blur-fade** (`CoilBlurFade`): opacity 0 → 1, blur 1.5 → 0 (`CoilBlurFade.defaultBlur`, a hint of softness rather than a smear), scale 0.96 → 1, plus a 4 px slide from the resolved side (popovers, tooltips). Exits run it in reverse on the exit token.
 - **Popovers follow the tier.** Pointer popovers open on `quick` and close on `quickExit`. Touch popovers are bigger and open under a finger, so they use `standard` / `standardExit`. The tier comes from `CoilTheme.tierOf`, not the platform.

@@ -11,9 +11,9 @@ import 'package:motor/motor.dart';
 ///
 /// | Token | Default | Moves |
 /// |---|---|---|
-/// | [quick] | 100 ms, no bounce | hover highlight, press, pointer popovers |
-/// | [standard] | 180 ms, no bounce | tab pill, switch thumb, merge/split, touch popovers |
-/// | [gentle] | 340 ms, bounce 0.1 | sheets, dialogs, panels |
+/// | [quick] | 70 ms, no bounce | hover highlight, press, pointer popovers |
+/// | [standard] | 120 ms, no bounce | tab pill, switch thumb, merge/split, touch popovers |
+/// | [gentle] | 220 ms, no bounce | sheets, dialogs, panels |
 /// | [fade] | 120 ms, no bounce | opacity and color |
 /// | [stagger] | 60 ms, a delay | siblings arriving in turn (`CoilReveal`) |
 ///
@@ -35,22 +35,19 @@ import 'package:motor/motor.dart';
 class CoilMotion with Diagnosticable {
   /// Creates motion tokens; unset tokens keep coil's defaults.
   const CoilMotion({
-    this.quick = const CupertinoMotion(duration: Duration(milliseconds: 100)),
+    this.quick = const CupertinoMotion(duration: Duration(milliseconds: 70)),
     this.quickExit = const CupertinoMotion(
-      duration: Duration(milliseconds: 80),
+      duration: Duration(milliseconds: 60),
     ),
     this.standard = const CupertinoMotion(
-      duration: Duration(milliseconds: 180),
+      duration: Duration(milliseconds: 120),
     ),
     this.standardExit = const CupertinoMotion(
-      duration: Duration(milliseconds: 140),
+      duration: Duration(milliseconds: 100),
     ),
-    this.gentle = const CupertinoMotion(
-      duration: Duration(milliseconds: 340),
-      bounce: 0.1,
-    ),
+    this.gentle = const CupertinoMotion(duration: Duration(milliseconds: 220)),
     this.gentleExit = const CupertinoMotion(
-      duration: Duration(milliseconds: 260),
+      duration: Duration(milliseconds: 180),
     ),
     this.fade = const CupertinoMotion(duration: Duration(milliseconds: 120)),
     this.fadeExit = const CupertinoMotion(

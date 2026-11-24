@@ -847,7 +847,7 @@ void main() {
         await tester.fling(find.byType(CoilSurface), fling, 1500);
         await tester.pump();
         var thrown = panel(tester);
-        for (var frame = 0; frame < 6; frame++) {
+        for (var frame = 0; frame < 4; frame++) {
           await tester.pump(const Duration(milliseconds: 16));
           final next = panel(tester);
           final moved = next.center - thrown.center;

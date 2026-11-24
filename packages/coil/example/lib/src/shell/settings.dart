@@ -221,8 +221,8 @@ enum CatalogSpacing {
 
 /// The feel of every spring.
 enum CatalogMotion {
-  standard('Standard'),
   snappy('Snappy'),
+  relaxed('Relaxed'),
   bouncy('Bouncy');
 
   const CatalogMotion(this.label);
@@ -231,14 +231,17 @@ enum CatalogMotion {
 
   /// The motion tokens for this feel.
   CoilMotion get motion => switch (this) {
-    standard => const CoilMotion(),
-    snappy => const CoilMotion(
-      quick: CupertinoMotion(duration: Duration(milliseconds: 70)),
-      quickExit: CupertinoMotion(duration: Duration(milliseconds: 60)),
-      standard: CupertinoMotion(duration: Duration(milliseconds: 120)),
-      standardExit: CupertinoMotion(duration: Duration(milliseconds: 100)),
-      gentle: CupertinoMotion(duration: Duration(milliseconds: 220)),
-      gentleExit: CupertinoMotion(duration: Duration(milliseconds: 180)),
+    snappy => const CoilMotion(),
+    relaxed => const CoilMotion(
+      quick: CupertinoMotion(duration: Duration(milliseconds: 100)),
+      quickExit: CupertinoMotion(duration: Duration(milliseconds: 80)),
+      standard: CupertinoMotion(duration: Duration(milliseconds: 180)),
+      standardExit: CupertinoMotion(duration: Duration(milliseconds: 140)),
+      gentle: CupertinoMotion(
+        duration: Duration(milliseconds: 340),
+        bounce: 0.1,
+      ),
+      gentleExit: CupertinoMotion(duration: Duration(milliseconds: 260)),
     ),
     bouncy => const CoilMotion(
       quick: CupertinoMotion(
@@ -458,7 +461,7 @@ class CatalogSettings extends ChangeNotifier {
   set spacing(CatalogSpacing value) => _set(() => _spacing = value);
 
   CatalogMotion get motion => _motion;
-  CatalogMotion _motion = CatalogMotion.standard;
+  CatalogMotion _motion = CatalogMotion.snappy;
   set motion(CatalogMotion value) => _set(() => _motion = value);
 
   /// A 2 px focus ring instead of 1 px. High contrast always uses 2.
