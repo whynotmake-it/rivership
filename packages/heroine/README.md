@@ -30,15 +30,6 @@ The queen of hero transitions. Flutter's most addictive interactions.
 
 **❗ In order to start using Heroine you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
 
-Add to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  heroine: ^latest_version
-```
-
-Or install via `flutter pub`:
-
 ```sh
 flutter pub add heroine
 ```
@@ -134,17 +125,18 @@ Heroine(
 
 ### Drag-to-Dismiss
 
-Enable drag-to-dismiss gestures with spring return animations, by wrapping your `Heroine` in a `DragDismissable` widget:
+Enable drag-to-dismiss gestures with spring return animations, by wrapping your `Heroine` in a `DragDismissable` widget. Dismissing pops the current route and respects its `popDisposition`:
 
 ```dart
 DragDismissable(
-  onDismiss: () => Navigator.pop(context),
   child: Heroine(
     tag: 'unique-tag',
     child: MyWidget(),
   ),
 )
 ```
+
+Use `DragDismissable.custom` to run your own `onDismiss` callback instead.
 
 ### Fullscreen Transitions (aka Container Transform)
 
@@ -155,7 +147,7 @@ This allows you to have fullscreen transitions, in multiple, nested routes like 
 
 [Fullscreen Example](doc/fullscreen.gif)
 
-Check out the fullscreen example code: [full_screen.dart](example/lib/full_screen.dart).
+Check out the fullscreen example code: [zoom_transition.dart](example/lib/zoom_transition.dart).
 
 ### Heroine-aware routes
 
@@ -279,7 +271,7 @@ For full control however, just pass in a custom `Motion` to the `Heroine` widget
 
 ### Route Integration
 - **`HeroinePageRouteMixin`** - Mixin for creating heroine-aware routes
-- **`HeroinePageRoute`** - Pre-built page route with heroine support
+- **`HeroinePageRoute`** - Interface of routes that report the progress and offset of a dismiss gesture
 
 ### Shuttle Builders
 - **`FadeShuttleBuilder`** - Cross-fade between heroes

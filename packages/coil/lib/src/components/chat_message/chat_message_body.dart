@@ -5,6 +5,7 @@ import 'package:coil/primitives.dart';
 import 'package:coil/src/components/chat_message/chat_message_action.dart';
 import 'package:coil/src/components/chat_message/chat_message_meta.dart';
 import 'package:coil/src/components/chat_message/chat_message_style.dart';
+import 'package:coil/tooltip.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -72,9 +73,8 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
     final gap = style.gap!;
     final hasMeta = widget.time != null || widget.actions.isNotEmpty;
     // Touch can't hover, and a screen reader can't act on hidden buttons.
-    final alwaysMeta =
-        widget.metrics.tier == CoilTier.touch ||
-        MediaQuery.accessibleNavigationOf(context);
+    final touch = widget.metrics.tier == CoilTier.touch;
+    final alwaysMeta = touch || MediaQuery.accessibleNavigationOf(context);
 
     Widget? body;
     if (widget.child case final child?) {
@@ -131,26 +131,25 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
         if (hasMeta)
           ListenableBuilder(
             listenable: _states,
-            builder: (context, _) => ChatMessageMeta(
-              visible:
-                  alwaysMeta ||
-                  _focusWithin ||
-                  _states.value.contains(WidgetState.hovered),
-              time: widget.time,
-              actions: [
-                for (final action in widget.actions)
-                  CoilButton.icon(
-                    onPressed: action.onPressed,
-                    icon: action.icon,
-                    semanticLabel: action.semanticLabel,
-                    variant: CoilButtonVariant.ghost,
-                    size: CoilSize.compact,
-                  ),
-              ],
-              showMotion: widget.metaIn,
-              hideMotion: widget.metaOut,
-              style: style,
-            ),
+            builder: (context, _) {
+              final meta = ChatMessageMeta(
+                visible:
+                    alwaysMeta ||
+                    _focusWithin ||
+                    _states.value.contains(WidgetState.hovered),
+                time: widget.time,
+                actions: [
+                  for (final action in widget.actions)
+                    _actionButton(action, tooltip: !touch),
+                ],
+                showMotion: widget.metaIn,
+                hideMotion: widget.metaOut,
+                style: style,
+              );
+              // One bubble that glides between the actions, as in a
+              // toolbar.
+              return touch ? meta : CoilTooltipGroup(child: meta);
+            },
           ),
       ],
     );
@@ -165,6 +164,27 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
         trackPress: false,
         child: column,
       ),
+    );
+  }
+
+  /// An action's icon-only button. Like an `IconButton`, it is named by
+  /// its icon's `semanticLabel`, which merges into the button: the empty
+  /// label adds nothing of its own. On pointer, its label shows in a
+  /// tooltip; screen readers already hear the icon's name, so the tooltip
+  /// adds none. Touch has no tooltip: the long-press menu shows the labels.
+  Widget _actionButton(CoilChatMessageAction action, {required bool tooltip}) {
+    final button = CoilButton.icon(
+      onPressed: action.onPressed,
+      icon: action.icon,
+      semanticLabel: '',
+      variant: CoilButtonVariant.ghost,
+      size: CoilSize.compact,
+    );
+    if (!tooltip) return button;
+    return CoilTooltip(
+      message: action.label,
+      semanticLabel: '',
+      child: button,
     );
   }
 }

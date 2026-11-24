@@ -105,7 +105,7 @@ class CoilChoiceGroup<T> extends StatefulWidget {
 }
 
 class _CoilChoiceGroupState<T> extends State<CoilChoiceGroup<T>>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   final _nodes = <FocusNode>[];
   final _states = <WidgetStatesController>[];
   int? _focusVisible;

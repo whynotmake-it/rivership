@@ -38,6 +38,7 @@ const _textFieldCore = 'src/primitives/text_field_core.dart';
 
 /// Packages besides Flutter and coil, and the layers that may import them.
 const _packageLayers = {
+  'fixed_ticker': {'foundation'},
   'motor': {'foundation', 'primitives', 'components'},
   'motor_widgets': {'primitives', 'components'},
   'stupid_simple_sheet': {'primitives'},
