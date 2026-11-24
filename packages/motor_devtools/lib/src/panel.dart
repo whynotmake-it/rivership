@@ -1026,8 +1026,8 @@ class _MutedNote extends StatelessWidget {
       padding: EdgeInsets.only(top: 12),
       child: Note(
         key: ValueKey('motor-devtools-muted-note'),
-        'Muted: its ticker is muted, so it does not move until it is '
-        'unmuted.',
+        'Its ticker is muted by a TickerMode ancestor, so it will not '
+        'advance until unmuted.',
       ),
     ),
   );

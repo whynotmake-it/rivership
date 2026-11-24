@@ -55,8 +55,8 @@ class MotorDevToolsController extends ChangeNotifier {
 /// )
 /// ```
 ///
-/// Controllers are listed by their `debugLabel`, which `TrackController`,
-/// `MotionController`, and motor's builder widgets accept.
+/// Controllers are listed by their `debugLabel`, which [TrackController],
+/// [MotionController], and motor's builder widgets accept.
 ///
 /// Three switches, from coarsest to finest:
 ///
@@ -94,22 +94,26 @@ class MotorDevTools extends StatefulWidget {
   /// The application subtree to inspect.
   final Widget child;
 
-  /// Whether the tools track controllers. Defaults to [kDebugMode]; pass
-  /// true to ship the tools in a release build. See [MotorDevTools] for how
-  /// this differs from [visible].
+  /// Whether the tools track controllers.
+  ///
+  /// Defaults to [kDebugMode]; pass true to ship the tools in a release build.
+  /// See [MotorDevTools] for how this differs from [visible].
   final bool enabled;
 
-  /// Whether the overlay is shown while [enabled]. Hiding it keeps tracking
-  /// and all changes; pausing and scrubbing resume, as when the panel is
-  /// minimized.
+  /// Whether the overlay is shown while [enabled].
+  ///
+  /// Hiding it keeps tracking and all changes; pausing and scrubbing resume,
+  /// as when the panel is minimized.
   final bool visible;
 
-  /// Opens and closes the panel from code. The tools create their own when
-  /// this is null.
+  /// Opens and closes the panel from code.
+  ///
+  /// The tools create their own when this is null.
   final MotorDevToolsController? controller;
 
-  /// Where the bubble starts. `x` picks the left or right edge; `y` sets the
-  /// height.
+  /// Where the bubble starts.
+  ///
+  /// `x` picks the left or right edge; `y` sets the height.
   final Alignment alignment;
 
   @override
