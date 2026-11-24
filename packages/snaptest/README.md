@@ -209,12 +209,9 @@ final recording = await snap.recordVideo(
     // backgroundColor: Color(0xFF000000), // behind the frame; null = transparent
                                          // on alpha codecs, opaque white else
     includeDeviceFrame: true,             // render inside the device frame
-    showPointers: true,                   // touch indicator at held pointers
+    overlay: SnapPointerOverlay.builder,  // animated pointer indicator
     minimumPointerDuration: Duration(milliseconds: 100), // show quick taps too
     renderShadows: true,                  // real shadows and Material elevation
-    // pointerIndicator: (canvas, center, scale) {
-    //   // fully custom indicator; scale = logical-to-image px
-    // },
     finalHold: Duration(milliseconds: 400), // linger on the last frame
   ),
 );
@@ -224,9 +221,9 @@ final recording = await snap.recordVideo(
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
 - **`VideoEncoding.vp9()`** produces a WebM with an alpha channel (`libvpx-vp9` + `yuva420p`, CRF default 32). H.264 is better for sharing everywhere; VP9 for compositing or posting to tools that preserve transparency.
 - **`backgroundColor`** defaults to transparent on alpha-capable encodings (VP9) and opaque white otherwise. Pass any color to flatten the video onto it.
-- **`showPointers`** draws a ring-and-dot touch indicator at each held pointer. By default, a quick tap between pumps paints no indicator. Set **`minimumPointerDuration`** (e.g. 100ms) to retain quick taps at their last position until that much simulated time has elapsed since pointer-down. This is overlay-only: it never changes input events, pumps, or test-clock timing, and never extends the video. Use `finalHold` explicitly for taps near the end; cancellation removes a pointer immediately.
+- **`overlay`** is a widget drawn over every captured frame; `null` (the default) draws none. Pass `SnapPointerOverlay.builder` to show pointers like a screen recorder's "show touches": a soft dot while a mouse or stylus hovers, a ring-and-dot that springs in on press and follows the pointer, and a fade-out on release. Pointers are only tracked while an overlay is set. See [Custom overlays](#custom-overlays).
+- **`minimumPointerDuration`** keeps a released pointer in the frame (as `SnapPointerPhase.released`) until that much simulated time has passed since pointer-down, so quick taps between pumps become visible. A mouse or stylus still over the view goes back to `hovering` afterwards. This is overlay-only: it never pumps, changes input events or the test clock, and never extends the video. Use `finalHold` explicitly for taps near the end; cancellation removes a pointer immediately.
 - **`renderShadows`** opts into real shadows and Material elevation while recording. Defaults to false, matching Flutter test rendering. It repaints an existing scene without pumping and restores the previous shadow state on stop, failure, truncation, or automatic teardown.
-- **`pointerIndicator`** replaces the indicator painting entirely: `(canvas, center, scale)` is called per held pointer per frame; `center` is in image coordinates, `scale` converts logical pixels to image pixels. Setting it also enables indicators.
 - **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
 
 ```dart
@@ -248,6 +245,39 @@ testWidgets(
 );
 ```
 
+### Custom overlays
+
+`overlay: (context, frame) => ...` draws any widget over every captured frame. To keep the built-in pointers, build `SnapPointerOverlay` yourself:
+
+```dart
+SnapVideoSettings(
+  minimumPointerDuration: const Duration(milliseconds: 300),
+  overlay: (context, frame) => Stack(
+    children: [
+      SnapPointerOverlay(pointers: frame.pointers),
+      Positioned(
+        right: 8,
+        bottom: 8,
+        child: Text('${frame.elapsed.inMilliseconds} ms'),
+      ),
+    ],
+  ),
+)
+```
+
+The `SnapVideoFrame` has:
+
+- **`pointers`**: each `SnapPointer` has an `id`, a `position` in logical view coordinates, a `kind`, a `phase` (`hovering`, `pressed` or `released`) and `sincePhase` (simulated time in that phase).
+- **`elapsed`**: simulated time since the video's first frame.
+- **`size`**: the logical size of the recorded view.
+
+The overlay is one persistent widget tree for the whole recording, so it can be stateful. Key per-pointer widgets by `id`.
+
+**Where it renders.** In its own widget tree (separate `BuildOwner` and `PipelineOwner`), sized to the recorded view at the same device pixel ratio, and composited over each captured frame. It never joins your app's tree: layout, hit testing, semantics and the app's frames are untouched. With `includeDeviceFrame` it is drawn over the app and clipped to the device screen, under the bezel. `backgroundColor` stays behind everything, and with `from` or `crop` you see the part over the captured region.
+
+> [!WARNING]
+> Overlay animations run on the test's clock: they only advance when the test pumps, and a repeating or never-ending overlay animation keeps `pumpAndSettle` from settling while the recording runs. Keep overlay animations finite (`SnapPointerOverlay`'s are). The overlay is disposed when the recording stops.
+
 ### Pitfalls
 
 Starting after `pumpWidget` captures the current scene immediately. Starting
@@ -260,7 +290,7 @@ Frames stream as straight-alpha RGBA directly to FFmpeg while the test runs:
 there is no per-frame PNG compression or disk spool. A bounded pipe applies
 backpressure rather than dropping frames. Rendering and video encoding still
 take time. Unchanged retained scenes can reuse their pixels without skipping timestamps;
-textures and custom pointer painters are always captured again.
+textures and overlays are always captured again.
 
 `maxSpoolBytes` limits the observed temporary **encoded video** size. Encoder buffering may delay detection.
 `encoderTimeout` bounds a streaming batch or finalization, not the entire test.
@@ -286,6 +316,52 @@ The recorder faithfully captures what the test paints — most "the video jumps"
 - **`dart:io` futures never complete in the test's zone.** Widget tests run in a `FakeAsync` zone; async IO must go through `binding.runAsync` (the encoder already does this internally). Prefer synchronous IO (`readAsBytesSync`, `writeAsBytesSync`) inside test bodies.
 
 - **Runaway pumps are capped.** `maxSimulatedDuration` (1 minute of simulated time by default), `maxCapturedFrames`, and `maxSpoolBytes` freeze capture and mark the artifact `.truncated` if a `pumpAndSettle` loop runs long. Raise them for long demos.
+
+### Recipe: demo videos
+
+Install the binding and load real fonts in `flutter_test_config.dart`:
+
+```dart
+// flutter_test_config.dart
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  SnaptestWidgetsFlutterBinding.ensureInitialized();
+  await loadFonts();
+  await testMain();
+}
+```
+
+Video recordings never block text, so text renders with whatever fonts are loaded. `SnaptestSettings(blockText: false)` only matters for screenshots taken in the same test (`snap()` uses `SnaptestSettings.rendered()` by default, which already shows real text).
+
+Drive a mouse with a `TestGesture`, pumping between steps so the overlay has frames to animate:
+
+```dart
+testWidgets('demo', (tester) async {
+  await tester.pumpWidget(const MyApp());
+  final recording = await snap.recordVideo(
+    name: 'demo',
+    settings: const SnapVideoSettings(
+      overlay: SnapPointerOverlay.builder,
+      minimumPointerDuration: Duration(milliseconds: 300),
+      timing: VideoTiming.smooth,
+      finalHold: Duration(seconds: 1),
+    ),
+  );
+
+  final target = tester.getCenter(find.text('Details'));
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await mouse.addPointer(location: target - const Offset(120, 0));
+  await tester.pump(const Duration(milliseconds: 200));
+  await mouse.moveTo(target);
+  await tester.pump(const Duration(milliseconds: 400));
+  await mouse.down(target);
+  await tester.pump(const Duration(milliseconds: 150));
+  await mouse.up();
+  await tester.pumpAndSettle();
+  await mouse.removePointer();
+
+  await recording.stop();
+});
+```
 
 ## All the Options
 
