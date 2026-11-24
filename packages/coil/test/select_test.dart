@@ -649,6 +649,15 @@ void main() {
       expect(rule(kind: CoilOverlayKind.dateTime), CoilPresentation.floating);
     });
 
+    test('anything with a search field is a floating panel', () {
+      expect(rule(search: true), CoilPresentation.floating);
+      expect(rule(search: true, items: 30), CoilPresentation.floating);
+      expect(
+        rule(kind: CoilOverlayKind.combobox),
+        CoilPresentation.floating,
+      );
+    });
+
     testWidgets('a short select on a phone is an anchored touch popover', (
       tester,
     ) async {
