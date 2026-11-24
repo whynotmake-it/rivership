@@ -156,18 +156,12 @@ CoilToggleGroup<Format>(
                           semanticLabel: _shape == _Shape.icon
                               ? channel.label
                               : null,
-                          label: switch (_shape) {
-                            _Shape.label => Text(channel.label),
-                            _Shape.icon => CatalogIcon(channel.glyph),
-                            _Shape.both => Row(
-                              mainAxisSize: MainAxisSize.min,
-                              spacing: CoilTheme.metricsOf(context).gap,
-                              children: [
-                                CatalogIcon(channel.glyph),
-                                Text(channel.label),
-                              ],
-                            ),
-                          },
+                          icon: _shape == _Shape.both
+                              ? CatalogIcon(channel.glyph)
+                              : null,
+                          label: _shape == _Shape.icon
+                              ? CatalogIcon(channel.glyph)
+                              : Text(channel.label),
                         ),
                     ],
                   ),
@@ -184,14 +178,11 @@ CoilOption(
   semanticLabel: 'Email',
 )
 
-// An icon beside its label: a label is any widget.
+// An icon beside its label: the icon leads, in the label's color.
 CoilOption(
   value: Channel.email,
-  label: Row(
-    mainAxisSize: MainAxisSize.min,
-    spacing: 8,
-    children: [Icon(LucideIcons.mail), Text('Email')],
-  ),
+  icon: Icon(LucideIcons.mail),
+  label: Text('Email'),
 )''',
             ),
           ],
