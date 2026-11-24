@@ -56,6 +56,7 @@ class CoilColors with Diagnosticable {
     required this.shadowColor,
     required this.scrim,
     this.borderAlpha = 0.12,
+    this.brandFillPolicy = CoilBrandFill.accessible,
   });
 
   /// A full palette from a [brand] color and a neutral tone, for
@@ -137,6 +138,7 @@ class CoilColors with Diagnosticable {
       brand: brand,
       brandFill: tones.fill,
       onBrandFill: tones.label,
+      brandFillPolicy: brandFill,
       overlay: neutral(base.overlay),
       hover: neutral(base.hover),
       active: neutral(base.active),
@@ -287,6 +289,11 @@ class CoilColors with Diagnosticable {
   /// The label and icon color on [brandFill]: white or near-black.
   final Color onBrandFill;
 
+  /// How [brandFill] and [onBrandFill] derive from [brand]: what
+  /// [CoilColors.fromSeed] was given, and what [copyWith] uses when it
+  /// derives them again for a new brand.
+  final CoilBrandFill brandFillPolicy;
+
   /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
   final double borderAlpha;
 
@@ -357,13 +364,15 @@ class CoilColors with Diagnosticable {
       shadowColor: c(a.shadowColor, b.shadowColor),
       scrim: c(a.scrim, b.scrim),
       borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
+      brandFillPolicy: t < 0.5 ? a.brandFillPolicy : b.brandFillPolicy,
     );
   }
 
   /// Returns a copy with the given tokens replaced. Change the brand color
   /// with `copyWith(brand: …)`; focus rings follow it, and [brandFill] and
-  /// [onBrandFill] are derived again ([CoilBrandFill.accessible]) unless
-  /// you pass them too.
+  /// [onBrandFill] are derived again by [brandFillPolicy] (the one given
+  /// here, or this palette's) unless you pass them too. A new policy alone
+  /// derives them again as well.
   CoilColors copyWith({
     Brightness? brightness,
     List<Color>? surfaces,
@@ -391,15 +400,19 @@ class CoilColors with Diagnosticable {
     Color? shadowColor,
     Color? scrim,
     double? borderAlpha,
+    CoilBrandFill? brandFillPolicy,
   }) {
     final newBrightness = brightness ?? this.brightness;
     final newBrand = brand ?? this.brand;
-    // A new brand (or side) gets its own fill unless one is given.
+    final newPolicy = brandFillPolicy ?? this.brandFillPolicy;
+    // A new brand, side or policy gets its own fill unless one is given.
     final derive =
         (brandFill == null || onBrandFill == null) &&
-        (newBrand != this.brand || newBrightness != this.brightness);
+        (newBrand != this.brand ||
+            newBrightness != this.brightness ||
+            newPolicy != this.brandFillPolicy);
     final tones = derive
-        ? brandTones(newBrand, newBrightness, CoilBrandFill.accessible)
+        ? brandTones(newBrand, newBrightness, newPolicy)
         : null;
     return CoilColors(
       brightness: newBrightness,
@@ -428,6 +441,7 @@ class CoilColors with Diagnosticable {
       shadowColor: shadowColor ?? this.shadowColor,
       scrim: scrim ?? this.scrim,
       borderAlpha: borderAlpha ?? this.borderAlpha,
+      brandFillPolicy: newPolicy,
     );
   }
 
@@ -573,7 +587,8 @@ class CoilColors with Diagnosticable {
   /// theme's high contrast also strengthens the focus ring.
   ///
   /// [brandFill] and [onBrandFill] take the [CoilBrandFill.accessible]
-  /// values, whatever the theme chose; [brand] itself is kept.
+  /// values, whatever the theme chose, and [brandFillPolicy] says so;
+  /// [brand] itself is kept.
   CoilColors highContrast() {
     final tones = brandTones(brand, brightness, CoilBrandFill.accessible);
     return copyWith(
@@ -581,6 +596,7 @@ class CoilColors with Diagnosticable {
       borderAlpha: 0.4,
       brandFill: tones.fill,
       onBrandFill: tones.label,
+      brandFillPolicy: CoilBrandFill.accessible,
     );
   }
 
@@ -612,7 +628,8 @@ class CoilColors with Diagnosticable {
       other.redLabel == redLabel &&
       other.shadowColor == shadowColor &&
       other.scrim == scrim &&
-      other.borderAlpha == borderAlpha;
+      other.borderAlpha == borderAlpha &&
+      other.brandFillPolicy == brandFillPolicy;
 
   @override
   int get hashCode => Object.hashAll([
@@ -641,6 +658,8 @@ class CoilColors with Diagnosticable {
     redLabel,
     shadowColor,
     scrim,
+    borderAlpha,
+    brandFillPolicy,
   ]);
 
   @override
@@ -652,6 +671,13 @@ class CoilColors with Diagnosticable {
       ..add(ColorProperty('background', background))
       ..add(ColorProperty('brand', brand))
       ..add(ColorProperty('brandFill', brandFill))
-      ..add(ColorProperty('onBrandFill', onBrandFill));
+      ..add(ColorProperty('onBrandFill', onBrandFill))
+      ..add(
+        EnumProperty(
+          'brandFillPolicy',
+          brandFillPolicy,
+          defaultValue: CoilBrandFill.accessible,
+        ),
+      );
   }
 }
