@@ -187,6 +187,8 @@ Differences from Flutter's `Draggable`:
 
 ### Reordering
 
+![MotionReorderable and MotionDraggable with spring-animated gaps and landing](./doc/drag_and_drop.gif)
+
 `MotionReorderable` tracks drags over its child and tells your builder where the drop would land (`drop.after` and `drop.before`). It doesn't impose a layout or wrap your items, so you decide whether to open a gap or draw an insertion line:
 
 ```dart
