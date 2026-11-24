@@ -13,7 +13,7 @@ Snaptest is simple: call `snap()` in any widget test to save a screenshot of wha
 ## Installation
 
 ```sh
-dart pub add dev:snaptest
+flutter pub add dev:snaptest
 ```
 
 ## The Basics
@@ -38,7 +38,7 @@ The screenshot gets saved as a PNG file in `.snaptest/` using your test name. Gr
 
 ### Set up font loading
 
-Snaptest blocks text by default, replacing characters with colored rectangles for cross-platform consistency. However, the **layout** of text still depends on which fonts are loaded. To avoid golden churn when fonts change between environments, load fonts upfront in your `flutter_test_config.dart`:
+Goldens block text by default, replacing characters with colored rectangles for cross-platform consistency. However, the **layout** of text still depends on which fonts are loaded. To avoid golden churn when fonts change between environments, load fonts upfront in your `flutter_test_config.dart`:
 
 ```dart
 // flutter_test_config.dart
@@ -78,7 +78,7 @@ cannot be unloaded, and later calls do not change the initial Cupertino config.
 
 ## Settings
 
-By default, `snap()` uses `SnaptestSettings.rendered()` which produces beautiful screenshots with real text, images, shadows, and device frames. Perfect for debugging and documentation.
+By default, `snap()` uses `SnaptestSettings.rendered()` which produces beautiful screenshots with real text, shadows, and device frames. Perfect for debugging and documentation.
 
 For simpler, more deterministic screenshots (e.g. for faster tests or when you don't need visual fidelity), use `SnaptestSettings()`:
 
@@ -86,7 +86,7 @@ For simpler, more deterministic screenshots (e.g. for faster tests or when you d
 await snap(settings: const SnaptestSettings());
 ```
 
-This blocks text (colored rectangles), disables images, shadows, and device frames.
+This blocks text (colored rectangles) and disables shadows and device frames.
 
 ## Golden File Testing
 
@@ -120,7 +120,7 @@ testWidgets('Golden only', (tester) async {
 
 ### `snap.andGolden()` — visual debugging + golden comparison
 
-Takes both a visual debugging screenshot (saved to `.snaptest/`) and a golden comparison screenshot. Returns the saved file.
+Takes both a visual debugging screenshot (saved to `.snaptest/`) and a golden comparison screenshot. Returns the saved snapshot files and the golden files as a record.
 
 ```dart
 testWidgets('Both snap and golden', (tester) async {
@@ -258,19 +258,13 @@ any scene is painted fails with a no-frames error instead of encoding a placehol
 
 Frames stream as straight-alpha RGBA directly to FFmpeg while the test runs:
 there is no per-frame PNG compression or disk spool. A bounded pipe applies
-backpressure rather than dropping frames. Resolution, output FPS, and codec
-quality settings are unchanged; rendering and video encoding still take time.
-Unchanged retained scenes can reuse their pixels without skipping timestamps;
+backpressure rather than dropping frames. Rendering and video encoding still
+take time. Unchanged retained scenes can reuse their pixels without skipping timestamps;
 textures and custom pointer painters are always captured again.
 
-`maxSpoolBytes` now limits the observed temporary **encoded video** size
-(the legacy name is retained). Encoder buffering may delay detection.
+`maxSpoolBytes` limits the observed temporary **encoded video** size. Encoder buffering may delay detection.
 `encoderTimeout` bounds a streaming batch or finalization, not the entire test.
 Failures retain timing metadata and any partial video, not individual PNGs.
-
-For a repeatable end-to-end benchmark with real gestures and device frames,
-run `time fvm flutter test test/video_test.dart --plain-name 'demo video'`
-from the snaptest package. Compare on the same machine and Flutter version.
 
 The recorder faithfully captures what the test paints — most "the video jumps" issues are test-scripting artifacts, not recording bugs:
 
@@ -499,14 +493,13 @@ await snap.andGolden(
 
 ### `SnaptestSettings` options:
 - **`blockText`**: Replace text with colored rectangles for consistency (default: `true`)
-- **`renderImages`**: Render actual images (default: `false`)
 - **`renderShadows`**: Render shadows and elevation effects (default: `false`)
 - **`includeDeviceFrame`**: Include device frame around content (default: `false`)
 - **`pathPrefix`**: Directory where screenshots are saved (default: `'.snaptest/'`)
 
 ### Convenience constructors:
-- **`SnaptestSettings.rendered()`**: The default — actual text, images, shadows, and device frames
-- **`SnaptestSettings()`**: Simplified — blocked text, no images/shadows/frames
+- **`SnaptestSettings.rendered()`**: The default — actual text, shadows, and device frames
+- **`SnaptestSettings()`**: Simplified — blocked text, no shadows/frames
 
 ## Golden Tools
 

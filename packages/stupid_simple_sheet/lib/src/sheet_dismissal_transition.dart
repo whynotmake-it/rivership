@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:stupid_simple_sheet/src/dismissal_mode.dart';
 import 'package:stupid_simple_sheet/src/shrink_transition.dart';
@@ -31,15 +32,29 @@ class SheetDismissalTransition extends StatelessWidget {
   /// Returns the reference height for the given [dismissalMode], which is
   /// used to normalize drag deltas consistently regardless of the actual
   /// child's size.
+  ///
+  /// In [DismissalMode.slide] mode this is the height of the box the
+  /// transition actually moves, so that a drag moves the sheet by the same
+  /// distance as the pointer, even when [context] belongs to content that is
+  /// shorter than the moved box. Without a transition above [context], it
+  /// falls back to the height of [context] itself.
   static double? referenceHeightOf(
     BuildContext context,
     DismissalMode dismissalMode,
   ) {
     return switch (dismissalMode) {
       DismissalMode.shrink => ShrinkTransition.referenceHeightOf(context),
-      DismissalMode.slide =>
-        (context.size ?? MediaQuery.sizeOf(context)).height,
+      DismissalMode.slide => _slideReferenceHeightOf(context),
     };
+  }
+
+  static double _slideReferenceHeightOf(BuildContext context) {
+    final renderObject =
+        context.findAncestorRenderObjectOfType<_RenderSlideTranslation>();
+    if (renderObject != null && renderObject.hasSize) {
+      return renderObject.size.height;
+    }
+    return (context.size ?? MediaQuery.sizeOf(context)).height;
   }
 
   /// The animation driving the transition.
@@ -61,7 +76,7 @@ class SheetDismissalTransition extends StatelessWidget {
       builder: (context, _) {
         final value = animation.value;
         return switch (dismissalMode) {
-          DismissalMode.slide => FractionalTranslation(
+          DismissalMode.slide => _SlideTranslation(
               translation: Offset(0, 1 - value),
               child: child,
             ),
@@ -73,4 +88,25 @@ class SheetDismissalTransition extends StatelessWidget {
       },
     );
   }
+}
+
+/// A [FractionalTranslation] whose render object can be found by descendants
+/// to learn the height of the box that is being moved.
+class _SlideTranslation extends FractionalTranslation {
+  const _SlideTranslation({required super.translation, super.child});
+
+  @override
+  RenderFractionalTranslation createRenderObject(BuildContext context) {
+    return _RenderSlideTranslation(
+      translation: translation,
+      transformHitTests: transformHitTests,
+    );
+  }
+}
+
+class _RenderSlideTranslation extends RenderFractionalTranslation {
+  _RenderSlideTranslation({
+    required super.translation,
+    required super.transformHitTests,
+  });
 }

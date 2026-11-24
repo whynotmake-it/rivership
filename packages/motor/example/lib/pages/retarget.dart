@@ -1,8 +1,11 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:math' as math;
+
+import 'package:coil/coil.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
-import 'package:motor_example/widgets/controls.dart';
 import 'package:motor_example/widgets/style.dart';
 
 /// Interrupting a spring keeps its velocity; interrupting a curve doesn't.
@@ -13,318 +16,349 @@ class RetargetPage extends StatefulWidget {
   State<RetargetPage> createState() => _RetargetPageState();
 }
 
-const _tabs = ['Day', 'Week', 'Month', 'Year'];
-const _stats = ['8,204', '61,930', '248k', '3.1M'];
 const _spring = Motion.cupertino(
   duration: Duration(milliseconds: 520),
   bounce: .12,
 );
 const _curve = Motion.curved(Duration(milliseconds: 520), Curves.easeInOut);
+const _dot = 14.0;
+const _trailWindow = Duration(milliseconds: 1200);
+
+class _Sample {
+  const _Sample(this.time, this.position);
+
+  final Duration time;
+  final Offset position;
+}
 
 class _RetargetPageState extends State<RetargetPage>
-    with SingleTickerProviderStateMixin {
-  late final _indicator = SingleMotionController(
+    with TickerProviderStateMixin {
+  late final _springDot = MotionController<Offset>(
     motion: _spring,
+    converter: .offset,
     vsync: this,
-    debugLabel: 'Tab indicator',
-  )..addListener(_record);
-
-  final _clock = Stopwatch()..start();
-  final _trace = <Offset>[];
-  final _code = ValueNotifier(
-    '// Tap the tabs quickly.\nindicator.animateTo(1);',
+    initialValue: Offset.zero,
+    debugLabel: 'Spring dot',
   );
-  var _tab = 0;
-  var _useSpring = true;
+  late final _curveDot = MotionController<Offset>(
+    motion: _curve,
+    converter: .offset,
+    vsync: this,
+    initialValue: Offset.zero,
+    debugLabel: 'Curve dot',
+  );
 
-  @override
-  void initState() {
-    super.initState();
-    _record();
-  }
+  late final Ticker _ticker = createTicker(_tick);
+  final _springTrail = <_Sample>[];
+  final _curveTrail = <_Sample>[];
+  final _frame = ValueNotifier(0);
+  final _speeds = ValueNotifier((spring: 0, curve: 0));
+  final _code = ValueNotifier(
+    '// Click the stage, then click again before the dots arrive.\n'
+    'spring.animateTo(target);\n'
+    'curve.animateTo(target);',
+  );
+
+  Size? _size;
+  Offset? _target;
+  var _now = Duration.zero;
+  var _placed = false;
 
   @override
   void dispose() {
-    _indicator.dispose();
+    _ticker.dispose();
+    _springDot.dispose();
+    _curveDot.dispose();
+    _frame.dispose();
+    _speeds.dispose();
     _code.dispose();
     super.dispose();
   }
 
+  Offset _clamp(Offset point, Size size) => Offset(
+    point.dx.clamp(_dot / 2, math.max(_dot / 2, size.width - _dot / 2)),
+    point.dy.clamp(_dot / 2, math.max(_dot / 2, size.height - _dot / 2)),
+  );
+
+  /// Places the dots when the stage first has a size, and keeps them inside
+  /// it when it changes.
+  void _layout(Size size) {
+    final previous = _size;
+    if (previous == size) return;
+    _size = size;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (previous == null) {
+        _springDot.value = size.center(Offset.zero);
+        _curveDot.value = size.center(Offset.zero);
+        _record();
+        setState(() => _placed = true);
+        return;
+      }
+      final target = _target;
+      if (target != null) _target = _clamp(target, size);
+      for (final dot in [_springDot, _curveDot]) {
+        final moving = dot.isAnimating;
+        dot.value = _clamp(dot.value, size);
+        if (moving && _target != null) dot.animateTo(_target!);
+      }
+      setState(() {});
+    });
+  }
+
+  void _tap(Offset point) {
+    final size = _size;
+    if (size == null) return;
+    final target = _clamp(point, size);
+    final speed = _springDot.isAnimating ? _springDot.velocity.distance : 0.0;
+    final moving = speed > 1;
+    final at = 'Offset(${target.dx.round()}, ${target.dy.round()})';
+    _code.value = moving
+        ? '// Moving at ${speed.round()} px/s. The spring keeps that speed;\n'
+              '// the curve starts again from rest.\n'
+              'spring.animateTo($at);\n'
+              'curve.animateTo($at);'
+        : 'spring.animateTo($at);\n'
+              'curve.animateTo($at);';
+    setState(() => _target = target);
+    _springDot.animateTo(target);
+    _curveDot.animateTo(target);
+    if (!_ticker.isActive) _ticker.start();
+  }
+
   void _record() {
-    final now = _clock.elapsedMilliseconds.toDouble();
-    _trace.add(Offset(now, _indicator.value));
-    // Keep one sample before the window so the line reaches its left edge.
-    while (_trace.length > 1 && _trace[1].dx < now - _traceWindow) {
-      _trace.removeAt(0);
-    }
+    _springTrail.add(_Sample(_now, _springDot.value));
+    _curveTrail.add(_Sample(_now, _curveDot.value));
   }
 
-  void _select(int tab) {
-    setState(() => _tab = tab);
+  void _tick(Duration elapsed) {
+    _now = elapsed;
     _record();
-    final speed = _indicator.velocity.abs();
-    _code.value = speed < .05
-        ? '// At rest.\nindicator.animateTo($tab);'
-        : _useSpring
-        ? '// Moving at ${speed.toStringAsFixed(1)} tabs/s. The spring keeps '
-              'that speed.\nindicator.animateTo($tab);'
-        : '// Moving at ${speed.toStringAsFixed(1)} tabs/s. The curve starts '
-              'again from rest.\nindicator.animateTo($tab);';
-    _indicator.animateTo(tab.toDouble());
-  }
-
-  void _setSpring(bool spring) {
-    setState(() => _useSpring = spring);
-    _code.value = spring
-        ? 'indicator.motion = .cupertino(duration: Duration(milliseconds: 520), bounce: .12);'
-        : 'indicator.motion = .curved(Duration(milliseconds: 520), Curves.easeInOut);';
-    _indicator.motion = spring ? _spring : _curve;
+    for (final trail in [_springTrail, _curveTrail]) {
+      trail.removeWhere((sample) => _now - sample.time > _trailWindow);
+    }
+    _speeds.value = (
+      spring: _springDot.isAnimating ? _springDot.velocity.distance.round() : 0,
+      curve: _curveDot.isAnimating ? _curveDot.velocity.distance.round() : 0,
+    );
+    _frame.value++;
+    final moving = _springDot.isAnimating || _curveDot.isAnimating;
+    // Nothing is moving and the trails have faded: stop asking for frames.
+    if (!moving && _springTrail.length <= 1 && _curveTrail.length <= 1) {
+      _ticker.stop();
+      _springTrail.clear();
+      _curveTrail.clear();
+      _frame.value++;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final readout = mono(
+      11,
+      color: colors.mutedForeground,
+    ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     return ChapterPage(
       chapter: chapterNamed('Retarget'),
       lead:
-          'Tap the tabs quickly, before the indicator settles. Whatever the '
-          'motion, a new target starts from where the indicator is, so '
-          'nothing jumps. A spring also keeps its speed and bends toward the '
-          'new tab, while a curve starts its easing again, which shows up as '
-          'corners in the trace.',
+          'Click anywhere on the stage, then click somewhere else before the '
+          'dots arrive. Both start from where they are, so nothing jumps. The '
+          'spring keeps its speed and bends toward the new target; the curve '
+          'starts its easing again, which shows as a corner in its trail.',
       code: _code,
-      stage: AnimatedBuilder(
-        animation: _indicator,
-        builder: (context, _) => _Stage(
-          position: _indicator.value,
-          velocity: _indicator.velocity,
-          tab: _tab,
-          trace: _trace,
-          now: _clock.elapsedMilliseconds.toDouble(),
-          useSpring: _useSpring,
-          onSelect: _select,
-          onSpring: _setSpring,
-        ),
+      stageHeight: 400,
+      stage: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.biggest;
+          _layout(size);
+          final ready = _placed;
+          return GestureDetector(
+            key: const ValueKey('retarget stage'),
+            behavior: .opaque,
+            onTapDown: (details) => _tap(details.localPosition),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _TrailPainter(
+                      repaint: _frame,
+                      now: () => _now,
+                      springTrail: _springTrail,
+                      curveTrail: _curveTrail,
+                      springColor: colors.brand,
+                      curveColor: colors.mutedForeground,
+                    ),
+                  ),
+                ),
+                if (_target case final target?)
+                  Positioned(
+                    left: target.dx - 5,
+                    top: target.dy - 5,
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        shape: CircleBorder(
+                          side: BorderSide(
+                            color: colors.foreground.withValues(alpha: .4),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      child: const SizedBox.square(dimension: 10),
+                    ),
+                  ),
+                if (ready) ...[
+                  _DotAt(
+                    key: const ValueKey('curve dot'),
+                    controller: _curveDot,
+                    color: colors.mutedForeground,
+                  ),
+                  _DotAt(
+                    key: const ValueKey('spring dot'),
+                    controller: _springDot,
+                    color: colors.brand,
+                  ),
+                ],
+                PositionedDirectional(
+                  start: 16,
+                  top: 16,
+                  child: Row(
+                    mainAxisSize: .min,
+                    children: [
+                      _LegendEntry(color: colors.brand, label: 'Spring'),
+                      const SizedBox(width: 16),
+                      _LegendEntry(
+                        color: colors.mutedForeground,
+                        label: 'Curve',
+                      ),
+                    ],
+                  ),
+                ),
+                PositionedDirectional(
+                  start: 16,
+                  bottom: 16,
+                  child: ValueListenableBuilder(
+                    valueListenable: _speeds,
+                    builder: (context, speeds, _) => Row(
+                      mainAxisSize: .min,
+                      children: [
+                        SizedBox(
+                          width: 128,
+                          child: Text(
+                            'Spring ${speeds.spring} px/s',
+                            style: readout,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 128,
+                          child: Text(
+                            'Curve ${speeds.curve} px/s',
+                            style: readout,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-const _traceWindow = 1800.0;
+class _DotAt extends StatelessWidget {
+  const _DotAt({required this.controller, required this.color, super.key});
 
-class _Stage extends StatelessWidget {
-  const _Stage({
-    required this.position,
-    required this.velocity,
-    required this.tab,
-    required this.trace,
-    required this.now,
-    required this.useSpring,
-    required this.onSelect,
-    required this.onSpring,
-  });
-
-  final double position;
-  final double velocity;
-  final int tab;
-  final List<Offset> trace;
-  final double now;
-  final bool useSpring;
-  final ValueChanged<int> onSelect;
-  final ValueChanged<bool> onSpring;
+  final MotionController<Offset> controller;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final barWidth = (width - 48).clamp(0.0, 340.0);
-        final tabWidth = ((barWidth - 8) / _tabs.length).clamp(
-          0.0,
-          double.infinity,
-        );
-        final speed = velocity * tabWidth;
-        final stretch = (speed.abs() * .045).clamp(0.0, tabWidth * .6);
-        return Column(
-          children: [
-            const SizedBox(height: 28),
-            // The segmented control.
-            Container(
-              width: barWidth,
-              height: 40,
-              padding: const .all(3),
-              decoration: BoxDecoration(
-                color: p.control,
-                borderRadius: .circular(radius),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: position * tabWidth - stretch / 2,
-                    top: 0,
-                    bottom: 0,
-                    width: tabWidth + stretch,
-                    child: Blur(
-                      sigma: motionBlur(Offset(speed, 0)),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: p.surface,
-                          borderRadius: .circular(radius),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      for (final (index, label) in _tabs.indexed)
-                        Expanded(
-                          child: GestureDetector(
-                            behavior: .opaque,
-                            onTapDown: (_) => onSelect(index),
-                            child: Center(
-                              child: Text(
-                                label.toUpperCase(),
-                                style: mono(
-                                  11.5,
-                                  weight: 500,
-                                  spacing: .5,
-                                  color: index == tab ? p.text : p.textTertiary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // The pages, driven by the same value.
-            Expanded(
-              child: ClipRect(
-                child: Stack(
-                  children: [
-                    for (final (index, stat) in _stats.indexed)
-                      Positioned(
-                        left: (index - position) * width,
-                        width: width,
-                        top: 0,
-                        bottom: 0,
-                        child: Opacity(
-                          opacity: (1 - (index - position).abs()).clamp(
-                            0.0,
-                            1.0,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: .center,
-                            children: [
-                              Text(
-                                stat,
-                                style: p.display.copyWith(fontSize: 60),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'steps this ${_tabs[index].toLowerCase()}',
-                                style: p.caption,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            // Position over time.
-            SizedBox(
-              height: 110,
-              width: double.infinity,
-              child: CustomPaint(
-                painter: _TracePainter(
-                  trace: trace,
-                  now: now,
-                  guide: p.border,
-                  line: p.accent,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const .fromLTRB(16, 10, 16, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Position over time',
-                      maxLines: 1,
-                      overflow: .ellipsis,
-                      style: p.caption,
-                    ),
-                  ),
-                  Choice(
-                    options: const ['Spring', 'Curve'],
-                    selected: useSpring ? 0 : 1,
-                    onSelect: (index) => onSpring(index == 0),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) => Positioned(
+        left: controller.value.dx - _dot / 2,
+        top: controller.value.dy - _dot / 2,
+        child: child!,
+      ),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(shape: const CircleBorder(), color: color),
+        child: const SizedBox.square(dimension: _dot),
+      ),
     );
   }
 }
 
-class _TracePainter extends CustomPainter {
-  _TracePainter({
-    required this.trace,
-    required this.now,
-    required this.guide,
-    required this.line,
-  });
+class _LegendEntry extends StatelessWidget {
+  const _LegendEntry({required this.color, required this.label});
 
-  final List<Offset> trace;
-  final double now;
-  final Color guide;
-  final Color line;
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return Row(
+      mainAxisSize: .min,
+      children: [
+        DecoratedBox(
+          decoration: ShapeDecoration(
+            shape: const CircleBorder(),
+            color: color,
+          ),
+          child: const SizedBox.square(dimension: 8),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: text.muted.caption),
+      ],
+    );
+  }
+}
+
+/// Draws each dot's last stretch of positions as a line that fades toward
+/// its tail.
+class _TrailPainter extends CustomPainter {
+  _TrailPainter({
+    required Listenable repaint,
+    required this.now,
+    required this.springTrail,
+    required this.curveTrail,
+    required this.springColor,
+    required this.curveColor,
+  }) : super(repaint: repaint);
+
+  final Duration Function() now;
+  final List<_Sample> springTrail;
+  final List<_Sample> curveTrail;
+  final Color springColor;
+  final Color curveColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const inset = 16.0;
-    final height = size.height - 8;
-    double y(double value) => 4 + value / (_tabs.length - 1) * height;
-    final guidePaint = Paint()..color = guide;
-    for (var tab = 0; tab < _tabs.length; tab++) {
-      canvas.drawRect(
-        Rect.fromLTWH(inset, y(tab.toDouble()), size.width - inset * 2, 1),
-        guidePaint,
-      );
+    _paintTrail(canvas, curveTrail, curveColor);
+    _paintTrail(canvas, springTrail, springColor);
+  }
+
+  void _paintTrail(Canvas canvas, List<_Sample> trail, Color color) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final now = this.now();
+    for (var i = 1; i < trail.length; i++) {
+      final age = now - trail[i].time;
+      final fade = 1 - age.inMicroseconds / _trailWindow.inMicroseconds;
+      if (fade <= 0) continue;
+      paint.color = color.withValues(alpha: fade.clamp(0.0, 1.0) * .8);
+      canvas.drawLine(trail[i - 1].position, trail[i].position, paint);
     }
-    if (trace.isEmpty) return;
-    canvas.clipRect(Rect.fromLTRB(inset, 0, size.width - inset, size.height));
-    final path = Path();
-    for (final (index, sample) in trace.indexed) {
-      final x =
-          inset +
-          (1 - (now - sample.dx) / _traceWindow) * (size.width - inset * 2);
-      final point = Offset(x, y(sample.dy));
-      index == 0
-          ? path.moveTo(point.dx, point.dy)
-          : path.lineTo(point.dx, point.dy);
-    }
-    final last = trace.last;
-    path.lineTo(size.width - inset, y(last.dy));
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = .stroke
-        ..strokeWidth = 2
-        ..strokeJoin = .round
-        ..strokeCap = .round
-        ..color = line,
-    );
   }
 
   @override
-  bool shouldRepaint(_TracePainter oldDelegate) => true;
+  bool shouldRepaint(_TrailPainter oldDelegate) =>
+      oldDelegate.springColor != springColor ||
+      oldDelegate.curveColor != curveColor;
 }

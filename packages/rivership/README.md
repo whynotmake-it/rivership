@@ -9,10 +9,8 @@ Rivership is a set of opinionated tools that will get you shipping your Flutter 
 
 ## Installation 💻
 
-Install via `dart pub add` or `flutter pub add`:
-
 ```sh
-dart pub add rivership
+flutter pub add rivership
 ```
 
 ## What's included 📦
@@ -21,7 +19,7 @@ Rivership includes a diverse set of hooks, type extensions, and utilities that w
 ### Hooks
 
 #### `useMotion`
-A hook that animates a value using a [Motion].
+A hook that animates a value using a `Motion`.
 
 ```dart
 final double value = useSingleMotion(
@@ -32,7 +30,6 @@ final double value = useSingleMotion(
 
 final Offset offset = useOffsetMotion(
     value: const Offset(100, 100),
-    from: const Offset(0, 0),
     motion: const CupertinoMotion.bouncy(),
 );
 ```
@@ -132,13 +129,13 @@ Widget build(BuildContext context, WidgetRef ref) {
 Rivership includes a few helper tools for working with Colors and other UI properties.
 
 #### `SimpleWidgetStates`
-A subclass of `WidgetStateProperty` that purposefully doesn't trades flexibility for simplicity.
+A subclass of `WidgetStateProperty` that purposefully trades flexibility for simplicity.
 Simply define states like this:
 
 ```dart
 return TextButton(
-    style: TextButton.styleFrom(
-        color: SimpleWidgetStates.from(
+    style: ButtonStyle(
+        foregroundColor: SimpleWidgetStates.from(
             normal: Colors.blue,
             pressed: Colors.blue[800],
             disabled: Colors.grey,

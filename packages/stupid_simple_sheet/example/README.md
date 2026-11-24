@@ -1,29 +1,12 @@
-# example
+# Stupid Simple Sheet example
 
-A new Flutter project.
+[Open Example](https://whynotmake-it.github.io/rivership/#/stupid_simple_sheet)
 
-## Getting Started
+The recipes live in this package and run inside the repository's example app, which ships web and macOS targets. From the repository root:
 
-This project is a starting point for a Flutter application that follows the
-[simple app state management
-tutorial](https://flutter.dev/to/state-management-sample).
+```sh
+cd apps/example
+flutter run -d chrome
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
-## Assets
-
-The `assets` directory houses images, fonts, and any other files you want to
-include with your application.
-
-The `assets/images` directory contains [resolution-aware
-images](https://flutter.dev/to/resolution-aware-images).
-
-## Localization
-
-This project generates localized messages based on arb files found in
-the `lib/src/localization` directory.
-
-To support additional languages, please visit the tutorial on
-[Internationalizing Flutter apps](https://flutter.dev/to/internationalization).
+See the [Stupid Simple Sheet README](../README.md) for installation and API documentation.
