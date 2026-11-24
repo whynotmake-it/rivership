@@ -48,6 +48,7 @@ class CoilColors with Diagnosticable {
     required this.onBrandFill,
     required this.brandInk,
     required this.brandWash,
+    required this.brandMark,
     required this.overlay,
     required this.hover,
     required this.active,
@@ -127,7 +128,13 @@ class CoilColors with Diagnosticable {
     final tones = brandTones(brand ?? base.brand, brightness, brandFill);
     final accents = brandAccents(
       brand ?? base.brand,
-      surfaces[0],
+      surfaces,
+      brightness,
+      brandFill,
+    );
+    final mark = brandMarkFor(
+      brand ?? base.brand,
+      surfaces,
       brightness,
       brandFill,
     );
@@ -148,6 +155,7 @@ class CoilColors with Diagnosticable {
       onBrandFill: tones.label,
       brandInk: accents.ink,
       brandWash: accents.wash,
+      brandMark: mark,
       brandFillPolicy: brandFill,
       overlay: neutral(base.overlay),
       hover: neutral(base.hover),
@@ -189,6 +197,7 @@ class CoilColors with Diagnosticable {
     onBrandFill: Color(0xFFFFFFFF),
     brandInk: Color(0xFF3E65C8), // brand, darkened to 4.5 : 1 on its wash
     brandWash: Color(0x246B97FF), // brand at 14 %
+    brandMark: Color(0xFF6B97FF), // brand
     overlay: Color(0xFF000000),
     hover: Color(0x0A000000), // rgb(0 0 0 / 0.04)
     active: Color(0x12000000), // rgb(0 0 0 / 0.07)
@@ -227,8 +236,9 @@ class CoilColors with Diagnosticable {
     brand: Color(0xFF6B97FF),
     brandFill: Color(0xFF4168CB), // brand, deepened to 4.5 : 1
     onBrandFill: Color(0xFFFFFFFF),
-    brandInk: Color(0xFF6D98FF), // brand, lightened to 4.5 : 1 on its wash
+    brandInk: Color(0xFF98B8FF), // brand, lightened to 4.5 : 1 on its wash
     brandWash: Color(0x386B97FF), // brand at 22 %
+    brandMark: Color(0xFF6B97FF), // brand
     overlay: Color(0xFFFFFFFF),
     hover: Color(0x0FFFFFFF), // rgb(255 255 255 / 0.06)
     active: Color(0x1AFFFFFF), // rgb(255 255 255 / 0.1)
@@ -306,9 +316,9 @@ class CoilColors with Diagnosticable {
   /// [brand] as text on the page: the label of a selected tab or toggle
   /// segment when `CoilThemeData.brandSelection` is on. Under
   /// [CoilBrandFill.accessible] it's lightened or darkened in Oklch until it
-  /// reaches 4.5 : 1 on [brandWash] and on the background, and a yellow
-  /// darkens toward amber rather than olive; under [CoilBrandFill.exact]
-  /// it's [brand].
+  /// reaches 4.5 : 1 on [brandWash] over every surface a control sits on
+  /// (levels 1 to 5) and on each bare surface, and a yellow darkens toward
+  /// amber rather than olive; under [CoilBrandFill.exact] it's [brand].
   final Color brandInk;
 
   /// A translucent brand wash that marks the current item when
@@ -319,7 +329,17 @@ class CoilColors with Diagnosticable {
   /// thin brand over a dark page reads as a dark shade of it.
   final Color brandWash;
 
-  /// How [brandFill], [onBrandFill], [brandInk] and [brandWash] derive
+  /// [brand] as a mark: the focus ring, the on switch's track, the
+  /// selected radio's dot and the text cursor. Under
+  /// [CoilBrandFill.accessible], a brand too dark to show on a dark page
+  /// (navy, graphite) is lifted in Oklch lightness, hue and chroma kept,
+  /// until it reaches 3 : 1 against the surfaces controls sit on (levels 1
+  /// to 5: the page, cards, popovers, sheets and dialogs). Every other brand,
+  /// and every brand in light, is [brand] itself; so is [CoilBrandFill.exact].
+  final Color brandMark;
+
+  /// How [brandFill], [onBrandFill], [brandInk], [brandWash] and
+  /// [brandMark] derive
   /// from [brand]: what [CoilColors.fromSeed] was given, and what [copyWith]
   /// uses when it derives them again for a new brand.
   final CoilBrandFill brandFillPolicy;
@@ -386,6 +406,7 @@ class CoilColors with Diagnosticable {
       onBrandFill: c(a.onBrandFill, b.onBrandFill),
       brandInk: c(a.brandInk, b.brandInk),
       brandWash: c(a.brandWash, b.brandWash),
+      brandMark: c(a.brandMark, b.brandMark),
       overlay: c(a.overlay, b.overlay),
       hover: c(a.hover, b.hover),
       active: c(a.active, b.active),
@@ -424,6 +445,7 @@ class CoilColors with Diagnosticable {
     Color? onBrandFill,
     Color? brandInk,
     Color? brandWash,
+    Color? brandMark,
     Color? overlay,
     Color? hover,
     Color? active,
@@ -448,13 +470,12 @@ class CoilColors with Diagnosticable {
     final tones = changed && (brandFill == null || onBrandFill == null)
         ? brandTones(newBrand, newBrightness, newPolicy)
         : null;
+    final newSurfaces = surfaces ?? this.surfaces;
     final accents = changed && (brandInk == null || brandWash == null)
-        ? brandAccents(
-            newBrand,
-            (surfaces ?? this.surfaces)[0],
-            newBrightness,
-            newPolicy,
-          )
+        ? brandAccents(newBrand, newSurfaces, newBrightness, newPolicy)
+        : null;
+    final mark = changed && brandMark == null
+        ? brandMarkFor(newBrand, newSurfaces, newBrightness, newPolicy)
         : null;
     return CoilColors(
       brightness: newBrightness,
@@ -475,6 +496,7 @@ class CoilColors with Diagnosticable {
       onBrandFill: onBrandFill ?? tones?.label ?? this.onBrandFill,
       brandInk: brandInk ?? accents?.ink ?? this.brandInk,
       brandWash: brandWash ?? accents?.wash ?? this.brandWash,
+      brandMark: brandMark ?? mark ?? this.brandMark,
       overlay: overlay ?? this.overlay,
       hover: hover ?? this.hover,
       active: active ?? this.active,
@@ -625,17 +647,19 @@ class CoilColors with Diagnosticable {
     return (fill: at(ok), label: label);
   }
 
-  /// [brandInk] and [brandWash] for [brand] on [background] in
+  /// [brandInk] and [brandWash] for [brand] over [surfaces] in
   /// [brightness] under [policy], as [CoilColors.fromSeed] derives them.
   ///
   /// [CoilBrandFill.exact] keeps the brand as it is: the ink is [brand] and
   /// the wash is [brand] at 14 % (22 % in dark). [CoilBrandFill.accessible]
   /// lifts a deep brand's dark wash to Oklch lightness 0.5 and leans a
   /// yellow's toward amber, and moves the ink in Oklch lightness until it
-  /// reaches 4.5 : 1 on both the wash and the bare background.
+  /// reaches 4.5 : 1 on the wash over every surface a control sits on
+  /// (levels 1 to 5: a selected tab on the page, a card, a popover, a sheet
+  /// or a dialog) and on each bare surface.
   static ({Color ink, Color wash}) brandAccents(
     Color brand,
-    Color background,
+    List<Color> surfaces,
     Brightness brightness,
     CoilBrandFill policy,
   ) {
@@ -655,21 +679,84 @@ class CoilColors with Diagnosticable {
           )
         : brand;
     final wash = washBase.withValues(alpha: alpha);
-    final under = Color.alphaBlend(wash, background);
-    // A hair over 4.5, so the ink still passes once stored in 8 bits.
-    bool passes(Color color) => [under, background].every(
-      (ground) => CoilColorMix.contrastRatio(color, ground) >= 4.55,
+    final grounds = [
+      for (final surface in surfaces.take(_controlLevels)) ...[
+        surface,
+        Color.alphaBlend(wash, surface),
+      ],
+    ];
+    final ink = _toContrast(
+      brand,
+      grounds,
+      4.5,
+      lighter: dark,
+      hueAt: (lightness) => CoilColorMix.warmShadeHue(h, l - lightness),
     );
-    Color at(double lightness) => CoilColorMix.oklch(
-      lightness,
-      c,
-      CoilColorMix.warmShadeHue(h, l - lightness),
+    return (ink: ink, wash: wash);
+  }
+
+  /// Below this Oklch chroma a brand reads as grey: graphite (zinc, about
+  /// 0.014), stone (0.010) and Tailwind's gray (0.027) are under it; slate
+  /// (0.046) and muted navies and teals are over it. See [brandIsChromatic].
+  static const brandChromaFloor = 0.03;
+
+  /// Whether [brand] has enough color to mark a selection: its Oklch chroma
+  /// is at least [brandChromaFloor]. A grey brand (graphite) can't, so
+  /// `CoilThemeData.brandSelection` falls back to the neutral selection for
+  /// it; the brand button, the switch and the focus ring still use it.
+  bool get brandIsChromatic =>
+      CoilColorMix.toOklch(brand).c >= brandChromaFloor;
+
+  /// The surface levels brand ink and marks must show on: the page (1) to
+  /// a dialog (5). Levels 6 to 8 are rare stacking (a popover in a dialog),
+  /// and holding them would wash the ink out on every page.
+  static const _controlLevels = 5;
+
+  /// [brandMark] for [brand] over [surfaces] in [brightness] under
+  /// [policy], as [CoilColors.fromSeed] derives it.
+  ///
+  /// In dark, [CoilBrandFill.accessible] lifts a brand darker than its
+  /// surfaces allow in Oklch lightness, hue and chroma kept, until it
+  /// reaches 3 : 1 against levels 1 to 5. Otherwise it's [brand].
+  static Color brandMarkFor(
+    Color brand,
+    List<Color> surfaces,
+    Brightness brightness,
+    CoilBrandFill policy,
+  ) {
+    if (policy == CoilBrandFill.exact || brightness == Brightness.light) {
+      return brand;
+    }
+    final h = CoilColorMix.toOklch(brand).h;
+    return _toContrast(
+      brand,
+      surfaces.take(_controlLevels).toList(),
+      3,
+      lighter: true,
+      hueAt: (_) => h,
     );
-    if (passes(brand)) return (ink: brand, wash: wash);
-    // Away from the background: darker on a light page.
-    final extreme = CoilColorMix.toOklch(background).l > 0.5 ? 0.0 : 1.0;
+  }
+
+  /// [color] if it reaches [ratio] against every one of [grounds];
+  /// otherwise the color closest to it, at its chroma and [hueAt] its
+  /// lightness, made [lighter] (or darker) in Oklch until it does.
+  static Color _toContrast(
+    Color color,
+    List<Color> grounds,
+    double ratio, {
+    required bool lighter,
+    required double Function(double lightness) hueAt,
+  }) {
+    // A hair over [ratio], so the result still passes in 8 bits.
+    bool passes(Color candidate) => grounds.every(
+      (ground) => CoilColorMix.contrastRatio(candidate, ground) >= ratio + 0.05,
+    );
+    if (passes(color)) return color;
+    final (:l, :c, h: _) = CoilColorMix.toOklch(color);
+    Color at(double lightness) =>
+        CoilColorMix.oklch(lightness, c, hueAt(lightness), alpha: color.a);
     var fails = l;
-    var ok = extreme;
+    var ok = lighter ? 1.0 : 0.0;
     for (var i = 0; i < 24; i++) {
       final mid = (fails + ok) / 2;
       if (passes(at(mid))) {
@@ -678,7 +765,7 @@ class CoilColors with Diagnosticable {
         fails = mid;
       }
     }
-    return (ink: at(ok), wash: wash);
+    return at(ok);
   }
 
   /// These colors resolved for high contrast
@@ -686,14 +773,15 @@ class CoilColors with Diagnosticable {
   /// stronger off-state track ([accent] pushed toward the foreground). The
   /// theme's high contrast also strengthens the focus ring.
   ///
-  /// [brandFill], [onBrandFill], [brandInk] and [brandWash] take the
+  /// [brandFill], [onBrandFill], [brandInk], [brandWash] and [brandMark]
+  /// take the
   /// [CoilBrandFill.accessible] values, whatever the theme chose, and
   /// [brandFillPolicy] says so; [brand] itself is kept.
   CoilColors highContrast() {
     final tones = brandTones(brand, brightness, CoilBrandFill.accessible);
     final accents = brandAccents(
       brand,
-      background,
+      surfaces,
       brightness,
       CoilBrandFill.accessible,
     );
@@ -704,6 +792,12 @@ class CoilColors with Diagnosticable {
       onBrandFill: tones.label,
       brandInk: accents.ink,
       brandWash: accents.wash,
+      brandMark: brandMarkFor(
+        brand,
+        surfaces,
+        brightness,
+        CoilBrandFill.accessible,
+      ),
       brandFillPolicy: CoilBrandFill.accessible,
     );
   }
@@ -729,6 +823,7 @@ class CoilColors with Diagnosticable {
       other.onBrandFill == onBrandFill &&
       other.brandInk == brandInk &&
       other.brandWash == brandWash &&
+      other.brandMark == brandMark &&
       other.overlay == overlay &&
       other.hover == hover &&
       other.active == active &&
@@ -761,6 +856,7 @@ class CoilColors with Diagnosticable {
     onBrandFill,
     brandInk,
     brandWash,
+    brandMark,
     overlay,
     hover,
     active,
@@ -786,6 +882,7 @@ class CoilColors with Diagnosticable {
       ..add(ColorProperty('onBrandFill', onBrandFill))
       ..add(ColorProperty('brandInk', brandInk))
       ..add(ColorProperty('brandWash', brandWash))
+      ..add(ColorProperty('brandMark', brandMark))
       ..add(
         EnumProperty(
           'brandFillPolicy',

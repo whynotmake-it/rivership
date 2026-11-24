@@ -32,7 +32,7 @@ class CoilToggleGroupStyle extends CoilComponentStyle<CoilToggleGroupStyle> {
     final c = theme.colors;
     // With brand selection on, the selected segments are marked in the
     // brand: a wash under brand text.
-    final brand = theme.brandSelection;
+    final brand = theme.selectsInBrand;
     final selectedLabel = brand ? c.brandInk : c.foreground;
     return CoilToggleGroupStyle(
       selection: brand ? c.brandWash : c.active,

@@ -65,20 +65,21 @@ A surface opened from another surface sits **level + 2** for popovers and sheets
 
 | Token | Light | Dark | Use: the only places these appear |
 |---|---|---|---|
-| `brand` | `#6B97FF` | `#6B97FF` | focus ring, switch-on track, text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar, the brand badge's dot; with brand selection, the selected radio's dot and the text cursor |
+| `brand` | `#6B97FF` | `#6B97FF` | text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar, the brand badge's dot |
+| `brandMark` | `brand` | `brand` | brand as a mark: focus ring, switch-on track; with brand selection, the selected radio's dot and the text cursor |
 | `brandFill` / `onBrandFill` | `#4168CB` / white | `#4168CB` / white | a surface that carries text on the brand: the solid brand badge |
 | `brandWash` | `brand` 14 % | `brand` 22 % | with brand selection, the selected tab's pill and toggle segments |
-| `brandInk` | `#3E65C8` | `#6D98FF` | with brand selection, the selected tab's and segments' labels |
+| `brandInk` | `#3E65C8` | `#98B8FF` | with brand selection, the selected tab's and segments' labels |
 | `red` / `redLabel` | `#FB2C36` / `#C10007` | `#FB2C36` / `#FF6467` | destructive: 15 % fill (dark 20 %) under `redLabel` text. Never a solid red button |
 | `destructive` | `#EF4444` | `#FCA5A5` | invalid borders (50 %), error text and icons |
 | `info` / `success` / `warning` | `#3B82F6` / `#22C55E` / `#F59E0B` | `#93C5FD` / `#86EFAC` / `#FCD34D` | Banner icons and badges only |
 
-**Brand as given, brand as a fill.** `brand` is always the color the theme was given, in light, dark and high contrast; only the focus ring darkens in high contrast. Text never sits on it. A surface that carries text on the brand uses `brandFill` under `onBrandFill`, which `CoilColors.fromSeed(brandFill:)` derives by a `CoilBrandFill` policy:
+**Brand as given, brand as a fill.** `brand` is always the color the theme was given, in light, dark and high contrast. Marks and text that must stay visible use derived tokens instead (`brandMark`, `brandInk`, below). Text never sits on it. A surface that carries text on the brand uses `brandFill` under `onBrandFill`, which `CoilColors.fromSeed(brandFill:)` derives by a `CoilBrandFill` policy:
 
 - **`accessible`** (the default, and the default themes): the label is white or near-black, whichever reads better on the brand by APCA (white on a mid blue, orange, green or purple, dark on a yellow or lime). The fill then moves in Oklch, hue and chroma kept, until that label reaches 4.5 : 1, also at the brand button's hover and pressed tones (`CoilColors.brandStateShift`, 0.03 lighter and darker). coil's blue deepens from `#6B97FF` to `#4168CB`; a yellow keeps its color under a dark label. In dark, a brand darker than Oklch lightness 0.5 (navy) is first lifted to 0.5 so it stands off the page.
 - **`exact`**: the brand as given, under the APCA-picked label. A mid-tone brand's label falls below 4.5 : 1 by WCAG 2 (about 2.8 : 1 for coil's blue), so this is a brand decision, not a default.
 
-**Brand selection is opt-in.** coil is monochrome by default: selections use the neutral `active` fill and `foreground`. `CoilThemeData.brandSelection` puts the brand on selected states only: the selected tab's pill and the selected toggle segments sit on `brandWash` under `brandInk`, the selected radio's dot is `brand`, and the text cursor is `brand`. Hover stays neutral (§2.2), and the switch, the slider fill and the checkbox tick never change. Turn it on in the root theme for the whole app, or for one subtree with a nested theme:
+**Brand selection is opt-in.** coil is monochrome by default: selections use the neutral `active` fill and `foreground`. `CoilThemeData.brandSelection` puts the brand on selected states only: the selected tab's pill and the selected toggle segments sit on `brandWash` under `brandInk`, the selected radio's dot and the text cursor are `brandMark`. Hover stays neutral (§2.2), and the switch, the slider fill and the checkbox tick never change. Turn it on in the root theme for the whole app, or for one subtree with a nested theme:
 
 ```dart
 CoilTheme.override(
@@ -87,7 +88,14 @@ CoilTheme.override(
 )
 ```
 
-`brandInk` and `brandWash` follow the brand-fill policy. Under `accessible`, `brandInk` is `brand` moved in Oklch lightness until it reaches 4.5 : 1 on its wash and on the background, and a yellow darkens toward amber, not olive (`CoilColorMix.warmShadeHue`). In dark, the wash lifts a deep brand to Oklch lightness 0.5 and leans a yellow amber, since a thin brand over a dark page reads as a dark shade of it. Under `exact`, the ink is `brand` and the wash is `brand` at 14 % (22 % in dark). High contrast forces the accessible ink and wash.
+**A grey brand keeps the neutral selection.** Below Oklch chroma 0.03 (`CoilColors.brandChromaFloor`) a brand reads as grey: graphite and zinc (about 0.014), stone (0.010) and Tailwind's gray (0.027) are under it; slate (0.046) and muted navies and teals are over it. A grey wash under grey ink can only lower contrast, so for these brands brand selection shows the neutral selection (`CoilThemeData.selectsInBrand` is false). The brand button still fills with `brandFill`, and the switch and focus ring still use `brandMark`.
+
+**Contrast floors.** Brand text and marks must show on every surface a control sits on: levels 1 to 5 (page, card, popover, sheet, dialog). Levels 6 to 8 are rare stacking, and holding them would wash out the ink everywhere else. Under `accessible`:
+
+- `brandInk` reaches **4.5 : 1** on `brandWash` over each of those surfaces and on each bare one. It moves in Oklch lightness only; a yellow darkens toward amber, not olive (`CoilColorMix.warmShadeHue`).
+- `brandMark` reaches **3 : 1** against those surfaces in dark. A brand too dark for a dark page (navy, graphite) is lifted in Oklch lightness, hue and chroma kept; blue, orange, green and yellow keep their color, and purple lifts by a hair. In light, `brandMark` is `brand`.
+
+`brandInk`, `brandWash` and `brandMark` follow the brand-fill policy. In dark, the wash lifts a deep brand to Oklch lightness 0.5 and leans a yellow amber, since a thin brand over a dark page reads as a dark shade of it. Under `exact`, the ink and the mark are `brand` and the wash is `brand` at 14 % (22 % in dark). High contrast forces the accessible ink, wash and mark.
 
 High contrast always uses the accessible fill. `copyWith(brand:)` derives the accessible fill again unless `brandFill` and `onBrandFill` are passed too. Components read these tokens and never derive brand colors themselves.
 
@@ -317,7 +325,7 @@ Reduced motion (`MediaQuery.disableAnimations`) is applied last:
 |---|---|---|---|
 | **Hover** | `hover` fill, or the gliding highlight in lists; muted → foreground label; icon weight 400 → 533 | never | — |
 | **Press** | buttons collapse 1 px per side; rows show no extra fill (the highlight is already there) | `active` fill on touch-down. Inside scrollables it waits `kPressTimeout` (100 ms); it clears on up, cancel, scroll start or a slide past 18 px; it shows for at least 90 ms | Space/Enter: the same pressed look while the key is held |
-| **Focus-visible** | no ring after a click | no ring after a tap | 1 px `brand` ring 2 px outside, radius + 2; shows only while the keyboard is the last input (`CoilInputModality`) |
+| **Focus-visible** | no ring after a click | no ring after a tap | 1 px `brandMark` ring 2 px outside, radius + 2; shows only while the keyboard is the last input (`CoilInputModality`) |
 | **Selected** | `active` fill, foreground, semibold | same | same |
 | **Disabled** | 50 % opacity, no hover, skipped by arrows | 40 % on touch rows | skipped |
 
@@ -536,7 +544,7 @@ Every component ships with all of these. They're required to call it done.
 
 ### 13.4 Focus ring
 
-1 px `brand` (2 px in high contrast), 2 px outside the element, radius = element radius + 2, so it's concentric with the element. Every control draws it the same way: single controls, choice cards, groups, rows, menus, tabs, calendar days and the switch alike. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the gap (`offset`, 2 by default) and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`, drawn with `CoilFocusRingTheme.decorationAround` on the row grown by `extent` (gap + width).
+1 px `brandMark` (2 px in high contrast), 2 px outside the element, radius = element radius + 2, so it's concentric with the element. Every control draws it the same way: single controls, choice cards, groups, rows, menus, tabs, calendar days and the switch alike. `CoilThemeData.focusRing` (`CoilFocusRingTheme`) sets the width, the gap (`offset`, 2 by default) and a color other than brand; the corner comes from the shape. In lists **one ring** travels between rows on `quick` and fades on `fade`, drawn with `CoilFocusRingTheme.decorationAround` on the row grown by `extent` (gap + width).
 
 **Room for the ring.** A parent that clips keeps `extent` (3 px, 4 in high contrast) clear around what it holds, or lets the ring paint past its edge: a popup's rows sit `popupInset` (4 / 6) in; the tabs strip and the calendar's pagers clip only their scrolling sides, so the ring shows above and below; the calendar keeps `extent` beside its edge days (`CoilCalendar.edgeInsetOf`); a sheet's pinned footer scrolls inside the gaps around it. Inside clipping parents that can't do that (ScrollArea, table cells, a card's stretched action) the ring is inset by 1 instead.
 
@@ -618,7 +626,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - Disabled: 50 %.
 - **Motion:** fill and label colors on `fade`; press collapse on `quick` (release on `standard`); icon weight on `fade`; leading/loading swap with the blur-fade on `quick`. The width springs on `standard` (`standardExit` shrinking) when the label changes (cross-fading on `fade`) or a leading part, a trailing part or the loading spinner comes or goes, each with its gap and the padding it changes (`CoilButtonTrack.size`). A change of the room around the button relayouts at once.
 - **Keyboard:** Enter or Space activates.
-- **Brand:** the primary in the theme's brand color, for the one main action of a branded view (an upgrade, a checkout). Its fill and label are `brandFill` / `onBrandFill` (§2.3), so the label holds 4.5 : 1 at rest, hovered and pressed under the accessible policy. It moves in Oklch rather than toward the background so it never greys or washes out. Lit, it's the `filled` role with every layer recolored in the brand's hue (§6.1). The focus ring stays `brand`; its 2 px gap keeps it apart from the fill.
+- **Brand:** the primary in the theme's brand color, for the one main action of a branded view (an upgrade, a checkout). Its fill and label are `brandFill` / `onBrandFill` (§2.3), so the label holds 4.5 : 1 at rest, hovered and pressed under the accessible policy. It moves in Oklch rather than toward the background so it never greys or washes out. Lit, it's the `filled` role with every layer recolored in the brand's hue (§6.1). The focus ring stays `brandMark`; its 2 px gap keeps it apart from the fill.
 - **Do:** one primary or brand button per view; destructive actions as `destructive` with a confirm.
 - **Don't:** scale on press; ripple; a solid red button; two primaries side by side, or a primary beside a brand button.
 
@@ -666,7 +674,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** track → thumb, plus an optional label. The whole row is the target.
 - **Sizes:** see §4.2. The thumb is inset 2. Hover grows the thumb +2 (pointer only, into a pill). Press widens it +4 and flattens it −4 (+5 / −5 on touch). The labeled row's vertical padding is (row − track) / 2.
 - **Colors:**
-  - off: `accent`; on: `brand`;
+  - off: `accent`; on: `brandMark` (the brand, lifted only where a dark brand wouldn't show on a dark page);
   - hover shifts the track 10 % toward `overlay` (off) or 8 % toward black (on), in Oklab;
   - thumb white with `shadow(2)`;
   - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
