@@ -41,6 +41,31 @@ abstract final class CoilColorMix {
     return (hi + 0.05) / (lo + 0.05);
   }
 
+  /// The APCA lightness contrast (Lc) of [text] on [background], about
+  /// -108..106: positive for dark text on a light background, negative for
+  /// light text on a dark one. Compare magnitudes: |Lc| 60 is the floor for
+  /// short labels such as a button's, 75 for body text. Ignores alpha.
+  ///
+  /// APCA (WCAG 3 draft, 0.0.98G) tracks how readable text looks better than
+  /// the WCAG 2 ratio on saturated mid-tones: white on a mid blue or orange
+  /// reads clearly, which the ratio scores below 3 : 1.
+  static double apcaContrast(Color text, Color background) {
+    double y(Color c) =>
+        0.2126729 * math.pow(c.r, 2.4) +
+        0.7151522 * math.pow(c.g, 2.4) +
+        0.0721750 * math.pow(c.b, 2.4);
+    double clampBlack(double v) =>
+        v > 0.022 ? v : v + math.pow(0.022 - v, 1.414).toDouble();
+    final yt = clampBlack(y(text));
+    final yb = clampBlack(y(background));
+    if (yb > yt) {
+      final s = (math.pow(yb, 0.56) - math.pow(yt, 0.57)) * 1.14;
+      return s < 0.1 ? 0 : (s - 0.027) * 100;
+    }
+    final s = (math.pow(yb, 0.65) - math.pow(yt, 0.62)) * 1.14;
+    return s > -0.1 ? 0 : (s + 0.027) * 100;
+  }
+
   /// [color], mixed toward black or white (whichever [against] is further
   /// from) in small Oklab steps until it reaches [minRatio] contrast with
   /// [against]. Keeps the hue; returns [color] if it already passes.

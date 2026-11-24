@@ -32,7 +32,8 @@ enum CoilBadgeColor {
   /// The neutral default (`accent` fill, muted dot).
   gray(null),
 
-  /// The theme's `brand` color.
+  /// The theme's brand: a `solid` badge is filled with `brandFill` under
+  /// `onBrandFill`; `dot` and `ghost` show `brand` in the dot.
   brand(null),
 
   /// Red.
@@ -128,8 +129,13 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
     final caption = theme.typography
         .resolve(CoilTier.pointer, metrics.size)
         .caption;
+    // The solid brand badge is the brand itself, as a fill that carries
+    // text: a 15 % wash would read olive for a yellow brand in dark.
+    final brandSolid =
+        color == CoilBadgeColor.brand && variant == CoilBadgeVariant.solid;
     return CoilBadgeStyle(
       fill: switch (variant) {
+        _ when brandSolid => c.brandFill,
         CoilBadgeVariant.solid =>
           hue == null ? c.accent : Color.lerp(c.background, hue, 0.15),
         _ => const Color(0x00000000),
@@ -138,7 +144,7 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
       dotColor: hue ?? c.mutedForeground,
       textStyle: variant == CoilBadgeVariant.ghost
           ? caption
-          : caption.copyWith(color: c.foreground),
+          : caption.copyWith(color: brandSolid ? c.onBrandFill : c.foreground),
       radius: theme.shape.radii(CoilTier.pointer).item,
       minHeight: compact ? 20 : 24,
       paddingX: variant == CoilBadgeVariant.ghost ? 0 : (compact ? 8 : 10),

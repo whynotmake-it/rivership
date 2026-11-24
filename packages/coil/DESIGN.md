@@ -65,10 +65,18 @@ A surface opened from another surface sits **level + 2** for popovers and sheets
 
 | Token | Light | Dark | Use: the only places these appear |
 |---|---|---|---|
-| `brand` | `#6B97FF` | `#6B97FF` | focus ring, switch-on track, text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar |
+| `brand` | `#6B97FF` | `#6B97FF` | focus ring, switch-on track, text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar, the brand badge's dot |
+| `brandFill` / `onBrandFill` | `#4168CB` / white | `#4168CB` / white | a surface that carries text on the brand: the solid brand badge |
 | `red` / `redLabel` | `#FB2C36` / `#C10007` | `#FB2C36` / `#FF6467` | destructive: 15 % fill (dark 20 %) under `redLabel` text. Never a solid red button |
 | `destructive` | `#EF4444` | `#FCA5A5` | invalid borders (50 %), error text and icons |
 | `info` / `success` / `warning` | `#3B82F6` / `#22C55E` / `#F59E0B` | `#93C5FD` / `#86EFAC` / `#FCD34D` | Banner icons and badges only |
+
+**Brand as given, brand as a fill.** `brand` is always the color the theme was given, in light, dark and high contrast; only the focus ring darkens in high contrast. Text never sits on it. A surface that carries text on the brand uses `brandFill` under `onBrandFill`, which `CoilColors.fromSeed(brandFill:)` derives by a `CoilBrandFill` policy:
+
+- **`accessible`** (the default, and the default themes): the label is white or near-black, whichever reads better on the brand by APCA (white on a mid blue, orange, green or purple, dark on a yellow or lime). The fill then moves in Oklch, hue and chroma kept, until that label reaches 4.5 : 1, also at the hover tone (`CoilColors.brandHoverLift`, 0.03 lighter). coil's blue deepens from `#6B97FF` to `#4168CB`; a yellow keeps its color under a dark label. In dark, a brand darker than Oklch lightness 0.5 (navy) is first lifted to 0.5 so it stands off the page.
+- **`exact`**: the brand as given, under the APCA-picked label. A mid-tone brand's label falls below 4.5 : 1 by WCAG 2 (about 2.8 : 1 for coil's blue), so this is a brand decision, not a default.
+
+High contrast always uses the accessible fill. `copyWith(brand:)` derives the accessible fill again unless `brandFill` and `onBrandFill` are passed too. Components read these tokens and never derive brand colors themselves.
 
 Color mixes use **Oklab** (`CoilColorMix.oklab`). For example, primary hover is `foreground` 90 % into `background` and pressed is 80 %. sRGB lerps look visibly different, so don't use them.
 
@@ -603,7 +611,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** [dot 7 (6 compact)] label (micro/caption).
 - **Sizes:** P 24 high, padding 10, caption, gap 6. Compact: 20, padding 8, micro, gap 4. **No touch bump.** A badge isn't interactive.
 - **Variants:**
-  - `solid`: the hue at 15 % into the background, foreground text; gray uses `accent`.
+  - `solid`: the hue at 15 % into the background, foreground text; gray uses `accent`, and brand is `brandFill` under `onBrandFill` (a 15 % brand wash reads olive for a yellow brand in dark).
   - `dot`: hairline outline, foreground text, colored dot.
   - `ghost`: no outline, no padding, inherits text color. It keeps the badge's height (24, compact 20), so it lines up with the others in a row.
   - Colors: gray (default), brand, and the Tailwind-500 hues (red … rose).
