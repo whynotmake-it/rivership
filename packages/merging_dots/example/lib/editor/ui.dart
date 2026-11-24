@@ -1,13 +1,16 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 
+/// A text role of coil's type scale.
+enum TextRole { title, body, caption, micro }
+
 /// Text in one of coil's type roles.
 class RoleText extends StatelessWidget {
   const RoleText(
     this.text, {
     super.key,
-    this.step = const CoilTypeStep(13, 20),
-    this.weight = CoilWeight.normal,
+    this.role = TextRole.body,
+    this.emphasis = false,
     this.muted = false,
     this.maxLines,
     this.align,
@@ -19,37 +22,38 @@ class RoleText extends StatelessWidget {
 
   /// Captions and descriptions.
   const RoleText.caption(String text, {Key? key, bool muted = true})
-    : this(text, key: key, step: const CoilTypeStep(12, 16), muted: muted);
+    : this(text, key: key, role: TextRole.caption, muted: muted);
 
   /// Section titles.
   const RoleText.title(String text, {Key? key})
-    : this(
-        text,
-        key: key,
-        step: const CoilTypeStep(14, 20),
-        weight: CoilWeight.semibold,
-      );
+    : this(text, key: key, role: TextRole.title);
 
   final String text;
-  final CoilTypeStep step;
-  final CoilWeight weight;
+  final TextRole role;
+
+  /// Whether the text is set in the theme's emphasis weight.
+  final bool emphasis;
   final bool muted;
   final int? maxLines;
   final TextAlign? align;
 
   @override
   Widget build(BuildContext context) {
-    final theme = CoilTheme.of(context);
+    final roles = CoilTheme.textOf(context);
+    final theme = muted ? roles.muted : roles;
+    var style = switch (role) {
+      TextRole.title => theme.title,
+      TextRole.body => theme.body,
+      TextRole.caption => theme.caption,
+      TextRole.micro => theme.micro,
+    };
+    if (emphasis) style = style.copyWith(fontWeight: roles.emphasis);
     return Text(
       text,
       maxLines: maxLines,
       textAlign: align,
       overflow: maxLines == null ? null : TextOverflow.ellipsis,
-      style: theme.typography.style(
-        step,
-        weight: weight,
-        color: muted ? theme.colors.mutedForeground : theme.colors.foreground,
-      ),
+      style: style,
     );
   }
 }

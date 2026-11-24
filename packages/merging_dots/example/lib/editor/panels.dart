@@ -168,7 +168,7 @@ class _FrameThumbnail extends StatelessWidget {
                   alignment: Alignment.bottomRight,
                   child: RoleText(
                     '${index + 1}',
-                    step: const CoilTypeStep(11, 14),
+                    role: TextRole.micro,
                     muted: true,
                   ),
                 ),

@@ -176,11 +176,7 @@ class _LoaderCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: RoleText(
-                  loader.name,
-                  weight: CoilWeight.semibold,
-                  maxLines: 1,
-                ),
+                child: RoleText(loader.name, emphasis: true, maxLines: 1),
               ),
               if (loader.isDeterminate)
                 const SizedBox.square(

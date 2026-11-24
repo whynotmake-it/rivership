@@ -327,7 +327,7 @@ class _ProjectGrid extends StatelessWidget {
                           Expanded(
                             child: RoleText(
                               project.name,
-                              weight: CoilWeight.semibold,
+                              emphasis: true,
                               maxLines: 1,
                             ),
                           ),
