@@ -6,6 +6,8 @@ Flutter's `AnimatedContainer`, `AnimatedSwitcher`, `AnimatedSize`, and similar w
 
 The widgets in this package take a Motor `motion` instead. Whenever a target changes mid-flight, the animation redirects smoothly while keeping its current velocity.
 
+> **See it in action:** [**Coil**](../coil) ([live catalog](https://whynotmake-it.github.io/rivership/#/coil)) is a full Flutter design system built on `motor` and `motor_widgets` — a great example of how spring-driven implicit widgets, size switchers, and layout transitions feel in a real app.
+
 ## Installation
 
 ```sh
@@ -121,6 +123,8 @@ MotionSizeSwitcher(
 
 ### Layout groups
 
+![MotionLayoutGroup grid shuffling and MotionReorderable + MotionDraggable list reordering](./doc/layout_and_drag_bento.gif)
+
 `MotionLayoutGroup` animates each `MotionLayoutItem` from its previous painted position to its new position whenever a rebuild moves it. Identify each item with an `id`:
 
 ```dart
@@ -186,8 +190,6 @@ Differences from Flutter's `Draggable`:
 - `DragTargetDetails.offset` reports Flutter's standard unscaled top-left offset rather than the transformed feedback's bounds.
 
 ### Reordering
-
-![MotionReorderable and MotionDraggable with spring-animated gaps and landing](./doc/drag_and_drop.gif)
 
 `MotionReorderable` tracks drags over its child and tells your builder where the drop would land (`drop.after` and `drop.before`). It doesn't impose a layout or wrap your items, so you decide whether to open a gap or draw an insertion line:
 
