@@ -25,6 +25,9 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final gutter = CatalogLayout.gutterOf(context);
     final padding = MediaQuery.paddingOf(context);
+    // The page draws behind the keyboard; padding its end by the
+    // keyboard's height lets the last field scroll above it.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     return ColoredBox(
       color: CoilTheme.of(context).colors.background,
       child: Column(
@@ -40,7 +43,7 @@ class HomePage extends StatelessWidget {
                   gutter + padding.left,
                   0,
                   gutter + padding.right,
-                  gutter + padding.bottom + 24,
+                  gutter + padding.bottom + 24 + keyboard,
                 ),
                 child: Center(
                   child: ConstrainedBox(

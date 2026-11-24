@@ -4,6 +4,8 @@ Motor's interactive gallery, built with [coil](../../coil), the repository's
 design system. Each demo shows one Motor idea, the call it is making, and
 for most a live timeline of its tracks.
 
+[Open Example](https://whynotmake-it.github.io/rivership/#/motor)
+
 ## Run the app
 
 The gallery runs inside the repository's example app, which ships web and

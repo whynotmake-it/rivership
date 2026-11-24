@@ -105,7 +105,7 @@ class CoilTable<T> extends StatefulWidget {
 }
 
 class _CoilTableState<T> extends State<CoilTable<T>>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   final _states = WidgetStatesController();
   final _active = CoilActiveItemController();
   FocusNode? _ownFocusNode;

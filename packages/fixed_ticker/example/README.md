@@ -6,14 +6,9 @@ The app shows how changing `TickerRate` affects an animation at runtime. Use it 
 
 ## Running
 
-From this directory:
+The example ships a macOS target. From the repository root:
 
 ```sh
-flutter run
-```
-
-Or from the repository root:
-
-```sh
-flutter run -d macos --project packages/fixed_ticker/example
+cd packages/fixed_ticker/example
+flutter run -d macos
 ```

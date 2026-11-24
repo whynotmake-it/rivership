@@ -81,7 +81,8 @@ class SliderCore extends StatefulWidget {
   State<SliderCore> createState() => _SliderCoreState();
 }
 
-class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
+class _SliderCoreState extends State<SliderCore>
+    with FixedTickerProviderStateMixin {
   int get _count => widget.values.length;
   bool get _range => _count == 2;
 
