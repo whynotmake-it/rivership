@@ -144,9 +144,8 @@ void main() {
           frameRate: 20,
           encoding: const VideoEncoding.h264(crf: 0),
           timing: smooth ? VideoTiming.smooth : VideoTiming.observed,
-          showPointers: true,
           minimumPointerDuration: const Duration(milliseconds: 100),
-          pointerIndicator: _redPointer,
+          overlay: _redPointers,
         ),
       );
       final before = tester.binding.clock.now();
@@ -180,7 +179,7 @@ void main() {
         encoding: VideoEncoding.h264(crf: 0),
         finalHold: Duration(milliseconds: 300),
         minimumPointerDuration: Duration(milliseconds: 100),
-        pointerIndicator: _redPointer,
+        overlay: _redPointers,
       ),
     );
     final before = tester.binding.clock.now();
@@ -204,7 +203,7 @@ void main() {
           frameRate: 20,
           encoding: const VideoEncoding.h264(crf: 0),
           minimumPointerDuration: minimum,
-          pointerIndicator: _redPointer,
+          overlay: _redPointers,
         ),
       );
       await tester.tapAt(const Offset(48, 48));
@@ -273,13 +272,18 @@ void _smallView(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-void _redPointer(Canvas canvas, Offset center, double scale) {
-  canvas.drawCircle(
-    center,
-    6 * scale,
-    Paint()..color = const Color(0xFFFF0000),
-  );
-}
+Widget _redPointers(BuildContext context, SnapVideoFrame frame) => Stack(
+  children: [
+    for (final pointer in frame.pointers)
+      Positioned(
+        left: pointer.position.dx - 6,
+        top: pointer.position.dy - 6,
+        width: 12,
+        height: 12,
+        child: const ColoredBox(color: Color(0xFFFF0000)),
+      ),
+  ],
+);
 
 List<int> _rgb(Uint8List pixels, int frame, int x, int y) {
   final offset = ((frame * 96 * 96) + y * 96 + x) * 4;
