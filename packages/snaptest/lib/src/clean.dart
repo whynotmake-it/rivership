@@ -4,22 +4,14 @@ import 'package:meta/meta.dart';
 import 'package:snaptest/src/constants.dart';
 import 'package:snaptest/src/util.dart';
 
-/// Cleans all snapshots from the top level snap directory and all snap
-/// directories under the test/ folder.
+/// Cleans all snapshots from the top-level snap directory and all snap
+/// directories under the `test/` folder.
 ///
-/// You can add this to your `flutter_test_config.dart` file to automatically
-/// clean screenshots from all `.snaptest/` directories before each test run:
-///
-/// ```dart
-/// // flutter_test_config.dart
-///
-/// import 'package:snaptest/snaptest.dart';
-///
-/// Future<void> testExecutable(Future<void> Function() testMain) async {
-///   await cleanSnaps();
-///   await testMain();
-/// }
-/// ```
+/// Because this deletes **all** matching directories (`.snaptest/` by default),
+/// call it once before your test suite runs (for example, from a script or CI
+/// step, or via `dart run snaptest:clean`) rather than inside
+/// `flutter_test_config.dart`, which runs once per test file and would wipe
+/// snapshots from earlier files.
 Future<void> cleanSnaps([
   String dirName = kDefaultSnaptestDir,
 ]) async {

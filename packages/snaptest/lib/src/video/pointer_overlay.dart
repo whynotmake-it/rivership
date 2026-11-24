@@ -1,3 +1,4 @@
+/// @docImport 'package:flutter_test/flutter_test.dart';
 /// @docImport 'package:snaptest/src/video/video_settings.dart';
 library;
 
@@ -10,17 +11,17 @@ import 'package:snaptest/src/video/video_frame.dart';
 /// "show touches".
 ///
 /// Pass [SnapPointerOverlay.builder] as [SnapVideoSettings.overlay] to use
-/// it on its own. Each pointer
-/// gets a ring-and-dot indicator that:
+/// it on its own. Each pointer gets a filled circle with a stroked outline
+/// that:
 ///
 ///  * shows a soft, smaller dot while a mouse or stylus hovers,
-///  * springs in to a full ring-and-dot on press,
+///  * eases in with [Curves.easeOutBack] to a larger circle on press,
 ///  * follows the pointer while it moves,
 ///  * and fades out on release, or when the pointer leaves [pointers].
 ///
 /// Every animation is finite and comes to rest, so it never keeps
-/// `pumpAndSettle` from settling. Animations advance only when the test
-/// pumps.
+/// [WidgetTester.pumpAndSettle] from settling. Animations advance only when
+/// the test pumps.
 ///
 /// Reuse it inside your own [SnapVideoSettings.overlay]:
 ///

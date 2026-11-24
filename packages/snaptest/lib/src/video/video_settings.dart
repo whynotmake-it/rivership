@@ -26,9 +26,9 @@ enum VideoTiming {
   ///
   /// This runs more frames than the test would otherwise produce, which can
   /// change execution: animation listeners, timers started by frames,
-  /// post-frame callbacks, physics, and `pumpAndSettle` iteration counts may
-  /// all behave differently. The total fake-clock advancement per pump stays
-  /// identical to the requested duration.
+  /// post-frame callbacks, physics, and [WidgetTester.pumpAndSettle] iteration
+  /// counts may all behave differently. The total fake-clock advancement per
+  /// pump stays identical to the requested duration.
   ///
   /// Intended for documentation and demo recordings, not for debugging.
   smooth,
@@ -51,9 +51,9 @@ sealed class VideoEncoding {
   /// VP9 in a WebM container (`libvpx-vp9`, `yuva420p`).
   ///
   /// Unlike H.264 this keeps the alpha channel, so recordings can be
-  /// transparent — combine with a transparent [SnapVideoSettings]
-  /// background. [crf] controls quality (lower is better; sane range 0-63,
-  /// default 32).
+  /// transparent — combine with a transparent
+  /// [SnapVideoSettings.backgroundColor]. [crf] controls quality (lower is
+  /// better; sane range 0-63, default 32).
   const factory VideoEncoding.vp9({int crf}) = _Vp9Encoding;
 
   /// The file extension for the encoded container, including the dot.
@@ -260,9 +260,9 @@ class SnapVideoSettings {
   /// **Keep overlay animations finite.** The overlay's animations run on the
   /// test's clock: they advance only when the test pumps, and an active
   /// animation schedules frames just like one in your app. A repeating or
-  /// never-ending animation in the overlay keeps `pumpAndSettle` from ever
-  /// settling while the recording runs. The overlay is disposed when the
-  /// recording stops, which stops its animations.
+  /// never-ending animation in the overlay keeps [WidgetTester.pumpAndSettle]
+  /// from ever settling while the recording runs. The overlay is disposed when
+  /// the recording stops, which stops its animations.
   ///
   /// Combine it with your own widgets in a custom overlay:
   ///
@@ -286,8 +286,8 @@ class SnapVideoSettings {
   /// The background composited behind every frame.
   ///
   /// `null` (the default) resolves automatically: transparent for encodings
-  /// that [VideoEncoding.supportsAlpha] (e.g. [VideoEncoding.vp9]), opaque
-  /// white otherwise — H.264's `yuv420p` has no alpha channel, so
+  /// where [VideoEncoding.supportsAlpha] is true (e.g. [VideoEncoding.vp9]),
+  /// opaque white otherwise — H.264's `yuv420p` has no alpha channel, so
   /// transparency would otherwise render as black artifacts. Alpha
   /// compositing happens at capture time.
   final Color? backgroundColor;
@@ -318,7 +318,7 @@ class SnapVideoSettings {
   ///
   /// Once the recording's captured timeline exceeds this, capture freezes
   /// and the artifact is marked truncated. Guards against runaway
-  /// `pumpAndSettle` loops filling the disk. Defaults to 1 minute.
+  /// [WidgetTester.pumpAndSettle] loops filling the disk. Defaults to 1 minute.
   final Duration maxSimulatedDuration;
 
   /// Maximum number of captured timestamps kept in the recording.

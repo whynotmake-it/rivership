@@ -10,7 +10,7 @@ import 'package:snaptest/src/constants.dart';
 /// Controls how screenshots are rendered.
 ///
 /// Use this to customize screenshot behavior - from simple debugging
-/// screenshots to beautiful device-framed images for documentation.
+/// screenshots to device-framed images for documentation.
 ///
 /// ## Quick Start
 ///
@@ -18,7 +18,7 @@ import 'package:snaptest/src/constants.dart';
 /// // Screenshots use SnaptestSettings.rendered() by default
 /// await snap();
 ///
-/// // Golden comparison uses SnaptestSettings.golden by default
+/// // Golden comparison uses SnaptestSettings.goldens by default
 /// await snap.golden();
 ///
 /// // Both visual debugging + golden comparison
@@ -61,8 +61,8 @@ class SnaptestSettings with EquatableMixin {
   /// Creates screenshot settings for debugging and testing.
   ///
   /// Default settings create simple, consistent screenshots:
-  /// - Text is blocked (shows gray rectangles instead of actual text)
-  /// - No images, shadows, or device frames
+  /// - Text is blocked (shows colored rectangles instead of actual text)
+  /// - No shadows or device frames
   /// - Uses default test environment sizing
   /// - Screenshots saved to `.snaptest/` directory
   ///
@@ -75,7 +75,7 @@ class SnaptestSettings with EquatableMixin {
     this.pathPrefix = kDefaultPathPrefix,
   });
 
-  /// Creates settings for beautiful, realistic screenshots with full rendering.
+  /// Creates settings for realistic screenshots with full rendering.
   ///
   /// Rendered screenshots include:
   /// - Real text (no blocking)
@@ -110,7 +110,7 @@ class SnaptestSettings with EquatableMixin {
 
   /// Default settings used by [Snap.golden] and [Snap.andGolden].
   ///
-  /// Defaults to blocking text, no images, no shadows, no device frame.
+  /// Defaults to blocked text, no shadows, and no device frame.
   static SnaptestSettings goldens = const SnaptestSettings();
 
   /// Resets global settings back to defaults.
@@ -125,7 +125,7 @@ class SnaptestSettings with EquatableMixin {
     global = const SnaptestSettings.rendered();
   }
 
-  /// Whether to replace text with gray rectangles for consistency.
+  /// Whether to replace text with colored rectangles for consistency.
   ///
   /// - `true` (default): Shows golden-friendly blocks instead of actual text
   /// - `false`: Shows real text as it appears in your app
