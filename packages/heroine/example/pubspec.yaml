@@ -1,5 +1,5 @@
 name: heroine_example
-description: "A new Flutter project."
+description: "Examples for heroine: spring-based hero transitions."
 
 # Prevent accidental publishing to pub.dev.
 publish_to: 'none'
@@ -8,24 +8,24 @@ version: 1.0.0+1
 resolution: workspace
 
 environment:
-  sdk: ^3.5.4
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.47.0"
 
 dependencies:
-  cached_network_image: ^3.4.1
+  auto_route: ^10.0.1
+  coil:
+    path: ../../coil
   cupertino_icons: ^1.0.8
-  figma_squircle_updated: ^1.0.1
   flutter:
     sdk: flutter
-  lorem_gen: ^2.0.1
-  pull_down_button: ^0.10.2
-  motor: ^1.1.0
-  heroine: 
+  heroine:
     path: ../
-  auto_route: ^10.0.1
+  lucide_icons_flutter: 4.0.1
+  motor: ^1.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
 flutter:
-  uses-material-design: true
+  uses-material-design: false

@@ -249,7 +249,7 @@ class _CoilDatePickerState extends State<CoilDatePicker> {
   );
 
   Widget _content(BuildContext context, CoilPopupHandle popup) {
-    final sheet = popup.presentation == CoilPresentation.sheet;
+    final sheet = popup.presentation.usesSheetPanel;
     _live = !sheet;
     // Only a popover picking a date alone has a tap that is the whole
     // answer.

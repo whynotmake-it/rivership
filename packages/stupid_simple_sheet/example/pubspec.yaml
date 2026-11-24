@@ -1,5 +1,5 @@
 name: stupid_simple_sheet_example
-description: "A new Flutter project."
+description: "Examples for stupid_simple_sheet, built with coil."
 
 # Prevent accidental publishing to pub.dev.
 publish_to: 'none'
@@ -8,16 +8,25 @@ version: 1.0.0+1
 resolution: workspace
 
 environment:
-  sdk: ^3.5.4
-  flutter: ^3.27.0
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.47.0"
 
 dependencies:
   auto_route: ^10.0.1
+  coil:
+    path: ../../coil
+  # Only for the fonts coil's typography presets are tuned for.
+  coil_example:
+    path: ../../coil/example
+  cupertino_icons: ^1.0.8
   example_design:
     path: ../../example_design
   flutter:
     sdk: flutter
   motor: ^1.1.0
+  # Only for the monospace font the code blocks are set in.
+  motor_example:
+    path: ../../motor/example
   stupid_simple_sheet:
     path: ../
 
@@ -27,4 +36,16 @@ dev_dependencies:
   snaptest: ^1.0.0-dev.3
 
 flutter:
-  uses-material-design: true
+  uses-material-design: false
+  # coil bundles no fonts. The families come from the coil catalog's assets.
+  fonts:
+    - family: Allo
+      fonts:
+        - asset: packages/coil_example/fonts/allo/AlloVariable.ttf
+    - family: Inter
+      fonts:
+        - asset: packages/coil_example/fonts/inter/InterVariable.ttf
+    # The code blocks' monospace: web has no generic one to fall back on.
+    - family: JetBrains Mono
+      fonts:
+        - asset: packages/motor_example/assets/JetBrainsMono-VariableFont_wght.ttf

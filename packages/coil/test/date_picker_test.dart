@@ -256,7 +256,9 @@ void sizingTests() {
           final scroll = find
               .descendant(
                 of: find.byType(
-                  presentation == .sheet ? CoilSheetPanel : CoilPopoverSurface,
+                  presentation == .popover
+                      ? CoilPopoverSurface
+                      : CoilSheetPanel,
                 ),
                 matching: find.byType(SingleChildScrollView),
               )
