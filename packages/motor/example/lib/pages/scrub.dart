@@ -5,12 +5,13 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
-import 'package:motor_example/widgets/controls.dart';
+import 'package:motor_example/widgets/icons.dart';
 import 'package:motor_example/widgets/live_timeline.dart';
 import 'package:motor_example/widgets/style.dart';
 
@@ -72,12 +73,9 @@ class _ScrubPageState extends State<ScrubPage>
       'send\n'
       '  ..stop(canceled: true)\n'
       '  ..set(timeline.startValues)\n'
-      '  ..play(timeline);\n'
-      '// The clock does not restart on play: note where it was.\n'
-      '// Experimental: Motor has no public getter for it yet.\n'
-      'origin = send.inspectPlayback().position;';
+      '  ..play(timeline);';
 
-  final _code = ValueNotifier('// Tap Send to play.\n$_playCode');
+  final _code = ValueNotifier('// Tap Play to send.\n$_playCode');
 
   @override
   void dispose() {
@@ -130,11 +128,11 @@ class _ScrubPageState extends State<ScrubPage>
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final text = CoilTheme.textOf(context);
     return ChapterPage(
       chapter: chapterNamed('Scrub'),
       lead:
-          'Tap Send, then drag the scrubber. Scrubbing shows exactly what '
+          'Tap Play, then drag the scrubber. Scrubbing shows exactly what '
           'playback shows, sync barrier included. Let go and it plays on.',
       code: _code,
       below: LiveTimeline(
@@ -178,9 +176,9 @@ class _ScrubPageState extends State<ScrubPage>
                 progress: value(_caption),
                 child: Column(
                   children: [
-                    Text('\$42 sent', style: t.title.copyWith(fontSize: 20)),
+                    Text('\$42 sent', style: text.title),
                     const SizedBox(height: 2),
-                    Text('to Jules', style: t.caption),
+                    Text('to Jules', style: text.muted.caption),
                   ],
                 ),
               ),
@@ -189,11 +187,10 @@ class _ScrubPageState extends State<ScrubPage>
                 padding: const .fromLTRB(20, 0, 20, 18),
                 child: Row(
                   children: [
-                    PillButton(
-                      label: 'Send',
-                      icon: CupertinoIcons.paperplane_fill,
-                      filled: true,
-                      onTap: _play,
+                    CoilButton(
+                      leading: const GlyphIcon(Glyph.play),
+                      onPressed: _play,
+                      child: const Text('Play'),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -232,21 +229,24 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     final label = ((width - _puck) / (_button - _puck)).clamp(0.0, 1.0);
     final spinning = spinner > 0 && spinner < 2 && check == 0;
     return SizedBox(
       width: 260,
       height: 200,
       child: CustomPaint(
-        painter: _ConfettiPainter(burst, t.accent),
+        painter: _ConfettiPainter(burst, colors.brand),
         child: Center(
           child: Container(
             width: width,
             height: math.min(width, _puck),
-            decoration: BoxDecoration(
-              color: Color.lerp(t.text, t.accent, check),
-              borderRadius: .circular(width),
+            decoration: ShapeDecoration(
+              color: Color.lerp(colors.foreground, colors.brand, check),
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(math.min(width, _puck) / 2),
+              ),
             ),
             child: Stack(
               alignment: .center,
@@ -257,8 +257,10 @@ class _SendButton extends StatelessWidget {
                   child: OverflowBox(
                     maxWidth: _button,
                     child: Text(
-                      'Send \$42',
-                      style: archivo(15, weight: 560, color: t.canvas),
+                      'Send',
+                      style: text.body
+                          .copyWith(fontWeight: text.emphasis)
+                          .copyWith(color: colors.background),
                     ),
                   ),
                 ),
@@ -267,13 +269,13 @@ class _SendButton extends StatelessWidget {
                     angle: spinner * 2 * math.pi,
                     child: CustomPaint(
                       size: const .square(26),
-                      painter: _ArcPainter(t.canvas),
+                      painter: _ArcPainter(colors.background),
                     ),
                   ),
                 if (check > 0)
                   CustomPaint(
                     size: const .square(30),
-                    painter: _CheckPainter(check, CupertinoColors.white),
+                    painter: _CheckPainter(check, colors.background),
                   ),
               ],
             ),
@@ -303,7 +305,7 @@ class _Scrubber extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -318,34 +320,48 @@ class _Scrubber extends StatelessWidget {
           decreasedValue: '${(math.max(progress - .1, 0) * 100).round()}%',
           onIncrease: () => onStep(.1),
           onDecrease: () => onStep(-.1),
-          child: GestureDetector(
-            behavior: .opaque,
-            onHorizontalDragDown: (details) =>
-                onGrab(fraction(details.localPosition)),
-            onHorizontalDragUpdate: (details) =>
-                onScrub(fraction(details.localPosition)),
-            onHorizontalDragEnd: (_) => onRelease(),
-            onHorizontalDragCancel: onRelease,
-            child: SizedBox(
-              height: 40,
-              child: Stack(
-                alignment: .centerLeft,
-                children: [
-                  Container(height: 4, color: t.control),
-                  Container(
-                    width: progress * width,
-                    height: 4,
-                    color: t.accent,
-                  ),
-                  Positioned(
-                    left: progress * (width - 4),
-                    child: Container(
-                      width: 4,
-                      height: 26,
-                      color: scrubbing ? t.accent : t.text,
+          child: ExcludeScrollDrag(
+            child: GestureDetector(
+              behavior: .opaque,
+              onHorizontalDragDown: (details) =>
+                  onGrab(fraction(details.localPosition)),
+              onHorizontalDragUpdate: (details) =>
+                  onScrub(fraction(details.localPosition)),
+              onHorizontalDragEnd: (_) => onRelease(),
+              onHorizontalDragCancel: onRelease,
+              child: SizedBox(
+                height: 40,
+                child: Stack(
+                  alignment: .centerLeft,
+                  children: [
+                    Container(
+                      height: 4,
+                      decoration: ShapeDecoration(
+                        color: colors.muted,
+                        shape: const StadiumBorder(),
+                      ),
                     ),
-                  ),
-                ],
+                    Container(
+                      width: progress * width,
+                      height: 4,
+                      decoration: ShapeDecoration(
+                        color: colors.foreground,
+                        shape: const StadiumBorder(),
+                      ),
+                    ),
+                    Positioned(
+                      left: progress * (width - 4),
+                      child: Container(
+                        width: 4,
+                        height: 26,
+                        decoration: ShapeDecoration(
+                          color: scrubbing ? colors.brand : colors.foreground,
+                          shape: const StadiumBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

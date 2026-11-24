@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
-import 'package:motor_example/widgets/controls.dart';
+import 'package:motor_example/widgets/icons.dart';
 import 'package:motor_example/widgets/live_timeline.dart';
-import 'package:motor_example/widgets/style.dart';
 
 /// Tracks that share a sync token wait for each other.
 class SyncPage extends StatefulWidget {
@@ -35,9 +35,9 @@ final _cardConverter = MotionConverter<_Card>.custom(
 
 const _deck = Offset(0, 96);
 const _faces = [
-  ('A', 'Ace', CupertinoIcons.suit_heart_fill),
-  ('K', 'King', CupertinoIcons.suit_spade_fill),
-  ('Q', 'Queen', CupertinoIcons.suit_diamond_fill),
+  ('A', 'Ace', Glyph.heart),
+  ('K', 'King', Glyph.spade),
+  ('Q', 'Queen', Glyph.diamond),
 ];
 // Offsets from the stage center, and how long each deal takes. Curves arrive
 // exactly on time, so the wait at the barrier is easy to see.
@@ -153,21 +153,25 @@ class _SyncPageState extends State<SyncPage>
                   child: FittedBox(
                     fit: .scaleDown,
                     alignment: .centerLeft,
-                    child: Choice(
-                      options: const ['Together', 'On landing'],
-                      selected: _together ? 0 : 1,
-                      onSelect: (index) {
-                        setState(() => _together = index == 0);
+                    child: CoilTabs<bool>(
+                      value: _together,
+                      onChanged: (together) {
+                        setState(() => _together = together);
                         _deal();
                       },
+                      tabs: const [
+                        CoilTab(value: true, label: Text('Together')),
+                        CoilTab(value: false, label: Text('On landing')),
+                      ],
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                PillButton(
-                  label: 'Deal',
-                  icon: CupertinoIcons.arrow_counterclockwise,
-                  onTap: _deal,
+                CoilButton(
+                  variant: .secondary,
+                  leading: const GlyphIcon(Glyph.rotateCcw),
+                  onPressed: _deal,
+                  child: const Text('Deal'),
                 ),
               ],
             ),
@@ -184,7 +188,7 @@ class _FlyingCard extends StatelessWidget {
   const _FlyingCard({required this.card, required this.face});
 
   final _Card card;
-  final (String, String, IconData) face;
+  final (String, String, Glyph) face;
 
   @override
   Widget build(BuildContext context) {
@@ -222,25 +226,38 @@ class _CardBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
-    return Container(
-      width: _cardSize.width,
-      height: _cardSize.height,
-      decoration: BoxDecoration(
-        color: t.accent,
-        borderRadius: .circular(6),
-        boxShadow: [
-          if (stacked)
-            for (var i = 1; i <= 3; i++)
-              BoxShadow(
-                color: i.isOdd ? t.canvas : t.accent,
-                offset: Offset(0, i * 2.0),
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
+    final shape = RoundedSuperellipseBorder(
+      borderRadius: BorderRadius.circular(CoilTheme.radiiOf(context).item),
+    );
+    return Stack(
+      clipBehavior: .none,
+      children: [
+        if (stacked)
+          // Cards underneath, peeking out below.
+          for (var i = 3; i >= 1; i--)
+            Positioned.fill(
+              top: i * 2.0,
+              bottom: -i * 2.0,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  color: i.isOdd ? colors.background : colors.foreground,
+                  shape: shape,
+                ),
               ),
-        ],
-      ),
-      child: Center(
-        child: Text('m', style: archivo(32, weight: 700, color: t.onAccent)),
-      ),
+            ),
+        Container(
+          width: _cardSize.width,
+          height: _cardSize.height,
+          alignment: .center,
+          decoration: ShapeDecoration(color: colors.foreground, shape: shape),
+          child: Text(
+            'm',
+            style: text.title.copyWith(color: colors.background),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -248,27 +265,37 @@ class _CardBack extends StatelessWidget {
 class _CardFront extends StatelessWidget {
   const _CardFront({required this.face});
 
-  final (String, String, IconData) face;
+  final (String, String, Glyph) face;
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     final (rank, _, suit) = face;
-    final color = suit == CupertinoIcons.suit_spade_fill ? t.text : t.accent;
     return Container(
       width: _cardSize.width,
       height: _cardSize.height,
       padding: const .all(10),
-      decoration: BoxDecoration(
-        color: t.surface,
-        borderRadius: .circular(6),
-        border: Border.all(color: t.borderStrong),
+      decoration: ShapeDecoration(
+        color: colors.surface(4),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(CoilTheme.radiiOf(context).item),
+          side: BorderSide(color: colors.border),
+        ),
       ),
-      child: Stack(
-        children: [
-          Text(rank, style: mono(16, weight: 600, color: color)),
-          Center(child: Icon(suit, size: 38, color: color)),
-        ],
+      child: IconTheme(
+        data: IconThemeData(color: colors.foreground),
+        child: Stack(
+          children: [
+            Text(
+              rank,
+              style: text.body
+                  .copyWith(fontWeight: text.emphasis)
+                  .copyWith(color: colors.foreground),
+            ),
+            Center(child: GlyphIcon(suit, size: 38)),
+          ],
+        ),
       ),
     );
   }
