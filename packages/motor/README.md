@@ -137,6 +137,8 @@ final customSpring = SpringMotion(
 
 ## 2. Tracks & Steps: describing what happens
 
+![Multi-property track choreography with a sync barrier and live timeline](./doc/steps_choreography.gif)
+
 ### Declare a `Track` per property
 
 A `Track` pairs a `MotionConverter` (how to break a value into animatable dimensions) with an optional `initial` value and an optional default `motion`:
@@ -314,6 +316,8 @@ By default, a track reaches the barrier once the preceding step has settled. Wit
 ### Named phases (`TrackPhaseTimeline` and `PhaseTrackBuilder`)
 
 When an animation moves between named states (like compact, expanded, and focused), `TrackPhaseTimeline` maps each phase to its track animations and automatically inserts sync barriers between phases so every track arrives together.
+
+![Named phases morphing between Mini, Card, and Full states](./doc/phases_showcase.gif)
 
 Drive it with `PhaseTrackBuilder`, either manually via `currentPhase` or automatically via `playing: true`:
 
