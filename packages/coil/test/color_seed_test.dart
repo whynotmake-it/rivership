@@ -164,7 +164,7 @@ void main() {
       brand: teal,
     );
     expect(colors.brand, teal);
-    expect(const CoilFocusRingTheme().colorOf(colors), teal);
+    expect(const CoilFocusRingTheme().colorOf(colors), colors.brandMark);
   });
 
   test('oklch maps out-of-gamut colors at the same lightness and hue', () {

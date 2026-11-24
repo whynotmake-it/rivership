@@ -197,7 +197,7 @@ class CoilColors with Diagnosticable {
     onBrandFill: Color(0xFFFFFFFF),
     brandInk: Color(0xFF3E65C8), // brand, darkened to 4.5 : 1 on its wash
     brandWash: Color(0x246B97FF), // brand at 14 %
-    brandMark: Color(0xFF6B97FF), // brand
+    brandMark: Color(0xFF618DF4), // brand, deepened to 3 : 1
     overlay: Color(0xFF000000),
     hover: Color(0x0A000000), // rgb(0 0 0 / 0.04)
     active: Color(0x12000000), // rgb(0 0 0 / 0.07)
@@ -331,11 +331,13 @@ class CoilColors with Diagnosticable {
 
   /// [brand] as a mark: the focus ring, the on switch's track, the
   /// selected radio's dot and the text cursor. Under
-  /// [CoilBrandFill.accessible], a brand too dark to show on a dark page
-  /// (navy, graphite) is lifted in Oklch lightness, hue and chroma kept,
-  /// until it reaches 3 : 1 against the surfaces controls sit on (levels 1
-  /// to 5: the page, cards, popovers, sheets and dialogs). Every other brand,
-  /// and every brand in light, is [brand] itself; so is [CoilBrandFill.exact].
+  /// [CoilBrandFill.accessible] it reaches 3 : 1 against the surfaces
+  /// controls sit on (levels 1 to 5: the page, cards, popovers, sheets and
+  /// dialogs), as WCAG asks of a control's marks: a brand that doesn't is
+  /// moved in Oklch lightness, chroma kept, darker in light (coil's blue a
+  /// little, a yellow to amber) and lighter in dark (navy, graphite). A
+  /// brand that already shows is [brand] itself; so is
+  /// [CoilBrandFill.exact].
   final Color brandMark;
 
   /// How [brandFill], [onBrandFill], [brandInk], [brandWash] and
@@ -715,25 +717,24 @@ class CoilColors with Diagnosticable {
   /// [brandMark] for [brand] over [surfaces] in [brightness] under
   /// [policy], as [CoilColors.fromSeed] derives it.
   ///
-  /// In dark, [CoilBrandFill.accessible] lifts a brand darker than its
-  /// surfaces allow in Oklch lightness, hue and chroma kept, until it
-  /// reaches 3 : 1 against levels 1 to 5. Otherwise it's [brand].
+  /// [CoilBrandFill.accessible] moves a brand that doesn't reach 3 : 1
+  /// against levels 1 to 5 in Oklch lightness, chroma kept, until it does:
+  /// darker in light (a yellow toward amber, not olive), lighter in dark.
+  /// A brand that already shows is [brand]; so is [CoilBrandFill.exact].
   static Color brandMarkFor(
     Color brand,
     List<Color> surfaces,
     Brightness brightness,
     CoilBrandFill policy,
   ) {
-    if (policy == CoilBrandFill.exact || brightness == Brightness.light) {
-      return brand;
-    }
-    final h = CoilColorMix.toOklch(brand).h;
+    if (policy == CoilBrandFill.exact) return brand;
+    final (:l, c: _, :h) = CoilColorMix.toOklch(brand);
     return _toContrast(
       brand,
       surfaces.take(_controlLevels).toList(),
       3,
-      lighter: true,
-      hueAt: (_) => h,
+      lighter: brightness == Brightness.dark,
+      hueAt: (lightness) => CoilColorMix.warmShadeHue(h, l - lightness),
     );
   }
 

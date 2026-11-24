@@ -66,7 +66,7 @@ A surface opened from another surface sits **level + 2** for popovers and sheets
 | Token | Light | Dark | Use: the only places these appear |
 |---|---|---|---|
 | `brand` | `#6B97FF` | `#6B97FF` | text selection (30 %), drop targets, the InputCopy flash, the today-dot in Calendar, the brand badge's dot |
-| `brandMark` | `brand` | `brand` | brand as a mark: focus ring, switch-on track; with brand selection, the selected radio's dot and the text cursor |
+| `brandMark` | `#618DF4` | `brand` | brand as a mark: focus ring, switch-on track; with brand selection, the selected radio's dot and the text cursor |
 | `brandFill` / `onBrandFill` | `#4168CB` / white | `#4168CB` / white | a surface that carries text on the brand: the solid brand badge |
 | `brandWash` | `brand` 14 % | `brand` 22 % | with brand selection, the selected tab's pill and toggle segments |
 | `brandInk` | `#3E65C8` | `#98B8FF` | with brand selection, the selected tab's and segments' labels |
@@ -93,7 +93,7 @@ CoilTheme.override(
 **Contrast floors.** Brand text and marks must show on every surface a control sits on: levels 1 to 5 (page, card, popover, sheet, dialog). Levels 6 to 8 are rare stacking, and holding them would wash out the ink everywhere else. Under `accessible`:
 
 - `brandInk` reaches **4.5 : 1** on `brandWash` over each of those surfaces and on each bare one. It moves in Oklch lightness only; a yellow darkens toward amber, not olive (`CoilColorMix.warmShadeHue`).
-- `brandMark` reaches **3 : 1** against those surfaces in dark. A brand too dark for a dark page (navy, graphite) is lifted in Oklch lightness, hue and chroma kept; blue, orange, green and yellow keep their color, and purple lifts by a hair. In light, `brandMark` is `brand`.
+- `brandMark` reaches **3 : 1** against those surfaces in both themes, as WCAG 1.4.11 asks of a control's marks. A brand that doesn't is moved in Oklch lightness, chroma kept. In light it darkens: coil's blue a little (`#6B97FF` → `#618DF4`), orange a little, a yellow to amber (never olive); green, purple, navy and graphite already show. In dark it lightens: navy and graphite, purple by a hair; blue, orange, green and yellow already show.
 
 `brandInk`, `brandWash` and `brandMark` follow the brand-fill policy. In dark, the wash lifts a deep brand to Oklch lightness 0.5 and leans a yellow amber, since a thin brand over a dark page reads as a dark shade of it. Under `exact`, the ink and the mark are `brand` and the wash is `brand` at 14 % (22 % in dark). High contrast forces the accessible ink, wash and mark.
 
@@ -674,7 +674,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 - **Anatomy:** track → thumb, plus an optional label. The whole row is the target.
 - **Sizes:** see §4.2. The thumb is inset 2. Hover grows the thumb +2 (pointer only, into a pill). Press widens it +4 and flattens it −4 (+5 / −5 on touch). The labeled row's vertical padding is (row − track) / 2.
 - **Colors:**
-  - off: `accent`; on: `brandMark` (the brand, lifted only where a dark brand wouldn't show on a dark page);
+  - off: `accent`; on: `brandMark` (the brand, moved only as far as 3 : 1 against the surface needs);
   - hover shifts the track 10 % toward `overlay` (off) or 8 % toward black (on), in Oklab;
   - thumb white with `shadow(2)`;
   - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.

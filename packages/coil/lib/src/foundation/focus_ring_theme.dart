@@ -60,7 +60,7 @@ class CoilFocusRingTheme with Diagnosticable {
   final Color? color;
 
   /// The ring's color in [colors]: [color], or the brand as a mark
-  /// (`CoilColors.brandMark`, lifted where a dark brand wouldn't show).
+  /// (`CoilColors.brandMark`, moved only as far as 3 : 1 needs).
   Color colorOf(CoilColors colors) => color ?? colors.brandMark;
 
   /// Returns a copy with the given fields replaced. Pass `color: null` to go

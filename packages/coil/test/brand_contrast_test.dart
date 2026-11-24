@@ -68,8 +68,7 @@ void main() {
       });
 
       test('the focus ring, an on switch and a selected radio dot show at '
-          '3 : 1 on a dark page, card or dialog', () {
-        if (brightness == Brightness.light) return;
+          '3 : 1 on every page, card or dialog', () {
         for (final MapEntry(key: name, value: brand) in _brands.entries) {
           for (final colors in [
             CoilColors.fromSeed(brightness: brightness, brand: brand),
@@ -106,14 +105,35 @@ void main() {
         }
       });
 
-      test('a brand that already shows keeps its own color as a mark', () {
-        for (final name in ['blue', 'orange', 'green', 'yellow']) {
+      test('a brand that already shows keeps its own color as a mark, and '
+          'the brand itself never changes', () {
+        // These clear 3 : 1 on every dark surface as given.
+        final showing = brightness == Brightness.dark
+            ? ['blue', 'orange', 'green', 'yellow']
+            : ['green', 'purple', 'navy', 'graphite'];
+        for (final MapEntry(key: name, value: brand) in _brands.entries) {
           final colors = CoilColors.fromSeed(
             brightness: brightness,
-            brand: _brands[name],
+            brand: brand,
           );
-          expect(colors.brandMark, colors.brand, reason: name);
+          expect(colors.brand, brand, reason: name);
+          expect(colors.highContrast().brand, brand, reason: name);
+          if (showing.contains(name)) {
+            expect(colors.brandMark, brand, reason: name);
+          }
         }
+      });
+
+      test('a yellow mark darkens toward amber, not olive', () {
+        final yellow = _brands['yellow']!;
+        final mark = CoilColors.fromSeed(
+          brightness: brightness,
+          brand: yellow,
+        ).brandMark;
+        expect(
+          CoilColorMix.toOklch(mark).h,
+          lessThanOrEqualTo(CoilColorMix.toOklch(yellow).h + 1),
+        );
       });
 
       test('an exact brand stays exactly as given', () {
