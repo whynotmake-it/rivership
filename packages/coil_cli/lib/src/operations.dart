@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 
 /// App-wide eject settings, fixed by the first eject.
 class EjectOptions {
-  /// Settings for an eject; null fields keep what the manifest has.
+  /// Creates [EjectOptions]; `null` fields preserve values from the manifest.
   const EjectOptions({
     this.into,
     this.library,
@@ -18,32 +18,37 @@ class EjectOptions {
     this.force = false,
   });
 
-  /// The folder the component folders go in, relative to the app root.
+  /// Target directory for ejected component folders, relative to the app root.
+  ///
   /// Defaults to `lib/<library>`.
   final String? into;
 
-  /// The app library's name (`acme` for `lib/acme.dart`). Defaults to the
-  /// prefix in snake case, or `coil`.
+  /// Name of the generated app library (e.g. `acme` for `lib/acme.dart`).
+  ///
+  /// Defaults to [prefix] in `snake_case`, or `coil`.
   final String? library;
 
-  /// Replaces `Coil` in names and leads file names.
+  /// Optional prefix that replaces `Coil` in symbol names and prefixes file
+  /// names.
   final String? prefix;
 
-  /// Explicit renames, `CoilButton` → `AcmeButton`.
+  /// Explicit symbol renames (e.g. `CoilButton` → `AcmeButton`).
   final Map<String, String> renames;
 
-  /// Whether to replace an earlier eject of the same component.
+  /// Whether to replace an earlier eject of the same component, discarding
+  /// local edits.
   final bool force;
 }
 
-/// Copies [names] from coil into the app and records the
-/// pristine copies as the base for later updates. Returns the components'
-/// names.
+/// Copies the named Coil components in [names] into the app and records
+/// pristine merge-base snapshots for later updates.
 ///
-/// Components ejected together, or ejected earlier, refer to each other's
-/// copies: an ejected Dialog builds the ejected Button. Copies ejected
-/// earlier are re-pointed at the new ones, base included. Refuses to
-/// replace an earlier eject of the same component unless forced.
+/// Returns the canonical names of the ejected components. Components ejected
+/// together or separately automatically reference each other's local copies
+/// (for example, an ejected dialog uses the ejected button), and previously
+/// ejected copies are repointed at newly ejected ones along with their bases.
+/// Throws an [EjectException] if a component is already ejected unless
+/// [EjectOptions.force] is `true`.
 Future<List<String>> eject(
   EjectWorkspace workspace,
   Iterable<String> names, {
@@ -92,7 +97,7 @@ Future<List<String>> eject(
         (previous != null || Directory(p.join(appRoot, target)).existsSync())) {
       throw EjectException(
         '${component.name} is already ejected to $target. Run '
-        '`dart run coil_cli:update ${component.name}` to merge upstream '
+        'dart run coil_cli:update ${component.name} to merge upstream '
         'changes, or eject with --force to replace your copy.',
       );
     }
@@ -187,32 +192,32 @@ Future<List<String>> eject(
   return [for (final component in components) component.name];
 }
 
-/// What an update did, or would do, to one file.
+/// The outcome of updating (or dry-running an update on) a single file.
 enum FileUpdate {
   /// Unchanged upstream; nothing to do.
   unchanged,
 
-  /// Upstream changes merged without conflicts.
+  /// Upstream changes merged cleanly without conflicts.
   merged,
 
-  /// New upstream; copied into the app.
+  /// Added upstream and copied into the app.
   added,
 
-  /// Removed upstream and not edited in the app; deleted.
+  /// Removed upstream and unedited in the app; deleted.
   removed,
 
-  /// Both sides changed the same lines; the app's copy has conflict
-  /// markers and the base stays where it was.
+  /// Both sides changed the same lines; the app's copy has conflict markers
+  /// and the merge base remains unchanged.
   conflict,
 
-  /// Removed upstream but edited in the app; kept as it is.
+  /// Removed upstream but edited in the app; kept as-is.
   removedButEdited,
 
   /// Deleted in the app but changed upstream; left deleted.
   deletedButChanged,
 }
 
-/// The result of updating one component.
+/// The result of updating a single ejected component.
 class UpdateResult {
   UpdateResult._(
     this.component,
@@ -226,24 +231,25 @@ class UpdateResult {
   /// The component's name.
   final String component;
 
-  /// The base versions before the update, and the version it updated to.
+  /// The merge-base Coil versions recorded before the update.
   final Set<String> from;
 
-  /// The installed coil version.
+  /// The installed Coil version updated to.
   final String to;
 
-  /// Each file's outcome, by its path in coil's component
-  /// (`src/button.dart`).
+  /// Each file's [FileUpdate] outcome, keyed by its path in Coil's component
+  /// (e.g. `src/button.dart`).
   final Map<String, FileUpdate> files;
 
-  /// Each file's path in the app, relative to the app root, by its path in
-  /// coil's component.
+  /// Each file's path in the app, relative to the app root, keyed by its path
+  /// in Coil's component.
   final Map<String, String> paths;
 
-  /// For a dry run, a unified diff of the app's copy before and after.
+  /// A unified diff of the app's copy before and after when run with `dryRun`.
   final String diff;
 
-  /// The files that need a person: conflicts and edits that diverged.
+  /// File keys that require manual resolution (conflicts and diverged
+  /// deletions).
   Iterable<String> get needsAttention => files.keys.where(
     (f) => const {
       FileUpdate.conflict,
@@ -253,13 +259,14 @@ class UpdateResult {
   );
 }
 
-/// Three-way merges the installed coil's copy of [name] into the app's
-/// ejected copy, file by file, against the recorded base.
+/// Three-way merges upstream Coil changes for [name] into the app's ejected
+/// copy, file by file, against the recorded merge base.
 ///
-/// A clean file advances its base and version in the manifest; a
-/// conflicting one gets git's conflict markers and keeps its old base, so
-/// the next update merges against the same base. With [dryRun] nothing is
-/// written and [UpdateResult.diff] shows the change.
+/// Cleanly merged files advance their merge base and version in the manifest.
+/// Conflicting files receive standard git conflict markers and keep their old
+/// base so the next update merges against the same base. When [dryRun] is
+/// `true`, nothing is written and [UpdateResult.diff] contains the unified
+/// diff.
 Future<UpdateResult> update(
   EjectWorkspace workspace,
   String name, {
@@ -278,7 +285,7 @@ Future<UpdateResult> update(
   }
   if (component == null) {
     throw EjectException(
-      'coil ${coil.version} has no "$name" any more; your copy in '
+      'Coil ${coil.version} no longer has "$name"; your copy in '
       '${ejected.path} is yours to keep.',
     );
   }
@@ -410,8 +417,8 @@ String _git() {
     // Reported below.
   }
   throw EjectException(
-    'coil_cli:update needs git on your PATH for its three-way merge '
-    '(`git merge-file`). Install git and run it again.',
+    'coil_cli:update requires git on your PATH for three-way merges '
+    '(git merge-file). Install git and run it again.',
   );
 }
 

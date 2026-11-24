@@ -1,15 +1,20 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.card` checks, run by `expectCoilPattern` after the card
-/// was reached with Tab and showed its focus ring:
+/// Verifies the [CoilPattern.card] contract for [expectCoilPattern] after the
+/// card has been focused with Tab and shown its focus ring.
 ///
-/// * the card is one button node, with a tap action, named by its text;
-/// * the focused node is the card's own: Enter and Space activate it;
-/// * the next Tab leaves the card's node (for its inner buttons or the
-///   next control): the card itself is a single stop.
+/// Checks that:
+///
+/// * the card is a single button node with a tap action named by its text;
+/// * the focused node is the card's own and Enter and Space activate it;
+/// * the next Tab leaves the card's node (for inner buttons or the next
+///   control), keeping the card itself a single tab stop.
 Future<void> expectCardPattern(WidgetTester tester, Finder finder) async {
   final root = _buttonNode(tester, finder);
   expect(root, isNotNull, reason: 'card: the whole card is one button node');

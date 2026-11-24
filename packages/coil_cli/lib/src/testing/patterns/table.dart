@@ -1,19 +1,24 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'dart:ui' show SemanticsRole, Tristate;
 
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.table` checks, run by `expectCoilPattern` after the
-/// table was reached with Tab and showed its focus ring:
+/// Verifies the [CoilPattern.table] contract for [expectCoilPattern] after
+/// the table has been focused with Tab and shown its focus ring.
 ///
-/// * a table node whose children are rows, the first of them column
-///   headers and the rest cells;
-/// * Space selects the active row, and the arrows move it: Space, Down,
-///   Space selects the first two body rows.
+/// Checks that:
 ///
-/// Needs a stateful host with a selectable table of two or more rows and
-/// nothing selected.
+/// * a table node contains row children, with column headers in the first row
+///   and cells in body rows;
+/// * Space selects the active row and arrow keys move it (Space, Down, Space
+///   selects the first two body rows).
+///
+/// Requires a stateful host with a selectable table of two or more body rows
+/// and nothing initially selected.
 Future<void> expectTablePattern(WidgetTester tester, Finder finder) async {
   SemanticsNode table() {
     SemanticsNode? found;

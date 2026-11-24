@@ -14,90 +14,99 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The interaction patterns coil components implement. Each one is a
-/// contract for semantics, keyboard and focus that [expectCoilPattern]
-/// checks in one line.
+/// The interaction patterns implemented by Coil components.
+///
+/// Each value represents a semantics, keyboard, and focus contract that
+/// [expectCoilPattern] verifies in a single call.
 enum CoilPattern {
-  /// A push button: a focusable button node with a tap action; Enter and
-  /// Space activate it.
+  /// A push button: a focusable button node with a tap action activated by
+  /// Enter and Space.
   button,
 
-  /// A checkbox: a checked state that Space flips.
+  /// A checkbox: a checked state toggled by Space.
   checkbox,
 
-  /// A switch: a toggled state that Space flips.
+  /// A switch: a toggled state flipped by Space.
   switchControl,
 
-  /// A slider: an adjustable node with a value; arrows, page keys, Home and
-  /// End change it.
+  /// A slider: an adjustable node with a value controlled by arrow keys,
+  /// Page Up/Down, Home, and End.
   slider,
 
-  /// A range slider: two adjustable nodes, each a tab stop in order. Each
-  /// one's keys move only its own value, and neither passes the other.
+  /// A range slider: two adjustable nodes, each a tab stop in order.
+  ///
+  /// Each thumb's keys move only its own value, and neither thumb passes the
+  /// other.
   rangeSlider,
 
-  /// A tab list: one tab stop, arrows move between tabs, Enter selects.
+  /// A tab list: one tab stop, arrow keys move between tabs, and Enter selects.
   tabs,
 
-  /// A radio group: one tab stop (the selected radio), arrows move focus
-  /// and select with wrapping.
+  /// A radio group: one tab stop (the selected radio), where arrow keys move
+  /// focus and select with wrapping.
   radioGroup,
 
-  /// A checkbox group: every row is a tab stop, arrows move focus between
-  /// rows, Space toggles the focused row.
+  /// A checkbox group: every row is a tab stop, arrow keys move focus between
+  /// rows, and Space toggles the focused row.
   checkboxGroup,
 
-  /// A toggle group: one tab stop, arrows move focus between toggles, Space
-  /// flips the focused toggle.
+  /// A toggle group: one tab stop, arrow keys move focus between toggles, and
+  /// Space flips the focused toggle.
   toggleGroup,
 
   /// A single-line text field.
   textField,
 
-  /// A button that opens a list: expanded state, Enter or Down opens, Escape
-  /// closes and returns focus.
+  /// A button that opens a list: expanded state, Enter or Down opens, and
+  /// Escape closes and returns focus.
   select,
 
-  /// A disclosure (accordion trigger): a button with an expanded state that
-  /// Enter or Space toggles.
+  /// A disclosure (accordion trigger): a button with an expanded state toggled
+  /// by Enter or Space.
   disclosure,
 
-  /// A table: table/row/cell roles with column headers; arrows move the
-  /// active row.
+  /// A table: table, row, and cell roles with column headers where arrow keys
+  /// move the active row.
   table,
 
-  /// A navigation trail (breadcrumb): links in Tab order, the current page
+  /// A navigation trail (breadcrumb): links in Tab order with the current page
   /// selected.
   navigation,
 
-  /// An adjustable control (carousel dots on touch): increase and decrease
-  /// actions and a value.
+  /// An adjustable control (such as carousel dots on touch): increase and
+  /// decrease actions with a value.
   adjustable,
 
-  /// A live region (banner, thinking indicator): announced politely when it
-  /// changes. Not a tab stop, so the focus checks are skipped.
+  /// A live region (such as a banner or thinking indicator) announced politely
+  /// when it changes.
+  ///
+  /// Not a tab stop, so focus checks are skipped.
   liveRegion,
 
   /// A card with an action: one focusable target for the whole card.
   card,
 
-  /// A question with option rows (AskUserQuestions): one tab stop, arrows
-  /// move focus without picking, Space picks.
+  /// A question with option rows (such as `CoilAskUserQuestions`): one tab
+  /// stop, arrow keys move focus without picking, and Space picks.
   question,
 }
 
-/// Checks that the widget at [finder] implements [pattern]:
+/// Verifies that the widget matched by [finder] implements [pattern].
 ///
-/// * it is reached with Tab;
-/// * keyboard focus shows a focus ring (`WidgetState.focused` on its
-///   interaction detector), and a pointer press hides it (except on text
-///   fields, which show focus while editing however they got it);
-/// * its semantics and keys follow [pattern].
+/// Checks that:
 ///
-/// Stateful patterns (checkbox, switch, tabs) need a host that applies
-/// `onChanged`. [CoilPattern.tabs] needs something focusable after the tabs
-/// so Tab can leave them. Works on ejected copies: it only reads semantics,
-/// focus and `CoilInteractionDetector` states.
+/// * the widget is reached with Tab;
+/// * keyboard focus shows a focus ring ([WidgetState.focused] on its
+///   [CoilInteractionDetector]), and a pointer press hides it (except on text
+///   fields, which show focus while editing regardless of input modality);
+/// * its semantics and keyboard shortcuts follow [pattern].
+///
+/// Stateful patterns (such as [CoilPattern.checkbox],
+/// [CoilPattern.switchControl], and [CoilPattern.tabs]) require a stateful
+/// host that applies `onChanged`. [CoilPattern.tabs] also requires a focusable
+/// widget after the tabs so Tab can leave them. Works on ejected copies
+/// because it inspects only semantics, focus, and [CoilInteractionDetector]
+/// states.
 Future<void> expectCoilPattern(
   WidgetTester tester,
   Finder finder,

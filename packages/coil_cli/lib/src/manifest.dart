@@ -6,47 +6,52 @@ import 'package:coil_cli/src/naming.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-/// One ejected file: where it lives in the app and which coil version its
-/// base in `.coil/base/` came from.
+/// A single ejected file, recording its path in the app and the Coil version
+/// its base snapshot in `.coil/base/` came from.
 class EjectedFile {
-  /// A file at [path] (inside the component's folder) on a base from
-  /// [version].
+  /// Creates an [EjectedFile] at [path] (relative to the component directory)
+  /// with a merge base from Coil [version].
   EjectedFile({required this.path, required this.version});
 
-  /// The app's path for the file, inside the component's folder.
+  /// The file path in the app, relative to the component directory.
   final String path;
 
-  /// The coil version of its base.
+  /// The Coil version of this file's merge base.
   String version;
 }
 
-/// One ejected component in the [Manifest].
+/// An ejected component entry in the [Manifest].
 class EjectedComponent {
-  /// A component ejected to [path].
+  /// Creates an [EjectedComponent] ejected to [path].
   EjectedComponent({
     required this.path,
     required this.files,
     Set<String>? uses,
   }) : uses = uses ?? {};
 
-  /// The ejected folder, relative to the app root (`lib/coil/button`).
+  /// The ejected component directory, relative to the app root (e.g.
+  /// `lib/coil/button`).
   final String path;
 
-  /// Each file, by its path in coil's component (`src/button.dart`).
+  /// Each ejected file, keyed by its path in Coil's component (e.g.
+  /// `src/button.dart`).
   final Map<String, EjectedFile> files;
 
-  /// The other ejected components whose copies this one refers to.
+  /// Other ejected components whose local copies this component imports.
   final Set<String> uses;
 }
 
-/// `.coil/ejected.yaml`: what the app ejected, from which coil version, and
-/// under which names. The pristine copies live next to it in
-/// `.coil/base/<component>/`; both belong in version control, since they
-/// are the base of every update.
+/// Represents `.coil/ejected.yaml`: what the app ejected, from which Coil
+/// version, and under which names.
+///
+/// Pristine merge-base snapshots live alongside it in
+/// `.coil/base/<component>/`; both belong in version control as the base for
+/// future updates.
 class Manifest {
   Manifest._(this.appRoot, this.library, this.naming, this.components);
 
-  /// The manifest of the app at [appRoot], or an empty one.
+  /// Reads the manifest for the app at [appRoot], or returns an empty
+  /// [Manifest] if none exists yet.
   factory Manifest.read(String appRoot) {
     final file = File(p.join(appRoot, path));
     if (!file.existsSync()) {
@@ -91,29 +96,29 @@ class Manifest {
   /// The manifest's path, relative to the app root.
   static const path = '.coil/ejected.yaml';
 
-  /// The app's root folder.
+  /// The app's root directory.
   final String appRoot;
 
-  /// The app library, relative to the app root, once set.
+  /// The generated app library path, relative to the app root, once set.
   String? library;
 
-  /// The prefix and renames the copies use.
+  /// The prefix and explicit renames used by ejected copies.
   Naming naming;
 
-  /// The ejected components, by name.
+  /// The ejected components, keyed by name.
   final Map<String, EjectedComponent> components;
 
-  /// The base copy of [file] (an app path inside the folder) in
-  /// [component].
+  /// Returns the merge-base file for [file] (an app path relative to the
+  /// component directory) in [component].
   File base(String component, String file) =>
       File(p.join(appRoot, '.coil', 'base', component, file));
 
-  /// The app's copy of [file] (an app path inside the folder) in
-  /// [component].
+  /// Returns the app's local copy of [file] (an app path relative to the
+  /// component directory) in [component].
   File copy(String component, String file) =>
       File(p.join(appRoot, components[component]!.path, file));
 
-  /// Writes the manifest back to disk.
+  /// Writes this manifest back to `.coil/ejected.yaml`.
   void write() {
     final out = StringBuffer()
       ..writeln(
@@ -156,10 +161,12 @@ class Manifest {
 
   static String _quote(String value) => "'${value.replaceAll("'", "''")}'";
 
-  /// Writes the app library: `package:coil/coil.dart` minus the ejected
-  /// names, the ejected copies' public libraries and, with a prefix,
-  /// aliases for the foundation's types ([foundation] is resolved
-  /// `foundation.dart`).
+  /// Writes the generated app library barrel file.
+  ///
+  /// Re-exports `package:coil/coil.dart` hiding the ejected symbols, exports
+  /// each ejected component's public libraries, and—when a prefix is active—
+  /// emits prefixed `typedef` aliases for types in [foundation] (the resolved
+  /// `foundation.dart` library).
   void writeLibrary(CoilSource coil, LibraryElement? foundation) {
     final libraryDir = p.dirname(p.join(appRoot, library));
     final hidden = <String>{};
@@ -168,7 +175,7 @@ class Manifest {
       final component = coil.components[name];
       if (component == null) {
         throw EjectException(
-          'coil ${coil.version} no longer has "$name", but the app ejected '
+          'Coil ${coil.version} no longer has "$name", but the app ejected '
           'it. Remove it from ${Manifest.path} and point its imports at your '
           'copy in ${components[name]!.path}.',
         );

@@ -1,19 +1,20 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 
-/// [source] parsed without resolving anything.
+/// Parses [source] into a [CompilationUnit] without resolving symbols.
 CompilationUnit parse(String source) =>
     parseString(content: source, throwIfDiagnostics: false).unit;
 
-/// The URI of every `import`, `export` and `part` in [unit], with its
-/// directive.
+/// Returns each `import`, `export`, and `part` directive in [unit] paired with
+/// its string URI.
 Iterable<(UriBasedDirective, String)> directiveUris(CompilationUnit unit) => [
   for (final directive in unit.directives)
     if (directive is UriBasedDirective)
       if (directive.uri.stringValue case final uri?) (directive, uri),
 ];
 
-/// The names a `show` lists, or null without one.
+/// Returns the names listed in `show` combinators on [directive], or `null` if
+/// none are present.
 Set<String>? shownNames(NamespaceDirective directive) {
   final shows = directive.combinators.whereType<ShowCombinator>();
   if (shows.isEmpty) return null;
@@ -23,13 +24,13 @@ Set<String>? shownNames(NamespaceDirective directive) {
   };
 }
 
-/// The names a `hide` lists.
+/// Returns the names listed in `hide` combinators on [directive].
 Set<String> hiddenNames(NamespaceDirective directive) => {
   for (final hide in directive.combinators.whereType<HideCombinator>())
     for (final name in hide.hiddenNames) name.name,
 };
 
-/// The public top-level names [unit] declares.
+/// Returns the public top-level names declared by [unit].
 Set<String> declaredNames(CompilationUnit unit) => {
   for (final member in unit.declarations)
     for (final name in _names(member))
@@ -50,10 +51,13 @@ Iterable<String> _names(CompilationUnitMember member) => switch (member) {
   _ => const [],
 };
 
-/// [source] with its imports and exports in the order `directives_ordering`
-/// asks for: `dart:`, then `package:`, then relative, each sorted, with the
-/// exports after the imports. Left alone when comments or annotations sit
-/// between the directives (a comment before the first one is the file's).
+/// Returns [source] with its imports and exports sorted to satisfy
+/// `directives_ordering`.
+///
+/// Groups directives as `dart:`, then `package:`, then relative, sorted
+/// alphabetically within each section, with exports after imports. Leaves
+/// [source] unchanged when comments or annotations sit between directives (a
+/// leading comment before the first directive is preserved as the file header).
 String sortDirectives(String source) {
   final unit = parse(source);
   final directives = [
