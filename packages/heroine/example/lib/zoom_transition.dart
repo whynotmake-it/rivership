@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/src/network_photo.dart';
 import 'package:heroine_example/src/photos.dart';
@@ -122,76 +123,85 @@ class _PhotoDetailPageState extends State<PhotoDetailPage> {
   @override
   Widget build(BuildContext context) {
     final photo = widget.photo;
-    final width = MediaQuery.sizeOf(context).width;
-    final wide = width >= 600;
     return CupertinoPageScaffold(
       // Grouped lists sit on the grouped background, down to the bottom.
       backgroundColor: CupertinoColors.systemGroupedBackground,
       navigationBar: CupertinoNavigationBar(middle: Text(photo.author)),
-      // Read the insets the scaffold gives its child, below the bar.
-      child: Builder(
-        builder: (inner) => ListView(
-          // On a phone the photo runs edge to edge. On wider windows the page
-          // is a centered column, the photo inset and rounded like the list
-          // section below it, so the details stay on screen.
-          // An explicit padding replaces the list's automatic one, so it adds
-          // the insets (the translucent bar on top, the home indicator)
-          // itself.
-          padding: wide
-              ? MediaQuery.paddingOf(inner) +
-                    EdgeInsets.symmetric(
-                      horizontal: math.max(0, (width - _wideColumn) / 2),
-                      vertical: 20,
-                    )
-              : null,
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: wide ? 20 : 0),
-              child: ClipRSuperellipse(
-                borderRadius: BorderRadius.circular(wide ? 10 : 0),
-                child: AspectRatio(
-                  aspectRatio: photo.aspectRatio,
-                  child: NetworkPhoto(
-                    photo.fit(1600),
-                    background: CupertinoColors.systemFill.resolveFrom(context),
-                  ),
-                ),
-              ),
-            ),
-            CupertinoListSection.insetGrouped(
-              children: [
-                Heroine(
-                  tag: _photographerTag,
-                  motion: _zoomMotion,
-                  // A flight builds the row at every size between it and the
-                  // page. At rest it is as wide as the window less the
-                  // section's margins.
-                  child: _KeepSize(
-                    minWidth: math.min(320, math.min(width, _wideColumn) - 40),
-                    minHeight: 44,
-                    child: CupertinoListTile(
-                      title: const Text('Photographer'),
-                      additionalInfo: Text(photo.author),
-                      trailing: const CupertinoListTileChevron(),
-                      onTap: () => Navigator.of(context).push(
-                        HeroineZoomRoute<void>(
-                          title: photo.author,
-                          tag: _photographerTag,
-                          builder: (context) =>
-                              PhotographerPage(author: photo.author),
-                        ),
+      // Read the insets the scaffold gives its child, below the bar, and the
+      // page's own width: a flight draws the page at every size between the
+      // tile and the window.
+      child: LayoutBuilder(
+        builder: (inner, constraints) {
+          final width = constraints.maxWidth;
+          final wide = width >= 600;
+          return ListView(
+            // On a phone the photo runs edge to edge. On wider windows the page
+            // is a centered column, the photo inset and rounded like the list
+            // section below it, so the details stay on screen.
+            // An explicit padding replaces the list's automatic one, so it adds
+            // the insets (the translucent bar on top, the home indicator)
+            // itself.
+            padding: wide
+                ? MediaQuery.paddingOf(inner) +
+                      EdgeInsets.symmetric(
+                        horizontal: math.max(0, (width - _wideColumn) / 2),
+                        vertical: 20,
+                      )
+                : null,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: wide ? 20 : 0),
+                child: ClipRSuperellipse(
+                  borderRadius: BorderRadius.circular(wide ? 10 : 0),
+                  child: AspectRatio(
+                    aspectRatio: photo.aspectRatio,
+                    child: NetworkPhoto(
+                      photo.fit(1600),
+                      background: CupertinoColors.systemFill.resolveFrom(
+                        context,
                       ),
                     ),
                   ),
                 ),
-                CupertinoListTile(
-                  title: const Text('Size'),
-                  additionalInfo: Text('${photo.width} × ${photo.height}'),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              CupertinoListSection.insetGrouped(
+                children: [
+                  Heroine(
+                    tag: _photographerTag,
+                    motion: _zoomMotion,
+                    // A flight builds the row at every size between it and the
+                    // page. At rest it is as wide as the window less the
+                    // section's margins.
+                    child: _KeepSize(
+                      minWidth: math.min(
+                        320,
+                        math.min(width, _wideColumn) - 40,
+                      ),
+                      minHeight: 44,
+                      child: CupertinoListTile(
+                        title: const Text('Photographer'),
+                        additionalInfo: Text(photo.author),
+                        trailing: const CupertinoListTileChevron(),
+                        onTap: () => Navigator.of(context).push(
+                          HeroineZoomRoute<void>(
+                            title: photo.author,
+                            tag: _photographerTag,
+                            builder: (context) =>
+                                PhotographerPage(author: photo.author),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  CupertinoListTile(
+                    title: const Text('Size'),
+                    additionalInfo: Text('${photo.width} × ${photo.height}'),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -367,6 +377,9 @@ class _KeepSize extends StatelessWidget {
           : double.infinity;
       return ClipRect(
         child: OverflowBox(
+          // In a list the height is unbounded: take the child's height there
+          // instead of trying to fill it.
+          fit: bounded ? OverflowBoxFit.max : OverflowBoxFit.deferToChild,
           alignment: AlignmentDirectional.topStart,
           minWidth: width,
           maxWidth: width,

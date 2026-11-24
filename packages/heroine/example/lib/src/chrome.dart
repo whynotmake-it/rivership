@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
@@ -136,9 +138,15 @@ class DemoHeader extends StatelessWidget {
         : brand != null
         ? gutter - HeroineBrand.inkInsetOf(context)
         : gutter;
+    // On a phone the back button's padding plus the chevron's empty space
+    // is wider than the gutter, so the ink would need a negative inset.
+    // Padding can't be negative: the bar keeps none and shifts the button
+    // past the edge by the rest instead.
+    final overhang = start < 0 ? -start : 0.0;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(
-        start + padding.left,
+        math.max(0, start) + padding.left,
         padding.top + 8,
         gutter - glyphPad + padding.right,
         8,
@@ -146,13 +154,18 @@ class DemoHeader extends StatelessWidget {
       child: Row(
         children: [
           if (showBack) ...[
-            CoilButton.icon(
-              variant: CoilButtonVariant.ghost,
-              onPressed: context.router.maybePop,
-              icon: const DemoIcon(Glyph.back),
-              semanticLabel: 'Back',
+            Transform.translate(
+              offset: Offset(rtl ? overhang : -overhang, 0),
+              child: CoilButton.icon(
+                variant: CoilButtonVariant.ghost,
+                onPressed: context.router.maybePop,
+                icon: const DemoIcon(Glyph.back),
+                semanticLabel: 'Back',
+              ),
             ),
-            const SizedBox(width: 4),
+            // The title keeps its place relative to the button's layout
+            // slot, so it moves with the shift.
+            SizedBox(width: math.max(0, 4 - overhang)),
           ],
           if (brand case final brand?)
             Expanded(
