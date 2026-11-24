@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:coil/src/foundation/colors.dart';
 import 'package:coil/src/foundation/motion.dart';
@@ -9,6 +10,7 @@ import 'package:coil/src/primitives/adaptive_popup.dart';
 import 'package:coil/src/primitives/presence.dart';
 import 'package:coil/src/primitives/sheet.dart';
 import 'package:coil/src/primitives/surface.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';
@@ -122,7 +124,7 @@ class CoilModalStyle extends CoilComponentStyle<CoilModalStyle> {
 /// in a compact window and centers it elsewhere. With [dismissible] false,
 /// the scrim, Esc, back and dragging don't close it. The future completes
 /// with the value passed to `Navigator.pop`. [anchor], [dismissDirections],
-/// [motions] and [style] are for the floating presentation; see
+/// [origin], [motions] and [style] are for the floating presentation; see
 /// [CoilModalRoute].
 ///
 /// [snappingConfig], [dragHandoff], [dismissalMode], [draggable] and
@@ -138,6 +140,7 @@ Future<T?> showCoilModal<T>({
   CoilMotion? motion,
   CoilModalAnchor anchor = CoilModalAnchor.center,
   Set<AxisDirection> dismissDirections = _defaultDismissDirections,
+  Rect? origin,
   Map<CoilModalTrack<Object>, Motion>? motions,
   CoilModalStyle? style,
   SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
@@ -155,6 +158,7 @@ Future<T?> showCoilModal<T>({
     motion: motion,
     anchor: anchor,
     dismissDirections: dismissDirections,
+    origin: origin,
     motions: motions,
     style: style,
     snappingConfig: snappingConfig,
@@ -217,6 +221,16 @@ Future<T?> showCoilModal<T>({
 /// drag dismisses when the list is at its top and otherwise scrolls the
 /// list, and a vertical list keeps scrolling under a sideways dismiss. An
 /// empty `dismissDirections`, or a non-dismissible route, has no drag.
+///
+/// A floating panel's `origin` is where it was opened from, in global
+/// coordinates: the trigger's rect, as [originOf] measures it. The panel
+/// then grows in from a little smaller and a little of the way toward it,
+/// without leaving its place, and on the way out heads back the same way,
+/// with the momentum it has, so a panel swiped away still flies the way it
+/// was thrown and bends toward its trigger as it fades. With reduced
+/// motion, or without an `origin`, it blur-fades in place. The adaptive
+/// popup behind the dropdown search and the combobox passes its trigger.
+///
 /// Motion springs resolve from the route's `motions`, then `style` over the
 /// theme's [CoilModalStyle], then the motion tokens.
 ///
@@ -237,6 +251,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
     RouteSettings? settings,
     CoilModalAnchor anchor = CoilModalAnchor.center,
     Set<AxisDirection> dismissDirections = _defaultDismissDirections,
+    Rect? origin,
     Map<CoilModalTrack<Object>, Motion>? motions,
     CoilModalStyle? style,
     SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
@@ -322,6 +337,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
         margin: look.margin!,
         anchor: anchor,
         dismissDirections: dismissible ? dismissDirections : const {},
+        origin: origin,
         barrierColor: barrierColor,
         barrierDismissible: dismissible,
         barrierLabel: barrierLabel,
@@ -342,6 +358,18 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
       ? CoilModalPresentation.sheet
       : CoilModalPresentation.centered;
 
+  /// The global rect of the widget at [context], to pass as a floating
+  /// modal's `origin`: call it with the trigger's own context (a [Builder]
+  /// around the button gives one). Null before it's laid out.
+  static Rect? originOf(BuildContext context) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+    return MatrixUtils.transformRect(
+      box.getTransformTo(null),
+      Offset.zero & box.size,
+    );
+  }
+
   /// How the [CoilModalRoute] around [context] shows, or null outside one.
   /// Content reads it to fit its presentation, such as a dialog stacking
   /// its actions in a sheet.
@@ -356,10 +384,10 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
 /// `Navigator.pages` and routers built on it.
 ///
 /// [presentation], [dismissible], [barrierLabel], [motion], [anchor],
-/// [dismissDirections], [motions], [style] and the sheet options are
-/// read when the route is created, from the navigator's context; a
-/// changed [child] rebuilds the open modal. Popping it (the scrim, Esc,
-/// back, a drag, or `Navigator.pop`) calls the navigator's
+/// [dismissDirections], [origin], [motions], [style] and the sheet
+/// options are read when the route is created, from the navigator's
+/// context; a changed [child] rebuilds the open modal. Popping it (the
+/// scrim, Esc, back, a drag, or `Navigator.pop`) calls the navigator's
 /// `onDidRemovePage`.
 class CoilModalPage<T> extends Page<T> {
   /// Creates a page that shows [child] as a modal.
@@ -375,6 +403,7 @@ class CoilModalPage<T> extends Page<T> {
     this.motion,
     this.anchor = CoilModalAnchor.center,
     this.dismissDirections = _defaultDismissDirections,
+    this.origin,
     this.motions,
     this.style,
     this.snappingConfig = SheetSnappingConfig.full,
@@ -406,6 +435,10 @@ class CoilModalPage<T> extends Page<T> {
   /// The directions a drag throws a floating panel away in; empty for none.
   /// See [CoilModalRoute].
   final Set<AxisDirection> dismissDirections;
+
+  /// Where a floating panel was opened from, in global coordinates; see
+  /// [CoilModalRoute].
+  final Rect? origin;
 
   /// Per-track motions; see [CoilModalStyle.motions].
   final Map<CoilModalTrack<Object>, Motion>? motions;
@@ -444,6 +477,7 @@ class CoilModalPage<T> extends Page<T> {
     motion: motion,
     anchor: anchor,
     dismissDirections: dismissDirections,
+    origin: origin,
     motions: motions,
     style: style,
     snappingConfig: snappingConfig,
@@ -565,6 +599,7 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
     required this.margin,
     required this.anchor,
     required this.dismissDirections,
+    required this.origin,
     required Color barrierColor,
     required super.barrierDismissible,
     required Widget Function(Widget child) wrapThemes,
@@ -600,6 +635,9 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
 
   /// The directions a drag dismisses in; empty for none.
   final Set<AxisDirection> dismissDirections;
+
+  /// Where the panel was opened from, in global coordinates; null for none.
+  final Rect? origin;
 
   /// Whether a drag holds the route's animation.
   bool _holding = false;
@@ -755,6 +793,11 @@ class _FloatingPanelState extends State<_FloatingPanel>
   /// for its center.
   Offset? _grab;
 
+  /// The route's presence when an exit began after a drag touched the
+  /// panel, from where the pull toward the origin grows to its full hint at
+  /// 0; null while it isn't leaving that way.
+  double? _exitFrom;
+
   /// The window's, the panel's own or the system's setting.
   bool get _reduceMotion =>
       MediaQuery.maybeDisableAnimationsOf(context) ?? false;
@@ -774,6 +817,11 @@ class _FloatingPanelState extends State<_FloatingPanel>
 
   /// Back at rest after a drag: the route's own transition takes over.
   void _onPresenceStatus(AnimationStatus status) {
+    // An exit after a drag starts its pull home from where the drag left
+    // the presence, so the panel doesn't jump toward its origin.
+    if (status == AnimationStatus.reverse && (_touched || _leaving)) {
+      _exitFrom = widget.route.animation!.value;
+    }
     if (status == AnimationStatus.completed &&
         _touched &&
         !_dragging &&
@@ -1061,7 +1109,7 @@ class _FloatingPanelState extends State<_FloatingPanel>
           child: SizedBox(
             width: double.infinity,
             child: ListenableBuilder(
-              listenable: _slide,
+              listenable: Listenable.merge([_slide, route.animation]),
               child: panel,
               builder: (context, child) {
                 // A drag moves the panel, tilts it around the finger and
@@ -1082,25 +1130,43 @@ class _FloatingPanelState extends State<_FloatingPanel>
                     : 0.0;
                 final scale = moving ? 1 - _recede * depth : 1.0;
                 final tilted = tilt != 0 || scale != 1;
-                return CoilBlurFade(
-                  presence: driven
-                      ? route.animation!.drive(_lateFade)
-                      : route.animation!,
-                  scale: driven ? 1 : 0.97,
-                  blur: driven ? 0 : CoilBlurFade.defaultBlur,
-                  child: FractionalTranslation(
-                    translation: switch (_axis) {
-                      Axis.horizontal => Offset(offset, 0),
-                      Axis.vertical => Offset(0, offset),
-                    },
-                    // Resampled as one image, like the blur-fade's own scale.
-                    child: Transform(
-                      transform: Matrix4.rotationZ(tilt)
-                        ..scaleByDouble(scale, scale, 1, 1),
-                      origin: _grab,
-                      alignment: _grab == null ? Alignment.center : null,
-                      filterQuality: tilted ? FilterQuality.medium : null,
-                      child: child,
+                // How far it's drawn back toward its origin: all the way at
+                // presence 0. On the way out after a drag it starts from
+                // where the drag left it.
+                final origin = _reduceMotion ? null : route.origin;
+                final presence = route.animation!.value;
+                final exitFrom = _exitFrom;
+                final home = origin == null
+                    ? 0.0
+                    : !driven
+                    ? 1 - presence
+                    : exitFrom != null && exitFrom > 0
+                    ? (1 - presence / exitFrom).clamp(0.0, 1.0)
+                    : 0.0;
+                return _OriginHint(
+                  origin: origin,
+                  amount: home,
+                  child: CoilBlurFade(
+                    presence: driven
+                        ? route.animation!.drive(_lateFade)
+                        : route.animation!,
+                    // The origin hint does the scaling when there's one.
+                    scale: driven || origin != null ? 1 : 0.97,
+                    blur: driven ? 0 : CoilBlurFade.defaultBlur,
+                    child: FractionalTranslation(
+                      translation: switch (_axis) {
+                        Axis.horizontal => Offset(offset, 0),
+                        Axis.vertical => Offset(0, offset),
+                      },
+                      // Resampled as one image, like the blur-fade's own scale.
+                      child: Transform(
+                        transform: Matrix4.rotationZ(tilt)
+                          ..scaleByDouble(scale, scale, 1, 1),
+                        origin: _grab,
+                        alignment: _grab == null ? Alignment.center : null,
+                        filterQuality: tilted ? FilterQuality.medium : null,
+                        child: child,
+                      ),
                     ),
                   ),
                 );
@@ -1110,5 +1176,146 @@ class _FloatingPanelState extends State<_FloatingPanel>
         ),
       ),
     );
+  }
+}
+
+/// How much smaller a floating panel is when drawn all the way back toward
+/// its origin, around the point nearest the origin.
+const _originScale = 0.9;
+
+/// How much of the way from its resting center to its origin's center a
+/// floating panel travels when drawn all the way back: a hint, not a
+/// flight.
+const _originTravel = 0.12;
+
+/// The most it travels toward its origin, so a far trigger stays a hint.
+const _originMaxTravel = 40.0;
+
+/// Draws [child] [amount] of the way back toward [origin] (a global rect):
+/// shrunk around the point of the child nearest the origin's center and
+/// moved a little toward it. Measured where the child is painted, so it
+/// needs no layout of its own; null [origin] or 0 [amount] paints the child
+/// as is.
+class _OriginHint extends SingleChildRenderObjectWidget {
+  const _OriginHint({
+    required this.origin,
+    required this.amount,
+    super.child,
+  });
+
+  final Rect? origin;
+  final double amount;
+
+  @override
+  _RenderOriginHint createRenderObject(BuildContext context) =>
+      _RenderOriginHint(origin: origin, amount: amount);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderOriginHint renderObject,
+  ) {
+    renderObject
+      ..origin = origin
+      ..amount = amount;
+  }
+}
+
+class _RenderOriginHint extends RenderProxyBox {
+  _RenderOriginHint({required this._origin, required this._amount});
+
+  Rect? get origin => _origin;
+  Rect? _origin;
+  set origin(Rect? value) {
+    if (value == _origin) return;
+    final wasActive = _active;
+    _origin = value;
+    _changed(wasActive);
+  }
+
+  double get amount => _amount;
+  double _amount;
+  set amount(double value) {
+    if (value == _amount) return;
+    final wasActive = _active;
+    _amount = value;
+    _changed(wasActive);
+  }
+
+  bool get _active => _origin != null && _amount != 0;
+
+  void _changed(bool wasActive) {
+    if (wasActive != _active) markNeedsCompositingBitsUpdate();
+    markNeedsPaint();
+  }
+
+  @override
+  bool get alwaysNeedsCompositing => child != null && _active;
+
+  /// The hint's transform in local coordinates, or null for none.
+  Matrix4? get _transform {
+    final origin = _origin;
+    if (origin == null || _amount == 0 || !hasSize || !attached) return null;
+    final toLocal = Matrix4.tryInvert(getTransformTo(null));
+    if (toLocal == null) return null;
+    final target = MatrixUtils.transformRect(toLocal, origin).center;
+    final rest = (Offset.zero & size).center;
+    // The child's point nearest the origin stays where it is as the child
+    // shrinks, so it grows out of that side.
+    final pivot = Offset(
+      target.dx.clamp(0.0, size.width),
+      target.dy.clamp(0.0, size.height),
+    );
+    var travel = (target - rest) * _originTravel;
+    if (travel.distance > _originMaxTravel) {
+      travel = travel / travel.distance * _originMaxTravel;
+    }
+    final scale = 1 - (1 - _originScale) * _amount;
+    final shift = pivot + travel * _amount;
+    return Matrix4.translationValues(shift.dx, shift.dy, 0)
+      ..scaleByDouble(scale, scale, 1, 1)
+      ..translateByDouble(-pivot.dx, -pivot.dy, 0, 1);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final transform = _transform;
+    final child = this.child;
+    if (child == null) return;
+    if (transform == null) {
+      layer = null;
+      context.paintChild(child, offset);
+      return;
+    }
+    // Resampled as one image, like the blur-fade's own scale, so text
+    // doesn't re-rasterize each frame.
+    final effective = Matrix4.translationValues(offset.dx, offset.dy, 0)
+      ..multiply(transform)
+      ..translateByDouble(-offset.dx, -offset.dy, 0, 1);
+    // The matrix filter samples at medium quality.
+    final filter = ui.ImageFilter.matrix(effective.storage);
+    final existing = layer;
+    final filterLayer = existing is ImageFilterLayer
+        ? (existing..imageFilter = filter)
+        : ImageFilterLayer(imageFilter: filter);
+    layer = filterLayer;
+    context.pushLayer(filterLayer, super.paint, offset);
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    final transform = _transform;
+    if (transform == null) return super.hitTest(result, position: position);
+    return result.addWithPaintTransform(
+      transform: transform,
+      position: position,
+      hitTest: (result, position) => super.hitTest(result, position: position),
+    );
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final hint = _transform;
+    if (hint != null) transform.multiply(hint);
   }
 }

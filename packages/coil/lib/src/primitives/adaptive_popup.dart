@@ -262,7 +262,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
       case CoilPresentation.popover:
         _popover.show(at: position);
       case CoilPresentation.sheet || CoilPresentation.floating:
-        _pushModal(handle);
+        _pushModal(handle, position);
     }
     widget.controller.didOpen(handle.closed);
     return handle.closed;
@@ -282,9 +282,20 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
     }
   }
 
-  /// Pushes the sheet, or the floating panel that lays out like it.
-  void _pushModal(_Handle handle) {
+  /// Pushes the sheet, or the floating panel that lays out like it. The
+  /// floating panel shows where it came from: the trigger, or [position]
+  /// in it.
+  void _pushModal(_Handle handle, Offset? position) {
     final navigator = Navigator.of(context);
+    final trigger = CoilModalRoute.originOf(context);
+    final box = context.findRenderObject();
+    final origin = position != null && trigger != null && box is RenderBox
+        ? Rect.fromCenter(
+            center: box.localToGlobal(position),
+            width: 0,
+            height: 0,
+          )
+        : trigger;
     final content = ListenableBuilder(
       listenable: _sheetContent,
       builder: (context, _) => TapRegion(
@@ -297,6 +308,7 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
         context: context,
         presentation: CoilModalPresentation.floating,
         anchor: widget.floatingAnchor,
+        origin: origin,
         motion: widget.motion,
         // A swipe (sideways or down, the route's default), back and Esc
         // dismiss it; the TapRegion reports a tap on the scrim first, with
