@@ -58,7 +58,7 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
       }),
       borderWidth: 1.5,
       size: metrics.checkboxSize,
-      dot: c.foreground,
+      dot: c.brand,
       dotRatio: 0.5,
       dotScale: 0.3,
     );

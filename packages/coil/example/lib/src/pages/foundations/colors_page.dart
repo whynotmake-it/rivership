@@ -43,6 +43,8 @@ final _brand = <_Token>[
   ('brand', (c) => c.brand),
   ('brandFill', (c) => c.brandFill),
   ('onBrandFill', (c) => c.onBrandFill),
+  ('brandInk', (c) => c.brandInk),
+  ('brandWash', (c) => c.brandWash),
   ('red', (c) => c.red),
   ('redLabel', (c) => c.redLabel),
   ('destructive', (c) => c.destructive),
@@ -86,7 +88,8 @@ class ColorsPage extends StatelessWidget {
         description:
             'These colors carry meaning, so coil spends them only where the '
             'meaning matters. Brand fill is the brand as a surface that '
-            'carries text, under its own label color.',
+            'carries text, under its own label color; the brand wash and ink '
+            'mark the selected tab or segment.',
         tokens: _TokenGroup.brand,
       ),
       DemoSection(

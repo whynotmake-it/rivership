@@ -14,6 +14,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// Creates a style.
   const CoilTabsStyle({
     this.pill,
+    this.hoverPill,
     this.hoverPillOpacity,
     this.label,
     this.textStyle,
@@ -27,10 +28,14 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   factory CoilTabsStyle.fallback(CoilThemeData theme, CoilMetrics metrics) {
     final c = theme.colors;
     return CoilTabsStyle(
-      pill: c.active,
+      // The current tab is marked in the brand: a wash under brand text.
+      pill: c.brandWash,
+      // Hover is never colored: it previews a tab in the neutral wash.
+      hoverPill: c.active,
       hoverPillOpacity: 0.4,
       label: WidgetStateProperty<Color?>.fromMap({
-        WidgetState.selected | WidgetState.hovered: c.foreground,
+        WidgetState.selected: c.brandInk,
+        WidgetState.hovered: c.foreground,
         WidgetState.any: c.mutedForeground,
       }),
       textStyle: theme.typography.resolve(metrics.tier, metrics.size).body,
@@ -43,7 +48,11 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   /// The selected pill.
   final Color? pill;
 
-  /// How strong the hover pill is, as a fraction of [pill].
+  /// The hover pill's color, before [hoverPillOpacity]. Neutral, so only
+  /// the selected tab is marked in the brand.
+  final Color? hoverPill;
+
+  /// How strong the hover pill is, as a fraction of [hoverPill].
   final double? hoverPillOpacity;
 
   /// The label and icon color.
@@ -72,6 +81,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
       ? this
       : CoilTabsStyle(
           pill: other.pill ?? pill,
+          hoverPill: other.hoverPill ?? hoverPill,
           hoverPillOpacity: other.hoverPillOpacity ?? hoverPillOpacity,
           label: CoilComponentStyle.mergeStates(label, other.label),
           textStyle: textStyle?.merge(other.textStyle) ?? other.textStyle,
@@ -86,6 +96,7 @@ class CoilTabsStyle extends CoilComponentStyle<CoilTabsStyle> {
   @override
   List<Object?> get props => [
     pill,
+    hoverPill,
     hoverPillOpacity,
     label,
     textStyle,

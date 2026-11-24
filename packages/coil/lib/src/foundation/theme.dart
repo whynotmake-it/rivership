@@ -492,7 +492,7 @@ class CoilTheme extends StatelessWidget {
           return DefaultTextStyle(
             style: textOf(context).body,
             child: DefaultSelectionStyle(
-              cursorColor: theme.colors.foreground,
+              cursorColor: theme.colors.brand,
               selectionColor: theme.colors.brand.withValues(alpha: 0.3),
               child: child,
             ),
