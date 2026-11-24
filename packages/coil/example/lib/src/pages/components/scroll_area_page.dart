@@ -110,33 +110,35 @@ class _ScrollAreaPageState extends State<ScrollAreaPage> {
           const SizedBox(height: 12),
           SizedBox(
             height: 296,
+            // The area wraps the scrollable you build: here a list.
             child: CoilScrollArea(
               semanticLabel: 'Release notes',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 20,
+              child: ListView(
                 children: [
-                  for (final release in _releases)
+                  for (final (i, release) in _releases.indexed)
                     MergeSemantics(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: 2,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  release.version,
-                                  style: text.body.copyWith(
-                                    fontWeight: text.emphasis,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: i == 0 ? 0 : 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 2,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    release.version,
+                                    style: text.body.copyWith(
+                                      fontWeight: text.emphasis,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Text(release.date, style: text.muted.caption),
-                            ],
-                          ),
-                          Text(release.notes, style: text.muted.body),
-                        ],
+                                Text(release.date, style: text.muted.caption),
+                              ],
+                            ),
+                            Text(release.notes, style: text.muted.body),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -148,7 +150,7 @@ class _ScrollAreaPageState extends State<ScrollAreaPage> {
       usage: '''
 CoilScrollArea(
   semanticLabel: 'Release notes',
-  child: Column(
+  child: ListView(
     children: [
       for (final release in releases) ReleaseTile(release),
     ],
@@ -175,9 +177,9 @@ CoilScrollArea(
         ),
         CatalogNote(
           "Do / Don't",
-          'Do not nest two scroll areas on the same axis. If you already have '
-              'a list, wrap it with CoilScrollArea.scrollable and share its '
-              'controller.',
+          'A scroll area wraps one scrollable that you build, such as a '
+              "ListView or a CustomScrollView, and gives it coil's scrollbar, "
+              'fades and keys. Avoid nesting two areas on the same axis.',
         ),
       ],
       children: [
@@ -217,33 +219,39 @@ CoilScrollArea(
                   scrollbar: _scrollbar
                       ? CoilScrollbarVisibility.auto
                       : CoilScrollbarVisibility.none,
-                  child: horizontal
-                      ? Row(
-                          spacing: 8,
-                          children: [
-                            for (final member in _members)
-                              SizedBox(
-                                width: 184,
-                                child: CoilCard(
-                                  title: Text(member.name),
-                                  description: Text(member.role),
+                  child: SingleChildScrollView(
+                    scrollDirection: _axis,
+                    child: horizontal
+                        ? Row(
+                            spacing: 8,
+                            children: [
+                              for (final member in _members)
+                                SizedBox(
+                                  width: 184,
+                                  child: CoilCard(
+                                    title: Text(member.name),
+                                    description: Text(member.role),
+                                  ),
                                 ),
-                              ),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: 12,
-                          children: [
-                            for (final member in _members)
-                              Row(
-                                children: [
-                                  Expanded(child: Text(member.name)),
-                                  Text(member.role, style: text.muted.caption),
-                                ],
-                              ),
-                          ],
-                        ),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            spacing: 12,
+                            children: [
+                              for (final member in _members)
+                                Row(
+                                  children: [
+                                    Expanded(child: Text(member.name)),
+                                    Text(
+                                      member.role,
+                                      style: text.muted.caption,
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                  ),
                 ),
               ),
             ),

@@ -80,6 +80,24 @@ void main() {
     await touch.up();
   });
 
+  testWidgets('a control removed mid-press clears its press quietly', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(_detector(states)));
+    final touch = await tester.startGesture(
+      tester.getCenter(find.byKey(_target)),
+    );
+    await tester.pump(kPressTimeout);
+    expect(states.value, contains(WidgetState.pressed));
+
+    await tester.pumpWidget(const SizedBox());
+    await touch.cancel();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(states.value, isNot(contains(WidgetState.pressed)));
+  });
+
   group('focus', () {
     late FocusNode node;
 

@@ -94,8 +94,11 @@ CoilChatMessage(
   actions: [
     CoilChatMessageAction(
       label: Text('Copy'),
-      semanticLabel: 'Copy',
-      icon: CoilCopyGlyph.listening(controller: copy),
+      // The icon names the button, as in an IconButton.
+      icon: Semantics(
+        label: 'Copy',
+        child: CoilCopyGlyph.listening(controller: copy),
+      ),
       onPressed: () => copy.copy(reply, context: context),
     ),
   ],
@@ -184,8 +187,10 @@ CoilChatMessage(
               if (_actions)
                 CoilChatMessageAction(
                   label: const Text('Copy'),
-                  semanticLabel: 'Copy',
-                  icon: CoilCopyGlyph.listening(controller: _copy),
+                  icon: Semantics(
+                    label: 'Copy',
+                    child: CoilCopyGlyph.listening(controller: _copy),
+                  ),
                   onPressed: () =>
                       unawaited(_copy.copy(text, context: context)),
                 ),
@@ -283,8 +288,10 @@ class _ConversationState extends State<_Conversation> {
           actions: [
             CoilChatMessageAction(
               label: const Text('Copy'),
-              semanticLabel: 'Copy',
-              icon: CoilCopyGlyph.listening(controller: _copyQuestion),
+              icon: Semantics(
+                label: 'Copy',
+                child: CoilCopyGlyph.listening(controller: _copyQuestion),
+              ),
               onPressed: () =>
                   unawaited(_copyQuestion.copy(_question, context: context)),
             ),
@@ -311,15 +318,16 @@ class _ConversationState extends State<_Conversation> {
             actions: [
               CoilChatMessageAction(
                 label: const Text('Copy'),
-                semanticLabel: 'Copy',
-                icon: CoilCopyGlyph.listening(controller: _copyReply),
+                icon: Semantics(
+                  label: 'Copy',
+                  child: CoilCopyGlyph.listening(controller: _copyReply),
+                ),
                 onPressed: () =>
                     unawaited(_copyReply.copy(_plain(reply), context: context)),
               ),
               CoilChatMessageAction(
                 label: const Text('Retry'),
-                semanticLabel: 'Retry',
-                icon: const CatalogIcon(Glyph.refresh),
+                icon: const CatalogIcon(Glyph.refresh, semanticLabel: 'Retry'),
                 onPressed: _retry,
               ),
             ],

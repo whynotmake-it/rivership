@@ -323,25 +323,29 @@ class _BoardState extends State<_Board> {
             child: MotionDragToScroll(
               child: CoilScrollArea(
                 axis: Axis.horizontal,
-                padding: EdgeInsets.all(board.edge),
-                // One group for the board, so a card flies from one lane to
-                // another.
-                child: MotionLayoutGroup(
-                  motion: CoilTheme.motionOf(context).standard,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: _BoardMetrics.laneGap,
-                    children: [
-                      for (final column in _columns)
-                        SizedBox(
-                          width: board.laneWidth,
-                          child: _Lane(
-                            column: column,
-                            onShuffle: () => setState(column.tasks.shuffle),
-                            onMove: (task, index) => _move(task, column, index),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.all(board.edge),
+                  // One group for the board, so a card flies from one lane to
+                  // another.
+                  child: MotionLayoutGroup(
+                    motion: CoilTheme.motionOf(context).standard,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: _BoardMetrics.laneGap,
+                      children: [
+                        for (final column in _columns)
+                          SizedBox(
+                            width: board.laneWidth,
+                            child: _Lane(
+                              column: column,
+                              onShuffle: () => setState(column.tasks.shuffle),
+                              onMove: (task, index) =>
+                                  _move(task, column, index),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -408,7 +412,7 @@ class _Lane extends StatelessWidget {
     final tasks = column.tasks;
     final gap = MotionDropGap(child: _CardSlot(height: _slotHeight(drop)));
     return MotionDragToScroll(
-      child: CoilScrollArea.scrollable(
+      child: CoilScrollArea(
         controller: column.controller,
         child: ListView(
           controller: column.controller,
@@ -1478,7 +1482,7 @@ class _SectionsDemoState extends State<_SectionsDemo> {
       child: MotionLayoutGroup(
         motion: CoilTheme.motionOf(context).standard,
         child: MotionDragToScroll(
-          child: CoilScrollArea.scrollable(
+          child: CoilScrollArea(
             controller: _controller,
             child: CustomScrollView(
               controller: _controller,

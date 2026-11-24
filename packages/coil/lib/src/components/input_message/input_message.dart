@@ -54,6 +54,22 @@ class CoilInputMessage extends StatefulWidget {
     this.enabled = true,
     this.size,
     this.motion,
+    this.scrollPadding = const EdgeInsets.all(16),
+    this.maxLength,
+    this.maxLengthEnforcement,
+    this.onTap,
+    this.onTapOutside,
+    this.textAlign = TextAlign.start,
+    this.textDirection,
+    this.undoController,
+    this.scrollController,
+    this.contextMenuBuilder = CoilTextFieldCore.defaultContextMenuBuilder,
+    this.enableInteractiveSelection = true,
+    this.keyboardAppearance,
+    this.restorationId,
+    this.spellCheckConfiguration,
+    this.smartDashesType,
+    this.smartQuotesType,
   });
 
   /// Called with the trimmed text when the user sends.
@@ -110,6 +126,71 @@ class CoilInputMessage extends StatefulWidget {
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
+
+  /// The space kept between the field and the screen edges (and the software
+  /// keyboard) when it scrolls itself into view. See
+  /// `TextField.scrollPadding`.
+  final EdgeInsets scrollPadding;
+
+  /// The most characters the field accepts; null for no limit. See
+  /// `TextField.maxLength`.
+  final int? maxLength;
+
+  /// How [maxLength] is enforced. Defaults to the platform's. See
+  /// `TextField.maxLengthEnforcement`.
+  final MaxLengthEnforcement? maxLengthEnforcement;
+
+  /// Called when a pointer or a finger taps the field, never when focus
+  /// arrives some other way (Tab); see [CoilTextFieldCore.onTap].
+  final VoidCallback? onTap;
+
+  /// Called when a pointer taps outside the field. Null keeps the default.
+  /// See `TextField.onTapOutside`.
+  final TapRegionCallback? onTapOutside;
+
+  /// How the text, and the placeholder, align horizontally. See
+  /// `TextField.textAlign`.
+  final TextAlign textAlign;
+
+  /// The text's direction. Defaults to the ambient [Directionality]. See
+  /// `TextField.textDirection`.
+  final TextDirection? textDirection;
+
+  /// The undo history controller; one is created if null. See
+  /// `TextField.undoController`.
+  final UndoHistoryController? undoController;
+
+  /// Scrolls the field's text; one is created if null. See
+  /// `TextField.scrollController`.
+  final ScrollController? scrollController;
+
+  /// Builds the selection toolbar. Null shows no menu. See
+  /// `TextField.contextMenuBuilder`.
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+
+  /// Whether the text can be selected and the toolbar shown. See
+  /// `TextField.enableInteractiveSelection`.
+  final bool enableInteractiveSelection;
+
+  /// The software keyboard's brightness. Defaults to the theme's. See
+  /// `TextField.keyboardAppearance`.
+  final Brightness? keyboardAppearance;
+
+  /// The id the field saves its state under for restoration. See
+  /// `TextField.restorationId`.
+  final String? restorationId;
+
+  /// How spell check runs and shows its results. See
+  /// `TextField.spellCheckConfiguration`.
+  final SpellCheckConfiguration? spellCheckConfiguration;
+
+  /// Whether the keyboard replaces dashes with typographic ones. See
+  /// `TextField.smartDashesType`.
+  final SmartDashesType? smartDashesType;
+
+  /// Whether the keyboard replaces quotes with typographic ones. See
+  /// `TextField.smartQuotesType`.
+  final SmartQuotesType? smartQuotesType;
 
   @override
   State<CoilInputMessage> createState() => _CoilInputMessageState();
@@ -311,11 +392,25 @@ class _CoilInputMessageState extends State<CoilInputMessage> {
           cursorColor: look.cursorColor,
           cursorWidth: look.cursorWidth!,
           selectionColor: look.selectionColor,
-          keyboardAppearance: theme.brightness,
+          keyboardAppearance: widget.keyboardAppearance ?? theme.brightness,
           textCapitalization: TextCapitalization.sentences,
           minLines: widget.minLines,
           maxLines: widget.maxLines,
-          scrollPadding: const EdgeInsets.all(16),
+          scrollPadding: widget.scrollPadding,
+          maxLength: widget.maxLength,
+          maxLengthEnforcement: widget.maxLengthEnforcement,
+          onTap: widget.onTap,
+          onTapOutside: widget.onTapOutside,
+          textAlign: widget.textAlign,
+          textDirection: widget.textDirection,
+          undoController: widget.undoController,
+          scrollController: widget.scrollController,
+          contextMenuBuilder: widget.contextMenuBuilder,
+          enableInteractiveSelection: widget.enableInteractiveSelection,
+          restorationId: widget.restorationId,
+          spellCheckConfiguration: widget.spellCheckConfiguration,
+          smartDashesType: widget.smartDashesType,
+          smartQuotesType: widget.smartQuotesType,
           // With a hovering pointer, Enter sends and Shift+Enter is a new
           // line; on touch, Return is a new line and the button sends.
           shortcuts: {

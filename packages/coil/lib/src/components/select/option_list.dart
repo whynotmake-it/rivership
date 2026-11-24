@@ -82,7 +82,7 @@ class CoilOptionList<T> extends StatefulWidget {
 }
 
 class _CoilOptionListState<T> extends State<CoilOptionList<T>>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   CoilActiveItemController? _own;
   CoilActiveItemController get _active =>
       widget.activeItem ?? (_own ??= CoilActiveItemController());
