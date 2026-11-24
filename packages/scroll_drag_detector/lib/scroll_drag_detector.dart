@@ -46,25 +46,23 @@ enum ScrollDragMode {
 }
 
 /// {@template scroll_drag_detector}
-/// A widget similar to GestureDetector that can smoothly transition between
-/// dragging and scrolling.
+/// A widget similar to [GestureDetector] that coordinates dragging with nested
+/// scroll views.
 ///
-/// This widget's events will behave like a normal [GestureDetector] in most
-/// cases.
-/// However, if a child widget is scrollable, this widget will understand
-/// whenever that child overscrolls and transition to firing gesture events
-/// instead while preventing the child from overscrolling.
+/// This widget's events behave like a normal [GestureDetector] in most cases.
+/// However, if a child widget is scrollable, this widget detects whenever that
+/// child overscrolls and transitions to firing gesture events instead while
+/// preventing the child from overscrolling.
 ///
-/// This widget can be useful in scenarios where a scroll view is embedded in a
-/// draggable view, and you want the outside view to be dragged whenever the
-/// scrollable would overscroll.
-/// The most common use would be a scrollable sheet.
+/// This is useful when a scroll view is embedded in a draggable container
+/// (such as a modal sheet) and you want the outer view to move once the
+/// scrollable reaches its boundary.
 ///
 /// Descendants that override their [ScrollBehavior] must wrap that behavior in
 /// [ScrollDragBehavior] to preserve drag handoff.
 /// {@endtemplate}
 class ScrollDragDetector extends StatefulWidget {
-  ///{@macro scroll_drag_detector}
+  /// {@macro scroll_drag_detector}
   const ScrollDragDetector({
     required this.child,
     required this.up,
@@ -87,9 +85,9 @@ class ScrollDragDetector extends StatefulWidget {
   /// Creates a detector using the configuration supported before directional
   /// routing was introduced.
   ///
-  /// Use this constructor to migrate without changing the coherent interaction
-  /// behavior of a conventional, non-reversed scrollable. Reversed scrollables
-  /// use the corrected physical-direction routing.
+  /// Use this constructor to migrate without changing the behavior of a
+  /// conventional, non-reversed scrollable. Reversed scrollables use the
+  /// corrected physical-direction routing.
   const ScrollDragDetector.legacy({
     required this.child,
     bool scrollableCanMoveBack = true,
