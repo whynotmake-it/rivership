@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:example_design/src/example_theme.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 

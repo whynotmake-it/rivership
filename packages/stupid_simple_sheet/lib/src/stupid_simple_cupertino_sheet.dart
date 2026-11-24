@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_positional_boolean_parameters
 
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';

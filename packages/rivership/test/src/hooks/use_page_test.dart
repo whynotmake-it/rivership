@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_int_literals
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
 /// What `CupertinoApp` gave the Cupertino-based examples: the theme, the

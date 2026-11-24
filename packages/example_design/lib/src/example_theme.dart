@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
 /// Resolved design tokens for the example apps, adapting to light and dark.

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fixed_ticker/fixed_ticker.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/scheduler.dart';
 
