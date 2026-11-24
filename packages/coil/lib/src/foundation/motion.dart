@@ -26,6 +26,11 @@ import 'package:motor/motor.dart';
 /// `CoilTheme.motionOf(context)` on every animation, which applies
 /// [reduced] when the platform asks for reduced motion, so a change takes
 /// effect on the next animation without recreating anything.
+///
+/// coil's springs tick every frame by default. Wrap coil components in
+/// a `TickerRateScope` to run all of coil's motion at a fixed rate such as
+/// `TickerRate.fps(30)`, which saves frame work on 120 Hz screens and for
+/// low-priority motion. [reduced] motion still applies.
 @immutable
 class CoilMotion with Diagnosticable {
   /// Creates motion tokens; unset tokens keep coil's defaults.

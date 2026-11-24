@@ -223,7 +223,7 @@ class CoilMotionLayer extends StatefulWidget {
 }
 
 class _CoilMotionLayerState extends State<CoilMotionLayer>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   final _background = _Painters();
   final _foreground = _Painters();
 

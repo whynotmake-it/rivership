@@ -14,6 +14,7 @@ import 'package:coil/src/components/slider/slider_style.dart';
 import 'package:coil/src/components/slider/slider_text.dart';
 import 'package:coil/src/components/slider/slider_visuals.dart';
 import 'package:coil/tooltip.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -81,7 +82,8 @@ class SliderCore extends StatefulWidget {
   State<SliderCore> createState() => _SliderCoreState();
 }
 
-class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
+class _SliderCoreState extends State<SliderCore>
+    with FixedTickerProviderStateMixin {
   int get _count => widget.values.length;
   bool get _range => _count == 2;
 
@@ -301,6 +303,59 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   Widget _shown(double v) =>
       widget.valueBuilder?.call(context, v) ?? Text(_plain(v));
 
+  /// How many stops the width reserve holds one by one; see
+  /// [CoilSlider.valueBuilder].
+  static const _reserveStopLimit = 50;
+
+  /// The dash between a range's two values.
+  static const _dash = ExcludeSemantics(child: Text(' – '));
+
+  /// The stop values [_singleReserve] and [_pairReserve] were built from.
+  List<double>? _reservedFor;
+
+  /// Every stop as a hidden copy, so the value slot has the width of the
+  /// widest value the slider can show, wherever that value sits.
+  List<Widget>? _singleReserve;
+
+  /// The same for a range: every stop as `v – v`, which is at least as wide
+  /// as any pair of stops.
+  List<Widget>? _pairReserve;
+
+  /// The values of all the scale's stops, or null when it is continuous or
+  /// has more than [_reserveStopLimit] of them.
+  List<double>? get _stopValues {
+    final scale = _scale;
+    final stops = scale.stops;
+    if (stops == null || stops.length > _reserveStopLimit) return null;
+    return [for (final f in stops) scale.valueAt(f)];
+  }
+
+  /// Builds [_singleReserve] and [_pairReserve] when the stops changed, and
+  /// clears them when there are none to hold. They are kept between builds
+  /// because a running motion rebuilds the track every frame, and an
+  /// identical widget stops the rebuild at the reserve.
+  void _syncReserve() {
+    final values = _stopValues;
+    if (values == null) {
+      _reservedFor = null;
+      _singleReserve = _pairReserve = null;
+      return;
+    }
+    if (!listEquals(_reservedFor, values)) {
+      _reservedFor = values;
+      _singleReserve = [for (final v in values) _shown(v)];
+      _pairReserve = !_range
+          ? null
+          : [
+              for (final v in values)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [_shown(v), _dash, _shown(v)],
+                ),
+            ];
+    }
+  }
+
   /// Up to two decimals without trailing zeros, with a `.` decimal mark.
   static String _plain(double v) {
     final fixed = v.toStringAsFixed(2);
@@ -337,6 +392,8 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // A value the theme or the locale shapes is reserved anew.
+    _reservedFor = null;
     _syncBubble();
   }
 
@@ -433,6 +490,7 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
         ..addListener(_syncBubble);
     }
     _syncBubble();
+    if (oldWidget.valueBuilder != widget.valueBuilder) _reservedFor = null;
     if (oldWidget.focusNode != widget.focusNode) {
       (oldWidget.focusNode ?? _ownFocus.first).removeListener(_onFocus);
       _focusOf(0).addListener(_onFocus);
@@ -1106,13 +1164,11 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     Color color,
     double emphasis,
   ) {
-    const dash = ExcludeSemantics(child: Text(' – '));
     final scale = _scale;
-    List<Widget> reserveOf(int i) => [
-      _shown(scale.min),
-      _shown(scale.max),
-      _shown(widget.values[i]),
-    ];
+    _syncReserve();
+    List<Widget> reserveOf(int i) =>
+        _singleReserve ??
+        [_shown(scale.min), _shown(scale.max), _shown(widget.values[i])];
 
     Widget part(int i) {
       if (_editing == i) {
@@ -1146,24 +1202,25 @@ class _SliderCoreState extends State<SliderCore> with TickerProviderStateMixin {
     return SliderValueText(
       parts: [
         part(0),
-        if (_range) ...[dash, part(1)],
+        if (_range) ...[_dash, part(1)],
       ],
       reserve: _range
-          ? [
-              for (final v in [scale.min, scale.max])
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [_shown(v), dash, _shown(v)],
-                ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _shown(widget.values[0]),
-                  dash,
-                  _shown(widget.values[1]),
-                ],
-              ),
-            ]
+          ? _pairReserve ??
+                [
+                  for (final v in [scale.min, scale.max])
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [_shown(v), _dash, _shown(v)],
+                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _shown(widget.values[0]),
+                      _dash,
+                      _shown(widget.values[1]),
+                    ],
+                  ),
+                ]
           : reserveOf(0),
       style: text,
       color: color,

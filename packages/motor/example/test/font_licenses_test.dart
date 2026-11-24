@@ -7,7 +7,6 @@ void main() {
     registerFontLicenses();
     final entries = await LicenseRegistry.licenses.toList();
     for (final (font, authors) in [
-      ('Archivo', 'The Archivo Project Authors'),
       ('JetBrains Mono', 'The JetBrains Mono Project Authors'),
     ]) {
       final entry = entries.firstWhere(

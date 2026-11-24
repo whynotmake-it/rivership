@@ -59,13 +59,11 @@ class _Calls {
 List<CoilChatMessageAction> _actions(_Calls calls) => [
   CoilChatMessageAction(
     label: const Text('Copy'),
-    semanticLabel: 'Copy',
     icon: const TestIcon(TestGlyph.plus),
     onPressed: () => calls.copied.add(1),
   ),
   CoilChatMessageAction(
     label: const Text('Retry'),
-    semanticLabel: 'Retry',
     icon: const TestIcon(TestGlyph.arrowRight),
     onPressed: () => calls.retried.add(1),
   ),
@@ -236,6 +234,62 @@ void main() {
       await tester.pumpWidget(_app(message(_Calls())));
       expect(_metaOpacity(tester), 1);
     });
+  });
+
+  testWidgets('an icon-only action is named by its icon; a mouse sees its '
+      'label in a tooltip', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final calls = _Calls();
+    await tester.pumpWidget(
+      _app(
+        CoilChatMessage(
+          sender: CoilChatSender.assistant,
+          entrance: .none,
+          actions: [
+            CoilChatMessageAction(
+              label: const Text('Copy message'),
+              icon: const CoilIcon(CoilIconRole.copy, semanticLabel: 'Copy'),
+              onPressed: () => calls.copied.add(1),
+            ),
+            ..._actions(calls).skip(1),
+          ],
+          child: const Text('Hello'),
+        ),
+      ),
+    );
+    final copy = find.byType(CoilButton).first;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(find.text('Hello')));
+    await tester.pumpAndSettle();
+    expect(find.text('Copy message'), findsNothing);
+    expect(
+      tester.getSemantics(copy),
+      isSemantics(label: 'Copy', isButton: true, hasTapAction: true),
+      reason: 'announced as "button, Copy", from the icon alone',
+    );
+    tester.semantics.tap(find.semantics.byLabel('Copy'));
+    expect(calls.copied, [1]);
+
+    await mouse.moveTo(tester.getCenter(copy));
+    await tester.pumpAndSettle();
+    expect(find.text('Copy message'), findsOneWidget, reason: 'the tooltip');
+    expect(
+      tester.getSemantics(copy),
+      isSemantics(label: 'Copy', isButton: true),
+      reason: 'the tooltip adds nothing to read',
+    );
+
+    // The bubble moves on to the next action's label.
+    await mouse.moveTo(tester.getCenter(find.byType(CoilButton).last));
+    await tester.pumpAndSettle();
+    expect(find.text('Copy message'), findsNothing);
+    expect(find.text('Retry'), findsOneWidget);
+
+    await mouse.moveTo(tester.getCenter(find.text('Hello')));
+    await tester.pumpAndSettle();
+    expect(find.text('Retry'), findsNothing);
+    semantics.dispose();
   });
 
   testWidgets('a long press with a finger opens the actions as a menu', (
