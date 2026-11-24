@@ -5,38 +5,42 @@ import 'package:coil_cli/src/dart_source.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-/// Thrown when a component can't be ejected or updated. The message is
-/// meant for the person running the CLI.
+/// Thrown when a component cannot be ejected or updated.
+///
+/// The [message] is written for the person running the CLI.
 class EjectException implements Exception {
-  /// An error with [message].
+  /// Creates an [EjectException] with [message].
   EjectException(this.message);
 
-  /// What went wrong and what to do about it.
+  /// Describes what went wrong and how to resolve it.
   final String message;
 
   @override
   String toString() => message;
 }
 
-/// A component: one `lib/src/components/<name>/` folder and the public
+/// A Coil component: one `lib/src/components/<name>/` directory and the public
 /// libraries that export it.
 class CoilComponent {
   CoilComponent._(this.name, this.libraries, this.sources);
 
-  /// The folder name, which is also the name the CLI takes.
+  /// The component directory name, which is also the name accepted by the CLI.
   final String name;
 
-  /// Its public libraries, relative to `lib/` (`button.dart`).
+  /// Public libraries that export this component, relative to `lib/` (e.g.
+  /// `button.dart`).
   final List<String> libraries;
 
-  /// Its source files, relative to `lib/` (`src/components/button/…`).
+  /// Source files inside this component, relative to `lib/` (e.g.
+  /// `src/components/button/...`).
   final List<String> sources;
 
-  /// Every file eject copies, relative to `lib/`.
+  /// All files copied when ejecting this component, relative to `lib/`.
   List<String> get files => [...libraries, ...sources];
 
-  /// Where [libPath] lands inside the ejected folder: public libraries at
-  /// the top, sources under `src/`.
+  /// Returns where [libPath] lands inside the ejected component directory.
+  ///
+  /// Public libraries sit at the top level; source files live under `src/`.
   String ejectedPath(String libPath) => libraries.contains(libPath)
       ? libPath
       : p.posix.join('src', p.posix.relative(libPath, from: _dir));
@@ -44,25 +48,26 @@ class CoilComponent {
   String get _dir => 'src/components/$name';
 }
 
-/// The installed coil package, read from its `lib/` folder.
+/// The installed Coil package, read from its `lib/` directory.
 class CoilSource {
-  /// The coil package at [root] (the folder with `pubspec.yaml`).
+  /// Creates a [CoilSource] for the Coil package at [root] (the directory
+  /// containing `pubspec.yaml`).
   CoilSource(this.root)
     : version =
           (loadYaml(File(p.join(root, 'pubspec.yaml')).readAsStringSync())
                   as YamlMap)['version']
               as String;
 
-  /// The package root.
+  /// The absolute or relative path to the Coil package root.
   final String root;
 
-  /// The version in coil's pubspec.
+  /// The version declared in Coil's `pubspec.yaml`.
   final String version;
 
   String get _lib => p.join(root, 'lib');
 
-  /// The libraries that make up coil's shared API, which ejected code keeps
-  /// importing from the package.
+  /// Libraries that make up Coil's shared API, which ejected code continues to
+  /// import from `package:coil`.
   static const sharedLibraries = ['foundation.dart', 'primitives.dart'];
 
   static const _notComponents = {'coil.dart'};
@@ -72,7 +77,7 @@ class CoilSource {
 
   bool _exists(String libPath) => File(p.join(_lib, libPath)).existsSync();
 
-  /// Every component, by name.
+  /// All components discovered in this Coil package, keyed by name.
   late final Map<String, CoilComponent> components = () {
     final libraries = <String, List<String>>{};
     for (final file in Directory(_lib).listSync()) {
@@ -92,7 +97,7 @@ class CoilSource {
         throw EjectException(
           'lib/$name should export exactly one component, but exports '
           '${owners.isEmpty ? 'none' : owners.join(' and ')}. This is a bug '
-          'in coil.',
+          'in Coil.',
         );
       }
       (libraries[owners.single] ??= []).add(name);
@@ -113,35 +118,41 @@ class CoilSource {
     };
   }();
 
-  /// The component called [name], or the one that owns the public library
-  /// `<name>.dart`.
+  /// Returns the [CoilComponent] named [name], or the one that owns the public
+  /// library `<name>.dart`.
+  ///
+  /// Throws an [EjectException] if no matching component exists.
   CoilComponent component(String name) {
     if (components[name] case final component?) return component;
     for (final component in components.values) {
       if (component.libraries.contains('$name.dart')) return component;
     }
     throw EjectException(
-      'coil has no component "$name". See `dart run coil_cli:eject --list`.',
+      'Coil has no component "$name". Run dart run coil_cli:eject --list to '
+      'see available components.',
     );
   }
 
   final _units = <String, CompilationUnit>{};
 
-  /// The parsed coil file at [libPath] (relative to `lib/`).
+  /// Returns the parsed [CompilationUnit] for the Coil file at [libPath]
+  /// (relative to `lib/`).
   CompilationUnit unit(String libPath) =>
       _units[libPath] ??= parse(_read(libPath));
 
-  /// The absolute path of the coil file at [libPath].
+  /// Returns the filesystem path of the Coil file at [libPath].
   String pathOf(String libPath) => p.join(_lib, libPath);
 
-  /// The public names [component]'s libraries export, which the app library
-  /// hides from `package:coil/coil.dart`.
+  /// Returns the public names exported by [component]'s libraries, which the
+  /// generated app library hides from `package:coil/coil.dart`.
   Set<String> exportedNames(CoilComponent component) => {
     for (final library in component.libraries) ..._exports(library, component),
   };
 
-  /// Every public top-level name [component]'s files declare, exported or
-  /// not. A prefix renames all of them.
+  /// Returns every public top-level name declared by [component]'s source
+  /// files, whether exported or not.
+  ///
+  /// A prefix renames all of these symbols.
   Set<String> declaredNamesOf(CoilComponent component) => {
     for (final file in component.sources) ...declaredNames(unit(file)),
   };
@@ -165,8 +176,9 @@ class CoilSource {
     return names;
   }
 
-  /// [uri] from the coil file [from], as a path relative to `lib/`, or null
-  /// if it points outside coil.
+  /// Resolves [uri] from the Coil file [from] to a path relative to `lib/`.
+  ///
+  /// Returns `null` if [uri] points outside the `coil` package.
   String? targetOf(String from, String uri) {
     if (uri.startsWith('package:coil/')) {
       return uri.substring('package:coil/'.length);
@@ -176,7 +188,7 @@ class CoilSource {
     return path.startsWith('../') ? null : path;
   }
 
-  /// The component whose public library is [libPath], if any.
+  /// Returns the [CoilComponent] whose public library is [libPath], if any.
   CoilComponent? ownerOfLibrary(String libPath) {
     for (final component in components.values) {
       if (component.libraries.contains(libPath)) return component;
@@ -184,9 +196,12 @@ class CoilSource {
     return null;
   }
 
-  /// The public URI that stands for the coil file [target] in ejected code:
-  /// a public library as itself, a foundation or primitive file as the
-  /// shared library that exports all of it. Null if there is none.
+  /// Returns the public `package:coil/...` URI that represents [target] in
+  /// ejected code, or `null` if none exists.
+  ///
+  /// Public libraries map to themselves; foundation and primitive source files
+  /// map to the shared library in [sharedLibraries] that exports them without
+  /// `show` or `hide` combinators.
   String? publicUriFor(String target) {
     if (!target.startsWith('src/')) {
       return _exists(target) ? 'package:coil/$target' : null;
@@ -205,14 +220,16 @@ class CoilSource {
     return null;
   }
 
-  /// Why [component] can't be ejected as it is: imports of another
-  /// component's `src/`, of private primitives, or `part` files. Empty when
-  /// it can.
+  /// Returns descriptions of any issues that prevent [component] from being
+  /// ejected cleanly.
+  ///
+  /// Flags imports of another component's `src/`, private primitives, and
+  /// `part` directives. Returns an empty list when [component] is ejectable.
   List<String> problemsOf(CoilComponent component) => [
     for (final file in component.files)
       for (final (d, uri) in directiveUris(unit(file)))
         if (d is PartDirective || d is PartOfDirective)
-          'lib/$file uses `part`, which eject cannot copy.'
+          'lib/$file uses part directives, which eject cannot copy.'
         else if (targetOf(file, uri) case final target?
             when !component.files.contains(target) &&
                 publicUriFor(target) == null)
@@ -225,13 +242,15 @@ class CoilSource {
             "Import that component's public library instead."
       : 'lib/$file imports $uri, which no public library fully exports.';
 
-  /// Throws an [EjectException] listing [component]'s [problemsOf].
+  /// Throws an [EjectException] if [problemsOf] reports any issues for
+  /// [component].
   void checkEjectable(CoilComponent component) {
     final problems = problemsOf(component);
     if (problems.isEmpty) return;
     throw EjectException(
-      'coil ${component.name} cannot be ejected as-is. This is a bug in '
-      'coil; please report it:\n${problems.map((e) => '  - $e').join('\n')}',
+      'Coil component ${component.name} cannot be ejected as-is. This is a '
+      'bug in Coil; please report it:\n'
+      '${problems.map((e) => '  - $e').join('\n')}',
     );
   }
 }

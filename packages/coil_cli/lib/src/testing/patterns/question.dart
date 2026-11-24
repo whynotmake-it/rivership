@@ -1,3 +1,6 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'dart:ui' show CheckedState, SemanticsRole;
 
 import 'package:flutter/semantics.dart';
@@ -5,15 +8,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.question` checks, run by `expectCoilPattern` after the
-/// question's rows were reached with Tab and showed the focus ring:
+/// Verifies the [CoilPattern.question] contract for [expectCoilPattern] after
+/// the question's rows have been focused with Tab and shown their focus ring.
 ///
-/// * the rows are option nodes (radios in a radio group, or checkboxes),
-///   inside a node labelled by the question;
-/// * Up and Down move focus between rows without picking;
-/// * Space picks the focused row: its checked state flips, or the card
-///   moves to the next question;
-/// * the rows are one tab stop.
+/// Checks that:
+///
+/// * the rows are option nodes (radios in a radio group, or checkboxes) under
+///   a header labelled by the question;
+/// * Up and Down move focus between rows without selecting;
+/// * Space picks the focused row (flipping its checked state or advancing to
+///   the next question);
+/// * the rows form a single tab stop.
 Future<void> expectQuestionPattern(WidgetTester tester, Finder finder) async {
   final options = _options(tester, finder);
   expect(

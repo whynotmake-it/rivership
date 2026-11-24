@@ -1,15 +1,17 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'dart:ui' show SemanticsRole, Tristate;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.liveRegion` checks, run by `expectCoilPattern`.
+/// Verifies the [CoilPattern.liveRegion] contract for [expectCoilPattern].
 ///
-/// A live region is a semantics node that screen readers announce when it
-/// appears or its text changes: it has the live-region flag (or the web's
-/// `status` / `alert` role, which Flutter doesn't allow together with the
-/// flag), carries the region's text as its label, and isn't a focus stop
-/// itself.
+/// Checks that the live region exposes a semantics node with the live-region
+/// flag (or [SemanticsRole.status] / [SemanticsRole.alert], which Flutter does
+/// not allow together with the flag), announces its text as its label, and is
+/// not itself a focus stop.
 Future<void> expectLiveRegionPattern(
   WidgetTester tester,
   Finder finder,

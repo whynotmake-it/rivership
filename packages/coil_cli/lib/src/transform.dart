@@ -13,45 +13,50 @@ import 'package:coil_cli/src/naming.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
-/// The ejected set: every component the app has ejected (or is ejecting),
-/// where its folder is, and how the copies are named.
+/// Describes the set of ejected components, their target directories, and the
+/// [Naming] rules applied to them.
 class EjectPlan {
-  /// A plan for the components in [paths].
+  /// Creates an [EjectPlan] for the components mapped in [paths].
   EjectPlan({required this.naming, required this.paths});
 
-  /// The app's names.
+  /// Naming rules for ejected symbols and files.
   final Naming naming;
 
-  /// Each ejected component's folder, relative to the app root.
+  /// Each ejected component's target directory, relative to the app root.
   final Map<String, String> paths;
 }
 
-/// A component's files as the app gets them.
+/// The transformed files and cross-component references produced for a single
+/// ejected component.
 class Transformed {
   Transformed._(this.files, this.uses);
 
-  /// Each file by its path in coil's component (`src/button.dart`): its
-  /// path in the app's folder and its content.
+  /// Each transformed file, keyed by its path in Coil's component (e.g.
+  /// `src/button.dart`), containing its path in the app and rewritten content.
   final Map<String, ({String path, String content})> files;
 
-  /// The other ejected components the copy refers to.
+  /// Other ejected components referenced by this component's rewritten imports.
   final Set<String> uses;
 }
 
-/// Resolves coil's sources and the app's copies with the app's package
-/// config, and rewrites them with the analyzer: renamed declarations and
-/// references, imports pointed at the ejected copies. String literals and
-/// names that only contain `Coil` are never touched.
+/// Analyzer-backed workspace for resolving and rewriting Coil sources and
+/// ejected app copies.
+///
+/// Uses the app's package config to resolve declarations, references, and doc
+/// links with the Dart analyzer, renaming symbols and pointing imports at
+/// local copies without modifying string literals, private identifiers,
+/// members, or parameters.
 class EjectWorkspace {
   EjectWorkspace._(this.coil, this.appRoot, this._collection);
 
-  /// A workspace for the app at [appRoot] and the coil it resolves to.
+  /// Opens an [EjectWorkspace] for the app at [appRoot] and the resolved
+  /// [coil] package.
   static Future<EjectWorkspace> open(CoilSource coil, String appRoot) async {
     final config = await findPackageConfig(Directory(appRoot));
     final flutter = config?['flutter'];
     if (config == null || flutter == null) {
       throw EjectException(
-        'No package config with Flutter in it. Run `flutter pub get` first.',
+        'No package config with Flutter found. Run flutter pub get first.',
       );
     }
     // One context, rooted at the app, so coil's files resolve through the
@@ -66,19 +71,19 @@ class EjectWorkspace {
     return EjectWorkspace._(coil, root, collection);
   }
 
-  /// The installed coil, as of the last [refresh].
+  /// The installed [CoilSource], updated on each [refresh].
   CoilSource coil;
 
-  /// The app's root folder.
+  /// The app's root directory.
   final String appRoot;
 
   final AnalysisContextCollection _collection;
 
-  /// The [refreshedFiles] as of the last [refresh].
+  /// The [refreshedFiles] recorded during the last [refresh].
   Set<String> _refreshed = {};
 
-  /// Makes the analyzer re-read the [refreshedFiles], which may have
-  /// changed since the last operation, and forget the ones since deleted.
+  /// Refreshes the analyzer context for all [refreshedFiles] that changed or
+  /// were deleted since the last operation.
   Future<void> refresh() async {
     coil = CoilSource(coil.root);
     final context = _collection.contextFor(appRoot);
@@ -88,10 +93,13 @@ class EjectWorkspace {
     await context.applyPendingFileChanges();
   }
 
-  /// The Dart files eject and update read and write, as absolute paths:
-  /// coil's `lib/`, the ejected copies, their bases in `.coil/base/` and
-  /// the app library. Nothing else in the app (build output, SDK links,
-  /// platform folders) is listed, and links are never followed.
+  /// Returns the absolute paths of all Dart files read or written by eject and
+  /// update.
+  ///
+  /// Includes Coil's `lib/`, ejected component copies, their merge bases in
+  /// `.coil/base/`, and the generated app library. Excludes unrelated app
+  /// directories (such as build output, SDK symlinks, and platform folders)
+  /// and never follows symlinks.
   Set<String> refreshedFiles() {
     final manifest = Manifest.read(appRoot);
     final files = {
@@ -130,22 +138,25 @@ class EjectWorkspace {
     return result;
   }
 
-  /// Resolved foundation.dart, for the app library's aliases.
+  /// Resolves Coil's `foundation.dart` library for generating prefixed type
+  /// aliases in the app library.
   Future<LibraryElement> foundation() async =>
       (await _resolve(coil.pathOf('foundation.dart'))).libraryElement;
 
-  /// Where coil's [libPath] of [component] goes in the app, relative to
-  /// the app root.
+  /// Returns the destination path in the app (relative to [appRoot]) for
+  /// [libPath] of [component] under [plan].
   String appPath(EjectPlan plan, CoilComponent component, String libPath) =>
       p.posix.join(
         plan.paths[component.name]!,
         plan.naming.fileFor(component.ejectedPath(libPath)),
       );
 
-  /// [component] from the installed coil, renamed and with its imports
-  /// rewritten: its own files and other ejected components' libraries
-  /// become relative imports of the copies, and the rest of coil goes
-  /// through public libraries.
+  /// Transforms [component] from the installed Coil package according to
+  /// [plan].
+  ///
+  /// Renames declarations and references and rewrites imports so internal
+  /// files and other ejected components use relative paths while the rest of
+  /// Coil is imported through public libraries.
   Future<Transformed> transform(
     CoilComponent component,
     EjectPlan plan,
@@ -186,10 +197,12 @@ class EjectWorkspace {
     return Transformed._(files, uses);
   }
 
-  /// The app file at [path] (a copy, or its base) with references to the
-  /// [added] components pointed at their new copies, as if it sat at
-  /// [copyPath] (relative to the app root). Returns the new content, or
-  /// null when nothing changes, and the components it now uses.
+  /// Rewrites the app file at [path] (a local copy or its merge base) so
+  /// references to [added] components point at their new local copies.
+  ///
+  /// Computes relative imports as if the file were located at [copyPath]
+  /// (relative to [appRoot]). Returns the rewritten content (or `null` when
+  /// unchanged) together with the newly referenced component names.
   Future<({String? content, Set<String> uses})> repoint(
     String path,
     String copyPath,

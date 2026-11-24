@@ -8,50 +8,62 @@ import 'package:coil_cli/src/transform.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
-/// `dart run coil_cli:eject`. Returns the exit code.
+/// Runs `dart run coil_cli:eject` and returns the process exit code.
 Future<int> ejectCommand(
   List<String> arguments, {
   String? appRoot,
   StringSink? out,
 }) => _run(out ?? stdout, () async {
   final parser = ArgParser()
-    ..addFlag('list', abbr: 'l', negatable: false, help: 'List components.')
+    ..addFlag(
+      'list',
+      abbr: 'l',
+      negatable: false,
+      help: 'List available components.',
+    )
     ..addFlag('all', negatable: false, help: 'Eject every component.')
     ..addOption(
       'prefix',
       help:
-          'Replace "Coil" in names with this (CoilButton → AcmeButton) and '
-          'prefix file names (acme_button.dart). Set by the first eject.',
+          'Replace "Coil" in symbol names (e.g. CoilButton → AcmeButton) and '
+          'prefix file names (acme_button.dart). Fixed by the first eject.',
     )
     ..addMultiOption(
       'rename',
-      help: 'Rename one name, like CoilButton=PrimaryButton. Repeatable.',
+      help:
+          'Rename a single symbol (e.g. CoilButton=PrimaryButton). '
+          'Can be passed multiple times.',
     )
     ..addOption(
       'library',
       help:
-          'Name of the generated app library (acme → lib/acme.dart). '
+          'Name of the generated app library (e.g. acme → lib/acme.dart). '
           'Defaults to the prefix in snake_case, or coil.',
     )
     ..addOption(
       'into',
       help:
-          'Folder for the copies, relative to the app root. Defaults to '
-          'the library path without .dart (lib/coil).',
+          'Target directory for ejected components, relative to the app root. '
+          'Defaults to the library path without .dart (e.g. lib/coil).',
     )
     ..addFlag(
       'force',
       negatable: false,
-      help: 'Replace an earlier eject, discarding your edits.',
+      help: 'Replace an earlier eject, discarding local edits.',
     )
-    ..addFlag('help', abbr: 'h', negatable: false);
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Print this usage information.',
+    );
   final args = parser.parse(arguments);
   final o = out ?? stdout;
   final root = appRoot ?? Directory.current.path;
   if (args.flag('help') ||
       (!args.flag('list') && !args.flag('all') && args.rest.isEmpty)) {
     o
-      ..writeln('Copies coil components into your app to edit them.')
+      ..writeln('Copy Coil components into your app for local customization.')
       ..writeln()
       ..writeln('Usage: dart run coil_cli:eject <component>... [options]')
       ..writeln('       dart run coil_cli:eject --all [options]')
@@ -63,7 +75,7 @@ Future<int> ejectCommand(
   final coil = await resolveCoil(root);
   if (args.flag('list')) {
     final ejected = Manifest.read(root).components;
-    o.writeln('coil ${coil.version} components (* = ejected):');
+    o.writeln('Coil ${coil.version} components (* = ejected):');
     for (final component in coil.components.values) {
       final libraries = component.libraries
           .map(p.basenameWithoutExtension)
@@ -80,7 +92,9 @@ Future<int> ejectCommand(
   for (final rename in args.multiOption('rename')) {
     final parts = rename.split('=');
     if (parts.length != 2 || parts.any((s) => s.isEmpty)) {
-      throw EjectException('--rename takes From=To, like CoilButton=MyButton.');
+      throw EjectException(
+        '--rename expects From=To (e.g. CoilButton=MyButton).',
+      );
     }
     renames[parts[0]] = parts[1];
   }
@@ -99,7 +113,7 @@ Future<int> ejectCommand(
   final manifest = Manifest.read(root);
   for (final name in ejected) {
     o.writeln(
-      'Ejected $name from coil ${coil.version} to '
+      'Ejected $name from Coil ${coil.version} to '
       '${manifest.components[name]!.path}.',
     );
   }
@@ -110,13 +124,15 @@ Future<int> ejectCommand(
   o.writeln(
     'Import $library '
     'instead of package:coil/coil.dart. Commit ${Manifest.path} and '
-    '.coil/base/: they are the base for `dart run coil_cli:update`.',
+    '.coil/base/: they are the merge base for dart run coil_cli:update.',
   );
   return 0;
 });
 
-/// `dart run coil_cli:update`. Returns the exit code: 0 when everything merged,
-/// 1 when files need attention.
+/// Runs `dart run coil_cli:update` and returns the process exit code.
+///
+/// Returns `0` when all files merge cleanly, or `1` when any file needs manual
+/// attention.
 Future<int> updateCommand(
   List<String> arguments, {
   String? appRoot,
@@ -129,14 +145,19 @@ Future<int> updateCommand(
       negatable: false,
       help: 'Show what would change without writing anything.',
     )
-    ..addFlag('help', abbr: 'h', negatable: false);
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Print this usage information.',
+    );
   final args = parser.parse(arguments);
   final o = out ?? stdout;
   final root = appRoot ?? Directory.current.path;
   if (args.flag('help')) {
     o
       ..writeln(
-        "Merges coil's changes into your ejected components "
+        'Merge upstream Coil changes into your ejected components '
         '(all of them if none are named).',
       )
       ..writeln()
@@ -175,8 +196,8 @@ Future<int> updateCommand(
       attention = true;
       if (!dryRun) {
         o.writeln(
-          '  Resolve the conflict markers, then run coil_cli:update again. '
-          'These files keep their old base until they merge cleanly.',
+          '  Resolve the conflict markers, then run dart run coil_cli:update '
+          'again. These files keep their old base until they merge cleanly.',
         );
       }
     }
@@ -194,8 +215,10 @@ String _describe(FileUpdate outcome, bool dryRun) => switch (outcome) {
   FileUpdate.deletedButChanged => 'changed upstream, you deleted it',
 };
 
-/// The coil package the app at [appRoot] resolves to, found through its
-/// package config, so path, git and hosted dependencies all work.
+/// Resolves the Coil package for the app at [appRoot].
+///
+/// Looks up `coil` in the app's package config so path, git, and hosted
+/// dependencies all work.
 Future<CoilSource> resolveCoil(String appRoot) async {
   if (!File(p.join(appRoot, 'pubspec.yaml')).existsSync()) {
     throw EjectException("Run this from your app's root (no pubspec.yaml).");
@@ -205,7 +228,7 @@ Future<CoilSource> resolveCoil(String appRoot) async {
   if (coil == null) {
     throw EjectException(
       "Couldn't find coil in the package config. Add it to your "
-      'dependencies and run `flutter pub get`.',
+      'dependencies and run flutter pub get.',
     );
   }
   return CoilSource(p.fromUri(coil.root));

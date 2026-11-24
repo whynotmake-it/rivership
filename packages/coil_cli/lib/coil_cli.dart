@@ -1,7 +1,11 @@
-/// Reads a coil package's components the way `dart run coil_cli:eject`
-/// does: each component's folder, its public libraries and the names they
-/// export. For tools that work with coil's sources, like its docs
-/// generator.
+/// Reads a Coil package's components the same way `dart run coil_cli:eject`
+/// does.
+///
+/// Exposes [CoilSource] and [CoilComponent] for tools that inspect Coil's
+/// component folders, public libraries, and exported symbols (such as
+/// documentation generators).
+///
+/// @docImport 'src/coil_source.dart';
 library;
 
 export 'src/coil_source.dart' show CoilComponent, CoilSource, EjectException;

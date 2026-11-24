@@ -1,29 +1,31 @@
 # coil_cli
 
-Tools for apps that use [coil](https://pub.dev/packages/coil): eject a component into the app to change its look, merge coil's later changes into the copy, and check the copy's interaction patterns in tests. Add it as a dev dependency, so none of it ships with the app:
+CLI and test utilities for apps using [Coil](https://pub.dev/packages/coil). Copy any Coil component into your app to customize its look, merge upstream Coil updates back into your local copies, and verify that your customized components still follow Coil's interaction and accessibility patterns.
+
+Add it as a dev dependency so none of it ships in your app:
 
 ```sh
 flutter pub add dev:coil_cli
 ```
 
-## Eject and update
+## Ejecting and updating components
 
 ```sh
-dart run coil_cli:eject --list                 # every component; * marks ejected ones
-dart run coil_cli:eject button dialog          # copy them to lib/coil/
-dart run coil_cli:eject --all --prefix Acme    # copy everything as AcmeButton, …
-dart run coil_cli:update --dry-run             # what coil's new version would change
-dart run coil_cli:update                       # three-way merge into every copy
+dart run coil_cli:eject --list                 # List all components (* marks ejected ones)
+dart run coil_cli:eject button dialog          # Copy components into lib/coil/
+dart run coil_cli:eject --all --prefix Acme    # Copy everything renamed as AcmeButton, etc.
+dart run coil_cli:update --dry-run             # Preview upstream changes before merging
+dart run coil_cli:update                       # Three-way merge upstream updates into local copies
 ```
 
-- **Eject** copies a component's folder and public libraries and rewrites their imports to coil's public libraries. It also writes an app library (`lib/coil.dart`) that exports coil minus the ejected names, plus the copies. Components ejected together, or one after another, use each other's copies.
-- **Names:** the first eject can set `--prefix`, `--rename From=To` and `--library`. The analyzer renames declarations, references, doc links and file names, never strings, private names, members or parameters.
-- **Update** runs `git merge-file` per file against the pristine base in `.coil/base/`, after renaming coil's new version the same way. Conflicts get standard markers and keep their old base. It needs `git` on your PATH.
-- **The manifest** `.coil/ejected.yaml` records the version, names and paths. Commit it with `.coil/base/`.
+- **Eject:** Copies each selected component's files into your app, rewrites their imports to Coil's public libraries, and generates an app barrel (`lib/coil.dart`) that exports Coil minus the ejected symbols plus your local copies. Components ejected together or separately automatically reference each other's local copies.
+- **Renaming:** On your first eject, pass `--prefix`, `--rename From=To`, or `--library` to use your own naming. Renaming uses the Dart analyzer and updates declarations, references, `[Name]` doc links, and file names without touching string literals, private identifiers, members, or parameters.
+- **Updating:** Runs `git merge-file` per file against the original snapshots saved in `.coil/base/`, applying your naming rules to the new upstream version before merging. Any conflicts receive standard git conflict markers and preserve their previous base snapshot. Requires `git` on your `PATH`.
+- **Manifest:** `.coil/ejected.yaml` tracks the Coil version, rename rules, and ejected paths. Commit both `.coil/ejected.yaml` and `.coil/base/` to version control.
 
-The CLI finds coil through your app's package config, so it works with whichever coil version the app resolved. coil's [`SKILL.md`](https://github.com/whynotmake-it/rivership/blob/main/packages/coil/SKILL.md) covers the whole flow.
+`coil_cli` locates Coil through your app's package config, so it always matches the Coil version your app resolved. See Coil's [`SKILL.md`](https://github.com/whynotmake-it/rivership/blob/main/packages/coil/SKILL.md) for the full workflow.
 
-## Check an ejected copy
+## Testing ejected components
 
 ```dart
 import 'package:coil_cli/testing.dart';
@@ -31,8 +33,4 @@ import 'package:coil_cli/testing.dart';
 await expectCoilPattern(tester, find.byType(AcmeButton), CoilPattern.button);
 ```
 
-`expectCoilPattern` checks one `CoilPattern`'s semantics, keyboard and focus rules: Tab reaches the widget, keyboard focus shows the ring, a pointer press hides it, and the pattern's keys work.
-
-## Tests
-
-`flutter test` in this package. `test/ejectable_test.dart` checks that every coil component can be ejected, and `test/eject/eject_app_test.dart` ejects all of them into a fresh app, analyzes it and renders the copies.
+`expectCoilPattern` verifies a `CoilPattern`'s semantics, keyboard navigation, and focus behavior: `Tab` reaches the widget, keyboard focus shows the focus ring, a pointer press hides it, and the pattern's keyboard shortcuts work as expected.

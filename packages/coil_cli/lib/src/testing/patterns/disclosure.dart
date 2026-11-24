@@ -1,3 +1,6 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/semantics.dart';
@@ -5,12 +8,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.disclosure` checks, run by `expectCoilPattern` after
-/// the target was reached with Tab and showed its focus ring.
+/// Verifies the [CoilPattern.disclosure] contract for [expectCoilPattern]
+/// after the target has been focused with Tab and shown its focus ring.
 ///
-/// The focused trigger is an enabled button with a tap action and an
-/// expanded state, and Enter and Space each flip that state. Needs a host
-/// that applies `onChanged`.
+/// Checks that the focused trigger is an enabled button with a tap action and
+/// an expanded state, and that Enter and Space each toggle that state.
+/// Requires a stateful host that applies `onChanged`.
 Future<void> expectDisclosurePattern(
   WidgetTester tester,
   Finder finder,

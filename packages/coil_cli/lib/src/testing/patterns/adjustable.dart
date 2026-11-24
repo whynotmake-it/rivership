@@ -1,14 +1,17 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.adjustable` checks, run by `expectCoilPattern`
-/// after the target was reached with Tab and showed its focus ring.
+/// Verifies the [CoilPattern.adjustable] contract for [expectCoilPattern]
+/// after the target has been focused with Tab and shown its focus ring.
 ///
-/// An adjustable control is one node with a value and increase/decrease
-/// actions. Up raises the value and Down lowers it, whatever the reading
-/// direction. Needs a stateful host that applies `onChanged`, with a value
-/// that can move up from where it starts.
+/// Checks that the adjustable control exposes a single node with a value and
+/// increase/decrease actions, and that Arrow Up raises the value while Arrow
+/// Down lowers it regardless of reading direction. Requires a stateful host
+/// that applies `onChanged` starting from a value that can increase.
 Future<void> expectAdjustablePattern(
   WidgetTester tester,
   Finder finder,

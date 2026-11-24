@@ -1,3 +1,6 @@
+/// @docImport 'package:coil_cli/src/testing/coil_pattern.dart';
+library;
+
 import 'dart:ui' show SemanticsRole, Tristate;
 
 import 'package:flutter/rendering.dart';
@@ -5,12 +8,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The `CoilPattern.navigation` checks, run by `expectCoilPattern` after the
-/// first link was reached with Tab and showed its focus ring.
+/// Verifies the [CoilPattern.navigation] contract for [expectCoilPattern]
+/// after the first link has been focused with Tab and shown its focus ring.
 ///
-/// A navigation trail is a labelled navigation landmark. Its links are each
-/// a Tab stop in order (no roving focus) and Enter follows the focused one.
-/// The current page is selected and isn't a link or a Tab stop.
+/// Checks that the navigation trail is a labelled navigation landmark whose
+/// links are each a Tab stop in order (no roving focus), that Enter follows
+/// the focused link, and that the current page is selected and neither a link
+/// nor a Tab stop.
 Future<void> expectNavigationPattern(
   WidgetTester tester,
   Finder finder,
