@@ -12,7 +12,7 @@ void main() {
         settings: const SnapVideoSettings(
           timing: VideoTiming.smooth,
           includeDeviceFrame: true,
-          showPointers: true,
+          overlay: SnapPointerOverlay.builder,
           finalHold: Duration(milliseconds: 400),
         ),
       );
