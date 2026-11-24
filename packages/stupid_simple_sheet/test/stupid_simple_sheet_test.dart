@@ -79,6 +79,77 @@ void main() {
     );
   }
 
+  testWidgets(
+    'stays open at a real snap point when complying with a new snapping '
+    'config or snapping a low relative position',
+    (tester) async {
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(navigatorKey: navigator, home: const Scaffold()),
+      );
+
+      const contentKey = Key('snap-content');
+      final route = StupidSimpleSheetRoute<void>(
+        snappingConfig: const SheetSnappingConfig([0.5, 1.0], initialSnap: 0.5),
+        child: const Scaffold(key: contentKey, body: Text('Sheet content')),
+      );
+      navigator.currentState!.push(route).ignore();
+      await tester.pumpAndSettle();
+
+      StupidSimpleSheetController<void> controller() =>
+          StupidSimpleSheetController.maybeOf<void>(
+            tester.element(find.byKey(contentKey)),
+          )!;
+
+      double top() => tester.getTopLeft(find.byKey(contentKey)).dy;
+
+      final halfTop = top();
+
+      // 0.5 is equidistant to closed (0.0) and full (1.0); the sheet must go
+      // to full, not close.
+      controller()
+          .overrideSnappingConfig(
+            SheetSnappingConfig.full,
+            animateToComply: true,
+          )
+          .ignore();
+      await tester.pumpAndSettle();
+
+      expect(route.isCurrent, isTrue);
+      expect(find.text('Sheet content'), findsOneWidget);
+      expect(top(), lessThan(halfTop));
+
+      // Reference: a sheet opened with the full config from the start.
+      final fullTop = top();
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+      final reference = StupidSimpleSheetRoute<void>(
+        child: const Scaffold(key: contentKey, body: Text('Sheet content')),
+      );
+      navigator.currentState!.push(reference).ignore();
+      await tester.pumpAndSettle();
+      expect(fullTop, top());
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+
+      // Snapping a position closer to closed than to the lowest stop must
+      // still land on a real snap point.
+      final snapping = StupidSimpleSheetRoute<void>(
+        snappingConfig: const SheetSnappingConfig([0.5, 1.0], initialSnap: 1),
+        child: const Scaffold(key: contentKey, body: Text('Sheet content')),
+      );
+      navigator.currentState!.push(snapping).ignore();
+      await tester.pumpAndSettle();
+
+      controller().animateToRelative(0.2, snap: true).ignore();
+      await tester.pumpAndSettle();
+
+      expect(snapping.isCurrent, isTrue);
+      expect(find.text('Sheet content'), findsOneWidget);
+      expect(top(), halfTop);
+    },
+  );
+
   group('StupidSimpleSheetRoute', () {
     const motion = CupertinoMotion.smooth(
       duration: Duration(milliseconds: 400),
@@ -2586,6 +2657,69 @@ void main() {
         );
       },
     );
+  });
+
+  group('dragging content shorter than the sheet', () {
+    final routes = <String, Route<void> Function(Widget)>{
+      'glass': (child) => StupidSimpleGlassSheetRoute<void>(child: child),
+      'cupertino': (child) =>
+          StupidSimpleCupertinoSheetRoute<void>(child: child),
+      'plain': (child) =>
+          StupidSimpleSheetRoute<void>(child: SheetBackground(child: child)),
+    };
+
+    for (final entry in routes.entries) {
+      testWidgets('${entry.key} sheet follows the pointer one-to-one', (
+        tester,
+      ) async {
+        const contentKey = Key('short-content');
+        await tester.pumpWidget(
+          CupertinoApp(
+            home: Builder(
+              builder: (context) => CupertinoButton(
+                onPressed: () => Navigator.of(context).push(
+                  entry.value(
+                    const SizedBox(
+                      key: contentKey,
+                      height: 300,
+                      width: double.infinity,
+                      child: ColoredBox(color: Colors.red),
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+
+        final contentFinder = find.byKey(contentKey);
+        final gesture = await tester.startGesture(
+          tester.getCenter(contentFinder),
+        );
+        // Get past the touch slop so the drag has started.
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+
+        final topBefore = tester.getRect(contentFinder).top;
+        var pointerDistance = 0.0;
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(0, 10));
+          pointerDistance += 10;
+          await tester.pump();
+          expect(
+            tester.getRect(contentFinder).top - topBefore,
+            moreOrLessEquals(pointerDistance, epsilon: 1),
+          );
+        }
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(contentFinder, findsOneWidget);
+      });
+    }
   });
 }
 

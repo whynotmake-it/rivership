@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'src/paint_probe.dart';
+
 Widget _rows(int count) => Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
@@ -28,6 +30,104 @@ List<ScrollPhysics> _physicsOf(ScrollableState state) => [
   for (ScrollPhysics? p = state.position.physics; p != null; p = p.parent) p,
 ];
 
+const _red = Color(0xFFFF0000);
+const _white = Color(0xFFFFFFFF);
+const _probe = ValueKey('probe');
+
+/// Wraps a plain red [ListView] along [axis] in a scroll area, with or
+/// without a [controller] shared by both, and walks it the way a user does:
+/// it reads where it is from the edge fades, and scrolls with the keys and
+/// the scrollbar's thumb.
+Future<void> _wrapsAList(
+  WidgetTester tester, {
+  Axis axis = Axis.vertical,
+  ScrollController? controller,
+}) async {
+  final vertical = axis == Axis.vertical;
+  await tester.pumpWidget(
+    _app(
+      RepaintBoundary(
+        key: _probe,
+        child: ColoredBox(
+          color: _white,
+          child: CoilScrollArea(
+            controller: controller,
+            axis: axis,
+            child: ListView(
+              controller: controller,
+              scrollDirection: axis,
+              children: [
+                for (var i = 0; i < 40; i++)
+                  const SizedBox.square(
+                    dimension: 50,
+                    child: ColoredBox(color: _red),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+  double offset() => scrollable.position.pixels;
+  final area = tester.getRect(find.byKey(_probe));
+  Future<bool> fadedAt(Offset point) async =>
+      !isNear(await colorAt(tester, find.byKey(_probe), point), _red);
+  Future<({bool start, bool end})> fades() async => (
+    start: await fadedAt(
+      vertical
+          ? Offset(area.center.dx, area.top + 1)
+          : Offset(area.left + 1, area.center.dy),
+    ),
+    end: await fadedAt(
+      vertical
+          ? Offset(area.center.dx, area.bottom - 1)
+          : Offset(area.right - 1, area.center.dy),
+    ),
+  );
+
+  expect(await fades(), (start: false, end: true), reason: 'at the start');
+
+  // The keys scroll it once the area has focus.
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  await tester.pumpAndSettle();
+  await tester.sendKeyEvent(
+    vertical ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowRight,
+  );
+  await tester.pumpAndSettle();
+  final afterArrow = offset();
+  expect(afterArrow, greaterThan(0));
+
+  // The scroll shows the bar, and a mouse drags its thumb, near the start
+  // of the far edge.
+  final thumb = vertical
+      ? area.topRight + const Offset(-4, 12)
+      : area.bottomLeft + const Offset(12, -4);
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  addTearDown(mouse.removePointer);
+  await mouse.addPointer(location: thumb);
+  await tester.pump();
+  await mouse.down(thumb);
+  await mouse.moveBy(vertical ? const Offset(0, 20) : const Offset(20, 0));
+  await tester.pump();
+  await mouse.up();
+  await tester.pumpAndSettle();
+  final afterDrag = offset();
+  expect(afterDrag, greaterThan(afterArrow), reason: 'the thumb scrolls it');
+
+  await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+  await tester.pumpAndSettle();
+  expect(offset(), greaterThan(afterDrag));
+  expect(await fades(), (start: true, end: true), reason: 'in the middle');
+
+  await tester.sendKeyEvent(LogicalKeyboardKey.end);
+  await tester.pumpAndSettle();
+  expect(offset(), scrollable.position.maxScrollExtent);
+  expect(await fades(), (start: true, end: false), reason: 'at the end');
+}
+
 double _offsetOf(WidgetTester tester) =>
     tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
 
@@ -37,7 +137,9 @@ void main() {
   testWidgets('a scrolling viewport is a tab stop; keys spring it', (
     tester,
   ) async {
-    await tester.pumpWidget(_app(CoilScrollArea(child: _rows(40))));
+    await tester.pumpWidget(
+      _app(CoilScrollArea(child: SingleChildScrollView(child: _rows(40)))),
+    );
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pumpAndSettle();
@@ -71,6 +173,25 @@ void main() {
     expect(_offsetOf(tester), 0);
   });
 
+  testWidgets('a plain ListView gets the bar, the keys and the fades', (
+    tester,
+  ) async {
+    await _wrapsAList(tester);
+  }, variant: TargetPlatformVariant.all());
+
+  testWidgets('so does a list that shares its controller with the area', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await _wrapsAList(tester, controller: controller);
+    expect(controller.offset, greaterThan(0));
+  });
+
+  testWidgets('so does a horizontal list', (tester) async {
+    await _wrapsAList(tester, axis: Axis.horizontal);
+  }, variant: TargetPlatformVariant.all());
+
   testWidgets('a key a nested area leaves alone scrolls the outer one', (
     tester,
   ) async {
@@ -84,19 +205,26 @@ void main() {
       _app(
         CoilScrollArea(
           controller: outer,
-          child: Column(
-            children: [
-              SizedBox(
-                height: 40,
-                child: CoilScrollArea(
-                  controller: inner,
-                  focusNode: innerFocus,
-                  axis: Axis.horizontal,
-                  child: const SizedBox(width: 800, height: 40),
+          child: SingleChildScrollView(
+            controller: outer,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 40,
+                  child: CoilScrollArea(
+                    controller: inner,
+                    focusNode: innerFocus,
+                    axis: Axis.horizontal,
+                    child: SingleChildScrollView(
+                      controller: inner,
+                      scrollDirection: Axis.horizontal,
+                      child: const SizedBox(width: 800, height: 40),
+                    ),
+                  ),
                 ),
-              ),
-              _rows(40),
-            ],
+                _rows(40),
+              ],
+            ),
           ),
         ),
       ),
@@ -119,7 +247,9 @@ void main() {
   });
 
   testWidgets('content that fits is not a tab stop', (tester) async {
-    await tester.pumpWidget(_app(CoilScrollArea(child: _rows(2))));
+    await tester.pumpWidget(
+      _app(CoilScrollArea(child: SingleChildScrollView(child: _rows(2)))),
+    );
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pumpAndSettle();
@@ -133,7 +263,9 @@ void main() {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(disableAnimations: true),
-        child: _app(CoilScrollArea(child: _rows(40))),
+        child: _app(
+          CoilScrollArea(child: SingleChildScrollView(child: _rows(40))),
+        ),
       ),
     );
     await tester.pump();
@@ -144,14 +276,14 @@ void main() {
     expect(_offsetOf(tester), greaterThan(0));
   });
 
-  testWidgets('.scrollable gives an existing list the same behavior', (
+  testWidgets('a list with a controller of its own gets the same behavior', (
     tester,
   ) async {
     final controller = ScrollController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       _app(
-        CoilScrollArea.scrollable(
+        CoilScrollArea(
           controller: controller,
           child: ListView.builder(
             controller: controller,
@@ -171,7 +303,9 @@ void main() {
   });
 
   testWidgets('a tap never shows the focus ring', (tester) async {
-    await tester.pumpWidget(_app(CoilScrollArea(child: _rows(40))));
+    await tester.pumpWidget(
+      _app(CoilScrollArea(child: SingleChildScrollView(child: _rows(40)))),
+    );
     await tester.pump();
     await tester.tap(find.byType(CoilScrollArea));
     await tester.pumpAndSettle();
@@ -184,7 +318,9 @@ void main() {
   testWidgets('a hovering mouse widens the bar; a touch never does', (
     tester,
   ) async {
-    await tester.pumpWidget(_app(CoilScrollArea(child: _rows(40))));
+    await tester.pumpWidget(
+      _app(CoilScrollArea(child: SingleChildScrollView(child: _rows(40)))),
+    );
     await tester.drag(
       find.byType(CoilScrollArea),
       const Offset(0, -40),
@@ -249,18 +385,20 @@ void main() {
     await tester.pumpWidget(
       _app(
         CoilScrollArea(
-          child: Column(
-            children: [
-              EditableText(
-                controller: text,
-                focusNode: focus,
-                maxLines: null,
-                style: const TextStyle(fontSize: 14),
-                cursorColor: const Color(0xFF000000),
-                backgroundCursorColor: const Color(0xFF000000),
-              ),
-              _rows(12),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                EditableText(
+                  controller: text,
+                  focusNode: focus,
+                  maxLines: null,
+                  style: const TextStyle(fontSize: 14),
+                  cursorColor: const Color(0xFF000000),
+                  backgroundCursorColor: const Color(0xFF000000),
+                ),
+                _rows(12),
+              ],
+            ),
           ),
         ),
       ),
@@ -289,18 +427,20 @@ void main() {
         ScrollConfiguration(
           behavior: behavior,
           child: CoilScrollArea(
-            child: Column(
-              children: [
-                _rows(12),
-                // A nested scrollable keeps the app's behavior.
-                SizedBox(
-                  height: 60,
-                  child: ListView(
-                    key: const ValueKey('nested'),
-                    children: [_rows(4)],
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _rows(12),
+                  // A nested scrollable keeps the app's behavior.
+                  SizedBox(
+                    height: 60,
+                    child: ListView(
+                      key: const ValueKey('nested'),
+                      children: [_rows(4)],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -338,18 +478,20 @@ void main() {
       _app(
         CoilScrollArea(
           scrollbar: CoilScrollbarVisibility.none,
-          child: Column(
-            children: [
-              _rows(12),
-              // A nested scrollable keeps the app's behavior and its bar.
-              SizedBox(
-                height: 60,
-                child: ListView(
-                  key: const ValueKey('nested'),
-                  children: [_rows(4)],
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _rows(12),
+                // A nested scrollable keeps the app's behavior and its bar.
+                SizedBox(
+                  height: 60,
+                  child: ListView(
+                    key: const ValueKey('nested'),
+                    children: [_rows(4)],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -373,7 +515,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpWidget(
       _app(
-        CoilScrollArea.scrollable(
+        CoilScrollArea(
           controller: controller,
           scrollbar: CoilScrollbarVisibility.none,
           child: ListView(controller: controller, children: [_rows(12)]),
@@ -395,7 +537,7 @@ void main() {
         StatefulBuilder(
           builder: (context, set) {
             setState = set;
-            return CoilScrollArea.scrollable(
+            return CoilScrollArea(
               controller: controller,
               // Physics that leave the offset past the new end, so the
               // list springs back, and the spring starts during layout.

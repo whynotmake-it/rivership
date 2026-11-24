@@ -25,6 +25,9 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final gutter = CatalogLayout.gutterOf(context);
     final padding = MediaQuery.paddingOf(context);
+    // The page draws behind the keyboard; padding its end by the
+    // keyboard's height lets the last field scroll above it.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     return ColoredBox(
       color: CoilTheme.of(context).colors.background,
       child: Column(
@@ -36,23 +39,25 @@ class HomePage extends StatelessWidget {
               context: context,
               removeTop: true,
               child: CoilScrollArea(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  gutter + padding.left,
-                  0,
-                  gutter + padding.right,
-                  gutter + padding.bottom + 24,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: maxWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const _Hero(),
-                        BentoGrid(tiles: homeTiles),
-                        const SizedBox(height: 48),
-                        const _Index(),
-                      ],
+                child: SingleChildScrollView(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    gutter + padding.left,
+                    0,
+                    gutter + padding.right,
+                    gutter + padding.bottom + 24 + keyboard,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: maxWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const _Hero(),
+                          BentoGrid(tiles: homeTiles),
+                          const SizedBox(height: 48),
+                          const _Index(),
+                        ],
+                      ),
                     ),
                   ),
                 ),

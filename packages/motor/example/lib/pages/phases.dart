@@ -1,11 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_example/chapters.dart';
 import 'package:motor_example/widgets/chapter_page.dart';
-import 'package:motor_example/widgets/controls.dart';
+import 'package:motor_example/widgets/icons.dart';
 import 'package:motor_example/widgets/style.dart';
 
 /// Named states, and motor animating every track between them.
@@ -314,12 +315,14 @@ class _PhasesPageState extends State<PhasesPage> {
                 left: 0,
                 right: 0,
                 child: Center(
-                  child: GestureDetector(
-                    onVerticalDragStart: _grab,
-                    onVerticalDragUpdate: _drag,
-                    onVerticalDragEnd: _release,
-                    onVerticalDragCancel: () => _release(DragEndDetails()),
-                    child: _NowPlaying(look),
+                  child: ExcludeScrollDrag(
+                    child: GestureDetector(
+                      onVerticalDragStart: _grab,
+                      onVerticalDragUpdate: _drag,
+                      onVerticalDragEnd: _release,
+                      onVerticalDragCancel: () => _release(DragEndDetails()),
+                      child: _NowPlaying(look),
+                    ),
                   ),
                 ),
               ),
@@ -327,28 +330,30 @@ class _PhasesPageState extends State<PhasesPage> {
                 left: 16,
                 right: 16,
                 bottom: 16,
-                child: Row(
-                  mainAxisAlignment: .spaceBetween,
+                child: Wrap(
+                  alignment: .spaceBetween,
+                  crossAxisAlignment: .center,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
-                    Flexible(
-                      child: FittedBox(
-                        fit: .scaleDown,
-                        alignment: .centerLeft,
-                        child: Choice(
-                          options: const ['Mini', 'Card', 'Full'],
-                          selected: selected.index,
-                          onSelect: (index) => _goTo(_Player.values[index]),
-                        ),
-                      ),
+                    CoilTabs<_Player>(
+                      value: selected,
+                      onChanged: _goTo,
+                      tabs: [
+                        for (final player in _Player.values)
+                          CoilTab(
+                            value: player,
+                            label: Text(
+                              '${player.name[0].toUpperCase()}'
+                              '${player.name.substring(1)}',
+                            ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    PillButton(
-                      label: _autoplay ? 'Stop' : 'Autoplay',
-                      icon: _autoplay
-                          ? CupertinoIcons.pause_fill
-                          : CupertinoIcons.play_fill,
-                      filled: _autoplay,
-                      onTap: _toggleAutoplay,
+                    CoilSwitch(
+                      value: _autoplay,
+                      onChanged: (_) => _toggleAutoplay(),
+                      label: const Text('Autoplay'),
                     ),
                   ],
                 ),
@@ -368,7 +373,8 @@ class _NowPlaying extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     final _Look(:radius, :inline, :stacked) = look;
     // A hard fling can make the springs overshoot past zero.
     final frame = Size(
@@ -387,10 +393,12 @@ class _NowPlaying extends StatelessWidget {
       width: frame.width,
       height: frame.height,
       clipBehavior: .antiAlias,
-      decoration: BoxDecoration(
-        color: t.surface,
-        borderRadius: .circular(radius),
-        border: Border.all(color: t.border),
+      decoration: ShapeDecoration(
+        color: colors.surface(4),
+        shape: RoundedSuperellipseBorder(
+          borderRadius: .circular(radius),
+          side: BorderSide(color: colors.border),
+        ),
       ),
       child: Stack(
         clipBehavior: .none,
@@ -419,10 +427,10 @@ class _NowPlaying extends StatelessWidget {
                   crossAxisAlignment: .start,
                   children: [
                     Text(
-                      'Slow Motion',
+                      'Gymnopédie No. 1',
                       maxLines: 1,
                       overflow: .ellipsis,
-                      style: t.title.copyWith(fontSize: 16),
+                      style: text.subtitle,
                     ),
                     ClipRect(
                       child: Align(
@@ -433,7 +441,7 @@ class _NowPlaying extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: .start,
                             children: [
-                              Text('The Springs', style: t.caption),
+                              Text('Erik Satie', style: text.muted.caption),
                               const SizedBox(height: 12),
                               const _Progress(width: 150),
                             ],
@@ -456,21 +464,21 @@ class _NowPlaying extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: .start,
                 children: [
-                  Text('Slow Motion', style: t.title.copyWith(fontSize: 22)),
+                  Text('Gymnopédie No. 1', style: text.title),
                   const SizedBox(height: 2),
-                  Text('The Springs', style: t.body),
+                  Text('Erik Satie', style: text.muted.body),
                   const SizedBox(height: 16),
                   const _Progress(width: 272),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: .spaceEvenly,
                     children: [
-                      for (final icon in [
-                        CupertinoIcons.backward_fill,
-                        CupertinoIcons.pause_fill,
-                        CupertinoIcons.forward_fill,
+                      for (final glyph in [
+                        Glyph.skipBack,
+                        Glyph.pause,
+                        Glyph.skipForward,
                       ])
-                        Icon(icon, size: 26, color: t.text),
+                        GlyphIcon(glyph, size: 24),
                     ],
                   ),
                 ],
@@ -491,16 +499,17 @@ class _Artwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: p.accent,
-        borderRadius: .circular(radius),
+    final colors = CoilTheme.of(context).colors;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: colors.muted,
+        shape: RoundedSuperellipseBorder(borderRadius: .circular(radius)),
       ),
-      child: Icon(
-        CupertinoIcons.music_note_2,
-        color: p.onAccent,
-        size: size * .4,
+      // Tight constraints from the artwork's rect make the icon fill it and
+      // draw the glyph centered.
+      child: IconTheme.merge(
+        data: IconThemeData(color: colors.mutedForeground),
+        child: GlyphIcon(Glyph.music, size: size * .4),
       ),
     );
   }
@@ -513,15 +522,21 @@ class _Progress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Palette.of(context);
+    final colors = CoilTheme.of(context).colors;
     return Container(
       width: width,
       height: 4,
       alignment: .centerLeft,
-      decoration: BoxDecoration(color: t.control, borderRadius: .circular(2)),
+      decoration: BoxDecoration(
+        color: colors.muted,
+        borderRadius: .circular(2),
+      ),
       child: Container(
         width: width * .38,
-        decoration: BoxDecoration(color: t.text, borderRadius: .circular(2)),
+        decoration: BoxDecoration(
+          color: colors.foreground,
+          borderRadius: .circular(2),
+        ),
       ),
     );
   }
