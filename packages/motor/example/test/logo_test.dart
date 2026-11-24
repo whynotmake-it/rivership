@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:example_design/example_design.dart' show LogoTile;
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:motor_example/widgets/motor_logo.dart';
-import 'package:motor_example/widgets/style.dart';
 
 void main() {
   testWidgets('build motor logo for README', (tester) async {
@@ -18,8 +18,8 @@ void main() {
         child: RepaintBoundary(
           key: key,
           child: LogoTile(
-            color: Palette.dark.surface,
-            border: Palette.dark.border,
+            color: CoilColors.dark.surface(3),
+            border: CoilColors.dark.border,
             shadow: const Color(0x80000000),
             scale: dpr,
             child: const SizedBox.square(

@@ -105,7 +105,7 @@ class CoilTable<T> extends StatefulWidget {
 }
 
 class _CoilTableState<T> extends State<CoilTable<T>>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   final _states = WidgetStatesController();
   final _active = CoilActiveItemController();
   FocusNode? _ownFocusNode;
@@ -373,7 +373,7 @@ class _CoilTableState<T> extends State<CoilTable<T>>
               autofocus: widget.autofocus,
               onFocusChange: _onFocusChange,
               // The table is the tab stop and scrolls with Left and Right.
-              child: CoilScrollArea.scrollable(
+              child: CoilScrollArea(
                 controller: _scroll,
                 axis: Axis.horizontal,
                 keyboard: false,

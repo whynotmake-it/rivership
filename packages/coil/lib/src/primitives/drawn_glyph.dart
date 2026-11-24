@@ -12,12 +12,23 @@ import 'package:flutter/widgets.dart';
 /// Components show their icons through it, after their own slot:
 /// `widget.dismissIcon ?? const CoilIcon(.close)`. Like a slot, it is
 /// styled by the ambient [IconTheme].
+///
+/// Like Flutter's `Icon`, it is hidden from screen readers unless it has a
+/// [semanticLabel]. Give it one when the icon is all that names a control,
+/// such as a `CoilChatMessageAction`'s icon-only button.
 class CoilIcon extends StatelessWidget {
   /// Creates the icon for [role].
-  const CoilIcon(this.role, {super.key});
+  const CoilIcon(this.role, {super.key, this.semanticLabel});
 
   /// Which icon.
   final CoilIconRole role;
+
+  /// What screen readers announce for the icon, as with `Icon`. It merges
+  /// into the control around it, so an icon-only button is named by it.
+  ///
+  /// Null leaves the icon out of the semantics tree: a decorative icon, or
+  /// one beside a label that already names its control.
+  final String? semanticLabel;
 
   /// The glyph coil draws for [role] when the theme sets no icon.
   static CoilGlyph glyphFor(CoilIconRole role) => switch (role) {
@@ -35,9 +46,14 @@ class CoilIcon extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) =>
-      CoilTheme.of(context).icons[role] ??
-      CoilDrawnGlyph.presence(glyphFor(role));
+  Widget build(BuildContext context) => Semantics(
+    label: semanticLabel,
+    child: ExcludeSemantics(
+      child:
+          CoilTheme.of(context).icons[role] ??
+          CoilDrawnGlyph.presence(glyphFor(role)),
+    ),
+  );
 }
 
 /// The small glyphs coil draws itself (DESIGN.md §11), by shape. Components

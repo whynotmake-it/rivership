@@ -54,6 +54,9 @@ export 'package:stupid_simple_sheet/stupid_simple_sheet.dart'
 ///
 /// A sheet opened from another sheet slides over it with its own scrim.
 ///
+/// The sheet takes drags from its content; wrap content that needs its own
+/// (a map, a canvas, a draggable card) in `ExcludeScrollDrag`.
+///
 /// Put a [CoilSheetPanel] in it for an optional title, a pinned footer and
 /// the safe area.
 ///

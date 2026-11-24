@@ -266,6 +266,7 @@ Named holds that aren't tokens:
   Under reduced motion the room and the size jump and the content only fades. `Motion.instant` on the component's track turns either off.
 - **Height collapses** (Accordion, groups, ThinkingSteps, Banner rows) animate a 0..1 height factor on `standard`. Opacity leads on `fade`, so content dissolves instead of being sliced. A child resizing inside an open region is instant.
 - **No idle tickers.** Nothing animates at rest. The loops are spinners, the Skeleton pulse and the ThinkingIndicator's word cycle. Reduced motion stops the first two and turns the word cycle into a crossfade.
+- **Frame rate is the app's call.** Springs tick every frame by default. Wrap coil components in a `TickerRateScope` (e.g. `TickerRate.fps(30)`) to run all of coil's motion at a fixed rate, saving frame work on 120 Hz screens and for low-priority motion. Reduced motion still applies.
 
 ### 7.3 Customizing
 
@@ -384,7 +385,7 @@ coil sets no scroll behavior of its own. Physics, overscroll and which pointers 
 
 Coil never draws Cupertino or Material chrome. Platform pieces come in only where they're genuinely native: the edit menu, selection handles and the keyboard. They're used only inside `CoilTextFieldCore`.
 
-**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold.
+**Drawers open by dragging the page, not an edge strip.** On touch, a horizontal drag anywhere on the page opens the sidebar drawer; horizontal scrollables keep their drags and hand over only when a drag starts at their edge. Once a drag moves the drawer, the drawer keeps it both ways, the way a sheet dragged down keeps a drag back up: the scrollable takes over again only when the drawer is back where the drag found it. On a route iOS can swipe back, the start-side drawer leaves that swipe to the route and only closes by drag (the end side still opens). Apps can turn drag-to-open off per scaffold. Page content with its own drags (a map, a canvas, a draggable card) is wrapped in `ExcludeScrollDrag`.
 
 ### 9.2.1 Keyboard shortcuts
 
@@ -434,7 +435,7 @@ Every component ships with all of these. They're required to call it done.
 - **Direction:** coil's `chevronStart` and `chevronEnd` mirror in RTL. A custom icon mirrors itself (`matchTextDirection: true`).
 - **Animated icons:** where coil animates an icon in, out or into another (checkbox tick and dash, select and question-row check, the copy feedback, the composer's send and stop), it wraps it in a `CoilIconPresence`: an `Animation<double>`, 0 absent to 1 fully there, clamped (a bounce belongs outside the icon), on the component's motion tokens, and jumping to its end under reduced motion. An icon that reads it (`CoilIconPresence.maybeOf`) animates itself, as coil's tick does by drawing in; any other gets coil's fallback, a fade and a scale from 80 %, applied when it paints. A swap is two presences crossing. coil's own glyphs keep their look: the tick and dash draw in, the copy feedback and send/stop blur-fade. Morphs between two shapes and a linear-progress contract are out of scope.
 - **Not icons:** the spinner (it loops; `loadingIndicator:` replaces it), the radio dot and the thinking steps' dots are drawn and aren't roles.
-- **Icons are optional decoration.** Never put meaning only in an icon: icon-only buttons need `semanticLabel`.
+- **Icons are optional decoration.** Never put meaning only in an icon: icon-only buttons need `semanticLabel`, on the button or, where the component takes it from its icon (a chat message's actions), on the icon. `CoilIcon` takes one, as `Icon` does; without it the icon is left out of semantics.
 
 ## 12. Writing
 
@@ -505,6 +506,7 @@ Every component ships with all of these. They're required to call it done.
 - **Optional action bar** (`CoilSheetPanel.footer`): pinned under the content, so it stays put while the content scrolls and rides on the keyboard with the sheet; at least 16 above the bottom edge, the safe area counted (8 above the home indicator). A hairline over it shows only while content continues beneath it, on `fade` / `fadeExit`. Its buttons follow §13.5: full width, 44, stacked with the primary on top, unless the footer leads with a summary of what its one action confirms (§13.5, summary footer), as the date picker's does. Past 40 % of the window's height (huge text in a short window) it scrolls on its own.
 - **Height:** it hugs its content: a short list makes a short sheet on the bottom edge; a scroll view or long content grows it up to the cap and scrolls inside. Search and command sheets open at the large detent and grow while the keyboard is up.
 - **Motion:** `gentle` both ways; a dismissing drag hands its fling velocity to it. The scrim fades with the sheet.
+- **Content with its own drags** (a map, a canvas, a draggable card) goes in an `ExcludeScrollDrag` (re-exported by coil), or the sheet's drag takes them.
 - **Scrollables that take their own behavior** (a `PageView`, a `ListWheelScrollView`) use `CoilSheetRoute.scrollBehaviorOf(context)`, so a drag still hands off to the sheet.
 - **Dismiss:** drag down, tap the scrim, system back, Esc.
 - **Rows** are always touch rows, whatever the tier.
@@ -618,7 +620,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - the label is muted when off and foreground when on, on every tier: the label shows the switch's state, which a finger can read too.
 - **Motion** (tracks `CoilSwitchTrack.thumb` / `.squish` / `.tint`):
   - thumb on `standard`, squish on `quick`, tint on `fade`;
-  - dragging sets the thumb directly and may overshoot 0.15 of the travel, stretching the track;
+  - dragging sets the thumb directly and may go past either end, and so may a bouncy spring, stretching the track with rubber-band resistance (`coilRubberBand`: it keeps growing ever more softly toward 0.15 of the travel, with no hard stop);
   - release decides by `x + v · 0.1 s` and animates with the release velocity.
 - **Keyboard:** Space or Enter toggles. The focus ring sits 2 px outside the track, as every ring does (§13.4).
 - **Semantics:** `toggled`, label.
@@ -724,7 +726,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 #### ToggleGroup
 
 - **Anatomy:** a horizontal segmented row: a 1 px `border` hairline with `segmentPadding` (4, compact 2) between it and the segments. Selected segments merge into one block.
-- **Sizes:** segment height `controlHeight`, padding `controlPaddingX`; the row is `segmentPadding` taller on each side.
+- **Sizes:** segment height `controlHeight`, padding `controlPaddingX` (also next to an icon, unlike a button); the row is `segmentPadding` taller on each side.
+- **Segment content:** [icon] label. An option's `icon` leads the label, `buttonGap` before it, in the label's animated color and at `iconSize`; the width springs cover both. An icon-only segment passes its icon as the label, with a `semanticLabel`.
 - **Shape:** segments, blocks and the highlight at the item radius; the row concentric with them, `segmentPadding` out (`CoilRadii.concentric`: 12 pointer, 10 compact, 14 touch).
 - **Motion:** merge/split `standard`, highlight `quick`. A segment whose label changes cross-fades it and springs to its new width on `standard` (`CoilToggleGroupTrack.size`); the selection follows.
 - **Keyboard:** roving; Left and Right move; Space toggles.
@@ -813,6 +816,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - **Phone (touch, < 600):**
     - A dialog becomes a **sheet** (§13.3) **only when it contains a form**: the title becomes the sheet title, beside the sheet's close button (leading on iOS, trailing elsewhere; it calls `onClose` when the dialog has one, else pops), so the sheet never shows two; and the footer becomes the sheet's pinned action bar (§13.3), stacked full width with the primary on top and Cancel below (§13.5). `lg` / `xl` forms open at the large detent.
     - **Short confirmations stay centered** (title + a sentence + buttons), the default for dialogs without a form. Their buttons stack full width too (§13.5).
+    - Content in it that needs its own drags (a map, a canvas) goes in an `ExcludeScrollDrag`.
     - A dialog shown as a sheet is **always drag-to-dismiss** (`stupid_simple_sheet`'s drag) unless the dialog is non-dismissible, in which case the drag, scrim tap and back are all off.
 - **Motion:** scrim on `fade`; panel blur-fade with scale 0.97 → 1 on `gentle`, out on `gentleExit`.
 - **Keyboard:** focus is trapped and starts on the first field (or the primary for confirmations). Esc closes. Focus returns to the trigger.
@@ -984,7 +988,8 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - assistant: no bubble, full width, aligned to the start.
 - **Meta row:** pointer shows it on hover or focus within the message; **touch always shows it**. Long-press on touch opens a context menu (Copy, Retry…). A Copy action uses the shared copy feedback: its icon is `CoilCopyGlyph.listening(controller:)` and it calls `CoilCopyController.copy`, so it shows a copy glyph that cross-fades to a check like InputCopy.
 - **Motion:** enter fade + rise 8 + scale 0.96 → 1 on `standard`, from the sender's bottom corner; earlier messages slide to make room on `standard`.
-- **Semantics:** each message is a container labeled with sender and time.
+- **Action names:** an action's `label` is its menu row's text and, on pointer, the tooltip of its icon-only button (one tooltip group across the meta row, so the bubble glides between actions). Touch shows no tooltip: the long-press menu already shows the labels. As with IconButton, the icon names the icon-only button for screen readers, so give it a `semanticLabel` (`Icon`, `CoilIcon`) or wrap it in `Semantics(label:)`.
+- **Semantics:** each message is a container labeled with sender and time. An action's button reads "button, <its icon's `semanticLabel`>"; its menu row is named by its visible label.
 
 #### Reveal
 
@@ -1007,6 +1012,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 #### ScrollArea
 
+- **Composition:** it wraps the consumer's own scrollable (a `ListView`, `CustomScrollView`, `SingleChildScrollView`, ...) and never builds one. With no controller given, it provides one through `PrimaryScrollController` on every platform, along its axis, so a child with no controller of its own scrolls with it; given one, the child takes the same. A debug assert names the fix when the child doesn't attach.
 - **Physics:** the app's ambient `ScrollBehavior` decides physics, overscroll and drag devices (§9.2); the area only replaces its scrollbar with coil's.
 - **Edge fades (`CoilScrollEdgeFade`):** each edge fades in as content scrolls away from it, up to 32, following the scroll direction (RTL, reversed lists). The amount springs on `fade`. The ramp is eased, not linear, so it has no visible start or end. Over a known solid background the fade is painted in that color on top; elsewhere it masks the content, which costs an offscreen layer.
 - **Pointer scrollbar:** 4 wide, widening to 6 on hover; 2 from the edge and 4 from the ends; `foreground` 8 % (12 % hovered, 16 % dragging); radius full. It shows while scrolling or hovered and hides 600 ms later. The hide is `RawScrollbar`'s timed fade over the `fade` token's duration, not a spring: `RawScrollbar` owns that animation and exposes no way to drive it.
@@ -1138,7 +1144,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
 
 - **What it is:** messages sent while a reply streams, waiting in a pile above the composer. The front card is sent next.
 - **Anatomy:** a start gutter (an optional glyph, plus the queued count once cards hide behind the pile) → cards → an end gutter of the same width. Gutters are 40 / 32 / 48 and grow with the text.
-- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its `semanticLabel`. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×), padded to the 44 hit target on touch. Remove sits as far in from the trailing edge as from the top and bottom (8), and their hover fills take the radius nested in the card's corner (12 − 8 = 4 pointer, 16 − 8 = 8 touch; a full pill under `pill`), so the corners are concentric. When the message would get less width than the actions beside it (a narrow screen at a large text scale), the actions move to their own line under the message, at the end, and wrap if they still don't fit; the message keeps the card's width and ellipsizes.
+- **Card:** `accent` mixed 32 % into the background (Oklab), container radius, shadow step 3. Min height control height + 8 (44 / 36 / 52); it grows with the text. The message is a widget (`child`) styled in the subtitle role in `mutedForeground`, one line with an ellipsis; screen readers hear its text through the card's semantics. Up to 3 attachment previews (item inset 8, nested radius) and a "+N" count give way to the text when the card is narrow. Actions are compact ghost icon buttons: edit (an optional slot) and remove (×), padded to the 44 hit target on touch. Remove sits as far in from the trailing edge as from the top and bottom (8), and their hover fills take the radius nested in the card's corner (12 − 8 = 4 pointer, 16 − 8 = 8 touch; a full pill under `pill`), so the corners are concentric. When the message would get less width than the actions beside it (a narrow screen at a large text scale), the actions move to their own line under the message, at the end, and wrap if they still don't fit; the message keeps the card's width and ellipsizes.
 - **Folded:** 2 cards peek out behind the front one, their top edges 12 px apart whatever the cards' heights, each 5 % smaller (scaled about its top edge); deeper cards fade out. A card longer than its peek is cut off at the pile's bottom edge, behind the front card.
 - **Fanned out:** each card sits its measured height plus the `gap` of the stack's size step (8 at pointer regular, 4 compact; `size:` wins over the ambient scope, and the drag pitch uses the same gap) above the one in front, so mixed heights space evenly.
 - **Pointer:** hover or keyboard focus inside fans it out. A card shows its actions on hover or focus within. Double-click edits. Drag a fanned-out card to reorder.
@@ -1150,7 +1156,7 @@ Every component follows §8 and §10. Each entry gives anatomy, sizes, states, m
   - reorders slide on `standard`, and a dragged card follows the finger, lifted to 1.03 on `quick`;
   - a queued card fades in on `fade` and rises 14 from 0.96 on `standard`; a removed one fades on `fadeExit` and shrinks to 0.9 on `standardExit`;
   - a message queued behind the folded pile makes it recoil 7 px on `gentle`.
-- **Semantics:** each card is a container labeled "Queued message 2 of 3: text", with an Edit action (and Remove while it peeks behind the folded pile). The gutter reads "3 queued messages".
+- **Semantics:** each card is a container labeled "Queued message 2 of 3" followed by the message's own semantics (its text), with an Edit action (and Remove while it peeks behind the folded pile). The gutter reads "3 queued messages".
 - **Layout:** pass the transcript as `child`. With a child the stack fills its space, so give it a bounded height (`Expanded` in a `Column`); without one it is as tall as its pile. Either way it needs a bounded width. The stack fills its space, lays the transcript out under the pile, and adds the folded pile's height (from the cards' real layout, plus the 8 gap) to the transcript's bottom `MediaQuery` padding, so a `ListView` keeps its last message clear. Only the pile's own area fans it out on hover.
 
 #### FileThumbnail

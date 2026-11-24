@@ -32,6 +32,9 @@ enum CoilDialogKind {
 /// back and dragging don't close it. The future completes with the value
 /// passed to `Navigator.pop`.
 ///
+/// As a sheet, it takes drags from its content; wrap content that needs its
+/// own (a map, a canvas) in `ExcludeScrollDrag`.
+///
 /// When it shows as a sheet, [snappingConfig], [dragHandoff],
 /// [dismissalMode], [draggable] and [backgroundSnapshotMode] configure it
 /// as [CoilSheetRoute] documents them, with the same defaults; a centered
