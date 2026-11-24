@@ -1,3 +1,6 @@
+/// @docImport 'package:motor_widgets/src/reorder/motion_reorderable.dart';
+library;
+
 import 'dart:async';
 
 import 'package:flutter/scheduler.dart';
@@ -36,9 +39,9 @@ import 'package:motor_widgets/src/painted_position.dart';
 /// A [MotionDraggable]'s drag is seen wherever its pointer is, also outside
 /// this widget, see [outside]. A plain [Draggable] doesn't tell anyone
 /// where it is, so it is only seen while it is over this widget, and only
-/// while no [DragTarget] inside takes it, except a `MotionReorderable`,
-/// which passes it on. It also needs `data`: a [DragTarget] isn't told
-/// where a [Draggable] without data is.
+/// while no [DragTarget] inside takes it, except a [MotionReorderable],
+/// which passes it on. It also needs [Draggable.data]: a [DragTarget] isn't
+/// told where a [Draggable] without data is.
 class MotionDragToScroll extends StatefulWidget {
   /// Scrolls the scroll view below [child] near its edges.
   const MotionDragToScroll({
@@ -113,7 +116,7 @@ class MotionDragToScroll extends StatefulWidget {
 ///
 /// Flutter's drag enters the targets under it innermost first, and stops at
 /// the first that takes it, so the drag-to-scrolls around a target that
-/// takes it never hear of it themselves. A `MotionReorderable` reports for
+/// takes it never hear of it themselves. A [MotionReorderable] reports for
 /// them.
 void reportPlainDrag(BuildContext context, Object target, Offset? point) {
   for (

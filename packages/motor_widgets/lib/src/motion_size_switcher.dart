@@ -1,10 +1,13 @@
+/// @docImport 'package:motor_widgets/src/motion_size.dart';
+library;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/src/motion_switcher.dart';
 import 'package:motor_widgets/src/raw_motion_size.dart';
 
-/// A [MotionSwitcher] inside a `MotionSize`: switches its child with a
+/// A [MotionSwitcher] inside a [MotionSize]: switches its child with a
 /// spring transition and springs its size to fit.
 ///
 /// The Motor version of rivership's `AnimatedSizeSwitcher`. If [child] is
@@ -46,13 +49,15 @@ class MotionSizeSwitcher extends StatefulWidget {
   /// [sizeMotion] is set.
   final Motion motion;
 
-  /// The spring a leaving child follows. Defaults to [motion].
+  /// The spring a leaving child follows.
+  ///
+  /// Defaults to [motion].
   final Motion? exitMotion;
 
-  /// The motion the size follows. Defaults to [motion].
+  /// The motion the size follows.
   ///
-  /// Set it to resize on a spatial spring while the children fade on
-  /// [motion].
+  /// Defaults to [motion]. Set it to resize on a spatial spring while the
+  /// children fade on [motion].
   final Motion? sizeMotion;
 
   /// How the children are aligned while the size animates.
@@ -61,21 +66,21 @@ class MotionSizeSwitcher extends StatefulWidget {
   /// How children are clipped while they overflow the animated size.
   final Clip clipBehavior;
 
-  /// Wraps a child in a transition driven by its presence spring. Defaults
-  /// to [AnimatedSwitcher.defaultTransitionBuilder].
+  /// Wraps a child in a transition driven by its presence spring.
   ///
-  /// See [MotionSwitcher.transitionBuilder]; the animation may overshoot.
+  /// Defaults to [AnimatedSwitcher.defaultTransitionBuilder]. See
+  /// [MotionSwitcher.transitionBuilder]; the animation may overshoot.
   final AnimatedSwitcherTransitionBuilder transitionBuilder;
 
   /// Whether the size follows the new child at once, ignoring the leaving
-  /// children. Defaults to false.
+  /// children.
   ///
-  /// When false, the leaving children keep their space until they are gone,
-  /// so the size only shrinks after they have left. When true, only the new
-  /// child is sized. Leaving children are laid out with this widget's own
-  /// incoming constraints, not squeezed into the new size, so they keep
-  /// their layout as long as those don't change. They sit by [alignment],
-  /// overflowing the new size and clipped by [clipBehavior].
+  /// Defaults to false. When false, the leaving children keep their space
+  /// until they are gone, so the size only shrinks after they have left. When
+  /// true, only the new child is sized. Leaving children are laid out with
+  /// this widget's own incoming constraints, not squeezed into the new size,
+  /// so they keep their layout as long as those don't change. They sit by
+  /// [alignment], overflowing the new size and clipped by [clipBehavior].
   ///
   /// A child that starts leaving keeps its state in both modes.
   final bool immediateResize;

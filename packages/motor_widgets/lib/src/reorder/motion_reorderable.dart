@@ -53,7 +53,7 @@ final class MotionDrop<T extends Object> {
   /// to complete.
   final bool pending;
 
-  /// [data] when it is a `T`, else null.
+  /// [data] when it is a [T], else null.
   T? get item => switch (data) {
     final T item => item,
     _ => null,
@@ -83,7 +83,7 @@ final class MotionMove<T extends Object> {
   /// them.
   final int index;
 
-  /// [data] when it is a `T`, else null.
+  /// [data] when it is a [T], else null.
   T? get item => switch (data) {
     final T item => item,
     _ => null,
@@ -183,7 +183,9 @@ class MotionReorderable<T extends Object> extends StatefulWidget {
     super.key,
   }) : _sliver = true;
 
-  /// The items, in order. The reorderable never changes this list.
+  /// The items, in order.
+  ///
+  /// The reorderable never changes this list.
   final List<T> items;
 
   /// Builds the content from the drop that hovers over it.
@@ -196,33 +198,37 @@ class MotionReorderable<T extends Object> extends StatefulWidget {
   /// drop pending until it completes.
   final MotionMoveCallback<T>? onMove;
 
-  /// Whether to take drags of the data it is given. Items of this
-  /// reorderable are always taken. Defaults to taking every `T`.
+  /// Whether to take drags of the data it is given.
+  ///
+  /// Items of this reorderable are always taken. Defaults to taking every [T].
   final bool Function(Object data)? onWillAccept;
 
   /// The identity of an item, compared with `==`: the id of its
-  /// [MotionLayoutItem], which a [MotionDraggable] lands on. Defaults to
-  /// the item itself.
+  /// [MotionLayoutItem], which a [MotionDraggable] lands on.
+  ///
+  /// Defaults to the item itself.
   final Object Function(T item)? id;
 
   /// The point of the drag that places the drop.
   final MotionDragPoint point;
 
   /// Whether the drop stays when the drag leaves, until another
-  /// reorderable takes the drag or the drag ends. Letting go outside then
-  /// drops where the drop shows, as if over it.
+  /// reorderable takes the drag or the drag ends.
   ///
-  /// The content then keeps its size while the pointer is outside, so
-  /// nothing around it moves: a grid doesn't shrink, and sections of one
-  /// scroll view don't shift under the pointer while it crosses a header
-  /// between them. When false, the drop goes as the drag leaves.
+  /// Letting go outside then drops where the drop shows, as if over it. The
+  /// content then keeps its size while the pointer is outside, so nothing
+  /// around it moves: a grid doesn't shrink, and sections of one scroll view
+  /// don't shift under the pointer while it crosses a header between them.
+  /// When false, the drop goes as the drag leaves.
   ///
   /// Only a [MotionDraggable]'s drag can be kept: the reorderable can't
   /// tell when a plain [Draggable]'s drag ends elsewhere, so its drop always
   /// goes as it leaves.
   final bool keepsDropOnLeave;
 
-  /// The items' motion. Defaults to their group's.
+  /// The items' motion.
+  ///
+  /// Defaults to their group's.
   final Motion? motion;
 
   /// {@macro motor_widgets.debugLabel}
