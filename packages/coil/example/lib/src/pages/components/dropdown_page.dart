@@ -71,7 +71,12 @@ CoilDropdown(
       onPressed: trash,
     ),
   ],
-  builder: (context, menu) => MoreButton(onPressed: menu.open),
+  builder: (context, menu) => CoilButton.icon(
+    variant: CoilButtonVariant.ghost,
+    semanticLabel: 'More',
+    icon: Icon(LucideIcons.ellipsis),
+    onPressed: menu.open,
+  ),
 )''',
     notes: const [
       CatalogNote(
