@@ -118,6 +118,18 @@ abstract final class CoilColorMix {
     return at(ok);
   }
 
+  /// The Oklch hue for a shade of [hue] that is [darkenedBy] Oklch
+  /// lightness darker than its color.
+  ///
+  /// Yellow-to-lime hues (75° to 150°) lean toward orange as they darken,
+  /// up to 25°, the way painted shadows warm, so a darker yellow reads
+  /// amber rather than olive. Other hues, and lighter tones, keep [hue].
+  static double warmShadeHue(double hue, double darkenedBy) {
+    if (darkenedBy <= 0 || hue <= 75 || hue >= 150) return hue;
+    return hue -
+        math.min(25, darkenedBy * 120) * ((150 - hue) / 75).clamp(0, 1);
+  }
+
   /// [color] in Oklch: lightness (0..1), chroma (0 for greys, about 0.37 at
   /// most in sRGB) and hue in degrees (0..360). Ignores alpha.
   static ({double l, double c, double h}) toOklch(Color color) {

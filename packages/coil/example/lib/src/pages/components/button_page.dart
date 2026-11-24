@@ -11,7 +11,7 @@ const buttonEntry = CatalogEntry(
   slug: 'button',
   title: 'Button',
   group: CatalogGroup.leafControls,
-  summary: 'Five variants, icons, loading, selected and compact.',
+  summary: 'Six variants, icons, loading, selected and compact.',
   page: ButtonPage.new,
 );
 
@@ -107,8 +107,9 @@ CoilButton(
       DemoSection(
         title: 'Variants',
         description:
-            'Use one primary button per view. A destructive action gets a '
-            'red tint rather than a solid red fill.',
+            'Use one primary or brand button per view: brand is the primary '
+            "in the theme's brand color, lit in its own hue. A destructive "
+            'action gets a red tint rather than a solid red fill.',
         child: DemoWrap(
           children: [
             for (final variant in CoilButtonVariant.values)
@@ -181,6 +182,7 @@ CoilButton(
 
   static String _variantName(CoilButtonVariant variant) => switch (variant) {
     CoilButtonVariant.primary => 'Primary',
+    CoilButtonVariant.brand => 'Brand',
     CoilButtonVariant.secondary => 'Secondary',
     CoilButtonVariant.tertiary => 'Tertiary',
     CoilButtonVariant.ghost => 'Ghost',
@@ -189,6 +191,7 @@ CoilButton(
 
   static String _labelFor(CoilButtonVariant variant) => switch (variant) {
     CoilButtonVariant.primary => 'Publish',
+    CoilButtonVariant.brand => 'Upgrade',
     CoilButtonVariant.secondary => 'Duplicate',
     CoilButtonVariant.tertiary => 'Export',
     CoilButtonVariant.ghost => 'Skip',

@@ -375,6 +375,7 @@ class _CoilButtonState extends State<CoilButton> {
                       relief: _relief(
                         theme,
                         style,
+                        fill: value(CoilButtonTrack.fill),
                         disabled: disabled,
                         hover: value(CoilButtonTrack.light).clamp(0.0, 1.0),
                         press: widget.selected ? 1 : 1 - spread,
@@ -410,19 +411,21 @@ class _CoilButtonState extends State<CoilButton> {
   }
 
   /// The lighting under a plastic theme, or null when flat or disabled.
-  /// The primary button is a strong fill; tertiary and ghost are quiet
-  /// (never lit); the rest are raised.
+  /// The primary and brand buttons are strong fills (brand lit in its own
+  /// hue); tertiary and ghost are quiet (never lit); the rest are raised.
   CoilRelief? _relief(
     CoilThemeData theme,
     CoilButtonStyle style, {
+    required Color fill,
     required bool disabled,
     required double hover,
     required double press,
   }) {
-    return CoilTheme.reliefOf(
+    final relief = CoilTheme.reliefOf(
       context,
       switch (widget.variant) {
-        CoilButtonVariant.primary => CoilReliefRole.filled,
+        CoilButtonVariant.primary ||
+        CoilButtonVariant.brand => CoilReliefRole.filled,
         CoilButtonVariant.tertiary ||
         CoilButtonVariant.ghost => CoilReliefRole.quiet,
         _ => CoilReliefRole.raised,
@@ -432,6 +435,11 @@ class _CoilButtonState extends State<CoilButton> {
       press: press,
       enabled: !disabled,
     );
+    // The brand fill is lit in its own hue, not washed with white and
+    // black.
+    return widget.variant == CoilButtonVariant.brand
+        ? relief?.tintedOver(fill)
+        : relief;
   }
 
   /// The swap between idle content and the spinner: the blur-fade on

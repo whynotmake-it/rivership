@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:coil/src/foundation/color_mix.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -17,8 +18,8 @@ enum CoilReliefRole {
   /// are never lit.
   raised,
 
-  /// A control with a strong fill: the primary button, an on switch, a
-  /// selected radio dot. Its sheen and edges are tuned for dark and
+  /// A control with a strong fill: the primary and brand buttons, an on
+  /// switch, a selected radio dot. Its sheen and edges are tuned for dark and
   /// saturated fills.
   filled,
 
@@ -571,6 +572,60 @@ class CoilRelief {
     sheenBottom: sheenBottom ?? this.sheenBottom,
     shadows: shadows ?? this.shadows,
   );
+
+  /// This relief recolored for a saturated [fill], such as the brand
+  /// button's: the same light, in the fill's own color.
+  ///
+  /// The recipe lights with white and black at low opacity. Over grey that
+  /// is exact; over a saturated fill, an sRGB blend toward white washes the
+  /// color out (a greyish blue) and one toward black dulls it (a muddy
+  /// yellow or green). Here every layer becomes the opaque color it would
+  /// blend to, kept at that blend's Oklab lightness but with the fill's
+  /// chroma and hue, so highlights and shades stay as rich as the fill.
+  /// Shades of yellow-to-lime hues lean warm ([CoilColorMix.warmShadeHue]),
+  /// and the drop shadows take the fill's hue, deep and dark, instead of
+  /// grey.
+  ///
+  /// Apply it to a relief already resolved for hover and press: it reads
+  /// the layer opacities they set.
+  CoilRelief tintedOver(Color fill) {
+    if (fill.a <= 0) return this;
+    final (:l, :c, :h) = CoilColorMix.toOklch(fill);
+    // The blend's lightness, in the fill's chroma and hue.
+    Color kept(Color layer, Color under) {
+      if (layer.a <= 0) return layer;
+      final to = CoilColorMix.toOklch(Color.alphaBlend(layer, under)).l;
+      return CoilColorMix.oklch(to, c, CoilColorMix.warmShadeHue(h, l - to));
+    }
+
+    // Each layer over what is painted under it: the rims and edge sit on
+    // the sheen.
+    final top = Color.alphaBlend(sheenTop, fill);
+    final bottom = Color.alphaBlend(sheenBottom, fill);
+    // Opaque where the layer showed, clear where it didn't.
+    Color shown(Color opaque, Color layer) =>
+        opaque.withValues(alpha: layer.a <= 0 ? 0 : 1);
+    return CoilRelief(
+      edgeWidth: edgeWidth,
+      edgeTop: shown(kept(edgeTop, top), edgeTop),
+      edgeBottom: shown(kept(edgeBottom, bottom), edgeBottom),
+      rimTop: shown(kept(rimTop, top), rimTop),
+      rimBottom: shown(kept(rimBottom, bottom), rimBottom),
+      sheenTop: shown(kept(sheenTop, fill), sheenTop),
+      sheenBottom: shown(kept(sheenBottom, fill), sheenBottom),
+      shadows: [
+        for (final s in shadows)
+          s.copyWith(
+            color: CoilColorMix.oklch(
+              math.min(l, 0.45),
+              c * 0.9,
+              CoilColorMix.warmShadeHue(h, l - math.min(l, 0.45)),
+              alpha: math.min(1, s.color.a * 1.3),
+            ),
+          ),
+      ],
+    );
+  }
 
   /// This relief brighter by [t] (0 to 1): the hover response.
   CoilRelief _brighten(double t) {
