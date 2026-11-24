@@ -454,7 +454,10 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
                   fade: fadeMotion,
                   // Leaving the strip: glide back into the selected pill.
                   exitTo: state.pointerInside ? null : selected,
-                  decoration: fill,
+                  decoration: ShapeDecoration(
+                    color: style.hoverPill,
+                    shape: RoundedSuperellipseBorder(borderRadius: radius),
+                  ),
                 );
                 final focusRing = CoilHighlight(
                   debugLabel: 'CoilTabs.focus',

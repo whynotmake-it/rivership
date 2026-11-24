@@ -422,6 +422,11 @@ class CatalogSettings extends ChangeNotifier {
   CoilBrandFill _brandFill = CoilBrandFill.accessible;
   set brandFill(CoilBrandFill value) => _set(() => _brandFill = value);
 
+  /// Whether selected states carry the brand.
+  bool get brandSelection => _brandSelection;
+  bool _brandSelection = false;
+  set brandSelection(bool value) => _set(() => _brandSelection = value);
+
   /// The neutral tone's Oklch hue, in degrees.
   double get neutralHue => _neutralHue;
   double _neutralHue = 0;
@@ -489,6 +494,7 @@ class CatalogSettings extends ChangeNotifier {
       typography: typography(platform ?? defaultTargetPlatform),
       shape: _coilShape,
       plasticity: CoilPlasticity(amount: plasticity),
+      brandSelection: brandSelection,
       metrics: spacing.metrics,
       motion: motion.motion,
       focusRing: CoilFocusRingTheme(width: boldFocusRing ? 2 : 1),

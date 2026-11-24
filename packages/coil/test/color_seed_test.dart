@@ -20,6 +20,8 @@ Map<String, Color> _tokens(CoilColors c) => {
   'brand': c.brand,
   'brandFill': c.brandFill,
   'onBrandFill': c.onBrandFill,
+  'brandInk': c.brandInk,
+  'brandWash': c.brandWash,
   'overlay': c.overlay,
   'hover': c.hover,
   'active': c.active,

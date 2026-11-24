@@ -43,6 +43,8 @@ final _brand = <_Token>[
   ('brand', (c) => c.brand),
   ('brandFill', (c) => c.brandFill),
   ('onBrandFill', (c) => c.onBrandFill),
+  ('brandInk', (c) => c.brandInk),
+  ('brandWash', (c) => c.brandWash),
   ('red', (c) => c.red),
   ('redLabel', (c) => c.redLabel),
   ('destructive', (c) => c.destructive),
@@ -86,8 +88,17 @@ class ColorsPage extends StatelessWidget {
         description:
             'These colors carry meaning, so coil spends them only where the '
             'meaning matters. Brand fill is the brand as a surface that '
-            'carries text, under its own label color.',
+            'carries text, under its own label color; the brand wash and ink '
+            'mark the selected tab or segment.',
         tokens: _TokenGroup.brand,
+      ),
+      DemoSection(
+        title: 'Brand selection',
+        description:
+            'Selections are monochrome unless the theme turns brand '
+            'selection on. A nested theme turns it on for one part of an '
+            'app: here, only the right-hand group.',
+        child: _BrandSelection(),
       ),
       DemoSection(
         title: 'Elevation',
@@ -343,4 +354,72 @@ class _Elevation extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The same selections under the app theme and under a nested theme with
+/// brand selection on.
+class _BrandSelection extends StatefulWidget {
+  const _BrandSelection();
+
+  @override
+  State<_BrandSelection> createState() => _BrandSelectionState();
+}
+
+class _BrandSelectionState extends State<_BrandSelection> {
+  var _tab = 'billing';
+  var _frequency = 'weekly';
+  var _theme = {'system'};
+
+  Widget _group(String caption) => Builder(
+    builder: (context) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 16,
+      children: [
+        Text(caption, style: CoilTheme.textOf(context).muted.caption),
+        CoilTabs<String>(
+          tabs: const [
+            CoilTab(value: 'general', label: Text('General')),
+            CoilTab(value: 'billing', label: Text('Billing')),
+            CoilTab(value: 'team', label: Text('Team')),
+          ],
+          value: _tab,
+          onChanged: (v) => setState(() => _tab = v),
+        ),
+        CoilRadioGroup<String>(
+          options: const [
+            CoilOption(value: 'daily', label: Text('Daily')),
+            CoilOption(value: 'weekly', label: Text('Weekly')),
+          ],
+          value: _frequency,
+          onChanged: (v) => setState(() => _frequency = v),
+        ),
+        CoilToggleGroup<String>(
+          options: const [
+            CoilOption(value: 'light', label: Text('Light')),
+            CoilOption(value: 'dark', label: Text('Dark')),
+            CoilOption(value: 'system', label: Text('System')),
+          ],
+          values: _theme,
+          onChanged: (v) => setState(() => _theme = v),
+        ),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 48,
+    runSpacing: 32,
+    children: [
+      SizedBox(width: 280, child: _group('App theme')),
+      SizedBox(
+        width: 280,
+        child: CoilTheme.override(
+          transform: (t) => t.copyWith(brandSelection: true),
+          child: _group('Nested theme, brand selection on'),
+        ),
+      ),
+    ],
+  );
 }

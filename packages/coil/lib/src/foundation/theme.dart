@@ -35,6 +35,7 @@ class CoilThemeData with Diagnosticable {
     this.haptics,
     this.controlCursor = SystemMouseCursors.basic,
     this.plasticity = CoilPlasticity.flat,
+    this.brandSelection = false,
     this.icons = const CoilIcons(),
     this.components = const {},
   });
@@ -88,6 +89,24 @@ class CoilThemeData with Diagnosticable {
   /// their style's `plasticity`, so one component type can differ with
   /// [withComponentStyle], and resolve it with [CoilTheme.reliefOf].
   final CoilPlasticity plasticity;
+
+  /// Whether selected states carry the brand: the selected radio's dot is
+  /// `brand`, the selected tab's pill and the selected toggle-group
+  /// segments sit on `brandWash` under `brandInk` labels, and the text
+  /// cursor is `brand`. Off by default, so coil stays monochrome unless
+  /// asked: selections use the neutral `active` fill and `foreground`.
+  ///
+  /// Hover, the switch, the slider fill and the checkbox tick never change.
+  /// Turn it on for the whole app in the root theme, or for one subtree
+  /// with a nested theme:
+  ///
+  /// ```dart
+  /// CoilTheme.override(
+  ///   transform: (t) => t.copyWith(brandSelection: true),
+  ///   child: const BillingSettings(),
+  /// )
+  /// ```
+  final bool brandSelection;
 
   /// The icons components show, by role: an app's own icon set in place of
   /// coil's drawn glyphs. Roles left null keep coil's; a component's own
@@ -177,6 +196,7 @@ class CoilThemeData with Diagnosticable {
     Object? haptics = _keep,
     MouseCursor? controlCursor,
     CoilPlasticity? plasticity,
+    bool? brandSelection,
     CoilIcons? icons,
     Map<Type, CoilComponentStyle<dynamic>>? components,
   }) => CoilThemeData(
@@ -190,6 +210,7 @@ class CoilThemeData with Diagnosticable {
     haptics: identical(haptics, _keep) ? this.haptics : haptics as CoilHaptics?,
     controlCursor: controlCursor ?? this.controlCursor,
     plasticity: plasticity ?? this.plasticity,
+    brandSelection: brandSelection ?? this.brandSelection,
     icons: icons ?? this.icons,
     components: components ?? this.components,
   );
@@ -211,6 +232,7 @@ class CoilThemeData with Diagnosticable {
         haptics: t < 0.5 ? a.haptics : b.haptics,
         controlCursor: t < 0.5 ? a.controlCursor : b.controlCursor,
         plasticity: CoilPlasticity.lerp(a.plasticity, b.plasticity, t),
+        brandSelection: t < 0.5 ? a.brandSelection : b.brandSelection,
         icons: t < 0.5 ? a.icons : b.icons,
         components: t < 0.5 ? a.components : b.components,
       );
@@ -228,6 +250,7 @@ class CoilThemeData with Diagnosticable {
       other.haptics == haptics &&
       other.controlCursor == controlCursor &&
       other.plasticity == plasticity &&
+      other.brandSelection == brandSelection &&
       other.icons == icons &&
       mapEquals(other.components, components);
 
@@ -243,6 +266,7 @@ class CoilThemeData with Diagnosticable {
     haptics,
     controlCursor,
     plasticity,
+    brandSelection,
     icons,
     Object.hashAllUnordered(
       components.entries.map((e) => Object.hash(e.key, e.value)),
@@ -270,6 +294,13 @@ class CoilThemeData with Diagnosticable {
           'plasticity',
           plasticity,
           defaultValue: CoilPlasticity.flat,
+        ),
+      )
+      ..add(
+        FlagProperty(
+          'brandSelection',
+          value: brandSelection,
+          ifTrue: 'brand selection',
         ),
       )
       ..add(
@@ -492,7 +523,9 @@ class CoilTheme extends StatelessWidget {
           return DefaultTextStyle(
             style: textOf(context).body,
             child: DefaultSelectionStyle(
-              cursorColor: theme.colors.foreground,
+              cursorColor: theme.brandSelection
+                  ? theme.colors.brand
+                  : theme.colors.foreground,
               selectionColor: theme.colors.brand.withValues(alpha: 0.3),
               child: child,
             ),
