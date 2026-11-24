@@ -10,7 +10,7 @@ import 'package:stupid_simple_sheet/src/optimized_clip.dart';
 /// Will also extend the background color below the sheet to account for
 /// dragging the sheet further than its content height.
 ///
-/// In many cases, you will want your sheet not take up the full screen, but
+/// In many cases, you will want your sheet not to take up the full screen, but
 /// leave some padding from the top.
 ///
 /// In that case, you can use [SheetBackground.withTopMargin] to automatically
@@ -64,9 +64,10 @@ class SheetBackground extends StatelessWidget {
 
   /// The background color of the sheet.
   ///
-  /// If null, the sheet will try to use the scaffoldBackgroundColor from
-  /// the current [CupertinoTheme] if one exists in the context and will resolve
-  /// that color with the current interface level.
+  /// If null, the sheet will try to use
+  /// [CupertinoThemeData.scaffoldBackgroundColor] from the current
+  /// [CupertinoTheme] if one exists in the context and will resolve that color
+  /// with the current interface level.
   ///
   /// If there is no [CupertinoTheme], it will fall back to using the material
   /// [Theme].
@@ -79,7 +80,7 @@ class SheetBackground extends StatelessWidget {
   final Clip clipBehavior;
 
   /// How much to extend the sheet background below the sheet itself.
-  ////
+  ///
   /// This is useful to cover up any content below the sheet when the user
   /// drags the sheet up further than its content height.
   ///

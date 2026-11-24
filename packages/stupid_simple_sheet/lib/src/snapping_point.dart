@@ -249,7 +249,8 @@ abstract class RelativeSnapPhysics extends SnapPhysics {
 ///
 /// Snapping points can never be overshot with a fling.
 class FlingSnapPhysics extends AbsoluteSnapPhysics {
-  /// Creates a [FlingSnapPhysics] instance a minimum fling velocity threshold.
+  /// Creates a [FlingSnapPhysics] instance with a minimum fling velocity
+  /// threshold.
   const FlingSnapPhysics({this.minFlingVelocity = kMinFlingVelocity});
 
   /// The minimum velocity that distinguishes a fling from a drag, in pixels per
@@ -273,15 +274,15 @@ class FlingSnapPhysics extends AbsoluteSnapPhysics {
 
     // Otherwise, find the next snap point in the direction of the fling.
     if (v > 0) {
-      // Flinging downwards, find the next snap point below the current
-      // position.
+      // Flinging upwards, find the next snap point above the current position.
       for (final point in snapPoints) {
         if (point > position) {
           return point;
         }
       }
     } else {
-      // Flinging upwards, find the next snap point above the current position.
+      // Flinging downwards, find the next snap point below the current
+      // position.
       for (final point in snapPoints.reversed) {
         if (point < position) {
           return point;
@@ -316,7 +317,7 @@ class FrictionSnapPhysics extends RelativeSnapPhysics {
   /// The constant deceleration to apply, in the same units as the position.
   ///
   /// This can be used to model additional friction or resistance that isn't
-  /// captured by the drag coefficient alone. F
+  /// captured by the drag coefficient alone.
   ///
   /// See also [FrictionSimulation] for more details on how this value affects
   /// the simulation.

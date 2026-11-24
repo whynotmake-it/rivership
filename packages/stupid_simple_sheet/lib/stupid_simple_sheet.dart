@@ -38,8 +38,7 @@ enum SheetDragHandoff {
 /// The sheet can be dismissed by dragging down or by tapping the barrier.
 /// When sheet content overrides its [ScrollBehavior], wrap the behavior in
 /// [ScrollDragBehavior] so scrolling still hands off to the sheet correctly.
-/// The animation supports spring physics for natural motion using the
-///
+/// The animation supports spring physics for natural motion via [motion].
 ///
 /// By default, when a modal route is replaced by another, the previous route
 /// remains in memory. To free all the resources when this is not necessary, set
@@ -235,7 +234,7 @@ mixin StupidSimpleSheetTransitionMixin<T> on PopupRoute<T> {
   Motion get motion;
 
   /// How much resistance the sheet should give when the user tries to drag
-  /// it past it's fully opened state.
+  /// it past its fully opened state.
   double get overshootResistance => 100;
 
   /// {@template clearBarrierImmediately}
@@ -731,8 +730,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// Retrieves the current [StupidSimpleSheetController] from the given
   /// [BuildContext].
   ///
-  /// This will only work if called from a context that is inside the
-  /// [StupidSimpleSheetRoute].
+  /// Works when called from a context inside any route that mixes in
+  /// [StupidSimpleSheetController].
   static StupidSimpleSheetController<T>? maybeOf<T>(BuildContext context) {
     final route = ModalRoute.of(context);
     if (route case final StupidSimpleSheetController<T> route) {
@@ -748,8 +747,8 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// The [relativePosition] must be larger than 0.0 (fully closed) and
   /// lower than or equal to 1.0 (fully open).
   ///
-  /// If [snap] is true, the sheet will snap to the nearest snapping point
-  /// after reaching the target position.
+  /// If [snap] is true, [relativePosition] is resolved to the closest non-zero
+  /// snapping point first and the sheet animates directly to it.
   ///
   /// If you want to close the sheet, use [Navigator.pop] instead.
   TickerFuture animateToRelative(double relativePosition, {bool snap = false}) {
@@ -803,13 +802,13 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
   /// Example:
   /// ```dart
   /// // Update to a new configuration and animate to comply
-  /// controller.updateSheetSnappingConfig(
+  /// controller.overrideSnappingConfig(
   ///   SheetSnappingConfig([0.3, 0.6, 1.0]),
   ///   animateToComply: true,
   /// );
   ///
   /// // Reset to the original configuration
-  /// controller.updateSheetSnappingConfig(null);
+  /// controller.overrideSnappingConfig(null);
   /// ```
   TickerFuture overrideSnappingConfig(
     SheetSnappingConfig? newConfig, {
