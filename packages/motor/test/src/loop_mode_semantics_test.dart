@@ -6,13 +6,14 @@ import 'package:motor/src/simulations/step_playback.dart';
 
 import 'util.dart';
 
-/// These tests pin down the agreed LoopMode semantics, matching the legacy
-/// sequence controllers:
+/// These tests pin down the agreed LoopMode semantics:
 ///
-/// - [LoopMode.loop]: animates back to the start after the last step/phase.
-/// - [LoopMode.seamless]: jumps back to the start and animates immediately
-///   again (assumes the first and last step/phase are identical, so the jump
-///   is invisible in well-formed timelines).
+/// - [LoopMode.loop]: repeats from step 0 with current state and velocity
+///   (no synthetic return step).
+/// - [LoopMode.pingPong]: plays forward, then reverses back to the first
+///   target, and repeats.
+/// - [LoopMode.seamless]: jumps back to the first target (or entry state when
+///   there are no targets) and replays.
 void main() {
   const linear100 = Motion.linear(Duration(milliseconds: 100));
 
@@ -20,17 +21,31 @@ void main() {
   // Looping timelines (single value via StepPlayback).
   // ───────────────────────────────────────────────────────────────────────
   group('StepPlayback loop semantics', () {
-    StepPlayback<double> playback(LoopMode loop) => StepPlayback<double>(
-          steps: const [StepTo(1, motion: linear100)],
+    StepPlayback<double> playback(
+      LoopMode loop,
+      List<TrackStep<double>> steps,
+    ) =>
+        StepPlayback<double>(
+          steps: [TrackStep.loop(steps, mode: loop)],
           converter: MotionConverter.single,
           start: 0,
-          loop: loop,
         );
 
-    // (seconds, value, reason) samples of a 100ms linear ramp from 0 to 1.
-    for (final (loop, samples, isDone) in [
+    const single = [StepTo<double>(1, motion: linear100)];
+    const backAndForth = [
+      StepTo<double>(1, motion: linear100),
+      StepTo<double>(0, motion: linear100),
+    ];
+    const anchored = [
+      StepTo<double>(0, motion: linear100),
+      StepTo<double>(1, motion: linear100),
+    ];
+
+    // (seconds, value, reason) samples of a 100ms linear ramp between 0 and 1.
+    for (final (loop, steps, samples, isDone) in [
       (
         LoopMode.none,
+        single,
         [
           (0.05, 0.5, ''),
           (0.1, 1.0, 'reaches the target'),
@@ -40,26 +55,33 @@ void main() {
       ),
       (
         LoopMode.loop,
+        backAndForth,
         [
           (0.099, 0.99, ''),
-          (0.12, 0.8, 'loop should animate back to the start, not jump'),
+          (0.12, 0.8, 'second step animates back to 0'),
           (0.15, 0.5, ''),
-          (0.2, 0.0, 'end of the return leg: back at the start'),
-          (0.25, 0.5, '50ms into the second forward leg'),
-          (0.3, 1.0, 'reached the target again'),
+          (0.2, 0.0, 'end of cycle: back at 0'),
+          (0.25, 0.5, '50ms into the second cycle'),
+          (0.3, 1.0, 'reached 1 again'),
         ],
         false,
       ),
       (
         LoopMode.seamless,
+        anchored,
         [
           (0.099, 0.99, ''),
-          (0.12, 0.2, 'seamless should jump to the start, not animate back'),
+          (
+            0.12,
+            0.2,
+            'seamless jumps back to the first target, not animating back',
+          ),
         ],
         false,
       ),
       (
         LoopMode.pingPong,
+        anchored,
         [
           (0.1, 1.0, 'forward leg 0 -> 1'),
           (0.15, 0.5, 'reverse leg 1 -> 0 over the next 100ms'),
@@ -70,7 +92,7 @@ void main() {
       ),
     ]) {
       test('${loop.name} plays its legs in order', () {
-        final p = playback(loop);
+        final p = playback(loop, steps);
         for (final (seconds, value, reason) in samples) {
           p.advanceTo(seconds);
           expect(
@@ -84,7 +106,7 @@ void main() {
       });
     }
 
-    test('loop snaps to the start when no return motion is available', () {
+    test('seamless snaps back to entry state for a free-only loop', () {
       const motion = FreeMotion.friction();
       const start = 4.0;
       const velocity = 100.0;
@@ -104,11 +126,15 @@ void main() {
       }
 
       final p = StepPlayback<double>(
-        steps: const [StepFree(motion: motion)],
+        steps: const [
+          TrackStep.loop(
+            [StepFree(motion: motion)],
+            mode: LoopMode.seamless,
+          ),
+        ],
         converter: MotionConverter.single,
         start: start,
         velocity: velocity,
-        loop: LoopMode.loop,
       );
 
       p.advanceTo(low);
@@ -122,19 +148,21 @@ void main() {
 
     test('seeking far into a loop lands on the matching cycle position', () {
       // Cycles last 200ms: 100ms forward, then 100ms back.
-      final loop = playback(LoopMode.loop)..advanceTo(1000.25);
+      final loop = playback(LoopMode.loop, backAndForth)..advanceTo(1000.25);
       expect(loop.values.single, closeTo(0.5, error));
 
-      final pingPong = playback(LoopMode.pingPong)..advanceTo(1000.15);
+      final pingPong = playback(LoopMode.pingPong, anchored)
+        ..advanceTo(1000.15);
       expect(pingPong.values.single, closeTo(0.5, error));
 
-      // Cycles last 100ms and jump back to the start.
-      final seamless = playback(LoopMode.seamless)..advanceTo(1000.05);
+      // Cycles last 100ms and jump back to the first target.
+      final seamless = playback(LoopMode.seamless, anchored)
+        ..advanceTo(1000.05);
       expect(seamless.values.single, closeTo(0.5, error));
     });
 
     test('seeking back after running a loop shows the earlier cycle', () {
-      final p = playback(LoopMode.pingPong)
+      final p = playback(LoopMode.pingPong, anchored)
         ..advanceTo(5.15)
         ..advanceTo(0.05);
       expect(p.values.single, closeTo(0.5, error));

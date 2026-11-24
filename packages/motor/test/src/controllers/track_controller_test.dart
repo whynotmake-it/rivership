@@ -39,22 +39,20 @@ void main() {
       controller = TrackController(vsync: tester);
       final statuses = <AnimationStatus>[];
       controller.addStatusListener(statuses.add);
-      controller.play(
-        TrackTimeline([
-          opacity([
-            const TrackStep.to(
-              1,
-              motion: Motion.linear(Duration(milliseconds: 100)),
-            ),
-          ]),
-          scale([
-            const TrackStep.to(
-              2,
-              motion: Motion.linear(Duration(milliseconds: 100)),
-            ),
-          ]),
+      controller.animate([
+        opacity([
+          const TrackStep.to(
+            1,
+            motion: Motion.linear(Duration(milliseconds: 100)),
+          ),
         ]),
-      );
+        scale([
+          const TrackStep.to(
+            2,
+            motion: Motion.linear(Duration(milliseconds: 100)),
+          ),
+        ]),
+      ]);
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
@@ -86,17 +84,16 @@ void main() {
       final tracks = <Track>{};
       const short = Motion.linear(Duration(milliseconds: 10));
 
-      controller.play(
-        TrackTimeline(
-          [
-            opacity([
-              const TrackStep.to(1, motion: short),
-              const TrackStep.to(0, motion: short),
-              const TrackStep.hold(Duration(milliseconds: 10)),
+      controller.animate(
+        [
+          opacity([
+            const TrackStep.loop([
+              TrackStep.to(1, motion: short),
+              TrackStep.to(0, motion: short),
+              TrackStep.hold(Duration(milliseconds: 10)),
             ]),
-          ],
-          loop: LoopMode.seamless,
-        ),
+          ]),
+        ],
         onStep: (track, stepIndex) {
           tracks.add(track);
           steps.add(stepIndex);
@@ -122,78 +119,95 @@ void main() {
       controller.stop(canceled: true);
     });
 
-    testWidgets('does not report the internal return step of a loop',
+    testWidgets('does not report internal loop together barriers to onStep',
         (tester) async {
       controller = TrackController(vsync: tester);
       final steps = <int>[];
       const short = Motion.linear(Duration(milliseconds: 10));
 
-      controller.play(
-        TrackTimeline(
-          [
-            opacity([
-              const TrackStep.to(1, motion: short),
-              const TrackStep.to(0.5, motion: short),
-            ]),
-          ],
-          loop: LoopMode.loop,
-        ),
+      controller.animate(
+        [
+          opacity([
+            const TrackStep.loop(
+              [
+                TrackStep.to(1, motion: short),
+                TrackStep.to(0.5, motion: short),
+              ],
+              together: #sync,
+            ),
+          ]),
+        ],
         onStep: (track, stepIndex) => steps.add(stepIndex),
       );
 
       await tester.pump();
-      // Each cycle takes 30ms: two steps, then the return to the start.
-      await tester.pump(const Duration(milliseconds: 55));
+      // Each cycle takes 20ms: two steps, with no reported barrier index.
+      await tester.pump(const Duration(milliseconds: 35));
       expect(steps, [0, 1, 0, 1]);
       controller.stop(canceled: true);
     });
 
     group('looping', () {
       const linear100 = Motion.linear(Duration(milliseconds: 100));
-      const oneStep = [TrackStep<double>.to(1, motion: linear100)];
-      const twoSteps = [
+      const loopTwoSteps = [
+        TrackStep<double>.to(1, motion: linear100),
+        TrackStep<double>.to(0, motion: linear100),
+      ];
+      const loopThreeSteps = [
+        TrackStep<double>.to(0.5, motion: linear100),
+        TrackStep<double>.to(1.0, motion: linear100),
+        TrackStep<double>.to(0.0, motion: linear100),
+      ];
+      const anchoredTwoSteps = [
+        TrackStep<double>.to(0.0, motion: linear100),
+        TrackStep<double>.to(1.0, motion: linear100),
+      ];
+      const anchoredThreeSteps = [
+        TrackStep<double>.to(0.0, motion: linear100),
         TrackStep<double>.to(0.5, motion: linear100),
         TrackStep<double>.to(1.0, motion: linear100),
       ];
 
-      // Values at elapsed milliseconds. A loop animates back to the start
-      // after the last step, pingPong reverses through the steps, seamless
-      // jumps back to the start.
+      // Values at elapsed milliseconds. A loop repeats from step 0, pingPong
+      // reverses back to the first target, seamless jumps back to the first
+      // target.
       for (final (name, loop, steps, expected) in [
         (
-          'loop animates back to the start',
+          'loop cycles through two steps',
           LoopMode.loop,
-          oneStep,
+          loopTwoSteps,
           [(50, 0.5), (100, 1.0), (150, 0.5), (200, 0.0), (250, 0.5)],
         ),
         (
-          'loop cycles through all steps, then animates back',
+          'loop cycles through all steps',
           LoopMode.loop,
-          twoSteps,
+          loopThreeSteps,
           [(50, 0.25), (150, 0.75), (200, 1.0), (250, 0.5), (350, 0.25)],
         ),
         (
-          'pingPong oscillates between start and end',
+          'pingPong oscillates between first and last target',
           LoopMode.pingPong,
-          oneStep,
+          anchoredTwoSteps,
           [(50, 0.5), (100, 1.0), (150, 0.5), (200, 0.0), (300, 1.0)],
         ),
         (
           'pingPong reverses through the steps at the boundaries',
           LoopMode.pingPong,
-          twoSteps,
+          anchoredThreeSteps,
           [(50, 0.25), (150, 0.75), (250, 0.75), (350, 0.25), (450, 0.25)],
         ),
         (
-          'seamless jumps back to the start after the last step',
+          'seamless jumps back to the first target after the last step',
           LoopMode.seamless,
-          oneStep,
+          anchoredTwoSteps,
           [(50, 0.5), (99, 0.99), (120, 0.2), (150, 0.5)],
         ),
       ]) {
         testWidgets('LoopMode.$name', (tester) async {
           controller = TrackController(vsync: tester);
-          controller.play(TrackTimeline([opacity(steps)], loop: loop));
+          controller.animate([
+            opacity([TrackStep.loop(steps, mode: loop)]),
+          ]);
           await tester.pump();
 
           var elapsed = 0;
@@ -215,14 +229,14 @@ void main() {
           'a loop stays in range after a large elapsed gap and over many '
           'cycles', (tester) async {
         controller = TrackController(vsync: tester);
-        controller.play(
-          TrackTimeline(
-            [
-              opacity([const TrackStep.to(1, motion: linear100)]),
-            ],
-            loop: LoopMode.loop,
-          ),
-        );
+        controller.animate([
+          opacity([
+            const TrackStep.loop([
+              TrackStep.to(1, motion: linear100),
+              TrackStep.to(0, motion: linear100),
+            ]),
+          ]),
+        ]);
         await tester.pump();
 
         // Navigating away for 10 seconds, then 100 cycles of 100 ms.
@@ -252,12 +266,14 @@ void main() {
       const motion = Motion.linear(Duration(milliseconds: 200));
       const linear100 = Motion.linear(Duration(milliseconds: 100));
 
-      controller.animate(
-        [
-          rotation([const TrackStep.to(1, motion: linear100)]),
-        ],
-        loop: LoopMode.loop,
-      );
+      controller.animate([
+        rotation([
+          const TrackStep.loop([
+            TrackStep.to(1, motion: linear100),
+            TrackStep.to(0, motion: linear100),
+          ]),
+        ]),
+      ]);
       controller.animate([
         opacity([const TrackStep.to(1, motion: motion)]),
       ]);
@@ -268,11 +284,9 @@ void main() {
       expect(opacityMidway, greaterThan(0));
       expect(opacityMidway, lessThan(1));
 
-      controller.play(
-        TrackTimeline([
-          scale([const TrackStep.to(2, motion: motion)]),
-        ]),
-      );
+      controller.animate([
+        scale([const TrackStep.to(2, motion: motion)]),
+      ]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
@@ -337,11 +351,9 @@ void main() {
         initialValues: [opacity.value(0.5)],
       );
       const linear = Motion.linear(Duration(milliseconds: 100));
-      controller.play(
-        TrackTimeline([
-          opacity([const TrackStep.to(0.8, motion: linear)]),
-        ]),
-      );
+      controller.animate([
+        opacity([const TrackStep.to(0.8, motion: linear)]),
+      ]);
       await tester.pump();
       await tester.pumpAndSettle();
       expect(controller.value(opacity), closeTo(0.8, error));
@@ -365,11 +377,9 @@ void main() {
 
       // Without an explicit velocity, the slot carries the current one into
       // the new simulation rather than resetting to zero.
-      controller.play(
-        TrackTimeline([
-          position([const TrackStep.to(200, motion: spring)]),
-        ]),
-      );
+      controller.animate([
+        position([const TrackStep.to(200, motion: spring)]),
+      ]);
       expect(controller.value(position), closeTo(valueBefore, error));
       expect(controller.velocity(position), closeTo(velocityBefore, error));
 
@@ -389,19 +399,15 @@ void main() {
       final rotation = Track<double>(MotionConverter.single, initial: 0.0);
       const motion = Motion.smoothSpring(duration: Duration(milliseconds: 420));
 
-      controller.play(
-        TrackTimeline([
-          rotation([const TrackStep.to(math.pi / 10, motion: motion)]),
-        ]),
-      );
+      controller.animate([
+        rotation([const TrackStep.to(math.pi / 10, motion: motion)]),
+      ]);
       await tester.pump();
       await tester.pumpAndSettle();
 
-      controller.play(
-        TrackTimeline([
-          rotation([const TrackStep.to(0.0, motion: motion)]),
-        ]),
-      );
+      controller.animate([
+        rotation([const TrackStep.to(0.0, motion: motion)]),
+      ]);
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -552,13 +558,13 @@ void main() {
       addTearDown(controller.dispose);
       final steps = <(Track, int)>[];
 
-      controller.play(
-        TrackTimeline([
+      controller.animate(
+        [
           a([
             const TrackStep.to(1, motion: linear),
             const TrackStep.to(2, motion: linear),
           ]),
-        ]),
+        ],
         onStep: (track, step) => steps.add((track, step)),
       );
       await tester.pump();

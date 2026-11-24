@@ -119,13 +119,11 @@ void main() {
         await setUp(tester);
         expect(controller.velocity(position), greaterThan(0));
 
-        controller.play(
-          TrackTimeline([
-            position(
-              [TrackStep.to(target, motion: const Motion.smoothSpring())],
-            ),
-          ]),
-        );
+        controller.animate([
+          position(
+            [TrackStep.to(target, motion: const Motion.smoothSpring())],
+          ),
+        ]);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 16));
 
@@ -205,10 +203,10 @@ void main() {
       controller.dispose();
     });
 
-    for (final viaPlay in [true, false]) {
+    for (final withFrom in [true, false]) {
       testWidgets(
           'overrides the tracked velocity '
-          '(${viaPlay ? 'play with from' : 'animate'})', (tester) async {
+          '(${withFrom ? 'animate with from' : 'animate'})', (tester) async {
         controller = TrackController(vsync: tester);
 
         // Build up negative tracked velocity.
@@ -220,28 +218,13 @@ void main() {
         expect(controller.velocity(position), lessThan(0));
 
         // Explicit positive velocity should win and cause overshoot past 1.0.
-        if (viaPlay) {
-          controller.play(
-            TrackTimeline(
-              [
-                position(
-                  [const TrackStep.to(1.0, motion: spring)],
-                  from: 1.0,
-                  withVelocity: 100,
-                ),
-              ],
-            ),
-          );
-        } else {
-          controller.animate(
-            [
-              position(
-                [const TrackStep.to(1.0, motion: spring)],
-                withVelocity: 100.0,
-              ),
-            ],
-          );
-        }
+        controller.animate([
+          position(
+            [const TrackStep.to(1.0, motion: spring)],
+            from: withFrom ? 1.0 : null,
+            withVelocity: 100.0,
+          ),
+        ]);
 
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 16));
@@ -288,13 +271,9 @@ void main() {
 
       // Start at the target with no velocity — should settle immediately
       // without overshooting.
-      controller.play(
-        TrackTimeline(
-          [
-            position([const TrackStep.to(1.0, motion: spring)], from: 1.0),
-          ],
-        ),
-      );
+      controller.animate([
+        position([const TrackStep.to(1.0, motion: spring)], from: 1.0),
+      ]);
 
       await tester.pump();
       // At target with zero velocity: spring should not overshoot.
@@ -308,13 +287,9 @@ void main() {
       controller = TrackController(vsync: tester);
       const linear = Motion.linear(Duration(milliseconds: 100));
 
-      controller.play(
-        TrackTimeline(
-          [
-            position([const TrackStep.to(10.0, motion: linear)], from: 5.0),
-          ],
-        ),
-      );
+      controller.animate([
+        position([const TrackStep.to(10.0, motion: linear)], from: 5.0),
+      ]);
 
       await tester.pump();
       expect(controller.value(position), equals(5.0));

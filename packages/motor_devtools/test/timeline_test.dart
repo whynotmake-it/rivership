@@ -145,17 +145,14 @@ void main() {
     tester,
   ) async {
     final controller = TrackController(vsync: tester);
-    controller.play(
-      TrackTimeline(
-        [
-          a(const [
-            TrackStep.to(1, motion: Motion.linear(Duration(milliseconds: 300))),
-            TrackStep.to(0, motion: Motion.linear(Duration(milliseconds: 200))),
-          ]),
-        ],
-        loop: LoopMode.loop,
-      ),
-    );
+    controller.animate([
+      a(const [
+        TrackStep.loop([
+          TrackStep.to(1, motion: Motion.linear(Duration(milliseconds: 300))),
+          TrackStep.to(0, motion: Motion.linear(Duration(milliseconds: 200))),
+        ]),
+      ]),
+    ]);
     await tester.pump();
     for (var i = 0; i < 21; i++) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -167,7 +164,7 @@ void main() {
 
     final cycle = snapshot.tracks.single.loopPeriod!;
     expect(layout.window.length, cycle);
-    expect(layout.window.start, cycle * 2);
+    expect(layout.window.start, cycle * 4);
     final visible = layout.lanes.single.segments.where(
       (segment) =>
           segment.end! > layout.window.start &&

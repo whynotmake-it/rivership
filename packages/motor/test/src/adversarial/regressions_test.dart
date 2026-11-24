@@ -14,40 +14,41 @@ void main() {
   group('TrackController', () {
     final a = Track<double>(MotionConverter.single, initial: 0);
     final b = Track<double>(MotionConverter.single, initial: 0);
-    final timeline = TrackTimeline(
-      [
-        a([
-          const TrackStep.to(
+    final plan = <TrackAnimation>[
+      a([
+        const TrackStep.loop([
+          TrackStep.to(
             1,
             motion: Motion.linear(Duration(milliseconds: 50)),
           ),
-          const TrackStep.sync(token: #meet),
-          const TrackStep.to(
+          TrackStep.sync(token: #meet),
+          TrackStep.to(
             0,
             motion: Motion.linear(Duration(milliseconds: 50)),
           ),
         ]),
-        b([
-          const TrackStep.to(
+      ]),
+      b([
+        const TrackStep.loop([
+          TrackStep.to(
             1,
             motion: Motion.linear(Duration(milliseconds: 30)),
           ),
-          const TrackStep.sync(token: #meet),
-          const TrackStep.to(
+          TrackStep.sync(token: #meet),
+          TrackStep.to(
             0,
             motion: Motion.linear(Duration(milliseconds: 70)),
           ),
         ]),
-      ],
-      loop: LoopMode.loop,
-    );
+      ]),
+    ];
 
     testWidgets(
       'one long frame through many barrier rounds shows what ticking shows',
       (tester) async {
-        final ticked = TrackController(vsync: tester)..play(timeline);
+        final ticked = TrackController(vsync: tester)..animate(plan);
         addTearDown(ticked.dispose);
-        final jumped = TrackController(vsync: tester)..play(timeline);
+        final jumped = TrackController(vsync: tester)..animate(plan);
         addTearDown(jumped.dispose);
         await tester.pump();
         jumped.pause();
@@ -72,12 +73,15 @@ void main() {
       controller.animate(
         [
           a(const [
-            TrackStep.to(1, motion: Motion.linear(Duration.zero)),
-            TrackStep.sync(token: #zero),
+            TrackStep.loop([
+              TrackStep.to(1, motion: Motion.linear(Duration.zero)),
+              TrackStep.sync(token: #zero),
+            ]),
           ]),
-          b(const [TrackStep.sync(token: #zero)]),
+          b(const [
+            TrackStep.loop([TrackStep.sync(token: #zero)]),
+          ]),
         ],
-        loop: LoopMode.loop,
         onStep: (_, __) => steps++,
       );
       await tester.pump();
@@ -233,17 +237,23 @@ void main() {
         final controller = TrackController(vsync: tester);
         addTearDown(controller.dispose);
         final events = <String>[];
-        final future = controller.animate(
-          [
-            a([
-              const TrackStep.to(
-                1,
-                motion: Motion.linear(Duration(milliseconds: 100)),
-              ),
-            ]),
-          ],
-          loop: LoopMode.pingPong,
-        );
+        final future = controller.animate([
+          a([
+            const TrackStep.loop(
+              [
+                TrackStep.to(
+                  0,
+                  motion: Motion.linear(Duration(milliseconds: 100)),
+                ),
+                TrackStep.to(
+                  1,
+                  motion: Motion.linear(Duration(milliseconds: 100)),
+                ),
+              ],
+              mode: LoopMode.pingPong,
+            ),
+          ]),
+        ]);
         unawaited(future.ended.then((_) => events.add('ended')));
         unawaited(
           future.orCancel.then(
@@ -468,20 +478,22 @@ void main() {
       }
     });
 
-    test("a loop returns with the first step's motion, the track's if unset",
-        () {
+    test(
+        "a loop's next cycle uses the first step's motion, "
+        "the track's if unset", () {
       final playback = StepPlayback<double>(
         steps: const [
-          TrackStep.to(1),
-          TrackStep.to(2, motion: Motion.linear(Duration(seconds: 2))),
+          TrackStep.loop([
+            TrackStep.to(1),
+            TrackStep.to(2, motion: Motion.linear(Duration(seconds: 2))),
+          ]),
         ],
         converter: MotionConverter.single,
         start: 0,
-        loop: LoopMode.loop,
         fallbackMotion: const Motion.linear(Duration(milliseconds: 100)),
       )..advanceTo(2.1 + 0.05);
-      // Back from 2 to 0 in 100 ms, not in 2 s.
-      expect(playback.values.single, closeTo(1, 1e-9));
+      // Back from 2 to 1 in 100 ms, not in 2 s.
+      expect(playback.values.single, closeTo(1.5, 1e-9));
     });
 
     group('velocity after a curve', () {
@@ -528,17 +540,22 @@ void main() {
         }
       });
 
-      test("a loop's return curve hands its end slope to the next cycle", () {
-        // The return step chains straight into the friction, so the
-        // friction takes over its end slope. Each return then covers a
-        // longer distance in the same time, so this plan gains energy.
+      test("a loop's closing curve hands its end slope to the next cycle", () {
+        // The closing curve chains straight into the friction on the next
+        // cycle, so the friction takes over its end slope.
         final playback = StepPlayback<double>(
-          steps: const [TrackStep.free(motion: FrictionMotion())],
+          steps: const [
+            TrackStep.loop([
+              TrackStep.free(motion: FrictionMotion()),
+              TrackStep.to(
+                0,
+                motion: Motion.linear(Duration(milliseconds: 300)),
+              ),
+            ]),
+          ],
           converter: MotionConverter.single,
           start: 0,
           velocity: 1,
-          loop: LoopMode.loop,
-          fallbackMotion: const Motion.linear(Duration(milliseconds: 300)),
         )..advanceTo(20);
         final segments = playback.segmentsView;
         for (var i = 1; i < segments.length; i++) {
@@ -600,26 +617,26 @@ void main() {
         expect(ticked.velocities.single, 0);
       });
 
-      test('a loop that rests before it returns starts the return from rest',
+      test('a loop that rests before it wraps starts the next cycle from rest',
           () {
-        // The return takes the first step's spring, after the curve and the
-        // hold.
+        // After the curve and the hold, cycle 1 starts step 0's spring from
+        // rest at 2 heading to 1.
         final playback = StepPlayback<double>(
           steps: const [
-            TrackStep.to(1, motion: Motion.smoothSpring()),
-            TrackStep.to(2, motion: linear100),
-            TrackStep.hold(Duration(milliseconds: 200)),
+            TrackStep.loop([
+              TrackStep.to(1, motion: Motion.smoothSpring()),
+              TrackStep.to(2, motion: linear100),
+              TrackStep.hold(Duration(milliseconds: 200)),
+            ]),
           ],
           converter: MotionConverter.single,
           start: 0,
-          loop: LoopMode.loop,
         )..advanceTo(10);
-        final returns = playback.segmentsView.firstWhere(
-          (segment) => segment.stepIndex == 3,
+        final nextCycle = playback.segmentsView.firstWhere(
+          (segment) => segment.stepIndex == 0 && segment.cycle == 1,
         );
-        final fromRest =
-            const Motion.smoothSpring().createSimulation(start: 2, end: 0);
-        playback.advanceTo(returns.start + 0.05);
+        final fromRest = const Motion.smoothSpring().createSimulation(start: 2);
+        playback.advanceTo(nextCycle.start + 0.05);
         expect(playback.values.single, closeTo(fromRest.x(0.05), 1e-9));
         expect(playback.velocities.single, closeTo(fromRest.dx(0.05), 1e-9));
       });

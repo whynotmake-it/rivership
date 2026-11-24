@@ -23,9 +23,7 @@ String? guessControllerName(TrackController controller, StackTrace? creation) {
 String guessTrackName(TrackPlayback playback, int index) {
   if (!kDebugMode) return 'Track ${index + 1}';
   final type = _typeArgument(playback.track.runtimeType.toString());
-  final steps = playback.hasSyntheticReturnStep
-      ? playback.steps.take(playback.steps.length - 1)
-      : playback.steps;
+  final steps = playback.steps;
   final summary = [
     for (final step in steps.take(3)) _describeStep(step),
     if (steps.length > 3) '…',
@@ -40,6 +38,7 @@ String _describeStep(TrackStep<Object> step) => switch (step) {
   StepHold(:final duration) => 'hold ${formatDuration(duration)}',
   StepSync() => 'sync',
   StepFree() => 'free',
+  StepLoop() => 'loop',
 };
 
 String? _nameFromElement(Element builder) {

@@ -64,10 +64,6 @@ class _TrackFuture implements MotionFuture {
   final _primary = Completer<void>();
   Completer<void>? _secondary;
 
-  /// Whether this future spans a looping sequence of runs, such as a looping
-  /// `playPhases`, so that it never ends or settles on its own.
-  bool repeats = false;
-
   // Created when [ended] is first read. Until then the controller doesn't
   // watch for the end, and [ended] asks it whether the tracks have ended.
   Completer<void>? _ended;
@@ -87,8 +83,7 @@ class _TrackFuture implements MotionFuture {
   /// Whether [ended] was read and is still waiting for the tracks to end.
   bool get awaitsEnd => _ended != null && !_hasEnded && _completed == null;
 
-  bool get _tracksHaveEnded =>
-      !repeats && (_controller?._haveEnded(tracks) ?? true);
+  bool get _tracksHaveEnded => _controller?._haveEnded(tracks) ?? true;
 
   void end() {
     if (_completed != null || _hasEnded) return;

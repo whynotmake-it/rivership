@@ -12,10 +12,11 @@ StepPlayback<double> _playback(
   LoopMode loop = LoopMode.none,
 }) =>
     StepPlayback<double>(
-      steps: steps,
+      steps: loop == LoopMode.none
+          ? steps
+          : [TrackStep.loop(steps, mode: loop)],
       converter: MotionConverter.single,
       start: 0,
-      loop: loop,
     );
 
 /// A spring without damping: it oscillates forever.

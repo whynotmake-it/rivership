@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
-import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_phase_timeline.dart';
@@ -10,7 +9,7 @@ import 'package:motor/src/track_phase_timeline.dart';
 /// Wraps the standard sync-barrier playback with phase-level navigation:
 ///
 /// - [playPhases] plays all phases in order (auto-advancing via sync
-///   barriers).
+///   barriers and `TrackStep.loop` for looping timelines).
 /// - [goToPhase] jumps to a specific phase by replaying only that phase's
 ///   animations.
 /// - [currentPhase] reports the phase currently being played or settled.
@@ -19,7 +18,7 @@ import 'package:motor/src/track_phase_timeline.dart';
 /// [PhaseTransitioning] when a new phase begins animating, and [PhaseSettled]
 /// when playback for the active phase comes to rest.
 ///
-/// With [LoopMode.pingPong], phases are visited in reverse order after the
+/// With `LoopMode.pingPong`, phases are visited in reverse order after the
 /// forward pass. Each phase's own steps still play forward.
 class PhaseTrackController<P extends Object> extends TrackController {
   /// Creates a phase track controller.
@@ -61,8 +60,8 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _phaseDirectionForward = true;
   }
 
-  /// Plays through all phases of [timeline], auto-advancing when each
-  /// phase's animations settle.
+  /// Plays through all phases of [timeline], auto-advancing as each phase's
+  /// steps complete.
   ///
   /// If [atPhase] is provided, playback starts from that phase (skipping
   /// earlier phases). Otherwise, playback starts from the first phase.
@@ -71,7 +70,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// [timeline] equals the one playing, so each throw keeps its velocity.
   ///
   /// Returns a [MotionFuture] for the timeline's tracks (see
-  /// [TrackController.play]): for a non-looping timeline it ends when the
+  /// [TrackController.animate]): for a non-looping timeline it ends when the
   /// last phase's motions have reached their duration, and settles when the
   /// last phase has settled. A looping phase timeline never ends or
   /// settles, so don't await it.
@@ -114,6 +113,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     _phaseDirectionForward = true;
     _initialValuesPending = false;
     if (applyInitialValues) _applyInitialValues(timeline);
+    if (timeline.phases.isEmpty) return MotionFuture.complete();
 
     final startIndex = atPhase != null ? timeline.phases.indexOf(atPhase) : 0;
     final effectiveIndex = startIndex < 0 ? 0 : startIndex;
@@ -121,13 +121,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     final startPhase = timeline.phases[effectiveIndex];
     _currentPhase = startPhase;
 
-    // Starting partway plays only the animations from [startPhase] onward.
-    // Looping (handled in [onPlaybackSettled]) still restarts from the full
-    // timeline.
-    final future = effectiveIndex == 0
-        ? play(timeline.flattened)
-        : animate(timeline.animationsFrom(startPhase));
-    if (timeline.loop.isLooping) internalRepeat(future);
+    final future = animate(timeline.compile(fromPhase: startPhase));
     _settleIfIdle();
     return future;
   }
@@ -169,7 +163,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
       final named = {for (final animation in anims) animation.track};
       stop(
         tracks: [
-          for (final animation in timeline.flattened.animations)
+          for (final animation in timeline.flattened)
             if (!named.contains(animation.track)) animation.track,
         ],
       );
@@ -216,9 +210,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
     List<TrackAnimation> remaining(TrackPhaseTimeline<P> of) =>
         !_isPlayingPhases
             ? of.phaseAnimations[phase]!
-            : _phaseDirectionForward
-                ? of.animationsFrom(phase)
-                : of.reversedAnimationsFrom(phase);
+            : of.compile(fromPhase: phase, forward: _phaseDirectionForward);
     final before = {
       for (final animation in remaining(old)) animation.track: animation,
     };
@@ -285,80 +277,19 @@ class PhaseTrackController<P extends Object> extends TrackController {
     final timeline = _activeTimeline;
     if (timeline == null) return;
 
-    final phase = timeline.phaseForToken(token);
-    if (phase != null) {
+    final info = timeline.phaseInfoForToken(token);
+    if (info != null) {
       final previous = _currentPhase;
-      _currentPhase = phase;
-      if (previous != null && previous != phase) {
-        _onTransition?.call(PhaseTransitioning(from: previous, to: phase));
+      _currentPhase = info.phase;
+      _phaseDirectionForward = info.forward;
+      if (previous != null && previous != info.phase) {
+        _onTransition?.call(PhaseTransitioning(from: previous, to: info.phase));
       }
     }
   }
 
   @override
   void onPlaybackSettled() {
-    final timeline = _activeTimeline;
-
-    if (_isPlayingPhases && timeline != null && timeline.loop.isLooping) {
-      final previous = _currentPhase;
-      final phases = timeline.phases;
-      final first = phases.first;
-
-      if (timeline.loop == LoopMode.pingPong && phases.length >= 2) {
-        if (_phaseDirectionForward) {
-          _phaseDirectionForward = false;
-          final next = phases[phases.length - 2];
-          _currentPhase = next;
-          _onTransition?.call(
-            PhaseTransitioning(from: phases.last, to: next),
-          );
-          internalContinueRepeating(
-            timeline.reversedAnimationsFrom(phases[phases.length - 2]),
-          );
-        } else {
-          _phaseDirectionForward = true;
-          final next = phases[1];
-          _currentPhase = next;
-          _onTransition?.call(
-            PhaseTransitioning(from: phases.first, to: next),
-          );
-          internalContinueRepeating(timeline.animationsFrom(next));
-        }
-        return;
-      }
-
-      if (timeline.loop == LoopMode.seamless && phases.length >= 2) {
-        // seamless: jump straight back to the first phase (invisible when the
-        // last phase matches the first), then animate on to the second phase
-        // immediately. Replaying from the second phase avoids re-animating
-        // into the first phase, which would otherwise stall for the first
-        // step's full duration.
-
-        final second = phases[1];
-        final values = timeline.restingValuesAt(first);
-        if (values.isNotEmpty) internalJumpRepeating(values);
-
-        if (previous != null && previous != first) {
-          _onTransition?.call(PhaseTransitioning(from: previous, to: first));
-        }
-        _currentPhase = second;
-        _onTransition?.call(PhaseTransitioning(from: first, to: second));
-        internalContinueRepeating(timeline.animationsFrom(second));
-        return;
-      }
-
-      // loop (and single-phase seamless): animate from the current values back
-      // to the first phase and replay the whole timeline. Unlike `play`, this
-      // does not re-apply `timeline.initialValues`, so the loop animates back
-      // to the first phase rather than snapping to them each cycle.
-      _currentPhase = first;
-      if (previous != null && previous != first) {
-        _onTransition?.call(PhaseTransitioning(from: previous, to: first));
-      }
-      internalContinueRepeating(timeline.flattened.animations);
-      return;
-    }
-
     final phase = _currentPhase;
     if (phase != null) {
       _onTransition?.call(PhaseSettled(phase));

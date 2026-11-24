@@ -18,11 +18,10 @@ StepPlayback<double> _playback(
   double? velocity,
 }) {
   return StepPlayback<double>(
-    steps: steps,
+    steps: loop == LoopMode.none ? steps : [TrackStep.loop(steps, mode: loop)],
     converter: MotionConverter.single,
     start: start,
     velocity: velocity,
-    loop: loop,
   );
 }
 

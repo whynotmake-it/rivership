@@ -122,23 +122,35 @@ base class Track<T extends Object> {
     List<TrackStep<Object>> steps, {
     T? from,
     T? withVelocity,
-  }) {
-    final typed = <TrackStep<T>>[
-      for (final step in steps)
-        if (step case PhaseBoundary(:final token))
-          PhaseBoundary<T>(token: token)
-        else if (step case StepSync(:final token))
-          StepSync<T>(token: token)
-        else
-          step as TrackStep<T>,
-    ];
-    return TrackAnimation._(
-      this,
-      typed,
-      from: from,
-      withVelocity: withVelocity,
-    );
-  }
+  }) =>
+      TrackAnimation._(
+        this,
+        _retypeSteps(steps),
+        from: from,
+        withVelocity: withVelocity,
+      );
+
+  List<TrackStep<T>> _retypeSteps(List<TrackStep<Object>> steps) => [
+        for (final step in steps)
+          switch (step) {
+            PhaseBoundary(:final token) => PhaseBoundary<T>(token: token),
+            LoopBarrier(:final token) => LoopBarrier<T>(token: token),
+            StepSync(:final token) => StepSync<T>(token: token),
+            StepLoop(
+              :final steps,
+              :final mode,
+              :final count,
+              :final together,
+            ) =>
+              StepLoop<T>(
+                _retypeSteps(steps),
+                mode: mode,
+                count: count,
+                together: together,
+              ),
+            _ => step as TrackStep<T>,
+          },
+      ];
 }
 
 /// A value snapshot for a [Track].
@@ -170,6 +182,14 @@ final class TrackValue<T extends Object> {
   /// the track was set to, unless its velocity tracking is off.
   final T? velocity;
 
+  /// A typed instant step to [value], or null when this snapshot carries only
+  /// a velocity.
+  @internal
+  TrackStep<T>? get instantStep => switch (value) {
+        final v? => TrackStep<T>.to(v, motion: const Motion.instant()),
+        null => null,
+      };
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -191,8 +211,7 @@ final class TrackValue<T extends Object> {
 ///
 /// Besides the [steps] to play, an animation can carry a per-track [from]
 /// override (jump to this value before animating) and an initial
-/// [withVelocity]. `loop` is not part of an animation: the timeline or the
-/// playback call owns it.
+/// [withVelocity]. Loops live inside [steps] via [TrackStep.loop].
 ///
 /// Animations compare by value, including their steps.
 @immutable
@@ -232,26 +251,44 @@ final class TrackAnimation<T extends Object> {
   @internal
   TrackAnimation<T> withMotionOverride(Motion motion) => TrackAnimation._(
         track,
-        [
-          for (final step in steps)
-            switch (step) {
-              StepTo<T>(:final value, :final until) => TrackStep.to(
-                  value,
-                  motion: motion,
-                  until: until,
-                ),
-              StepAt<T>(:final at, :final value) => TrackStep.at(
-                  at,
-                  value,
-                  motion: motion,
-                ),
-              _ => step,
-            },
-        ],
+        _overrideMotions(steps, motion),
         from: from,
         withVelocity: withVelocity,
         delay: delay,
       );
+
+  static List<TrackStep<S>> _overrideMotions<S extends Object>(
+    List<TrackStep<S>> steps,
+    Motion motion,
+  ) =>
+      [
+        for (final step in steps)
+          switch (step) {
+            StepTo<S>(:final value, :final until) => TrackStep.to(
+                value,
+                motion: motion,
+                until: until,
+              ),
+            StepAt<S>(:final at, :final value) => TrackStep.at(
+                at,
+                value,
+                motion: motion,
+              ),
+            StepLoop<S>(
+              :final steps,
+              :final mode,
+              :final count,
+              :final together,
+            ) =>
+              TrackStep.loop(
+                _overrideMotions(steps, motion),
+                mode: mode,
+                count: count,
+                together: together,
+              ),
+            _ => step,
+          },
+      ];
 
   /// Resolves the value this animation should start from when the controller
   /// has no existing value for [track].
@@ -276,10 +313,17 @@ final class TrackAnimation<T extends Object> {
   /// The end value of this animation: its last `TrackStep.to`/`TrackStep.at`
   /// value, or null when no step carries a value.
   @internal
-  TrackValue<T>? get endValue {
-    for (final step in steps.reversed) {
-      if (step case StepTo<T>(:final value) || StepAt<T>(:final value)) {
-        return track.value(value);
+  TrackValue<T>? get endValue => _lastTargetOf(steps);
+
+  TrackValue<T>? _lastTargetOf(List<TrackStep<T>> list) {
+    for (final step in list.reversed) {
+      switch (step) {
+        case StepTo<T>(:final value) || StepAt<T>(:final value):
+          return track.value(value);
+        case StepLoop<T>(:final steps):
+          if (_lastTargetOf(steps) case final value?) return value;
+        default:
+          break;
       }
     }
     return null;
@@ -287,10 +331,19 @@ final class TrackAnimation<T extends Object> {
 
   /// The dimension count of this animation's first concrete target, or null
   /// when no step carries a value.
-  int? get _firstTargetDimensions {
-    for (final step in steps) {
-      if (step case StepTo<T>(:final value) || StepAt<T>(:final value)) {
-        return track.converter.normalize(value).length;
+  int? get _firstTargetDimensions => _firstDimensionsOf(steps);
+
+  int? _firstDimensionsOf(List<TrackStep<T>> list) {
+    for (final step in list) {
+      switch (step) {
+        case StepTo<T>(:final value) || StepAt<T>(:final value):
+          return track.converter.normalize(value).length;
+        case StepLoop<T>(:final steps):
+          if (_firstDimensionsOf(steps) case final dimensions?) {
+            return dimensions;
+          }
+        default:
+          break;
       }
     }
     return null;

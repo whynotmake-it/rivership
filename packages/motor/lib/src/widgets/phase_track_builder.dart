@@ -193,10 +193,9 @@ class _PhaseTrackBuilderState<P extends Object>
     if (timelineChanged) {
       // Tracks the new timeline dropped would otherwise keep running.
       final kept = {
-        for (final animation in widget.timeline.flattened.animations)
-          animation.track,
+        for (final animation in widget.timeline.flattened) animation.track,
       };
-      for (final animation in oldWidget.timeline.flattened.animations) {
+      for (final animation in oldWidget.timeline.flattened) {
         if (!kept.contains(animation.track)) {
           _controller.forgetTrack(animation.track);
         }
@@ -285,7 +284,7 @@ class _PhaseTrackBuilderState<P extends Object>
       // restartTrigger change starts from the start rather than animating from
       // the current values back to the first phase. The timeline's
       // initialValues then apply on top, as on mount.
-      _controller.set(widget.timeline.flattened.startValues);
+      _controller.set(widget.timeline.startValues);
     }
 
     if (widget.playing) {

@@ -84,17 +84,24 @@ class _PulseState extends State<_Pulse> {
     return Center(
       child: TrackBuilder(
         debugLabel: 'Pulse',
-        loop: .pingPong,
         animations: [
           for (final (i, dot) in _dots.indexed)
             dot([
               .hold(Duration(milliseconds: 160 * i)),
-              .to(
-                1,
-                motion: .smoothSpring(
-                  duration: const Duration(milliseconds: 600),
+              .loop([
+                .to(
+                  1,
+                  motion: .smoothSpring(
+                    duration: const Duration(milliseconds: 600),
+                  ),
                 ),
-              ),
+                .to(
+                  0,
+                  motion: .smoothSpring(
+                    duration: const Duration(milliseconds: 600),
+                  ),
+                ),
+              ]),
             ]),
         ],
         builder: (context, value, _) => Row(

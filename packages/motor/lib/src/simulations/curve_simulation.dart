@@ -18,7 +18,7 @@ class CurveSimulation extends Simulation with SettlingSimulation {
   final Duration duration;
 
   @override
-  Duration get settlesAt => duration;
+  Duration get settlesAt => start == end ? Duration.zero : duration;
 
   final double _seconds;
 

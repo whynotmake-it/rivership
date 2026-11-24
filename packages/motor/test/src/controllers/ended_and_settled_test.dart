@@ -179,11 +179,9 @@ void main() {
     testWidgets('settles with its own tracks, not the others', (tester) async {
       final controller = TrackController(vsync: tester);
       addTearDown(controller.dispose);
-      final first = controller.play(
-        TrackTimeline([
-          a([const TrackStep.to(1, motion: linear100)]),
-        ]),
-      );
+      final first = controller.animate([
+        a([const TrackStep.to(1, motion: linear100)]),
+      ]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 30));
       final second = controller.animate([
@@ -408,15 +406,14 @@ void main() {
       for (final until in WaitUntil.values) {
         final moments = await _watch(
           tester,
-          controller.animate(
-            [
-              a([
+          controller.animate([
+            a([
+              TrackStep.loop([
                 TrackStep.to(1, motion: _bouncy, until: until),
                 TrackStep.to(0, motion: _bouncy, until: until),
               ]),
-            ],
-            loop: LoopMode.loop,
-          ),
+            ]),
+          ]),
           until: 3,
         );
         expect(moments.ended, isNull, reason: '$until');

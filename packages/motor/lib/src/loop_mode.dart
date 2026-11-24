@@ -1,21 +1,21 @@
-/// The mode in which an animation should loop.
+/// How a `TrackStep.loop` or `TrackPhaseTimeline` repeats.
 enum LoopMode {
-  /// Don't loop the animation.
+  /// Play once without repeating.
   none,
 
-  /// The animation will loop from the end back to the start. If no step
-  /// provides a target motion, the loop restarts from the initial values
-  /// without animating back.
+  /// Repeat from the first step (or phase) in order, animating smoothly from
+  /// the end back to the start of the loop.
   loop,
 
-  /// The animation will play forward and then reverse back to the start.
+  /// Play forward and then reverse back to the first target (or play phases in
+  /// reverse order), then repeat.
   pingPong,
 
-  /// The animation will jump back to its start without animating and play
-  /// again. Author the final step to end on the starting value so the jump is
-  /// invisible, which makes circular motion (e.g. rotations) seamless.
+  /// Jump back to the first target (or first phase) without animating and play
+  /// again. Author the final step to match the first so the jump is invisible,
+  /// which makes circular motion (e.g. rotations) seamless.
   seamless;
 
-  /// Whether the animation should loop.
+  /// Whether this mode repeats.
   bool get isLooping => this != none;
 }

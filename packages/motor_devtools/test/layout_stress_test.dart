@@ -246,14 +246,20 @@ class _HarnessState extends State<_Harness> with TickerProviderStateMixin {
       );
     }
     unawaited(
-      deal.play(
-        TrackTimeline([
-          ace([
-            const TrackStep.to(1, motion: Motion.linear(Duration(seconds: 2))),
+      deal.animate([
+        ace([
+          const TrackStep.loop([
+            TrackStep.to(1, motion: Motion.linear(Duration(seconds: 2))),
+            TrackStep.to(0, motion: Motion.linear(Duration(seconds: 2))),
           ]),
-          king([const TrackStep.to(1, motion: Motion.smoothSpring())]),
-        ], loop: LoopMode.loop),
-      ),
+        ]),
+        king([
+          const TrackStep.loop([
+            TrackStep.to(1, motion: Motion.smoothSpring()),
+            TrackStep.to(0, motion: Motion.smoothSpring()),
+          ]),
+        ]),
+      ]),
     );
   }
 

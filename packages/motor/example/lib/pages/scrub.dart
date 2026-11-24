@@ -39,7 +39,7 @@ class _ScrubPageState extends State<ScrubPage>
   final _burst = Track<double>(.single, initial: 0, debugLabel: 'Confetti');
   final _caption = Track<double>(.single, initial: 0, debugLabel: 'Caption');
 
-  late final _timeline = TrackTimeline([
+  late final List<TrackAnimation> _plan = [
     _width([
       .to(_puck, motion: .smoothSpring(duration: Duration(milliseconds: 380))),
       .sync(token: #paid),
@@ -63,7 +63,15 @@ class _ScrubPageState extends State<ScrubPage>
       .hold(const Duration(milliseconds: 120)),
       .to(1, motion: .smoothSpring()),
     ]),
-  ]);
+  ];
+
+  late final List<TrackValue> _startValues = [
+    _width.value(_button),
+    _spinner.value(0),
+    _check.value(0),
+    _burst.value(0),
+    _caption.value(0),
+  ];
 
   // The controller's clock when the last play started.
   var _origin = Duration.zero;
@@ -72,8 +80,8 @@ class _ScrubPageState extends State<ScrubPage>
   static const _playCode =
       'send\n'
       '  ..stop(canceled: true)\n'
-      '  ..set(timeline.startValues)\n'
-      '  ..play(timeline);';
+      '  ..set(startValues)\n'
+      '  ..animate(plan);';
 
   final _code = ValueNotifier('// Tap Play to send.\n$_playCode');
 
@@ -88,8 +96,8 @@ class _ScrubPageState extends State<ScrubPage>
     _code.value = '// Plays the whole choreography from the start.\n$_playCode';
     _send
       ..stop(canceled: true)
-      ..set(_timeline.startValues)
-      ..play(_timeline);
+      ..set(_startValues)
+      ..animate(_plan);
     _origin = _send.inspectPlayback().position;
   }
 

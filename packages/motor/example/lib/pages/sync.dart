@@ -71,7 +71,7 @@ class _SyncPageState extends State<SyncPage>
     super.dispose();
   }
 
-  TrackTimeline get _timeline => TrackTimeline([
+  List<TrackAnimation> get _plan => [
     for (final (index, card) in _cards.indexed)
       card([
         .to(
@@ -88,7 +88,7 @@ class _SyncPageState extends State<SyncPage>
           motion: .bouncySpring(duration: Duration(milliseconds: 650)),
         ),
       ], delay: Duration(milliseconds: 90 * index)),
-  ]);
+  ];
 
   final _code = ValueNotifier('');
 
@@ -98,10 +98,9 @@ class _SyncPageState extends State<SyncPage>
               'card([.to(spot), .sync(token: #dealt), .to(faceUp)])'
         : '// A token per card: each flips as soon as it lands.\n'
               'card([.to(spot), .sync(token: index), .to(faceUp)])';
-    final timeline = _timeline;
     _dealer
-      ..set(timeline.startValues)
-      ..play(timeline);
+      ..set([for (final card in _cards) card.value(const _Card(_deck, 0))])
+      ..animate(_plan);
   }
 
   @override

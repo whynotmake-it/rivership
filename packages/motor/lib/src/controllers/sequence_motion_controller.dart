@@ -173,7 +173,7 @@ class SequenceMotionController<P, T extends Object>
         PhaseTransitioning(from: previous, to: run.first),
       );
     }
-    final future = super.play(steps, loop: LoopMode.none, onStep: _onChainStep);
+    final future = super.play(steps, onStep: _onChainStep);
     // A single leg that rests on its value doesn't play, so no run settles.
     // A non-looping sequence is done; a looping one has nothing to repeat.
     if (!_inner.hasActiveTracks && _activeSequence?.loop == LoopMode.none) {
@@ -363,11 +363,10 @@ class SequenceMotionController<P, T extends Object>
   @override
   MotionFuture play(
     List<TrackStep<T>> steps, {
-    LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {
     _stopSequence();
-    return super.play(steps, loop: loop, onStep: onStep);
+    return super.play(steps, onStep: onStep);
   }
 
   @override

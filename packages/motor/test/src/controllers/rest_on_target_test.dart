@@ -30,22 +30,10 @@ enum _Phase { only }
 final _entryPoints = <String, StartEntryPoint>{
   'TrackController.animate': (tester, animations, statuses) async =>
       (_controller(tester, statuses).animate(animations),),
-  'TrackController.play': (tester, animations, statuses) async =>
-      (_controller(tester, statuses).play(TrackTimeline(animations)),),
   'TrackBuilder': (tester, animations, statuses) async {
     await tester.pumpWidget(
       TrackBuilder(
         animations: animations,
-        onAnimationStatusChanged: statuses.add,
-        builder: (context, value, child) => const SizedBox(),
-      ),
-    );
-    return (null,);
-  },
-  'TrackBuilder.timeline': (tester, animations, statuses) async {
-    await tester.pumpWidget(
-      TrackBuilder.timeline(
-        TrackTimeline(animations),
         onAnimationStatusChanged: statuses.add,
         builder: (context, value, child) => const SizedBox(),
       ),
@@ -131,11 +119,9 @@ void main() {
 
     Future<bool> plays(
       WidgetTester tester,
-      TrackAnimation<double> animation, {
-      LoopMode loop = LoopMode.none,
-    }) async {
-      controller = _controller(tester, statuses)
-        ..animate([animation], loop: loop);
+      TrackAnimation<double> animation,
+    ) async {
+      controller = _controller(tester, statuses)..animate([animation]);
       final playing = controller.isAnimating;
       controller.stop(canceled: true);
       return playing;
@@ -226,8 +212,9 @@ void main() {
       expect(
         await plays(
           tester,
-          atThree([const TrackStep.to(3.0)]),
-          loop: LoopMode.loop,
+          atThree([
+            const TrackStep.loop([TrackStep.to(3.0), TrackStep.to(4.0)]),
+          ]),
         ),
         isTrue,
       );

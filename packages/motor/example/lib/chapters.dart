@@ -5,6 +5,7 @@ import 'package:motor_example/pages/converters.dart';
 import 'package:motor_example/pages/devtools.dart';
 import 'package:motor_example/pages/drag_and_drop.dart';
 import 'package:motor_example/pages/implicit_widgets.dart';
+import 'package:motor_example/pages/loops.dart';
 import 'package:motor_example/pages/phases.dart';
 import 'package:motor_example/pages/retarget.dart';
 import 'package:motor_example/pages/scrub.dart';
@@ -113,6 +114,16 @@ final chapters = [
     page: SyncPage.new,
     group: .choreography,
     glyph: Glyph.layers,
+  ),
+  Chapter(
+    title: 'Loops',
+    path: 'loops',
+    idea:
+        'Repeat a slice of steps, run a finite count, or lock sibling loops '
+        'together.',
+    page: LoopsPage.new,
+    group: .choreography,
+    glyph: Glyph.infinity,
   ),
   Chapter(
     title: 'Phases',

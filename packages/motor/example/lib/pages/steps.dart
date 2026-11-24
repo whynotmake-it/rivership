@@ -36,7 +36,7 @@ class _StepsPageState extends State<StepsPage>
 
   // Content uses fixed-length curves, so its steps land exactly on time. The
   // shape waits at the barrier until the content has faded, then closes.
-  late final _pingTimeline = TrackTimeline([
+  late final List<TrackAnimation> _pingPlan = [
     _shape([
       .to(
         _expanded,
@@ -60,11 +60,11 @@ class _StepsPageState extends State<StepsPage>
       for (final (index, angle) in const [.35, -.3, .2, -.1, 0.0].indexed)
         .at(Duration(milliseconds: 300 + 80 * index), angle),
     ]),
-  ]);
+  ];
 
-  // The timeline above, as it reads.
+  // The plan above, as it reads.
   static const _pingCode =
-      'final ping = TrackTimeline([\n'
+      'island.animate([\n'
       '  shape([\n'
       '    .to(expanded, motion: .cupertino(duration: Duration(milliseconds: 500), bounce: .2)),\n'
       '    .sync(token: #faded),\n'
@@ -83,10 +83,9 @@ class _StepsPageState extends State<StepsPage>
       '      .at(Duration(milliseconds: 300 + 80 * i), angle),\n'
       '  ]),\n'
       ']);\n'
-      '// const easeOut = Cubic(.23, 1, .32, 1);\n'
-      'island.play(ping);';
+      '// const easeOut = Cubic(.23, 1, .32, 1);';
 
-  final _code = ValueNotifier('// Ping to play the timeline.\n$_pingCode');
+  final _code = ValueNotifier('// Ping to play the steps.\n$_pingCode');
 
   @override
   void dispose() {
@@ -102,7 +101,7 @@ class _StepsPageState extends State<StepsPage>
         : '// Played again from where it is, '
               'Size(${size.width.round()}, ${size.height.round()}).\n'
               '$_pingCode';
-    _island.play(_pingTimeline);
+    _island.animate(_pingPlan);
   }
 
   @override

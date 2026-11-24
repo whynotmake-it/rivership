@@ -69,7 +69,7 @@ class _Observer implements MotorInspectionObserver {
 }
 
 final class _Session {
-  _Session(this.tracks, this.timeline);
+  _Session(this.tracks, this.animations, this.loop);
 
   factory _Session.generate(int seed) {
     final random = math.Random(seed);
@@ -93,12 +93,13 @@ final class _Session {
           motion: const Motion.smoothSpring(),
         );
         tracks.add(track);
+        final steps = <TrackStep<double>>[
+          ...generator.steps(1, (values) => values.single),
+          if (loop.isLooping) const TrackStep.hold(cycle),
+        ];
         animations.add(
           track(
-            [
-              ...generator.steps(1, (values) => values.single),
-              if (loop.isLooping) const TrackStep.hold(cycle),
-            ],
+            loop.isLooping ? [TrackStep.loop(steps, mode: loop)] : steps,
             withVelocity: random.nextDouble() * 4 - 2,
           ),
         );
@@ -109,22 +110,24 @@ final class _Session {
           motion: const Motion.bouncySpring(),
         );
         tracks.add(track);
+        final steps = <TrackStep<Offset>>[
+          ...generator.steps(2, (values) => Offset(values[0], values[1])),
+          if (loop.isLooping) const TrackStep.hold(cycle),
+        ];
         animations.add(
-          track([
-            ...generator.steps(2, (values) => Offset(values[0], values[1])),
-            if (loop.isLooping) const TrackStep.hold(cycle),
-          ]),
+          track(loop.isLooping ? [TrackStep.loop(steps, mode: loop)] : steps),
         );
       }
     }
-    return _Session(tracks, TrackTimeline(animations, loop: loop));
+    return _Session(tracks, animations, loop);
   }
 
   final List<Track<Object>> tracks;
-  final TrackTimeline timeline;
+  final List<TrackAnimation> animations;
+  final LoopMode loop;
 
-  String describe() => 'loop: ${timeline.loop}\n${[
-        for (final animation in timeline.animations)
+  String describe() => 'loop: $loop\n${[
+        for (final animation in animations)
           [
             'track ${animation.track.converter.runtimeType}:',
             describeSteps(animation.steps),
@@ -165,10 +168,10 @@ Future<void> _playWithChaos(
   _Session session,
   math.Random random,
 ) async {
-  final live = TrackController(vsync: tester)..play(session.timeline);
+  final live = TrackController(vsync: tester)..animate(session.animations);
   addTearDown(live.dispose);
   final reference = TrackController(vsync: tester)
-    ..play(session.timeline)
+    ..animate(session.animations)
     ..pause();
   addTearDown(reference.dispose);
   final positions = <Duration>[];
@@ -326,6 +329,9 @@ final class _Watched {
   /// from repeating.
   bool settledByStop = false;
 
+  /// Set once a later call replaced any of its tracks.
+  bool superseded = false;
+
   bool get resolved =>
       events.contains('settled') || events.contains('canceled');
 }
@@ -372,9 +378,22 @@ Future<void> _callAtRandom(
     if (future.stopped && !events.contains('canceled')) {
       expect(events.contains('ended'), isTrue, reason: 'stopped, $reason');
     }
-    if (future.loops && !future.stopped && !future.settledByStop) {
-      expect(events.contains('ended'), isFalse, reason: 'loop ended, $reason');
-      expect(events.contains('settled'), isFalse, reason: reason);
+    if (future.loops &&
+        !future.stopped &&
+        !future.settledByStop &&
+        !future.superseded) {
+      final stillLooping = controller.inspectPlayback().tracks.any(
+        (playback) =>
+            future.tracks.contains(playback.track) && playback.isLooping,
+      );
+      if (stillLooping) {
+        expect(
+          events.contains('ended'),
+          isFalse,
+          reason: 'loop ended, $reason',
+        );
+        expect(events.contains('settled'), isFalse, reason: reason);
+      }
     }
   }
 
@@ -394,21 +413,23 @@ Future<void> _callAtRandom(
           maxSteps: 3,
         );
         final animations = [
-          for (final track in targets) _randomAnimation(track, generator),
+          for (final track in targets)
+            _randomAnimation(track, generator, loop: loop),
         ];
         final name = 'call $call: animate ${targets.length} tracks, $loop';
         log.add('$name\n${[
           for (final animation in animations) describeSteps(animation.steps),
         ].join('\n')}');
         for (final future in watched) {
-          if (!future.resolved && future.tracks.any(targets.contains)) {
-            future.interrupted = true;
+          if (future.tracks.any(targets.contains)) {
+            future.superseded = true;
+            if (!future.resolved) future.interrupted = true;
           }
         }
         watched.add(
           _Watched(
             name,
-            controller.animate(animations, loop: loop),
+            controller.animate(animations),
             targets.toSet(),
             loops: loop.isLooping,
           ),
@@ -487,18 +508,32 @@ Future<void> _callAtRandom(
 
 const _linear = Motion.linear(Duration(milliseconds: 150));
 
-TrackAnimation _randomAnimation(Track<Object> track, PlanGenerator generator) =>
+TrackAnimation _randomAnimation(
+  Track<Object> track,
+  PlanGenerator generator, {
+  LoopMode loop = LoopMode.none,
+}) =>
     switch (track) {
-      final Track<double> track => track(
-          generator.steps(1, (values) => values.single, allowFallback: true),
-        ),
-      final Track<Offset> track => track(
-          generator.steps(
+      final Track<double> track => () {
+          final steps = generator.steps(
+            1,
+            (values) => values.single,
+            allowFallback: true,
+          );
+          return track(
+            loop.isLooping ? [TrackStep.loop(steps, mode: loop)] : steps,
+          );
+        }(),
+      final Track<Offset> track => () {
+          final steps = generator.steps(
             2,
             (values) => Offset(values[0], values[1]),
             allowFallback: true,
-          ),
-        ),
+          );
+          return track(
+            loop.isLooping ? [TrackStep.loop(steps, mode: loop)] : steps,
+          );
+        }(),
       _ => throw StateError('unexpected track $track'),
     };
 

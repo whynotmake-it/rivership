@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show listEquals, objectRuntimeType;
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
+import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/settling_simulation.dart';
 import 'package:motor/src/track_phase_timeline.dart';
@@ -142,6 +143,34 @@ sealed class TrackStep<T extends Object> {
   /// Use this to keep independent tracks aligned at key moments without
   /// hand-tuning each track's durations.
   const factory TrackStep.sync({required Object token}) = StepSync<T>;
+
+  /// Repeats [steps] according to [mode].
+  ///
+  /// - [LoopMode.loop] (the default) replays [steps] in order from the current
+  ///   value and velocity, without inserting a synthetic return step.
+  /// - [LoopMode.pingPong] plays [steps] forward and then reverses back to the
+  ///   loop's first target (skipping turnaround holds so they are not doubled),
+  ///   then repeats.
+  /// - [LoopMode.seamless] jumps back to the loop's first target (or to the
+  ///   state captured on loop entry when [steps] has no target) and replays
+  ///   [steps].
+  /// - [LoopMode.none] plays [steps] once and continues to the next step.
+  ///
+  /// When [count] is provided, the loop runs that many cycles (full
+  /// forward-and-reverse round-trips for [LoopMode.pingPong]) and then moves
+  /// on to any following step. When [count] is `null` and [mode] loops, it
+  /// repeats indefinitely.
+  ///
+  /// Loops on different tracks that share the same [together] token (by `==`)
+  /// wait for each other at the end of every cycle (and at turnarounds when
+  /// both use [LoopMode.pingPong]), keeping them in lockstep without hand-coded
+  /// [TrackStep.sync] barriers.
+  const factory TrackStep.loop(
+    List<TrackStep<T>> steps, {
+    LoopMode mode,
+    int? count,
+    Object? together,
+  }) = StepLoop<T>;
 }
 
 /// A step that animates toward [value].
@@ -367,6 +396,69 @@ final class StepSync<T extends Object> extends TrackStep<T> {
   String toString() => '${objectRuntimeType(this, 'StepSync')}($token)';
 }
 
+/// A step that repeats [steps] according to [mode].
+@immutable
+final class StepLoop<T extends Object> extends TrackStep<T> {
+  /// Creates a loop step.
+  const StepLoop(
+    this.steps, {
+    this.mode = LoopMode.loop,
+    this.count,
+    this.together,
+  }) : assert(
+          count == null || count > 0,
+          'TrackStep.loop count must be positive.',
+        );
+
+  /// The steps to repeat.
+  ///
+  /// Steps compare by this list, so do not modify it after passing it in.
+  final List<TrackStep<T>> steps;
+
+  /// How [steps] repeat.
+  final LoopMode mode;
+
+  /// How many cycles to play before moving on to the next step, or `null` to
+  /// repeat indefinitely (when [mode] loops).
+  ///
+  /// For [LoopMode.pingPong], one cycle is a full forward-and-reverse
+  /// round-trip. Ignored when [mode] is [LoopMode.none], which always plays
+  /// once.
+  final int? count;
+
+  /// Optional token that keeps sibling tracks' loops in lockstep.
+  ///
+  /// Every loop sharing the same [together] token (by `==`) waits for the
+  /// others at the end of each cycle before starting the next one (and at the
+  /// turnaround for [LoopMode.pingPong]).
+  final Object? together;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StepLoop<T> &&
+          other.runtimeType == runtimeType &&
+          listEquals(other.steps, steps) &&
+          other.mode == mode &&
+          other.count == count &&
+          other.together == together;
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        _hashList(steps),
+        mode,
+        count,
+        together,
+      );
+
+  @override
+  String toString() => '${objectRuntimeType(this, 'StepLoop')}($steps'
+      '${mode == LoopMode.loop ? '' : ', mode: ${mode.name}'}'
+      '${count == null ? '' : ', count: $count'}'
+      '${together == null ? '' : ', together: $together'})';
+}
+
 /// The [StepSync] a [TrackPhaseTimeline] inserts before each phase, with
 /// the phase as its token. A [TrackStep.at] after it counts from its
 /// release, the start of the phase.
@@ -374,6 +466,45 @@ final class StepSync<T extends Object> extends TrackStep<T> {
 final class PhaseBoundary<T extends Object> extends StepSync<T> {
   /// Creates the barrier before the phase [token].
   const PhaseBoundary({required super.token});
+}
+
+/// An implicit [StepSync] synthesized for [StepLoop.together].
+///
+/// Excluded from `onStep` reporting so caller-visible step indices match the
+/// authored leaf steps.
+@internal
+final class LoopBarrier<T extends Object> extends StepSync<T> {
+  /// Creates a barrier for a [StepLoop.together] token.
+  const LoopBarrier({required super.token});
+}
+
+/// Internal wrapper for [StepLoop.together] tokens so they cannot collide
+/// with user-supplied [TrackStep.sync] tokens.
+@internal
+@immutable
+final class LoopSyncToken {
+  /// Creates a wrapped loop-sync token.
+  const LoopSyncToken(this.token, {this.turnaround = false});
+
+  /// The user-supplied `together` token.
+  final Object token;
+
+  /// Whether this token synchronizes the mid-cycle turnaround of a
+  /// [LoopMode.pingPong] loop rather than the end of the cycle.
+  final bool turnaround;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LoopSyncToken &&
+      other.token == token &&
+      other.turnaround == turnaround;
+
+  @override
+  int get hashCode => Object.hash(LoopSyncToken, token, turnaround);
+
+  @override
+  String toString() =>
+      'LoopSyncToken($token${turnaround ? ', turnaround' : ''})';
 }
 
 int? _hashList(List<Object?>? list) =>

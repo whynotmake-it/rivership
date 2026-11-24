@@ -266,15 +266,18 @@ void main() {
       );
 
       unawaited(
-        controller.play(
-          [
-            const TrackStep.to(
+        controller.play([
+          const TrackStep.loop([
+            TrackStep.to(
               10,
               motion: Motion.linear(Duration(milliseconds: 100)),
             ),
-          ],
-          loop: LoopMode.loop,
-        ),
+            TrackStep.to(
+              0,
+              motion: Motion.linear(Duration(milliseconds: 100)),
+            ),
+          ]),
+        ]),
       );
 
       await tester.pump(const Duration(seconds: 1));

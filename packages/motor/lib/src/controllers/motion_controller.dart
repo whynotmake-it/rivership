@@ -11,7 +11,6 @@ import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/phase_transition.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_step.dart';
-import 'package:motor/src/track_timeline.dart';
 
 part 'sequence_motion_controller.dart';
 
@@ -357,10 +356,10 @@ class MotionController<T extends Object> extends Animation<T>
   ///
   /// The returned [MotionFuture] ends when the last step's motion has reached
   /// its duration and completes when playback has settled. Looping playback
-  /// runs until [stop], [animateTo], or [value] interrupts it.
+  /// (using [TrackStep.loop]) runs until [stop], [animateTo], or [value]
+  /// interrupts it.
   MotionFuture play(
     List<TrackStep<T>> steps, {
-    LoopMode? loop,
     void Function(int stepIndex)? onStep,
   }) {
     if (steps.isEmpty) return MotionFuture.complete();
@@ -368,11 +367,8 @@ class MotionController<T extends Object> extends Animation<T>
     _lastTarget = null;
     _reversing = false;
     _inner.stopTicker(canceled: true);
-    final future = _inner.play(
-      TrackTimeline(
-        [_track(_withDefaultMotions(steps))],
-        loop: loop ?? LoopMode.none,
-      ),
+    final future = _inner.animate(
+      [_track(_withDefaultMotions(steps))],
       onStep: onStep == null ? null : (track, index) => onStep(index),
     );
     _inner.resetVelocityTracking();
@@ -401,6 +397,18 @@ class MotionController<T extends Object> extends Animation<T>
               :final value,
             ) =>
               TrackStep.at(at, value, motionPerDimension: _motionPerDimension),
+            StepLoop<T>(
+              :final steps,
+              :final mode,
+              :final count,
+              :final together,
+            ) =>
+              TrackStep.loop(
+                _withDefaultMotions(steps),
+                mode: mode,
+                count: count,
+                together: together,
+              ),
             _ => step,
           },
       ];

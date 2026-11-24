@@ -110,6 +110,9 @@ class _TrackSlot<T extends Object> {
 
   Object? get pendingSyncToken => _stepPlayback?.pendingSyncToken;
 
+  bool canReachSyncToken(Object token) =>
+      _stepPlayback?.canReachSyncToken(token) ?? false;
+
   /// When this slot arrived at its pending barrier, on the controller clock.
   Duration get pendingSyncArrival =>
       _startOffset + _fromSeconds(_stepPlayback!.pendingSyncArrivalSeconds);
@@ -196,7 +199,6 @@ class _TrackSlot<T extends Object> {
   void play(
     List<TrackStep<T>> steps, {
     required Duration startOffset,
-    LoopMode loop = LoopMode.none,
     List<double>? velocity,
     List<List<double>>? waypoints,
     Duration delay = Duration.zero,
@@ -213,7 +215,6 @@ class _TrackSlot<T extends Object> {
       initialValues: _currentValues,
       initialVelocities: velocity ?? _velocities,
       waypoints: waypoints,
-      loop: loop,
       fallbackMotion: fallbackMotion,
       fallbackMotionPerDimension: fallbackMotionPerDimension,
       incoming: incoming,

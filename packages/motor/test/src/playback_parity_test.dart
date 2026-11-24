@@ -17,11 +17,11 @@ void main() {
     testWidgets('scrubbing a fresh controller matches live playback',
         (tester) async {
       final track = Track<double>(MotionConverter.single, initial: 0);
-      TrackTimeline timeline() => TrackTimeline([
+      List<TrackAnimation> plan() => [
             track(_freeThenSprings, withVelocity: 5),
-          ]);
+          ];
 
-      final live = TrackController(vsync: tester)..play(timeline());
+      final live = TrackController(vsync: tester)..animate(plan());
       await tester.pump();
       final values = <double>[];
       for (var i = 1; i <= 480; i++) {
@@ -30,7 +30,7 @@ void main() {
       }
       live.stop(canceled: true);
 
-      final scrubbed = TrackController(vsync: tester)..play(timeline());
+      final scrubbed = TrackController(vsync: tester)..animate(plan());
       scrubbed
         ..pause()
         ..scrubTo(const Duration(microseconds: 16667 * 480));
@@ -58,7 +58,7 @@ void main() {
         addTearDown(subscription.dispose);
         final plan = _GeneratedPlan.generate(math.Random(seed), loop);
 
-        final live = TrackController(vsync: tester)..play(plan.timeline);
+        final live = TrackController(vsync: tester)..animate(plan.animations);
         final recorded =
             await _record(tester, live, plan.tracks, frames, frame);
         live
@@ -66,7 +66,7 @@ void main() {
           ..dispose();
 
         final scrubbed = TrackController(vsync: tester)
-          ..play(plan.timeline)
+          ..animate(plan.animations)
           ..pause()
           ..scrubTo(recorded.last.position);
         for (var i = frames; i >= 0; i -= 3) {
@@ -87,7 +87,8 @@ void main() {
         final redirectAt = 30 + random.nextInt(frames - 60);
         final redirect = plan.tracks.first.call(_steps(random, const []));
 
-        final controller = TrackController(vsync: tester)..play(plan.timeline);
+        final controller = TrackController(vsync: tester)
+          ..animate(plan.animations);
         final recorded = await _record(
           tester,
           controller,
@@ -181,7 +182,7 @@ void _expectValues(
 }
 
 class _GeneratedPlan {
-  _GeneratedPlan(this.tracks, this.timeline);
+  _GeneratedPlan(this.tracks, this.animations);
 
   factory _GeneratedPlan.generate(math.Random random, LoopMode loop) {
     final tokens = [#a, #b].sublist(0, random.nextInt(3));
@@ -191,15 +192,19 @@ class _GeneratedPlan {
     ];
     return _GeneratedPlan(
       tracks,
-      TrackTimeline(
-        [for (final track in tracks) track(_steps(random, tokens))],
-        loop: loop,
-      ),
+      [
+        for (final track in tracks)
+          track(
+            loop == LoopMode.none
+                ? _steps(random, tokens)
+                : [TrackStep.loop(_steps(random, tokens), mode: loop)],
+          ),
+      ],
     );
   }
 
   final List<Track<double>> tracks;
-  final TrackTimeline timeline;
+  final List<TrackAnimation> animations;
 }
 
 final _motions = <Motion>[
