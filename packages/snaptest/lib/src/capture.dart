@@ -18,6 +18,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/src/blocked_text_painting_context.dart';
+import 'package:snaptest/src/video/overlay_renderer.dart';
 import 'package:snaptest/src/video/video_settings.dart';
 
 /// The result of capturing an element's closest [RepaintBoundary].
@@ -245,81 +246,6 @@ Future<ui.Image> cropCapturedImage(
   return croppedImage;
 }
 
-/// Paints a touch indicator over every [logicalPositions] entry.
-///
-/// Positions are in logical view coordinates (e.g. `PointerEvent.position`)
-/// and are mapped into image coordinates the same way [cropCapturedImage]
-/// maps crops, so indicators land correctly inside composited device frames
-/// and subtree captures. Positions outside [CapturedImage.logicalBounds]
-/// are skipped.
-///
-/// Disposes [image]. Returns a new image that the caller must dispose.
-@internal
-Future<ui.Image> drawPointerIndicators(
-  ui.Image image,
-  CapturedImage captured,
-  Iterable<Offset> logicalPositions, {
-  PointerIndicatorPainter? painter,
-}) async {
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder)..drawImage(image, Offset.zero, Paint());
-  _paintPointerIndicators(canvas, captured, logicalPositions, painter: painter);
-  final picture = recorder.endRecording();
-  final output = await picture.toImage(image.width, image.height);
-  picture.dispose();
-  image.dispose();
-  return output;
-}
-
-void _paintPointerIndicators(
-  Canvas canvas,
-  CapturedImage captured,
-  Iterable<Offset> logicalPositions, {
-  PointerIndicatorPainter? painter,
-}) {
-  final scaleX =
-      captured.imageContentBounds.width / captured.logicalBounds.width;
-  final scaleY =
-      captured.imageContentBounds.height / captured.logicalBounds.height;
-
-  const logicalRadius = 14.0;
-  final ringPaint = Paint()
-    ..color = const Color(0xB3000000)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.5 * scaleX;
-  final fillPaint = Paint()..color = const Color(0xB3FFFFFF);
-
-  for (final position in logicalPositions) {
-    if (!captured.logicalBounds.contains(position)) {
-      continue;
-    }
-    final center = Offset(
-      captured.imageContentBounds.left +
-          (position.dx - captured.logicalBounds.left) * scaleX,
-      captured.imageContentBounds.top +
-          (position.dy - captured.logicalBounds.top) * scaleY,
-    );
-    if (painter != null) {
-      painter(canvas, center, scaleX);
-    } else {
-      final radius = logicalRadius * scaleX;
-      _drawTouchIndicator(canvas, center, radius, fillPaint, ringPaint);
-    }
-  }
-}
-
-void _drawTouchIndicator(
-  Canvas canvas,
-  Offset center,
-  double radius,
-  Paint fill,
-  Paint ring,
-) {
-  canvas
-    ..drawCircle(center, radius, fill)
-    ..drawCircle(center, radius, ring);
-}
-
 /// Wraps the given [image] with a device frame for the specified [device].
 ///
 /// This creates a new image that includes the device frame around the content
@@ -425,18 +351,20 @@ class VideoFrameCapture {
   DeviceInfo? _device;
   Orientation? _orientation;
   late bool _deviceFrameDirty = true;
-  late List<Offset> _pointers = [];
+  bool _lastHadOverlay = false;
   ui.Picture? _devicePicture;
   CapturedImage? _scene;
   late Path _screenPath;
   late Size _deviceSize;
 
   /// Returns null only when the complete captured scene is unchanged.
+  ///
+  /// [overlay] is drawn over the app content; it is not disposed.
   Future<ui.Image?> capture(
     Element element, {
     required DeviceInfo? device,
     required Orientation orientation,
-    required Iterable<Offset> pointers,
+    OverlayImage? overlay,
   }) async {
     var renderObject = element.renderObject!;
     while (!renderObject.isRepaintBoundary) {
@@ -450,7 +378,6 @@ class VideoFrameCapture {
             renderObject.getTransformTo(null),
             renderObject.paintBounds,
           );
-    final positions = pointers.toList();
     final framedDevice = settings.includeDeviceFrame ? device : null;
     layer.updateSubtreeNeedsAddToScene();
     if (identical(layer, _lastLayer) &&
@@ -463,8 +390,8 @@ class VideoFrameCapture {
         framedDevice == _device &&
         orientation == _orientation &&
         !_deviceFrameDirty &&
-        listEquals(positions, _pointers) &&
-        settings.pointerIndicator == null &&
+        overlay == null &&
+        !_lastHadOverlay &&
         !_hasExternalContent(layer)) {
       return null;
     }
@@ -497,7 +424,7 @@ class VideoFrameCapture {
       }
     }
     final captured = await captureElementImage(element);
-    if (settings.showPointers || settings.pointerIndicator != null) {
+    if (settings.effectiveOverlay != null) {
       _scene?.image.dispose();
       _scene = CapturedImage(
         image: captured.image.clone(),
@@ -510,18 +437,20 @@ class VideoFrameCapture {
     _lastEngineLayer = layer.engineLayer;
     _lastBounds = bounds;
     _lastPaintBounds = renderObject.paintBounds;
-    _pointers = positions;
-    return _compose(captured, positions);
+    _lastHadOverlay = overlay != null;
+    return _compose(captured, overlay);
   }
 
-  /// Repaints only overlays on the previous painted scene, not a future scene.
-  Future<ui.Image> captureOverlay(List<Offset> pointers) => _compose(
+  /// Draws [overlay] on the previous painted scene, not a future scene.
+  ///
+  /// [overlay] is not disposed.
+  Future<ui.Image> captureOverlay(OverlayImage overlay) => _compose(
     CapturedImage(
       image: _scene!.image.clone(),
       logicalBounds: _scene!.logicalBounds,
       imageContentBounds: _scene!.imageContentBounds,
     ),
-    pointers,
+    overlay,
   );
 
   void _markDeviceFrameDirty() => _deviceFrameDirty = true;
@@ -544,7 +473,7 @@ class VideoFrameCapture {
 
   Future<ui.Image> _compose(
     CapturedImage captured,
-    List<Offset> positions,
+    OverlayImage? overlay,
   ) async {
     final image = captured.image;
     final framed = _devicePicture != null;
@@ -561,7 +490,7 @@ class VideoFrameCapture {
             ? const Color(0x00000000)
             : const Color(0xFFFFFFFF));
     if (!framed &&
-        positions.isEmpty &&
+        overlay == null &&
         crop == null &&
         background.a == 0 &&
         image.width.isEven &&
@@ -583,16 +512,20 @@ class VideoFrameCapture {
           ..drawPicture(_devicePicture!)
           ..clipPath(_screenPath);
       }
+      canvas.drawImageRect(image, imageBounds(image), content, Paint());
+      if (overlay != null) {
+        // Over the app content and inside the device's screen clip, so the
+        // overlay never covers the bezel.
+        canvas.drawImageRect(
+          overlay.image,
+          imageBounds(overlay.image),
+          _mapLogicalRect(overlay.logicalBounds, mapping),
+          Paint(),
+        );
+      }
       canvas
-        ..drawImageRect(image, imageBounds(image), content, Paint())
+        ..restore()
         ..restore();
-      _paintPointerIndicators(
-        canvas,
-        mapping,
-        positions,
-        painter: settings.pointerIndicator,
-      );
-      canvas.restore();
       if (crop == null) {
         width += width & 1;
         height += height & 1;
@@ -612,7 +545,7 @@ class VideoFrameCapture {
       image.dispose();
     }
     // Crop the rasterized overlays, not their vector commands: scaling
-    // vectors first would change antialiasing and pointer edge pixels.
+    // vectors first would change antialiasing and overlay edge pixels.
     if (crop != null) {
       final cropped = await cropCapturedImage(output, crop!, mapping);
       final paddedWidth = cropped.width + (cropped.width & 1);
@@ -635,6 +568,22 @@ class VideoFrameCapture {
       }
     }
     return output;
+  }
+
+  /// Maps [rect] from logical view coordinates into [mapping]'s image.
+  Rect _mapLogicalRect(Rect rect, CapturedImage mapping) {
+    final scaleX =
+        mapping.imageContentBounds.width / mapping.logicalBounds.width;
+    final scaleY =
+        mapping.imageContentBounds.height / mapping.logicalBounds.height;
+    return Rect.fromLTWH(
+      mapping.imageContentBounds.left +
+          (rect.left - mapping.logicalBounds.left) * scaleX,
+      mapping.imageContentBounds.top +
+          (rect.top - mapping.logicalBounds.top) * scaleY,
+      rect.width * scaleX,
+      rect.height * scaleY,
+    );
   }
 
   /// Releases cached engine resources when recording ends.

@@ -1,3 +1,4 @@
+/// @docImport 'package:flutter/rendering.dart';
 /// @docImport 'package:flutter_test/flutter_test.dart';
 /// @docImport 'package:snaptest/src/snap.dart';
 /// @docImport 'package:snaptest/src/test_devices_variant.dart';
@@ -5,10 +6,11 @@
 /// @docImport 'package:snaptest/src/video/snap_recording.dart';
 library;
 
-import 'dart:ui';
-
+import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:snaptest/src/constants.dart';
+import 'package:snaptest/src/video/pointer_overlay.dart';
+import 'package:snaptest/src/video/video_frame.dart';
 
 /// How a [SnapRecording] advances the test clock while observing pumps.
 enum VideoTiming {
@@ -140,14 +142,6 @@ class _Vp9Encoding extends VideoEncoding {
   ];
 }
 
-/// Paints the indicator for one held pointer onto a captured frame.
-///
-/// [center] is the pointer's position in image coordinates; [scale]
-/// converts Flutter logical pixels to image pixels, so e.g. a 12-logical-px
-/// radius is `12 * scale`.
-typedef PointerIndicatorPainter =
-    void Function(Canvas canvas, Offset center, double scale);
-
 /// What to do when a recording or its encoder fails.
 enum VideoFailurePolicy {
   /// Throw a [SnapVideoException]. This is the default.
@@ -184,7 +178,7 @@ class SnapVideoSettings {
     this.renderShadows = false,
     this.showPointers = false,
     this.minimumPointerDuration = Duration.zero,
-    this.pointerIndicator,
+    this.overlay,
     this.backgroundColor,
     this.pathPrefix = kDefaultPathPrefix,
     this.finalHold = Duration.zero,
@@ -225,36 +219,85 @@ class SnapVideoSettings {
   /// repainted without pumping or advancing the test clock.
   final bool renderShadows;
 
-  /// Whether to paint a touch indicator over each active pointer.
+  /// Whether to show where pointers are, using [SnapPointerOverlay].
   ///
-  /// The observing binding tracks down/move/up pointer events and
-  /// composites a ring-and-dot indicator at each current position, like a
-  /// screen-recording "show touches" overlay. Useful for demos that should
-  /// visualize gestures. Indicators appear only while a pointer is held
-  /// across a captured frame — a quick tap between pumps shows no dot.
+  /// Like a screen recorder's "show touches", this draws an animated
+  /// indicator at each pointer: a soft dot for a hovering mouse or stylus,
+  /// a ring-and-dot that springs in on press and follows the pointer, and a
+  /// fade-out on release. Indicators appear only in captured frames, so a
+  /// quick tap between pumps shows nothing unless [minimumPointerDuration]
+  /// keeps it around.
   ///
-  /// Set [minimumPointerDuration] to keep quick taps visible.
-  /// Defaults to `false`.
+  /// Ignored when [overlay] is set; build a [SnapPointerOverlay] there to
+  /// combine it with your own overlay. Defaults to `false`.
   final bool showPointers;
 
   /// Minimum simulated time to show a pointer, measured from pointer-down.
   ///
-  /// Defaults to zero: indicators appear only while held across a captured
-  /// frame. For demos, e.g. `Duration(milliseconds: 100)` also shows taps
-  /// between pumps. A released pointer stays at its last position until its
-  /// minimum duration expires; cancellation removes it immediately.
+  /// After pointer-up a pointer stays in [SnapVideoFrame.pointers] as
+  /// [SnapPointerPhase.released] until this much time has passed since its
+  /// pointer-down. Defaults to zero, which drops it on release. For demos,
+  /// e.g. `Duration(milliseconds: 100)` also shows taps between pumps and
+  /// gives overlays a released phase to animate. Cancellation removes a
+  /// pointer immediately.
   ///
   /// This changes only the overlay: it never pumps, advances the test clock,
   /// or extends the recording. A tap near the end may be cut short; use
   /// [finalHold] explicitly if it should remain visible after stopping.
   final Duration minimumPointerDuration;
 
-  /// A custom painter for visible pointer indicators.
+  /// A widget drawn over every captured frame, or `null` for none.
   ///
-  /// Called once per visible pointer per captured frame, in place of the
-  /// built-in ring-and-dot indicator — paint anything you like. Setting
-  /// this also enables indicators, as if [showPointers] were true.
-  final PointerIndicatorPainter? pointerIndicator;
+  /// Called with a [SnapVideoFrame] each time the recording captures a
+  /// frame. The overlay is one widget tree that lives for the whole
+  /// recording, so it can hold state: key per-pointer widgets by
+  /// [SnapPointer.id] to animate presses, follow positions and fade out
+  /// released pointers. Setting it enables pointer tracking regardless of
+  /// [showPointers].
+  ///
+  /// The overlay never joins your app's widget tree. It is built, laid out
+  /// and painted in a separate tree with its own [BuildOwner] and
+  /// [PipelineOwner], sized to the recorded view at the same device pixel
+  /// ratio, and its image is composited over each captured frame. Your
+  /// app's layout, hit testing, semantics and painted frames stay exactly
+  /// as without an overlay. The overlay covers the whole view in view
+  /// coordinates, so with a `from` finder or a `crop` you see the part over
+  /// the captured region. With [includeDeviceFrame] it is drawn over the app
+  /// and clipped to the device's screen, under the bezel; [backgroundColor]
+  /// stays behind everything.
+  ///
+  /// **Keep overlay animations finite.** The overlay's animations run on the
+  /// test's clock: they advance only when the test pumps, and an active
+  /// animation schedules frames just like one in your app. A repeating or
+  /// never-ending animation in the overlay keeps `pumpAndSettle` from ever
+  /// settling while the recording runs. The overlay is disposed when the
+  /// recording stops, which stops its animations.
+  ///
+  /// ```dart
+  /// SnapVideoSettings(
+  ///   minimumPointerDuration: const Duration(milliseconds: 300),
+  ///   overlay: (context, frame) => Stack(
+  ///     children: [
+  ///       SnapPointerOverlay(pointers: frame.pointers),
+  ///       Positioned(
+  ///         right: 8,
+  ///         bottom: 8,
+  ///         child: Text('${frame.elapsed.inMilliseconds} ms'),
+  ///       ),
+  ///     ],
+  ///   ),
+  /// )
+  /// ```
+  final SnapVideoOverlayBuilder? overlay;
+
+  /// The overlay a recording draws: [overlay], or a [SnapPointerOverlay]
+  /// when only [showPointers] is set.
+  @internal
+  SnapVideoOverlayBuilder? get effectiveOverlay =>
+      overlay ?? (showPointers ? _pointerOverlay : null);
+
+  static Widget _pointerOverlay(BuildContext context, SnapVideoFrame frame) =>
+      SnapPointerOverlay(pointers: frame.pointers);
 
   /// The background composited behind every frame.
   ///

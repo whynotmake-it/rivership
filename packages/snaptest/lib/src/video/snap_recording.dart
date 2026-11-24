@@ -22,8 +22,10 @@ import 'package:snaptest/src/capture.dart';
 import 'package:snaptest/src/test_devices_variant.dart';
 import 'package:snaptest/src/util.dart';
 import 'package:snaptest/src/video/ffmpeg_encoder.dart';
-import 'package:snaptest/src/video/pointer_indicators.dart';
+import 'package:snaptest/src/video/overlay_renderer.dart';
+import 'package:snaptest/src/video/pointer_tracker.dart';
 import 'package:snaptest/src/video/snaptest_binding.dart';
+import 'package:snaptest/src/video/video_frame.dart';
 import 'package:snaptest/src/video/video_settings.dart';
 // ignore: implementation_imports
 import 'package:test_api/src/backend/invoker.dart';
@@ -228,11 +230,15 @@ class SnapRecording {
   late int _originUs;
   late int _nextOutputFrame = 0;
   late final _frameCapture = VideoFrameCapture(settings, crop);
-  late final _pointerIndicators =
-      settings.minimumPointerDuration > Duration.zero &&
-          (settings.showPointers || settings.pointerIndicator != null)
-      ? PointerIndicators(settings.minimumPointerDuration)
-      : null;
+  late final _overlayBuilder = settings.effectiveOverlay;
+  late final _pointers = _overlayBuilder == null
+      ? null
+      : PointerTracker(settings.minimumPointerDuration);
+  OverlayRenderer? _overlay;
+
+  /// Overlay-only frames rendered in the fake zone, waiting to be
+  /// composited over the last captured scene.
+  final _pendingOverlayFrames = <({int timeUs, OverlayImage overlay})>[];
   final bool _previousDisableShadows = debugDisableShadows;
   Object? _streamError;
   // ignore: use_late_for_private_fields_and_variables
@@ -243,7 +249,6 @@ class SnapRecording {
   bool _sourceSeen = false;
   String? _truncationReason;
   Object? _captureError;
-  int? _pointerRecaptureUs;
   // ignore: use_late_for_private_fields_and_variables
   Future<File>? _stopFuture;
 
@@ -280,24 +285,59 @@ class SnapRecording {
     }
   }
 
-  /// Records overlay events without starting async work in a pointer callback.
+  /// Records a pointer event for the overlay, without rendering or
+  /// starting async work in a pointer callback.
   @internal
   void trackPointerEvent(PointerEvent event) =>
-      _pointerIndicators?.handle(event, _clockNowUs);
+      _pointers?.handle(event, _clockNowUs);
 
-  /// Flags the current clock time for a re-capture because a pointer
-  /// indicator changed (e.g. a pointer was released without any repaint).
+  /// Renders the overlay for [timeUs] in its own widget tree.
   ///
-  /// Called by [SnaptestWidgetsFlutterBinding.handlePointerEvent]. It only
-  /// marks a timestamp instead of starting a second real-async section — a
-  /// concurrent `runAsync` asserts on reentrancy, and its inline fallback
-  /// would run `dart:io` in the FakeAsync zone and hang. The flag is drained
-  /// by the next [_captureAt] or by [_doFinalize], both already inside a
-  /// real-async section.
-  @internal
-  void markPointerStateChanged() {
-    if (!isCapturing || _isPlaceholderScene()) return;
-    _pointerRecaptureUs ??= _clockNowUs;
+  /// Synchronous, so it runs in the test's fake-async zone where the
+  /// overlay's tickers live; only rasterization happens later.
+  OverlayImage _renderOverlay(int timeUs, List<SnapPointer> pointers) {
+    final view = _binding.platformDispatcher.implicitView!;
+    final size = view.physicalSize / view.devicePixelRatio;
+    final originUs = _frames.isEmpty ? timeUs : _frames.first.timeUs;
+    final frame = SnapVideoFrame(
+      pointers: pointers,
+      elapsed: Duration(microseconds: math.max(0, timeUs - originUs)),
+      size: size,
+    );
+    final overlay = _overlay ??= OverlayRenderer(
+      builder: _overlayBuilder!,
+      size: size,
+      devicePixelRatio: view.devicePixelRatio,
+    );
+    return overlay.render(frame, view.devicePixelRatio);
+  }
+
+  /// Renders an overlay-only frame for every pointer change up to
+  /// [throughUs], or only strictly before it unless [inclusive].
+  ///
+  /// These frames show pointer changes between pumps (a tap, a release, an
+  /// expired [SnapVideoSettings.minimumPointerDuration]) over the last
+  /// painted scene, at the time they happened.
+  void _renderPointerChanges(int throughUs, {required bool inclusive}) {
+    final tracker = _pointers;
+    if (tracker == null) return;
+    for (final change in tracker.takeChangesThrough(throughUs)) {
+      if (_frames.isEmpty) continue;
+      if (change.timeUs < throughUs ||
+          (inclusive && change.timeUs == throughUs)) {
+        _pendingOverlayFrames.add((
+          timeUs: change.timeUs,
+          overlay: _renderOverlay(change.timeUs, change.pointers),
+        ));
+      }
+    }
+  }
+
+  void _disposePendingOverlayFrames() {
+    for (final frame in _pendingOverlayFrames) {
+      frame.overlay.dispose();
+    }
+    _pendingOverlayFrames.clear();
   }
 
   /// Drives one observed or subdivided pump for this recording.
@@ -315,11 +355,11 @@ class SnapRecording {
         duration <= Duration.zero) {
       // Observed mode (and smooth mode's zero/null-duration pumps): run the
       // pump exactly once, then capture if it painted.
+      _renderPointerChanges(_clockNowUs, inclusive: true);
       final framesBefore = binding.drawnFrameCount;
       await binding.pumpOnce(duration, phase);
       if (_paintedSince(framesBefore, phase) ||
-          (_pointerIndicators != null &&
-              phase.index >= EnginePhase.paint.index)) {
+          (_pointers != null && phase.index >= EnginePhase.paint.index)) {
         await _captureAt(_clockNowUs);
       }
       return;
@@ -336,11 +376,11 @@ class SnapRecording {
       final remaining = deadlineUs - nowUs;
       if (stepUs > remaining) stepUs = remaining;
 
+      _renderPointerChanges(nowUs, inclusive: true);
       final framesBefore = binding.drawnFrameCount;
       await binding.pumpOnce(Duration(microseconds: stepUs), phase);
       if (_paintedSince(framesBefore, phase) ||
-          (_pointerIndicators != null &&
-              phase.index >= EnginePhase.paint.index)) {
+          (_pointers != null && phase.index >= EnginePhase.paint.index)) {
         await _captureAt(_clockNowUs);
       }
     }
@@ -394,49 +434,40 @@ class SnapRecording {
     if (_frames.isNotEmpty && _frames.last.timeUs == timeUs) {
       _frames.removeLast();
     }
-    // A pending pointer-state recapture is drained inside this same
-    // real-async section — a second runAsync would trip the reentrancy
-    // assert. If the flag's instant matches the new capture's, the
-    // post-release state is already what gets captured below.
-    final pendingUs = _pointerRecaptureUs;
-    if (pendingUs != null && pendingUs < timeUs) {
-      _pointerRecaptureUs = null;
-      // A frame captured at the release instant already observed the
-      // release; only strictly-earlier states kept the indicator.
-      if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
-        _frames.removeLast();
-      }
-    } else if (pendingUs == timeUs) {
-      _pointerRecaptureUs = null;
-    }
+    // Render the overlay here, in the fake zone, before the real-async
+    // section: building widgets there would leave the test's clock.
+    _renderPointerChanges(timeUs, inclusive: false);
+    final pending = List.of(_pendingOverlayFrames);
+    _pendingOverlayFrames.clear();
+    final tracker = _pointers;
+    final overlay = tracker == null
+        ? null
+        : _renderOverlay(timeUs, tracker.pointersAt(timeUs));
     // binding.runAsync (not maybeRunAsync): the returned future is created
     // in the real zone, so code outside the test's fake zone — like the
     // addTearDown finalizer — can await it without stalling on the fake
     // microtask queue.
     final task = _binding.runAsync(() async {
       try {
-        final indicators = _pointerIndicators;
-        if (indicators != null) {
-          for (final change in indicators.takeChangesThrough(timeUs)) {
-            if (!isCapturing) break;
-            if (_frames.isNotEmpty && change.timeUs < timeUs) {
-              await _captureFrame(
-                change.timeUs,
-                pointers: change.positions,
-                overlayOnly: true,
-              );
-            }
-          }
-        }
-        if (pendingUs != null && pendingUs < timeUs) {
-          await _captureFrame(pendingUs);
+        for (final frame in pending) {
+          if (!isCapturing) break;
+          await _captureFrame(
+            frame.timeUs,
+            overlay: frame.overlay,
+            overlayOnly: true,
+          );
         }
         if (isCapturing) {
-          await _captureFrame(timeUs, pointers: indicators?.positions);
+          await _captureFrame(timeUs, overlay: overlay);
         }
       } catch (e) {
         _captureError = e;
         _truncate('Capture failed: $e');
+      } finally {
+        for (final frame in pending) {
+          frame.overlay.dispose();
+        }
+        overlay?.dispose();
       }
     });
     await task;
@@ -444,7 +475,7 @@ class SnapRecording {
 
   Future<void> _captureFrame(
     int timeUs, {
-    List<Offset>? pointers,
+    OverlayImage? overlay,
     bool overlayOnly = false,
   }) async {
     final element = overlayOnly ? null : _resolveSourceElement();
@@ -456,16 +487,12 @@ class SnapRecording {
     final orientation = activeDeviceVariant?.$2 ?? Orientation.portrait;
 
     final image = overlayOnly
-        ? await _frameCapture.captureOverlay(pointers!)
+        ? await _frameCapture.captureOverlay(overlay!)
         : await _frameCapture.capture(
             element!,
             device: device,
             orientation: orientation,
-            pointers:
-                pointers ??
-                (settings.showPointers || settings.pointerIndicator != null
-                    ? _binding.activePointerPositions.values
-                    : const <Offset>[]),
+            overlay: overlay,
           );
     final Uint8List bytes;
     if (image == null) {
@@ -646,6 +673,7 @@ class SnapRecording {
     if (_state != _RecordingState.capturing) return;
     _state = _RecordingState.frozen;
     _stopUs = _binding.inTest ? _clockNowUs : null;
+    _finishOverlay();
     if (_binding.activeRecording == this) {
       _binding.activeRecording = null;
     }
@@ -653,9 +681,25 @@ class SnapRecording {
       debugDisableShadows = _previousDisableShadows;
       _repaintScene();
     }
-    // A recording stopped mid-drag must not leak held pointers into the
-    // next recording's indicators.
-    _binding.activePointerPositions.clear();
+  }
+
+  /// Renders the pointer changes still to come in the video, then disposes
+  /// the overlay tree, which stops its animations.
+  ///
+  /// Runs synchronously while freezing: the overlay must be gone before
+  /// the test checks for leftover animations, but pointer changes up to the
+  /// end of [SnapVideoSettings.finalHold] still belong in the video.
+  void _finishOverlay() {
+    final stopUs = _stopUs;
+    if (_truncationReason == null &&
+        stopUs != null &&
+        _pointers != null &&
+        _frames.isNotEmpty) {
+      final endUs = stopUs + settings.finalHold.inMicroseconds;
+      _renderPointerChanges(endUs, inclusive: endUs == stopUs);
+    }
+    _overlay?.dispose();
+    _overlay = null;
   }
 
   void _truncate(String reason) {
@@ -719,44 +763,21 @@ class SnapRecording {
     await _pendingWrite;
 
     try {
-      if (_pointerIndicators case final indicators?) {
-        if (_frames.isNotEmpty) {
-          final endUs =
-              (_stopUs ?? _frames.last.timeUs) +
-              settings.finalHold.inMicroseconds;
-          for (final change in indicators.takeChangesThrough(endUs)) {
-            if (_truncationReason != null) break;
-            if (change.timeUs <= (_stopUs ?? _frames.last.timeUs) ||
-                change.timeUs < endUs) {
-              await _captureFrame(
-                change.timeUs,
-                pointers: change.positions,
-                overlayOnly: true,
-              );
-            }
-          }
-        }
-      }
-
-      // A pointer-release recapture flagged near the end drains here, inside
-      // this same real-async section.
-      final pendingUs = _pointerRecaptureUs;
-      if (pendingUs != null) {
-        _pointerRecaptureUs = null;
-        if (_frames.isNotEmpty && _frames.last.timeUs >= pendingUs) {
-          _frames.removeLast();
-        }
+      // Pointer changes after the last pump, rendered while freezing.
+      for (final frame in _pendingOverlayFrames) {
+        if (_truncationReason != null) break;
         try {
           await _captureFrame(
-            pendingUs,
-            pointers: _binding.activePointerPositions.values.toList(),
-            overlayOnly: _frames.isNotEmpty,
+            frame.timeUs,
+            overlay: frame.overlay,
+            overlayOnly: true,
           );
         } catch (e) {
           _captureError = e;
           _truncate('Capture failed: $e');
         }
       }
+      _disposePendingOverlayFrames();
 
       if (_frames.isEmpty) {
         throw SnapVideoException(
@@ -786,6 +807,7 @@ class SnapRecording {
       }
       return output;
     } finally {
+      _disposePendingOverlayFrames();
       await _encoder?.abort();
       _frameCapture.dispose();
       _pendingPixels = null;
