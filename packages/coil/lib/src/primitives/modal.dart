@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/colors.dart';
-import 'package:coil/src/foundation/metrics.dart';
 import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/style.dart';
 import 'package:coil/src/foundation/theme.dart';
@@ -339,8 +338,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
   /// The presentation a modal at [context] gets when none is given: a
   /// sheet on the touch tier in a compact window, centered elsewhere.
   static CoilModalPresentation adaptivePresentationOf(BuildContext context) =>
-      CoilTheme.tierOf(context) == CoilTier.touch &&
-          MediaQuery.sizeOf(context).width < CoilAdaptivePopup.compactWidth
+      CoilAdaptivePopup.isPhone(context)
       ? CoilModalPresentation.sheet
       : CoilModalPresentation.centered;
 

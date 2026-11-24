@@ -47,6 +47,7 @@ DateTime _at(int daysAhead, int hour, [int minute = 0]) {
 enum _Presentation {
   auto('Auto', null),
   popover('Popover', CoilPresentation.popover),
+  floating('Panel', CoilPresentation.floating),
   sheet('Sheet', CoilPresentation.sheet);
 
   const _Presentation(this.label, this.value);
@@ -73,8 +74,8 @@ class _DatePickerPageState extends State<DatePickerPage> {
     title: 'DatePicker',
     summary:
         'The calendar opens in a popover next to the field on a pointer and '
-        'as a sheet on a phone. Picking a day commits straight away, and '
-        'when a time comes with it the sheet waits for Done.',
+        'in a floating panel on a phone. Picking a day commits straight away, '
+        'and when a time comes with it the panel waits for Done.',
     hero: const _TaskForm(),
     usage: '''
 CoilField(
@@ -96,9 +97,9 @@ CoilField(
       ),
       CatalogNote(
         'Touch',
-        'On a phone it opens a sheet whose footer names the date you have '
-            'drafted so far and keeps Done pinned in view. The close button, '
-            'the scrim, a drag downwards and the back gesture all cancel.',
+        'On a phone it opens a floating panel whose footer names the date you '
+            'have drafted so far and keeps Done in view. The close button, the '
+            'scrim, a swipe sideways or down and the back gesture all cancel.',
       ),
       CatalogNote(
         'Keyboard',
@@ -108,9 +109,9 @@ CoilField(
       ),
       CatalogNote(
         'Accessibility',
-        'The hour and minute columns are announced as adjustable, so a screen '
-            'reader user can swipe up or down to change the time instead of '
-            'scrolling the wheel.',
+        'The hour and minute are announced as adjustable, so a screen reader '
+            'user can swipe up or down to change the time instead of scrolling '
+            'or typing.',
       ),
     ],
     children: [

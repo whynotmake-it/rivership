@@ -64,7 +64,8 @@ class _CalendarPageState extends State<CalendarPage> {
       title: 'Calendar',
       summary:
           'Pick a day and everything that depends on it updates. You can '
-          'swipe or use the arrows to page through months, and tapping the '
+          'scroll through the weeks, which come to rest on a month, or use the '
+          'arrows, and tapping the '
           'month name zooms out so you can jump across years.',
       hero: const _Booking(),
       usage: '''

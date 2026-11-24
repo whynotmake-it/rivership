@@ -1,29 +1,33 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/calendar/calendar_layout.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// The month view a calendar zooms out to: a horizontal pager, one year
-/// per page, each year's twelve months three across and four down. The
-/// calendar's title names the year, so the months take the page.
+/// The month view a calendar zooms out to: a vertical scroll of years, each
+/// year's twelve months three across and four down, four rows to the year
+/// and the viewport exactly one year tall. It scrolls like the days do, and
+/// lands on a year boundary (`CalendarSnapPhysics`). The calendar's title
+/// names the year, so the months take the room.
 ///
 /// It opens on [month]'s year. Months outside [firstMonth] and [lastMonth]
-/// are dimmed and can't be picked; the pages end at their years. The
+/// are dimmed and can't be picked; the scroll ends at their years. The
 /// month of [selected] is filled like a selected day, and this month is
 /// semibold, like today. The keyboard's month, which the title zooms back
 /// into, has the pressed wash while it isn't the selected one.
 ///
 /// The view keeps a month the keyboard acts on (it starts on [month]) and
 /// reports the month a calendar's title names with [onShown]: that month in
-/// the year more than half in view, so it changes mid-swipe.
+/// the year in the middle of the view, so it changes mid-scroll.
 ///
 /// It's one focus stop: the arrows move a month (Up and Down a row of
 /// three), PageUp and PageDown a year, Enter or Space picks, and Escape
-/// calls [onClose]. A keyboard move into another year turns the page.
+/// calls [onClose]. A keyboard move into another year scrolls to it.
 class CalendarMonthView extends StatefulWidget {
   /// Creates the month view.
   const CalendarMonthView({
@@ -84,22 +88,32 @@ class CalendarMonthView extends StatefulWidget {
   State<CalendarMonthView> createState() => CalendarMonthViewState();
 }
 
-/// The state of a [CalendarMonthView]: a calendar's arrows turn its pages
-/// with [turn].
+/// The state of a [CalendarMonthView]: a calendar's arrows scroll it a year
+/// at a time with [turn].
 class CalendarMonthViewState extends State<CalendarMonthView> {
   /// The month the keyboard acts on.
   late DateTime _cursor = _clamp(widget.month);
 
-  /// The year more than half in view.
+  /// The year in the middle of the view.
   late int _shownYear = _cursor.year;
 
-  late final _pages = PageController(initialPage: _pageOf(_cursor.year));
+  /// The height of a year: the view's, from the last layout.
+  double _extent = 0;
+
+  late final _snap = CalendarSnap(
+    offsetOf: (index) => index * _extent,
+    indexAt: (offset) =>
+        _extent > 0 ? math.max(0, (offset / _extent + 1e-6).floor()) : 0,
+  );
+  late final _scroll = CalendarScrollController(
+    snap: _snap,
+    initialOffset: () => _pageOf(_cursor.year) * _extent,
+  );
   final _active = CoilActiveItemController();
 
   int get _firstYear => widget.firstMonth?.year ?? 1;
 
-  /// The last year's page; the pages go on without a last month, as the
-  /// days do.
+  /// The last year; the years go on without a last month, as the days do.
   int? get _lastYear => widget.lastMonth?.year;
 
   bool _hasYear(int year) => year == _clampYear(year);
@@ -110,11 +124,12 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
     return year;
   }
 
+  /// The index of [year]'s chunk.
   int _pageOf(int year) => year - _firstYear;
 
   @override
   void dispose() {
-    _pages.dispose();
+    _scroll.dispose();
     _active.dispose();
     super.dispose();
   }
@@ -139,8 +154,8 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
     return month;
   }
 
-  /// Turns the page by [years], taking the keyboard's month along: the
-  /// calendar's arrows.
+  /// Scrolls by [years], taking the keyboard's month along: the calendar's
+  /// arrows.
   void turn(int years) {
     final year = _shownYear + years;
     if (!_hasYear(year)) return;
@@ -154,7 +169,7 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
     _active.activate(next.month - 1, via: CoilModality.keyboard);
   }
 
-  /// Moves the keyboard's month to [month], turning to its year.
+  /// Moves the keyboard's month to [month], scrolling to its year.
   void _setCursor(DateTime month) {
     setState(() => _cursor = month);
     if (month.year != _shownYear) {
@@ -164,45 +179,40 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
     widget.onShown(month);
   }
 
-  /// Turns the pager to [year]: on the `standard` spring to a neighbor,
-  /// in one step further away.
+  /// Scrolls to [year]: on the `standard` spring to a neighbor, keeping the
+  /// speed it's moving at, in one step (a cut) further away.
   void _turnTo(int year) {
-    if (!_pages.hasClients) return;
-    final position = _pages.position;
-    final extent = position.viewportDimension;
-    final target = _pageOf(year) * extent;
-    if (position is! ScrollPositionWithSingleContext ||
-        (target - position.pixels).abs() > extent * 1.5) {
-      position.jumpTo(target);
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position as CalendarScrollPosition;
+    final index = _pageOf(year);
+    if ((index - _snap.nearestIndex(position.pixels)).abs() > 1) {
+      position.jumpTo(_snap.offsetOf(index));
       return;
     }
     final motion = CoilTheme.motionOf(context, override: widget.motion);
-    position.beginActivity(
-      BallisticScrollActivity(
-        position,
-        motion.standard.createSimulation(start: position.pixels, end: target),
-        position.context.vsync,
-        false,
-      ),
-    );
+    position.glideTo(_snap.offsetOf(index), motion.standard);
   }
 
-  /// The pager moved: the title follows the year more than half in view,
-  /// and once a swipe settles, the keyboard's month moves into it.
+  /// The view moved: the title follows the year in the middle of it, and
+  /// once it settles, the keyboard's month moves into that year.
   bool _onScroll(ScrollNotification notification) {
     final metrics = notification.metrics;
-    if (notification.depth != 0 || metrics.axis != Axis.horizontal) {
+    if (notification.depth != 0 ||
+        metrics.axis != Axis.vertical ||
+        _extent <= 0) {
       return false;
     }
-    final extent = metrics.viewportDimension;
-    if (extent <= 0) return false;
-    final page = (metrics.pixels / extent).round();
-    final year = _clampYear(_firstYear + page);
+    // The middle of the view is half a year down: its year is the nearest
+    // boundary's.
+    final year = _clampYear(_firstYear + _snap.nearestIndex(metrics.pixels));
     if (year != _shownYear) {
       _shownYear = year;
       widget.onShown(_clamp(DateTime(year, _cursor.month)));
     }
     if (notification is ScrollEndNotification && year != _cursor.year) {
+      // A wheel's tick ends before the spring that follows it begins.
+      final settled = _snap.nearestIndex(metrics.pixels);
+      if ((metrics.pixels - _snap.offsetOf(settled)).abs() > 1) return false;
       setState(() => _cursor = _clamp(DateTime(year, _cursor.month)));
       _active.clear();
     }
@@ -275,22 +285,44 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
             container: true,
             child: NotificationListener<ScrollNotification>(
               onNotification: _onScroll,
-              child: CalendarPagerClip(
-                bleed: widget.inset,
-                child: PageView.builder(
-                  controller: _pages,
-                  itemCount: switch (_lastYear) {
-                    final last? => last - _firstYear + 1,
-                    null => null,
-                  },
-                  pageSnapping: false,
-                  clipBehavior: Clip.none,
-                  // Hands drags off to a sheet it sits in: a vertical
-                  // drag moves the sheet.
-                  scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
-                  physics: CalendarPagePhysics(motion: motion.standard),
-                  itemBuilder: (context, page) => _year(_firstYear + page),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final extent = constraints.maxHeight;
+                  if (_scroll.hasClients && _extent > 0 && extent != _extent) {
+                    // Another height: the same year, the same place in it.
+                    _scroll.position.correctPixels(
+                      _scroll.position.pixels * extent / _extent,
+                    );
+                  }
+                  _extent = extent;
+                  _snap
+                    ..motion = motion.standard
+                    ..wheelThreshold = extent / 8;
+                  // The view is exactly a year tall; each year clips
+                  // itself (CalendarWindowClip), so the focus ring can
+                  // reach out.
+                  return CustomScrollView(
+                    controller: _scroll,
+                    clipBehavior: Clip.none,
+                    scrollCacheExtent: const ScrollCacheExtent.pixels(0),
+                    // Hands drags off to a sheet it sits in.
+                    scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
+                    physics: CalendarSnapPhysics(snap: _snap),
+                    slivers: [
+                      SliverFixedExtentList(
+                        itemExtent: extent,
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _year(_firstYear + index),
+                          childCount: switch (_lastYear) {
+                            final last? => last - _firstYear + 1,
+                            null => null,
+                          },
+                          addAutomaticKeepAlives: false,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -337,72 +369,79 @@ class CalendarMonthViewState extends State<CalendarMonthView> {
           ),
       ],
     );
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: widget.inset),
-      child: CoilHoverRegion(
-        axis: CoilHoverAxis.xy,
-        activeItem: current ? _active : null,
-        followFocus: false,
-        child: ListenableBuilder(
-          listenable: _active,
-          builder: (context, child) => CoilHoverHighlight(
-            radius: radius,
-            motion: widget.motion,
-            background: [
-              CoilHighlight(
-                debugLabel: 'CalendarMonthView.cursor',
-                target: cursorIndex,
-                motion: motion.quick,
-                exitMotion: motion.fadeExit,
-                exitTravelMotion: motion.quick,
-                fade: motion.fade,
-                decoration: ShapeDecoration(
-                  color: colors.active,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(radius),
+    final ring = current && widget.focusNode.hasFocus && _active.keyboardDriven;
+    return CalendarWindowClip(
+      controller: _scroll,
+      offset: _pageOf(year) * _extent,
+      height: _extent,
+      bleed: ring ? widget.inset : 0,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: widget.inset),
+        child: CoilHoverRegion(
+          axis: CoilHoverAxis.xy,
+          activeItem: current ? _active : null,
+          followFocus: false,
+          child: ListenableBuilder(
+            listenable: _active,
+            builder: (context, child) => CoilHoverHighlight(
+              radius: radius,
+              motion: widget.motion,
+              background: [
+                CoilHighlight(
+                  debugLabel: 'CalendarMonthView.cursor',
+                  target: cursorIndex,
+                  motion: motion.quick,
+                  exitMotion: motion.fadeExit,
+                  exitTravelMotion: motion.quick,
+                  fade: motion.fade,
+                  decoration: ShapeDecoration(
+                    color: colors.active,
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(radius),
+                    ),
                   ),
                 ),
-              ),
-              CoilHighlight(
-                debugLabel: 'CalendarMonthView.selected',
-                target: selectedIndex,
-                fadeIn: false,
-                motion: motion.standard,
-                exitMotion: motion.fadeExit,
-                exitTravelMotion: motion.standard,
-                fade: motion.fade,
-                decoration: ShapeDecoration(
-                  color: colors.foreground,
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: BorderRadius.circular(radius),
+                CoilHighlight(
+                  debugLabel: 'CalendarMonthView.selected',
+                  target: selectedIndex,
+                  fadeIn: false,
+                  motion: motion.standard,
+                  exitMotion: motion.fadeExit,
+                  exitTravelMotion: motion.standard,
+                  fade: motion.fade,
+                  decoration: ShapeDecoration(
+                    color: colors.foreground,
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(radius),
+                    ),
                   ),
                 ),
-              ),
-            ],
-            foreground: [
-              CoilHighlight(
-                debugLabel: 'CalendarMonthView.ring',
-                target:
-                    current &&
-                        widget.focusNode.hasFocus &&
-                        _active.keyboardDriven
-                    ? _active.index
-                    : null,
-                fadeIn: false,
-                motion: motion.quick,
-                exitMotion: motion.fadeExit,
-                exitTravelMotion: motion.quick,
-                fade: motion.fade,
-                inflate: theme.focusRing.extent,
-                decoration: theme.focusRing.decorationAround(
-                  colors,
-                  radius: radius,
+              ],
+              foreground: [
+                CoilHighlight(
+                  debugLabel: 'CalendarMonthView.ring',
+                  target:
+                      current &&
+                          widget.focusNode.hasFocus &&
+                          _active.keyboardDriven
+                      ? _active.index
+                      : null,
+                  fadeIn: false,
+                  motion: motion.quick,
+                  exitMotion: motion.fadeExit,
+                  exitTravelMotion: motion.quick,
+                  fade: motion.fade,
+                  inflate: theme.focusRing.extent,
+                  decoration: theme.focusRing.decorationAround(
+                    colors,
+                    radius: radius,
+                  ),
                 ),
-              ),
-            ],
-            child: child!,
+              ],
+              child: child!,
+            ),
+            child: grid,
           ),
-          child: grid,
         ),
       ),
     );
