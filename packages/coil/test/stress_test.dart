@@ -920,8 +920,10 @@ final stories = <StressStory>[
     (context, h) => SizedBox(
       height: 200,
       child: CoilScrollArea(
-        child: Column(
-          children: [for (var i = 0; i < h.count; i++) Text('${h.text} $i')],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [for (var i = 0; i < h.count; i++) Text('${h.text} $i')],
+          ),
         ),
       ),
     ),
