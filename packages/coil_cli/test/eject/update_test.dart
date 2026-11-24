@@ -17,7 +17,7 @@ import 'package:path/path.dart' as p;
 import '../src/coil_root.dart';
 import '../src/temp_app.dart';
 
-const _line = '  /// The surface color. Default motion: `fade`.';
+const _line = '  /// The surface color.';
 const _acme = EjectOptions(prefix: 'Acme');
 
 void main() {
