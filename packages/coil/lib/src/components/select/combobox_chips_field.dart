@@ -146,17 +146,16 @@ class _ComboboxChipsFieldState extends State<ComboboxChipsField> {
         : math.max(lineHeight, comboboxChipExtent(metrics));
     final padY = math.max(0, (look.minHeight! - rowExtent) / 2).toDouble();
     // A leading chip sits as far from the field's leading edge as from its
-    // top and bottom, concentric with its corner; text first keeps the
-    // text's padding, and so does text on a row of its own after chips.
+    // top and bottom; text first keeps the text's padding, and so does text
+    // on a row of its own after chips. A chip's corner is concentric with
+    // the field's, but never sharper than an item's: a tight field would
+    // otherwise nest it almost square.
     final chipsFirst = widget.chips.isNotEmpty;
     final padStart = chipsFirst ? padY : metrics.controlPaddingX;
-    final chipRadius = radii.container <= radii.item
-        // `sharp` nests square: chips keep the item radius.
-        ? radii.item
-        : CoilShape.nested(
-            math.min(look.radius!, look.minHeight! / 2),
-            padY,
-          );
+    final chipRadius = math.max(
+      radii.item,
+      CoilShape.nested(math.min(look.radius!, look.minHeight! / 2), padY),
+    );
 
     Motion colorMotion(CoilInputTrack<Object> track) => CoilTheme.trackMotionOf(
       context,
