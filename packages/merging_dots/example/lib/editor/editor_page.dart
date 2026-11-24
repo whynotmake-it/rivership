@@ -6,6 +6,7 @@ import 'package:merging_dots_example/editor/canvas.dart';
 import 'package:merging_dots_example/editor/dialogs.dart';
 import 'package:merging_dots_example/editor/editor_controller.dart';
 import 'package:merging_dots_example/editor/icons.dart';
+import 'package:merging_dots_example/editor/character_playground.dart';
 import 'package:merging_dots_example/editor/loaders_gallery.dart';
 import 'package:merging_dots_example/editor/panels.dart';
 import 'package:merging_dots_example/editor/project.dart';
@@ -252,6 +253,12 @@ class _TopBar extends StatelessWidget {
                 child: _NameField(controller: controller),
               ),
             ),
+          ),
+          CoilButton(
+            variant: CoilButtonVariant.ghost,
+            leading: const GlyphIcon(Glyph.character),
+            onPressed: () => showCharacterPlayground(context),
+            child: const Text('Character'),
           ),
           CoilButton(
             variant: CoilButtonVariant.ghost,

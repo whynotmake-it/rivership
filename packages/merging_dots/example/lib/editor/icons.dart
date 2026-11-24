@@ -48,6 +48,7 @@ class Glyph {
   );
   static const close = Glyph(LucideIcons300.x, LucideIcons400.x);
   static const gauge = Glyph(LucideIcons300.gauge, LucideIcons400.gauge);
+  static const character = Glyph(LucideIcons300.smile, LucideIcons400.smile);
   static const loaders = Glyph(
     LucideIcons300.loaderCircle,
     LucideIcons400.loaderCircle,
