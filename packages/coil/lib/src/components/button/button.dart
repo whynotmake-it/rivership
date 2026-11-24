@@ -95,12 +95,17 @@ class CoilButton extends StatefulWidget {
     this.loadingLabel,
   }) : icon = null;
 
-  /// Creates a square, icon-only button. [semanticLabel] names it for
-  /// assistive technology.
+  /// Creates a square, icon-only button.
+  ///
+  /// Like an `IconButton`, it needs a name for assistive technology: give
+  /// [semanticLabel], or the icon's own `semanticLabel`
+  /// (`Icon(..., semanticLabel: 'Copy')` or
+  /// `CoilIcon(..., semanticLabel: 'Copy')`), which merges into the button.
+  /// When both are set, [semanticLabel] wins.
   const CoilButton.icon({
     required this.onPressed,
     required Widget this.icon,
-    required String this.semanticLabel,
+    this.semanticLabel,
     this.loadingIndicator,
     this.loadingLabel,
     super.key,
@@ -170,6 +175,9 @@ class CoilButton extends StatefulWidget {
   final CoilButtonStyle? style;
 
   /// Overrides the label for assistive technology.
+  ///
+  /// An icon-only button can leave it null and be named by its icon's own
+  /// `semanticLabel` instead. When both are set, this wins.
   final String? semanticLabel;
 
   /// What assistive technology announces as the button's value while

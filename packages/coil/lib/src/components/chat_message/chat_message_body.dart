@@ -168,15 +168,14 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
   }
 
   /// An action's icon-only button. Like an `IconButton`, it is named by
-  /// its icon's `semanticLabel`, which merges into the button: the empty
-  /// label adds nothing of its own. On pointer, its label shows in a
-  /// tooltip; screen readers already hear the icon's name, so the tooltip
-  /// adds none. Touch has no tooltip: the long-press menu shows the labels.
+  /// its icon's `semanticLabel`, which merges into the button. On pointer,
+  /// its label shows in a tooltip; screen readers already hear the icon's
+  /// name, so the tooltip adds none. Touch has no tooltip: the long-press
+  /// menu shows the labels.
   Widget _actionButton(CoilChatMessageAction action, {required bool tooltip}) {
     final button = CoilButton.icon(
       onPressed: action.onPressed,
       icon: action.icon,
-      semanticLabel: '',
       variant: CoilButtonVariant.ghost,
       size: CoilSize.compact,
     );
