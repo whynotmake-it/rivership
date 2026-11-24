@@ -209,26 +209,28 @@ class _TogglePageState extends State<TogglePage> with TickerProviderStateMixin {
           Semantics(
             toggled: _on,
             label: 'Dark mode',
-            child: GestureDetector(
-              onTapDown: (_) => _press(true),
-              onTapCancel: () => _press(false),
-              onTap: () => _switch(!_on),
-              onHorizontalDragStart: (_) {
-                _finger = null;
-                _press(true);
-              },
-              onHorizontalDragUpdate: _drag,
-              onHorizontalDragEnd: _release,
-              // Lost to a scroll or a tap: let go of the squish.
-              onHorizontalDragCancel: () => _toggle.animate([
-                _squish([.to(0)]),
-              ]),
-              child: AnimatedBuilder(
-                animation: _toggle,
-                builder: (context, _) => _Switch(
-                  thumb: _toggle.value(_thumb),
-                  squish: _toggle.value(_squish),
-                  tint: _toggle.value(_tint),
+            child: ExcludeScrollDrag(
+              child: GestureDetector(
+                onTapDown: (_) => _press(true),
+                onTapCancel: () => _press(false),
+                onTap: () => _switch(!_on),
+                onHorizontalDragStart: (_) {
+                  _finger = null;
+                  _press(true);
+                },
+                onHorizontalDragUpdate: _drag,
+                onHorizontalDragEnd: _release,
+                // Lost to a scroll or a tap: let go of the squish.
+                onHorizontalDragCancel: () => _toggle.animate([
+                  _squish([.to(0)]),
+                ]),
+                child: AnimatedBuilder(
+                  animation: _toggle,
+                  builder: (context, _) => _Switch(
+                    thumb: _toggle.value(_thumb),
+                    squish: _toggle.value(_squish),
+                    tint: _toggle.value(_tint),
+                  ),
                 ),
               ),
             ),

@@ -167,57 +167,62 @@ class _RaceState extends State<_Race> {
               void follow(Offset local) => _follow(local.dx - padding, track);
               return MouseRegion(
                 onHover: (event) => follow(event.localPosition),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onPanDown: (details) => follow(details.localPosition),
-                  onPanUpdate: (details) => follow(details.localPosition),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Column(
-                      children: [
-                        for (final (label, motion) in _racers)
-                          SizedBox(
-                            height: 48,
-                            child: Stack(
-                              children: [
-                                PositionedDirectional(
-                                  start: padding,
-                                  top: 4,
-                                  child: Text(label, style: text.muted.caption),
-                                ),
-                                Positioned(
-                                  left: padding,
-                                  right: padding,
-                                  bottom: 12 + dot / 2,
-                                  child: Container(
-                                    height: 1,
-                                    color: colors.border,
-                                  ),
-                                ),
-                                SingleMotionBuilder(
-                                  value: _target * (track - dot),
-                                  motion: motion,
-                                  debugLabel: label,
-                                  builder: (context, x, child) => Positioned(
-                                    left: padding + x,
-                                    bottom: 12,
-                                    child: child!,
-                                  ),
-                                  child: Container(
-                                    width: dot,
-                                    height: dot,
-                                    decoration: ShapeDecoration(
-                                      color: label.endsWith('curve')
-                                          ? colors.mutedForeground
-                                          : colors.foreground,
-                                      shape: const CircleBorder(),
+                child: ExcludeScrollDrag(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanDown: (details) => follow(details.localPosition),
+                    onPanUpdate: (details) => follow(details.localPosition),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Column(
+                        children: [
+                          for (final (label, motion) in _racers)
+                            SizedBox(
+                              height: 48,
+                              child: Stack(
+                                children: [
+                                  PositionedDirectional(
+                                    start: padding,
+                                    top: 4,
+                                    child: Text(
+                                      label,
+                                      style: text.muted.caption,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  Positioned(
+                                    left: padding,
+                                    right: padding,
+                                    bottom: 12 + dot / 2,
+                                    child: Container(
+                                      height: 1,
+                                      color: colors.border,
+                                    ),
+                                  ),
+                                  SingleMotionBuilder(
+                                    value: _target * (track - dot),
+                                    motion: motion,
+                                    debugLabel: label,
+                                    builder: (context, x, child) => Positioned(
+                                      left: padding + x,
+                                      bottom: 12,
+                                      child: child!,
+                                    ),
+                                    child: Container(
+                                      width: dot,
+                                      height: dot,
+                                      decoration: ShapeDecoration(
+                                        color: label.endsWith('curve')
+                                            ? colors.mutedForeground
+                                            : colors.foreground,
+                                        shape: const CircleBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

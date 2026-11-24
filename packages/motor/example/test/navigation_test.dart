@@ -108,6 +108,28 @@ void main() {
     });
   }
 
+  testWidgets('on a phone, a sideways swipe beside the demo opens the drawer', (
+    tester,
+  ) async {
+    final router = await _pumpApp(tester, size: const Size(390, 844));
+    unawaited(router.navigate(const NamedRoute('Card stack')));
+    await tester.pumpAndSettle();
+    expect(find.text('Overview').hitTestable(), findsNothing);
+
+    // The lead above the stage is page, not demo.
+    final lead = tester.getTopLeft(
+      find.textContaining('flies clear of the stack'),
+    );
+    final swipe = await tester.startGesture(lead + const Offset(8, 8));
+    for (var i = 0; i < 12; i++) {
+      await swipe.moveBy(const Offset(20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await swipe.up();
+    await tester.pumpAndSettle();
+    expect(find.text('Overview').hitTestable(), findsOneWidget);
+  });
+
   testWidgets('with onHome, the logo leads back to the app around it', (
     tester,
   ) async {

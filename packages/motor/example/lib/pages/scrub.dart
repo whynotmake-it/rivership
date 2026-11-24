@@ -320,46 +320,48 @@ class _Scrubber extends StatelessWidget {
           decreasedValue: '${(math.max(progress - .1, 0) * 100).round()}%',
           onIncrease: () => onStep(.1),
           onDecrease: () => onStep(-.1),
-          child: GestureDetector(
-            behavior: .opaque,
-            onHorizontalDragDown: (details) =>
-                onGrab(fraction(details.localPosition)),
-            onHorizontalDragUpdate: (details) =>
-                onScrub(fraction(details.localPosition)),
-            onHorizontalDragEnd: (_) => onRelease(),
-            onHorizontalDragCancel: onRelease,
-            child: SizedBox(
-              height: 40,
-              child: Stack(
-                alignment: .centerLeft,
-                children: [
-                  Container(
-                    height: 4,
-                    decoration: ShapeDecoration(
-                      color: colors.muted,
-                      shape: const StadiumBorder(),
-                    ),
-                  ),
-                  Container(
-                    width: progress * width,
-                    height: 4,
-                    decoration: ShapeDecoration(
-                      color: colors.foreground,
-                      shape: const StadiumBorder(),
-                    ),
-                  ),
-                  Positioned(
-                    left: progress * (width - 4),
-                    child: Container(
-                      width: 4,
-                      height: 26,
+          child: ExcludeScrollDrag(
+            child: GestureDetector(
+              behavior: .opaque,
+              onHorizontalDragDown: (details) =>
+                  onGrab(fraction(details.localPosition)),
+              onHorizontalDragUpdate: (details) =>
+                  onScrub(fraction(details.localPosition)),
+              onHorizontalDragEnd: (_) => onRelease(),
+              onHorizontalDragCancel: onRelease,
+              child: SizedBox(
+                height: 40,
+                child: Stack(
+                  alignment: .centerLeft,
+                  children: [
+                    Container(
+                      height: 4,
                       decoration: ShapeDecoration(
-                        color: scrubbing ? colors.brand : colors.foreground,
+                        color: colors.muted,
                         shape: const StadiumBorder(),
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      width: progress * width,
+                      height: 4,
+                      decoration: ShapeDecoration(
+                        color: colors.foreground,
+                        shape: const StadiumBorder(),
+                      ),
+                    ),
+                    Positioned(
+                      left: progress * (width - 4),
+                      child: Container(
+                        width: 4,
+                        height: 26,
+                        decoration: ShapeDecoration(
+                          color: scrubbing ? colors.brand : colors.foreground,
+                          shape: const StadiumBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

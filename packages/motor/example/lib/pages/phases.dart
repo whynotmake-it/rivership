@@ -315,12 +315,14 @@ class _PhasesPageState extends State<PhasesPage> {
                 left: 0,
                 right: 0,
                 child: Center(
-                  child: GestureDetector(
-                    onVerticalDragStart: _grab,
-                    onVerticalDragUpdate: _drag,
-                    onVerticalDragEnd: _release,
-                    onVerticalDragCancel: () => _release(DragEndDetails()),
-                    child: _NowPlaying(look),
+                  child: ExcludeScrollDrag(
+                    child: GestureDetector(
+                      onVerticalDragStart: _grab,
+                      onVerticalDragUpdate: _drag,
+                      onVerticalDragEnd: _release,
+                      onVerticalDragCancel: () => _release(DragEndDetails()),
+                      child: _NowPlaying(look),
+                    ),
                   ),
                 ),
               ),

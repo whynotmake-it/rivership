@@ -215,57 +215,62 @@ class _SpringLabPageState extends State<SpringLabPage>
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             double dotX() => _dotRadius + _dot.value * (width - 2 * _dotRadius);
-            return GestureDetector(
-              behavior: .opaque,
-              dragStartBehavior: .down,
-              onTapUp: (details) {
-                _focus.requestFocus();
-                _send(_fraction(details.localPosition.dx, width));
-              },
-              onHorizontalDragDown: (details) {
-                _focus.requestFocus();
-                _replaying = false;
-                final offset = dotX() - details.localPosition.dx;
-                _grab = offset.abs() <= _dotRadius + 8 ? offset : 0;
-              },
-              onHorizontalDragUpdate: (details) {
-                _dot.value = _fraction(details.localPosition.dx + _grab, width);
-              },
-              onHorizontalDragEnd: (details) {
-                final fling =
-                    details.velocity.pixelsPerSecond.dx /
-                    (width - 2 * _dotRadius);
-                _send(_dot.value >= .5 ? 1 : 0, velocity: fling);
-              },
-              onHorizontalDragCancel: () {
-                if (!_dot.isAnimating) _send(_dot.value >= .5 ? 1 : 0);
-              },
-              child: SizedBox(
-                height: 48,
-                child: CustomPaint(
-                  painter: _TrackPainter(
-                    line: colors.border,
-                    inset: _dotRadius,
-                  ),
-                  child: AnimatedBuilder(
-                    animation: _dot,
-                    builder: (context, _) => Stack(
-                      clipBehavior: .none,
-                      children: [
-                        Positioned(
-                          left: dotX() - _dotRadius,
-                          top: 24 - _dotRadius,
-                          child: DecoratedBox(
-                            decoration: ShapeDecoration(
-                              shape: const CircleBorder(),
-                              color: colors.foreground,
-                            ),
-                            child: const SizedBox.square(
-                              dimension: 2 * _dotRadius,
+            return ExcludeScrollDrag(
+              child: GestureDetector(
+                behavior: .opaque,
+                dragStartBehavior: .down,
+                onTapUp: (details) {
+                  _focus.requestFocus();
+                  _send(_fraction(details.localPosition.dx, width));
+                },
+                onHorizontalDragDown: (details) {
+                  _focus.requestFocus();
+                  _replaying = false;
+                  final offset = dotX() - details.localPosition.dx;
+                  _grab = offset.abs() <= _dotRadius + 8 ? offset : 0;
+                },
+                onHorizontalDragUpdate: (details) {
+                  _dot.value = _fraction(
+                    details.localPosition.dx + _grab,
+                    width,
+                  );
+                },
+                onHorizontalDragEnd: (details) {
+                  final fling =
+                      details.velocity.pixelsPerSecond.dx /
+                      (width - 2 * _dotRadius);
+                  _send(_dot.value >= .5 ? 1 : 0, velocity: fling);
+                },
+                onHorizontalDragCancel: () {
+                  if (!_dot.isAnimating) _send(_dot.value >= .5 ? 1 : 0);
+                },
+                child: SizedBox(
+                  height: 48,
+                  child: CustomPaint(
+                    painter: _TrackPainter(
+                      line: colors.border,
+                      inset: _dotRadius,
+                    ),
+                    child: AnimatedBuilder(
+                      animation: _dot,
+                      builder: (context, _) => Stack(
+                        clipBehavior: .none,
+                        children: [
+                          Positioned(
+                            left: dotX() - _dotRadius,
+                            top: 24 - _dotRadius,
+                            child: DecoratedBox(
+                              decoration: ShapeDecoration(
+                                shape: const CircleBorder(),
+                                color: colors.foreground,
+                              ),
+                              child: const SizedBox.square(
+                                dimension: 2 * _dotRadius,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

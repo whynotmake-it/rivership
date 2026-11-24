@@ -1,3 +1,4 @@
+import 'package:coil/coil.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -7,7 +8,9 @@ import 'package:flutter/widgets.dart';
 /// inside a scrolling page the scroll (and any other drag around it) wins
 /// before the pan does, and the thing can't be moved at all on a touch
 /// screen. This pan claims the pointer as soon as it moves, so a drag that
-/// starts on [child] always moves it. Start a scroll beside it instead.
+/// starts on [child] always moves it, and [ExcludeScrollDrag] keeps the
+/// sidebar's drawer from claiming it first. Start a scroll beside it
+/// instead.
 class GrabDetector extends StatelessWidget {
   const GrabDetector({
     required this.child,
@@ -25,20 +28,22 @@ class GrabDetector extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => RawGestureDetector(
-    behavior: HitTestBehavior.opaque,
-    gestures: {
-      _GrabRecognizer: GestureRecognizerFactoryWithHandlers<_GrabRecognizer>(
-        () => _GrabRecognizer(debugOwner: this),
-        (recognizer) => recognizer
-          ..dragStartBehavior = DragStartBehavior.down
-          ..onStart = onStart
-          ..onUpdate = onUpdate
-          ..onEnd = onEnd
-          ..onCancel = onCancel,
-      ),
-    },
-    child: child,
+  Widget build(BuildContext context) => ExcludeScrollDrag(
+    child: RawGestureDetector(
+      behavior: HitTestBehavior.opaque,
+      gestures: {
+        _GrabRecognizer: GestureRecognizerFactoryWithHandlers<_GrabRecognizer>(
+          () => _GrabRecognizer(debugOwner: this),
+          (recognizer) => recognizer
+            ..dragStartBehavior = DragStartBehavior.down
+            ..onStart = onStart
+            ..onUpdate = onUpdate
+            ..onEnd = onEnd
+            ..onCancel = onCancel,
+        ),
+      },
+      child: child,
+    ),
   );
 }
 

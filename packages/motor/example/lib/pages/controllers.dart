@@ -190,66 +190,68 @@ class _ControllersPageState extends State<ControllersPage>
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             double knobX() => _knob / 2 + _fader.value * (width - _knob);
-            return GestureDetector(
-              behavior: .opaque,
-              dragStartBehavior: .down,
-              onHorizontalDragDown: (details) {
-                _focus.requestFocus();
-                final offset = knobX() - details.localPosition.dx;
-                _grab = offset.abs() <= _knob / 2 + 8 ? offset : 0;
-              },
-              onHorizontalDragUpdate: (details) {
-                _fader.value = _fraction(
-                  details.localPosition.dx + _grab,
-                  width,
-                );
-              },
-              onHorizontalDragEnd: (_) => _release(),
-              onHorizontalDragCancel: () {
-                if (!_fader.isAnimating) _release();
-              },
-              child: Center(
-                child: SizedBox(
-                  height: 56,
-                  width: width,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: .none,
-                    children: [
-                      Positioned.fill(
-                        child: Center(
-                          child: SizedBox(
-                            height: 4,
-                            width: double.infinity,
-                            child: DecoratedBox(
-                              decoration: ShapeDecoration(
-                                shape: const RoundedSuperellipseBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(2),
+            return ExcludeScrollDrag(
+              child: GestureDetector(
+                behavior: .opaque,
+                dragStartBehavior: .down,
+                onHorizontalDragDown: (details) {
+                  _focus.requestFocus();
+                  final offset = knobX() - details.localPosition.dx;
+                  _grab = offset.abs() <= _knob / 2 + 8 ? offset : 0;
+                },
+                onHorizontalDragUpdate: (details) {
+                  _fader.value = _fraction(
+                    details.localPosition.dx + _grab,
+                    width,
+                  );
+                },
+                onHorizontalDragEnd: (_) => _release(),
+                onHorizontalDragCancel: () {
+                  if (!_fader.isAnimating) _release();
+                },
+                child: Center(
+                  child: SizedBox(
+                    height: 56,
+                    width: width,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: .none,
+                      children: [
+                        Positioned.fill(
+                          child: Center(
+                            child: SizedBox(
+                              height: 4,
+                              width: double.infinity,
+                              child: DecoratedBox(
+                                decoration: ShapeDecoration(
+                                  shape: const RoundedSuperellipseBorder(
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(2),
+                                    ),
                                   ),
+                                  color: colors.accent,
                                 ),
-                                color: colors.accent,
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      AnimatedBuilder(
-                        animation: _fader,
-                        builder: (context, child) => Positioned(
-                          left: knobX() - _knob / 2,
-                          top: (56 - _knob) / 2,
-                          child: child!,
-                        ),
-                        child: DecoratedBox(
-                          decoration: ShapeDecoration(
-                            shape: const CircleBorder(),
-                            color: colors.foreground,
+                        AnimatedBuilder(
+                          animation: _fader,
+                          builder: (context, child) => Positioned(
+                            left: knobX() - _knob / 2,
+                            top: (56 - _knob) / 2,
+                            child: child!,
                           ),
-                          child: const SizedBox.square(dimension: _knob),
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              shape: const CircleBorder(),
+                              color: colors.foreground,
+                            ),
+                            child: const SizedBox.square(dimension: _knob),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

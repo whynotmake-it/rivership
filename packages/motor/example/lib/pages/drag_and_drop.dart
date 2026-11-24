@@ -73,35 +73,38 @@ class _DragAndDropPageState extends State<DragAndDropPage> {
           constraints: const BoxConstraints(maxWidth: 360),
           child: Padding(
             padding: const .all(16),
-            child: MotionLayoutGroup(
-              motion: CoilTheme.motionOf(context).standard,
-              child: MotionReorderable<String>(
-                items: _items,
-                debugLabel: 'Reorderable list',
-                // The index counts after the item has left its old place.
-                onMove: (move) => setState(() {
-                  _items
-                    ..remove(move.item)
-                    ..insert(move.index, move.item!);
-                }),
-                builder: (context, drop) => Column(
-                  mainAxisSize: .min,
-                  // Rows and the drop well span the list's width.
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    for (final item in _items) ...[
-                      if (drop?.before == item)
+            child: ExcludeScrollDrag(
+              // Rows drag; the sidebar's drawer stays out of the list.
+              child: MotionLayoutGroup(
+                motion: CoilTheme.motionOf(context).standard,
+                child: MotionReorderable<String>(
+                  items: _items,
+                  debugLabel: 'Reorderable list',
+                  // The index counts after the item has left its old place.
+                  onMove: (move) => setState(() {
+                    _items
+                      ..remove(move.item)
+                      ..insert(move.index, move.item!);
+                  }),
+                  builder: (context, drop) => Column(
+                    mainAxisSize: .min,
+                    // Rows and the drop well span the list's width.
+                    crossAxisAlignment: .stretch,
+                    children: [
+                      for (final item in _items) ...[
+                        if (drop?.before == item)
+                          const MotionDropGap(child: _Well()),
+                        MotionReorderableItem<String>(
+                          // Keyed by item, so a row keeps its state in any slot.
+                          key: ValueKey(item),
+                          item: item,
+                          child: _DraggableRow(item),
+                        ),
+                      ],
+                      if (drop != null && drop.before == null)
                         const MotionDropGap(child: _Well()),
-                      MotionReorderableItem<String>(
-                        // Keyed by item, so a row keeps its state in any slot.
-                        key: ValueKey(item),
-                        item: item,
-                        child: _DraggableRow(item),
-                      ),
                     ],
-                    if (drop != null && drop.before == null)
-                      const MotionDropGap(child: _Well()),
-                  ],
+                  ),
                 ),
               ),
             ),
