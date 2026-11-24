@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/scroll_area/scroll_area_style.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
@@ -41,28 +42,43 @@ enum CoilEdgeFades {
   none,
 }
 
-/// A scrolling region with coil's scrollbar and edge fades.
+/// Gives a scrollable coil's scrollbar, edge fades and keyboard scrolling.
+///
+/// [child] is the scrollable: a [ListView], [GridView], [CustomScrollView],
+/// [SingleChildScrollView] or any other. The area never builds one itself.
+///
+/// ```dart
+/// CoilScrollArea(
+///   child: ListView(children: ...),
+/// )
+/// ```
+///
+/// Without a [controller], the area provides one through
+/// [PrimaryScrollController], on every platform and for [axis], so a child
+/// that sets no controller of its own picks it up. With a [controller], pass
+/// the same one to the child. In debug mode the area asserts if the child
+/// doesn't attach to that controller.
 ///
 /// It scrolls the way the app does: physics, overscroll and which pointers
 /// drag the content come from the ambient [ScrollBehavior] (the
 /// platform's, unless the app sets its own with [ScrollConfiguration]).
 /// coil only draws its own scrollbar in place of the behavior's.
 ///
+/// The edge fades follow the child's scroll notifications, so they work
+/// with any scrollable along [axis].
+///
 /// When the content overflows, the viewport becomes a tab stop. While it
 /// has focus, the arrow keys scroll a line, Page Up and Page Down a page,
 /// and Home and End go to the ends. Keys pressed in a focused descendant,
 /// such as a text field, stay with it.
-///
-/// Use [CoilScrollArea.scrollable] to wrap a list you already have, and pass
-/// both the same [controller].
 class CoilScrollArea extends StatefulWidget {
-  /// Scrolls [child] along [axis].
+  /// Gives [child], a scrollable along [axis], coil's scrollbar, fades and
+  /// keyboard scrolling.
   const CoilScrollArea({
     required this.child,
     super.key,
     this.controller,
     this.axis = Axis.vertical,
-    this.padding,
     this.edgeFades = CoilEdgeFades.auto,
     this.scrollbar = CoilScrollbarVisibility.auto,
     this.keyboard = true,
@@ -71,37 +87,17 @@ class CoilScrollArea extends StatefulWidget {
     this.style,
     this.motion,
     this.motions,
-  }) : _wrapsScrollable = false;
+  });
 
-  /// Gives [child], a scrollable driven by [controller], coil's scrollbar,
-  /// fades and keyboard scrolling.
-  const CoilScrollArea.scrollable({
-    required this.child,
-    required ScrollController this.controller,
-    super.key,
-    this.axis = Axis.vertical,
-    this.edgeFades = CoilEdgeFades.auto,
-    this.scrollbar = CoilScrollbarVisibility.auto,
-    this.keyboard = true,
-    this.focusNode,
-    this.semanticLabel,
-    this.style,
-    this.motion,
-    this.motions,
-  }) : padding = null,
-       _wrapsScrollable = true;
-
-  /// The content, or the scrollable for [CoilScrollArea.scrollable].
+  /// The scrollable. Wrap plain content in a [SingleChildScrollView].
   final Widget child;
 
-  /// The scroll controller; one is created if null.
+  /// The controller [child] scrolls with. If null, the area provides one
+  /// through [PrimaryScrollController]; if set, pass it to [child] too.
   final ScrollController? controller;
 
-  /// The scroll axis.
+  /// The axis [child] scrolls along.
   final Axis axis;
-
-  /// Padding inside the scroll view.
-  final EdgeInsetsGeometry? padding;
 
   /// Which edges fade.
   final CoilEdgeFades edgeFades;
@@ -130,8 +126,6 @@ class CoilScrollArea extends StatefulWidget {
   /// style's [CoilScrollAreaStyle.motions] and the tokens.
   final Map<CoilScrollAreaTrack<Object>, Motion>? motions;
 
-  final bool _wrapsScrollable;
-
   @override
   State<CoilScrollArea> createState() => _CoilScrollAreaState();
 }
@@ -148,6 +142,62 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
 
   final _states = WidgetStatesController();
   bool _scrolls = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _debugCheckAttached();
+  }
+
+  @override
+  void didUpdateWidget(CoilScrollArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller ||
+        widget.axis != oldWidget.axis) {
+      _debugCheckAttached();
+    }
+  }
+
+  /// Asserts, after the frame, that [CoilScrollArea.child] scrolls with
+  /// the area's controller.
+  void _debugCheckAttached() {
+    assert(
+      () {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _debugAssertAttached();
+        });
+        return true;
+      }(),
+      'Schedules the check; never fails.',
+    );
+  }
+
+  void _debugAssertAttached() {
+    final controller = _controller;
+    final axis = widget.axis.name;
+    final fix = widget.controller == null
+        ? 'With no controller given, the area provides one through '
+              'PrimaryScrollController. The child must set no controller of '
+              'its own and must not set primary: false. If it has its own '
+              'controller, pass that controller to the area too.'
+        : 'Pass the same controller to the child as to the area.';
+    assert(
+      controller.hasClients,
+      "CoilScrollArea: its child didn't attach to the scroll controller.\n"
+      "The child must be a scrollable along the area's axis ($axis), such "
+      'as a ListView, GridView, CustomScrollView or SingleChildScrollView, '
+      'built in the same frame. Wrap plain content in a '
+      'SingleChildScrollView.\n$fix',
+    );
+    assert(
+      controller.positions.every(
+        (p) => axisDirectionToAxis(p.axisDirection) == widget.axis,
+      ),
+      'CoilScrollArea: its child scrolls along a different axis than the '
+      "area ($axis). Set CoilScrollArea.axis to the child's scroll "
+      'direction.',
+    );
+  }
 
   @override
   void dispose() {
@@ -246,27 +296,20 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
     // overscroll and drag devices, and only swaps the scrollbar.
     final ambient = ScrollConfiguration.of(context);
 
-    var scrollable = widget._wrapsScrollable
-        ? widget.child
-        : SingleChildScrollView(
-            controller: _controller,
-            scrollDirection: widget.axis,
-            padding: widget.padding,
-            // Scrollables in the content keep the app's behavior, scrollbar
-            // included.
-            child: ScrollConfiguration(
-              behavior: ambient,
-              child: widget.child,
-            ),
-          );
-    if (widget.scrollbar == CoilScrollbarVisibility.none) {
-      // No bar at all: not coil's, and not the behavior's desktop one
-      // either. The content above keeps the ambient behavior.
-      scrollable = ScrollConfiguration(
-        behavior: ambient.copyWith(scrollbars: false),
-        child: scrollable,
-      );
-    } else {
+    // A child that sets no controller of its own scrolls with the area's,
+    // on every platform (Flutter's own default is mobile only) and along
+    // the area's axis. Only that scrollable loses the behavior's bar;
+    // scrollables nested in it keep the app's behavior, bar included.
+    Widget scrollable = ScrollConfiguration(
+      behavior: _AreaScrollBehavior(ambient, _controller),
+      child: PrimaryScrollController(
+        controller: _controller,
+        scrollDirection: widget.axis,
+        automaticallyInheritForPlatforms: TargetPlatform.values.toSet(),
+        child: widget.child,
+      ),
+    );
+    if (widget.scrollbar != CoilScrollbarVisibility.none) {
       scrollable = CoilScrollbar(
         controller: _controller,
         look: style.scrollbarLook,
@@ -302,10 +345,7 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       // layout, when the area can't rebuild.
       NotificationListener<ScrollMetricsNotification>(
         onNotification: (n) => _onMetrics(n.metrics, n.depth),
-        child: PrimaryScrollController(
-          controller: _controller,
-          child: scrollable,
-        ),
+        child: scrollable,
       ),
     );
     if (widget.keyboard) {
@@ -354,6 +394,64 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       ),
     );
   }
+}
+
+/// The app's [ambient] behavior, without the scrollbar of the one
+/// scrollable that scrolls with [controller]: coil draws that one's, or
+/// none. Every other scrollable gets the ambient behavior unchanged.
+class _AreaScrollBehavior extends ScrollBehavior {
+  const _AreaScrollBehavior(this.ambient, this.controller);
+
+  final ScrollBehavior ambient;
+  final ScrollController controller;
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => details.controller == controller
+      ? child
+      : ambient.buildScrollbar(context, child, details);
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => ambient.buildOverscrollIndicator(context, child, details);
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => ambient.dragDevices;
+
+  @override
+  Set<LogicalKeyboardKey> get pointerAxisModifiers =>
+      ambient.pointerAxisModifiers;
+
+  @override
+  MultitouchDragStrategy getMultitouchDragStrategy(BuildContext context) =>
+      ambient.getMultitouchDragStrategy(context);
+
+  @override
+  TargetPlatform getPlatform(BuildContext context) =>
+      ambient.getPlatform(context);
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      ambient.getScrollPhysics(context);
+
+  @override
+  ScrollViewKeyboardDismissBehavior getKeyboardDismissBehavior(
+    BuildContext context,
+  ) => ambient.getKeyboardDismissBehavior(context);
+
+  @override
+  GestureVelocityTrackerBuilder velocityTrackerBuilder(BuildContext context) =>
+      ambient.velocityTrackerBuilder(context);
+
+  @override
+  bool shouldNotify(_AreaScrollBehavior oldDelegate) =>
+      oldDelegate.controller != controller || oldDelegate.ambient != ambient;
 }
 
 /// How far a key scrolls a [CoilScrollArea].

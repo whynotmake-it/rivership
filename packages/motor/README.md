@@ -19,11 +19,12 @@ A unified motion system that brings together physics-based springs, duration-bas
 - 📱 **Multi-dimensional** - Animate complex types like Offset, Size, and Rect with independent physics per dimension
 - 🎼 **Tracks & Steps** - Choreograph many properties at once, each with its own multi-step motion
 - 🌬️ **Free Motion** - Self-directed physics like friction and decay, with rest-position projection
-- 🔄 **Interactive Widgets** - Motion-driven draggable widgets with natural return animations
+- 🔄 **Interactive Widgets** - Spring-driven implicit animations and draggables in the separate [`motor_widgets`](../motor_widgets) package
 - 🎯 **Flutter Integration** - Works seamlessly with existing Flutter animation patterns
 - 🛠️ **Optional DevTools** - Inspect, scrub, slow down, and tune live tracks with the separate `motor_devtools` package
 
 ## Try it out
+
 [Open Example](https://whynotmake-it.github.io/rivership/#/motor)
 
 ## Installation 💻
@@ -301,7 +302,7 @@ Motor names two moments of a motion:
 
 A motion never settles before it ends, and a curve does both at once. `Motion.duration` is a fixed property of the motion, the same for every move; `null` means it has no fixed length and ends when it settles. The simulation says when it settles: `SettlingSimulation.settlesAt`, or `simulation.simulateSettleTime()` for any simulation.
 
-**Steps.** By default the next step starts once the previous one has settled, as in 1.x, Motion, anime.js and Compose. With `until: .ended` it starts once the previous one has ended, and takes over its value and velocity while it is still moving. That's how SwiftUI's `PhaseAnimator` moves between phases. A step takes over a velocity only while the motion before it is still moving: one that starts the moment a curve ends takes over the slope it ended with, and one that starts after time at rest (a hold, a barrier wait) starts still. The timeline never cuts a motion short: a spring keeps settling during a following `.hold` or `.sync`. The one exception is `.at`: to land exactly on time, it may cut the step before it short, and it stops its own spring at its duration. The step after an `.at` takes over the velocity it arrives with; a hold, a barrier or the end of the plan comes to rest.
+**Steps.** By default the next step starts once the previous one has settled, as in Motion, anime.js and Compose. With `until: .ended` it starts once the previous one has ended, and takes over its value and velocity while it is still moving. That's how SwiftUI's `PhaseAnimator` moves between phases. A step takes over a velocity only while the motion before it is still moving: one that starts the moment a curve ends takes over the slope it ended with, and one that starts after time at rest (a hold, a barrier wait) starts still. The timeline never cuts a motion short: a spring keeps settling during a following `.hold` or `.sync`. The one exception is `.at`: to land exactly on time, it may cut the step before it short, and it stops its own spring at its duration. The step after an `.at` takes over the velocity it arrives with; a hold, a barrier or the end of the plan comes to rest.
 
 **Keyframe timing.** An `.at` motion's natural length is its `duration`, or, if it has none, when its move from where the step before leaves off settles. A spring is cut at its duration so that it lands. If the step before started too late to leave room for that length, the motion is compressed, and with no time at all the value arrives instantly. If the step before starts after `time` has passed, it is skipped. A motion that never settles stretches whenever the `.at` step can start before `time`, and otherwise starts when the step before starts.
 
@@ -313,7 +314,7 @@ opacity([
 ]);
 ```
 
-**Futures.** Every controller call returns a `MotionFuture`. Awaiting it waits until everything has settled, as in 1.x. Its `ended` completes once the duration has passed, whatever `until` says; for a plan, once the last step's motion has reached its duration. `animateTo` has no `until:`, so await `ended` when you don't want to wait for settling:
+**Futures.** Every controller call returns a `MotionFuture`. Awaiting it waits until everything has settled. Its `ended` completes once the duration has passed, whatever `until` says; for a plan, once the last step's motion has reached its duration. `animateTo` has no `until:`, so await `ended` when you don't want to wait for settling:
 
 ```dart
 await controller.animateTo(1).ended; // at 500 ms, still settling
@@ -773,7 +774,7 @@ Simple types like `double` (via `SingleMotionConverter`) are **already direction
   `AnimationStatus.dismissed`.
 
 Most multi-dimensional values (`Offset`, `Size`, `Rect`, `Color`, and
-custom converters) have no direction, so their status works as in 1.x:
+custom converters) have no direction, so their status is
 `forward` while animating and `completed` at rest, and `dismissed` only when
 a move settles exactly on the initial value (springs snap to their target by
 default). `reverse`, and `dismissed` after a move down, only apply to
@@ -930,7 +931,7 @@ TickerRateScope(
 )
 ```
 
-`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, and `SequenceMotionBuilder`, and on the widgets in [`motor_widgets`](../motor_widgets). `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame, exactly as before. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
+`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, and `SequenceMotionBuilder`, and on the widgets in [`motor_widgets`](../motor_widgets). `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
 
 Controllers use the `TickerProvider` you pass them. For a fixed rate, pass a state that mixes in `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin`:
 

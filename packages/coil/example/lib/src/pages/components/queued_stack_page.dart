@@ -162,7 +162,6 @@ class _ChatState extends State<_Chat> {
     _queuedFiles[id] = files;
     return CoilQueuedMessage(
       id: id,
-      semanticLabel: text,
       child: Text(text),
       attachments: [
         for (final file in files)
@@ -377,7 +376,6 @@ class _PileState extends State<_Pile> {
     for (var i = 0; i < count; i++)
       CoilQueuedMessage(
         id: _texts[i],
-        semanticLabel: _texts[i],
         child: Text(_texts[i]),
       ),
   ];

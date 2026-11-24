@@ -67,7 +67,9 @@ class CoilToggleGroup<T> extends StatelessWidget {
     this.semanticLabel,
   });
 
-  /// The toggles: each option's [CoilOption.label].
+  /// The toggles: each option's [CoilOption.icon] (before the label) and
+  /// [CoilOption.label]. An icon-only segment passes its icon as the label,
+  /// with a [CoilOption.semanticLabel].
   final List<CoilOption<T>> options;
 
   /// The values of the selected toggles.
@@ -204,15 +206,28 @@ class CoilToggleGroup<T> extends StatelessWidget {
                           child: child!,
                         ),
                       ),
-                      child: CoilSizeSwitcher(
-                        alignment: AlignmentDirectional.centerStart,
-                        sizeMotion: motionFor(
-                          CoilToggleGroupTrack.size,
-                          tokens.standard,
-                        ),
-                        motion: motion,
-                        debugLabel: 'CoilToggleGroup.label',
-                        child: option.label,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: sizes.buttonGap,
+                        children: [
+                          // The option's icon leads the label, in the same
+                          // color and size; it yields before overflowing in a
+                          // group too narrow for its segments.
+                          if (option.icon case final icon?)
+                            Flexible(child: icon),
+                          Flexible(
+                            child: CoilSizeSwitcher(
+                              alignment: AlignmentDirectional.centerStart,
+                              sizeMotion: motionFor(
+                                CoilToggleGroupTrack.size,
+                                tokens.standard,
+                              ),
+                              motion: motion,
+                              debugLabel: 'CoilToggleGroup.label',
+                              child: option.label,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

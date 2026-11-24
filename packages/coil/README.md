@@ -93,6 +93,23 @@ CoilTheme(
 - `CoilTier` picks pointer or touch sizes. By default it follows the platform.
 - `withComponentStyle(CoilButtonStyle(...))` restyles one component type.
 
+## Frame rate
+
+coil's springs tick every frame by default. To run all of them at a fixed rate,
+wrap coil components in a `TickerRateScope`, for the whole app or a subtree.
+That saves frame work on 120 Hz screens and for low-priority motion. Reduced
+motion still applies. `package:coil/coil.dart` exports it and `TickerRate`.
+
+```dart
+TickerRateScope(
+  rate: TickerRate.fps(30),
+  child: CoilTheme(
+    data: CoilThemeData(shape: CoilShape.pill),
+    child: app,
+  ),
+)
+```
+
 [`DESIGN.md`](DESIGN.md) describes coil's design language: color, type,
 spacing, shape, motion, interaction and each component's anatomy.
 

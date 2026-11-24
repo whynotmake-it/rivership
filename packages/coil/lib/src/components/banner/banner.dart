@@ -157,7 +157,7 @@ const _stagger = Duration(milliseconds: 80);
 const _projection = 0.1;
 
 class _CoilBannerState extends State<CoilBanner>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   late final _controller = TrackController(
     vsync: this,
     debugLabel: 'CoilBanner',

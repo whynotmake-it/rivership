@@ -70,6 +70,9 @@ class CatalogPage extends StatelessWidget {
       if (notes.isNotEmpty) NotesSection(notes: notes),
     ];
     final padding = MediaQuery.paddingOf(context);
+    // The page draws behind the keyboard; padding its end by the
+    // keyboard's height lets the last field scroll above it.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final text = CoilTheme.textOf(context);
     // A page owns its background, so a page pushed on top covers the one
     // below instead of showing through it.
@@ -88,7 +91,7 @@ class CatalogPage extends StatelessWidget {
                   gutter + padding.left,
                   8,
                   gutter + padding.right,
-                  gutter + padding.bottom,
+                  gutter + padding.bottom + keyboard,
                 ),
                 children: [
                   Center(
