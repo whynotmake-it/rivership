@@ -301,6 +301,7 @@ void main() {
         ],
         [(10, 0.5)],
         loop: LoopMode.loop,
+        done: true,
         tolerance: 0,
       ),
       const _Timeline(
@@ -425,7 +426,7 @@ void main() {
       playback.advanceTo(20);
       expect(playback.values.single, closeTo(settledValue, error));
       expect(playback.velocities.single, closeTo(0, error));
-      expect(playback.isDone, isFalse);
+      expect(playback.isDone, isTrue);
     });
 
     test('a pingPong reverses to where an interior free step ended', () {

@@ -329,6 +329,9 @@ final class _Watched {
   /// from repeating.
   bool settledByStop = false;
 
+  /// Set once a later call replaced any of its tracks.
+  bool superseded = false;
+
   bool get resolved =>
       events.contains('settled') || events.contains('canceled');
 }
@@ -375,9 +378,22 @@ Future<void> _callAtRandom(
     if (future.stopped && !events.contains('canceled')) {
       expect(events.contains('ended'), isTrue, reason: 'stopped, $reason');
     }
-    if (future.loops && !future.stopped && !future.settledByStop) {
-      expect(events.contains('ended'), isFalse, reason: 'loop ended, $reason');
-      expect(events.contains('settled'), isFalse, reason: reason);
+    if (future.loops &&
+        !future.stopped &&
+        !future.settledByStop &&
+        !future.superseded) {
+      final stillLooping = controller.inspectPlayback().tracks.any(
+        (playback) =>
+            future.tracks.contains(playback.track) && playback.isLooping,
+      );
+      if (stillLooping) {
+        expect(
+          events.contains('ended'),
+          isFalse,
+          reason: 'loop ended, $reason',
+        );
+        expect(events.contains('settled'), isFalse, reason: reason);
+      }
     }
   }
 
@@ -405,8 +421,9 @@ Future<void> _callAtRandom(
           for (final animation in animations) describeSteps(animation.steps),
         ].join('\n')}');
         for (final future in watched) {
-          if (!future.resolved && future.tracks.any(targets.contains)) {
-            future.interrupted = true;
+          if (future.tracks.any(targets.contains)) {
+            future.superseded = true;
+            if (!future.resolved) future.interrupted = true;
           }
         }
         watched.add(

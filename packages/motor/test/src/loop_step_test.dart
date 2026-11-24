@@ -865,6 +865,114 @@ void main() {
     );
   });
 
+  group('Stalled loops settle instead of ticking forever', () {
+    testWidgets(
+      'single-step, identical-target, settled-free, and zero-duration loops '
+      'stop ticking and notifying listeners once nothing can change',
+      (tester) async {
+        final track = Track<double>(MotionConverter.single, initial: 0);
+        final controller = TrackController(vsync: tester);
+        addTearDown(controller.dispose);
+
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        Future<void> expectSettlesCleanly(
+          String label,
+          TrackAnimation<double> animation, {
+          double? expectedValue,
+          Duration settleWindow = const Duration(milliseconds: 250),
+        }) async {
+          controller.set([track.value(0)]);
+          var settled = false;
+          final future = controller.animate([animation]);
+          future.then((_) => settled = true);
+
+          await tester.pump();
+          for (var t = Duration.zero;
+              t < settleWindow;
+              t += const Duration(milliseconds: 16)) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+
+          if (expectedValue != null) {
+            expect(
+              controller.value(track),
+              closeTo(expectedValue, 1e-2),
+              reason: '$label value',
+            );
+          }
+          expect(controller.isAnimating, isFalse, reason: '$label isAnimating');
+          expect(settled, isTrue, reason: '$label settled');
+
+          final countAfterSettle = notifications;
+          for (var i = 0; i < 10; i++) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          expect(
+            notifications,
+            countAfterSettle,
+            reason: '$label should stop notifying listeners after settling',
+          );
+        }
+
+        // Single-step loop in every repeating mode animates once then settles.
+        for (final mode in [
+          LoopMode.loop,
+          LoopMode.pingPong,
+          LoopMode.seamless,
+        ]) {
+          await expectSettlesCleanly(
+            'single-step $mode',
+            track([
+              TrackStep.loop(
+                const [TrackStep.to(1, motion: linear100)],
+                mode: mode,
+              ),
+            ]),
+            expectedValue: 1,
+          );
+        }
+
+        // Identical targets have nowhere else to move after reaching 1.
+        await expectSettlesCleanly(
+          'identical targets',
+          track([
+            const TrackStep.loop([
+              TrackStep.to(1, motion: linear100),
+              TrackStep.to(1, motion: linear100),
+            ]),
+          ]),
+          expectedValue: 1,
+        );
+
+        // Single-step free loop coasts to rest then settles.
+        await expectSettlesCleanly(
+          'single-step free',
+          track(
+            const [
+              TrackStep.loop([
+                TrackStep.free(motion: FrictionMotion(drag: 0.1)),
+              ]),
+            ],
+            withVelocity: 10,
+          ),
+          settleWindow: const Duration(seconds: 5),
+        );
+        expect(controller.value(track), greaterThan(0));
+
+        // Zero-duration hold loop settles immediately.
+        await expectSettlesCleanly(
+          'zero-duration hold',
+          track([
+            const TrackStep.loop([TrackStep.hold(Duration.zero)]),
+          ]),
+          expectedValue: 0,
+        );
+      },
+    );
+  });
+
   group('TrackController dispose guard', () {
     testWidgets('animate after dispose asserts clearly', (tester) async {
       final track = Track<double>(MotionConverter.single, initial: 0);

@@ -749,8 +749,8 @@ class StepPlayback<T extends Object> {
   /// The flattened leaf steps of this playback plan.
   List<TrackStep<T>> get stepsView => List.unmodifiable(_steps);
 
-  /// Whether this playback contains an infinite loop.
-  bool get isLooping => _hasInfiniteLoop;
+  /// Whether this playback contains an active infinite loop.
+  bool get isLooping => _hasInfiniteLoop && !_stalled;
 
   /// Recorded forward segment durations, in seconds.
   List<double?> get forwardSegmentSeconds =>
@@ -1217,7 +1217,7 @@ class StepPlayback<T extends Object> {
     }
 
     // Guard against zero-duration infinite loops that cannot fold (e.g.
-    // barriered loops where every step is a 0ms no-op): park resolution once
+    // barriered loops where every step is a 0ms no-op): settle cleanly once
     // a full cycle makes zero time progress with unchanged state.
     if (loop.isInfinite &&
         !_canFold &&
@@ -1228,7 +1228,7 @@ class StepPlayback<T extends Object> {
           loop.iterationStartVelocities,
         )) {
       _stalled = true;
-      _period = 0;
+      _finishOrTail();
       return;
     }
 
@@ -1267,9 +1267,10 @@ class StepPlayback<T extends Object> {
       next++;
     }
     if (next > loop.end) {
-      // Single-step seamless/pingPong loop has no second target to run.
+      // Single-step seamless/pingPong loop has no second target to run:
+      // settle cleanly instead of ticking forever.
       _stalled = true;
-      _period = 0;
+      _finishOrTail();
       return;
     }
     _stepIndex = next;
@@ -1390,7 +1391,13 @@ class StepPlayback<T extends Object> {
       final earlier = _cycleStarts[_cycleStarts.length - 2];
       if (current.repeats(earlier)) {
         _cycleStarts.removeLast();
-        _period = current.start - earlier.start;
+        final period = current.start - earlier.start;
+        if (period <= _minFoldPeriod) {
+          _stalled = true;
+          _finishOrTail();
+          return true;
+        }
+        _period = period;
         _foldStartSeconds = earlier.start;
         return true;
       }

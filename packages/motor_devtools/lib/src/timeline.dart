@@ -125,6 +125,12 @@ class TimelineLayout {
 /// Looping plans page through one cycle at a time instead, and so do runs
 /// with an open-ended track, such as a motion that never settles, in pages
 /// as long as their known part and at least two seconds.
+///
+/// Tradeoffs: ahead-of-time duration estimates unroll loops once per step, so
+/// finite `count:` loops grow the window as later cycles start, `.pingPong`
+/// cycle widths reflect a single forward pass until folded, and barriered
+/// (`together:`) loops resolve one pass at a time rather than projecting
+/// future cycles.
 TimelineLayout layoutTimeline(
   PlaybackSnapshot snapshot, {
   TimelineWindow? window,
