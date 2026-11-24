@@ -637,7 +637,16 @@ void main() {
       expect(rule(items: 9), CoilPresentation.sheet);
       expect(rule(multi: true, items: 3), CoilPresentation.sheet);
       expect(rule(depth: 2), CoilPresentation.sheet);
-      expect(rule(kind: CoilOverlayKind.dateTime), CoilPresentation.sheet);
+    });
+
+    test('a search field or a date picker is a floating panel', () {
+      expect(rule(search: true), CoilPresentation.floating);
+      expect(rule(search: true, items: 30), CoilPresentation.floating);
+      expect(
+        rule(kind: CoilOverlayKind.combobox),
+        CoilPresentation.floating,
+      );
+      expect(rule(kind: CoilOverlayKind.dateTime), CoilPresentation.floating);
     });
 
     test('anything with a search field is a floating panel', () {

@@ -7,7 +7,9 @@ const shapesEntry = CatalogEntry(
   slug: 'shapes',
   title: 'Shapes',
   group: CatalogGroup.foundations,
-  summary: 'Superellipses only: rounded, pill and sharp, per tier.',
+  summary:
+      'The rounded, pill and sharp shape families, each a superellipse tuned '
+      'per tier.',
   page: ShapesPage.new,
 );
 
@@ -38,7 +40,8 @@ class _ShapesPageState extends State<ShapesPage> {
     children: [
       DemoSection(
         title: 'Radii',
-        description: 'Item, container and focus ring for each shape family.',
+        description:
+            'The item, container and focus-ring radii for each shape family.',
         child: DemoColumn(
           children: [
             for (final (name, shape) in _shapes) _ShapeRow(name, shape),
