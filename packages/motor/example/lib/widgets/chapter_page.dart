@@ -62,7 +62,7 @@ class GalleryPage extends StatelessWidget {
               context: context,
               removeTop: true,
               child: CoilScrollArea(
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: EdgeInsetsDirectional.fromSTEB(
                     gutter + padding.left,
                     8,
