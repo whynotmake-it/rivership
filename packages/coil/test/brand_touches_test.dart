@@ -32,6 +32,8 @@ bool _isNeutral(Color color) => CoilColorMix.toOklch(color).c < 0.045;
   Color cursor,
   Color tabHover,
   Color segmentHover,
+  Color rawTabPill,
+  Color rawSegment,
 })
 _selection(CoilThemeData theme) {
   final metrics = theme.metrics.resolve(theme.tier!, CoilSize.regular);
@@ -47,6 +49,8 @@ _selection(CoilThemeData theme) {
     cursor: CoilInputStyle.fallback(theme, metrics).cursorColor!,
     tabHover: tabs.hoverPill!,
     segmentHover: toggle.highlight!,
+    rawTabPill: tabs.pill!,
+    rawSegment: toggle.selection!,
   );
 }
 
@@ -70,17 +74,14 @@ void main() {
                   '$name, ${policy.name}, on ${neutral.hue}°/${neutral.chroma}';
               final theme = CoilThemeData(colors: colors, tier: tier);
 
+              // Off: today's neutral tokens, exactly.
               final off = _selection(theme);
-              for (final color in [
-                off.tabLabel,
-                off.tabPill,
-                off.segmentLabel,
-                off.segment,
-                off.dot,
-                off.cursor,
-              ]) {
-                expect(_isNeutral(color), isTrue, reason: 'off, $reason');
-              }
+              expect(off.dot, colors.foreground, reason: reason);
+              expect(off.cursor, colors.foreground, reason: reason);
+              expect(off.rawTabPill, colors.active, reason: reason);
+              expect(off.tabLabel, colors.foreground, reason: reason);
+              expect(off.rawSegment, colors.active, reason: reason);
+              expect(off.segmentLabel, colors.foreground, reason: reason);
 
               final on = _selection(theme.copyWith(brandSelection: true));
               expect(on.dot, brand, reason: reason);
@@ -173,9 +174,15 @@ void main() {
         ),
       ),
     );
-    final brand = CoilThemeData.light.colors.brand;
-    expect(_selection(outside).dot, isNot(brand));
-    expect(_selection(inside).dot, brand);
-    expect(_selection(inside).tabPill, isNot(_selection(outside).tabPill));
+    final colors = CoilThemeData.light.colors;
+    final out = _selection(outside);
+    final ins = _selection(inside);
+    expect(out.dot, colors.foreground);
+    expect(out.rawTabPill, colors.active);
+    expect(out.rawSegment, colors.active);
+    expect(ins.dot, colors.brand);
+    expect(ins.rawTabPill, colors.brandWash);
+    expect(ins.tabLabel, colors.brandInk);
+    expect(ins.rawSegment, colors.brandWash);
   });
 }
