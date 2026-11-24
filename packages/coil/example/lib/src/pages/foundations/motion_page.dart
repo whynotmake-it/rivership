@@ -38,7 +38,7 @@ TickerRateScope(
 enum _Lane {
   quick('quick', 'The hover highlight, a press and the focus ring'),
   standard('standard', 'Tab pills, switch thumbs, merging rows and popovers'),
-  gentle('gentle', 'Sheets, dialogs and large surfaces, and the only bounce'),
+  gentle('gentle', 'Sheets, dialogs and large surfaces'),
   fade('fade', 'Opacity and color, kept under reduced motion');
 
   const _Lane(this.label, this.use);

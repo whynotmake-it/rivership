@@ -59,7 +59,7 @@ final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
   );
 
   /// The collapsed stack recoiling when a message is queued behind the
-  /// visible cards. Default motion: `gentle`, coil's bounciest token; the
+  /// visible cards. Default motion: `gentle`; the
   /// original's one-off spring (bounce 0.5) isn't a tier.
   static final bump = CoilQueuedStackTrack<double>._(
     .single,
