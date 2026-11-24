@@ -35,6 +35,11 @@ enum CoilDialogKind {
 /// As a sheet, it takes drags from its content; wrap content that needs its
 /// own (a map, a canvas) in `ExcludeScrollDrag`.
 ///
+/// When it shows as a sheet, [snappingConfig], [dragHandoff],
+/// [dismissalMode], [draggable] and [backgroundSnapshotMode] configure it
+/// as [CoilSheetRoute] documents them, with the same defaults; a centered
+/// dialog ignores them.
+///
 /// To open a dialog from `Navigator.pages` or a router, show it in a
 /// [CoilModalPage] with the same [CoilDialogKind.presentation].
 Future<T?> showCoilDialog<T>({
@@ -44,12 +49,22 @@ Future<T?> showCoilDialog<T>({
   bool dismissible = true,
   String? barrierLabel,
   CoilMotion? motion,
+  SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+  SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
+  DismissalMode dismissalMode = DismissalMode.slide,
+  bool draggable = true,
+  RouteSnapshotMode backgroundSnapshotMode = RouteSnapshotMode.never,
 }) => showCoilModal<T>(
   context: context,
   presentation: kind.presentation,
   dismissible: dismissible,
   barrierLabel: barrierLabel,
   motion: motion,
+  snappingConfig: snappingConfig,
+  dragHandoff: dragHandoff,
+  dismissalMode: dismissalMode,
+  draggable: draggable,
+  backgroundSnapshotMode: backgroundSnapshotMode,
   builder: builder,
 );
 
