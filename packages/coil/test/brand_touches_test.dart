@@ -127,6 +127,19 @@ void main() {
       }
     });
 
+    test('${brightness.name}: an exact brand stays exact as text and wash '
+        'when the brand changes', () {
+      final seeded = CoilColors.fromSeed(
+        brightness: brightness,
+        brandFill: CoilBrandFill.exact,
+      );
+      for (final MapEntry(key: name, value: brand) in _brands.entries) {
+        final colors = seeded.copyWith(brand: brand);
+        expect(colors.brandInk, brand, reason: name);
+        expect(colors.brandWash.withValues(alpha: 1), brand, reason: name);
+      }
+    });
+
     test('${brightness.name}: a yellow or lime reads amber as text, not '
         'olive', () {
       for (final name in ['yellow', 'lime']) {

@@ -76,7 +76,12 @@ void main() {
         }
       });
 
-      test('an exact brand fill is the brand under its better label', () {
+      test('an exact brand fill is the brand under its better label, '
+          'and stays exact when the brand changes', () {
+        final seeded = CoilColors.fromSeed(
+          brightness: brightness,
+          brandFill: CoilBrandFill.exact,
+        );
         for (final MapEntry(key: name, value: brand) in _brands.entries) {
           final colors = CoilColors.fromSeed(
             brightness: brightness,
@@ -84,6 +89,16 @@ void main() {
             brandFill: CoilBrandFill.exact,
           );
           expect(colors.brandFill, brand, reason: name);
+          expect(
+            seeded.copyWith(brand: brand).brandFill,
+            brand,
+            reason: '$name via copyWith',
+          );
+          expect(
+            seeded.copyWith(brand: brand).onBrandFill,
+            colors.onBrandFill,
+            reason: '$name via copyWith',
+          );
           final other = colors.onBrandFill == const Color(0xFFFFFFFF)
               ? CoilColors.light.foreground
               : const Color(0xFFFFFFFF);
