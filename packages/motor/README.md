@@ -365,7 +365,33 @@ TrackBuilder(
 
 Each track advances independently — different steps, different motions — but on the same clock.
 
-Per-track starting points and velocities live on each animation via `from:` and `withVelocity:` (e.g. `offset([.to(target)], from: start, withVelocity: fling)`). Looping is a per-clip concern: pass `loop:` to the builder (`TrackBuilder(loop: .loop, ...)`), or predefine a reusable `TrackTimeline` (which owns its `loop`) and play it with `TrackBuilder.timeline(timeline, ...)`. Because `TrackTimeline` compares by value, rebuilding with an equal timeline won't restart the animation.
+Per-track starting points and velocities live on each animation via `from:` and `withVelocity:` (e.g. `offset([.to(target)], from: start, withVelocity: fling)`).
+
+#### Repeating steps: `.loop`
+
+Wrap any slice of a track's steps in `.loop(...)` to repeat it, with optional `mode:` (`.loop`, `.pingPong`, `.seamless`, `.none`), finite `count:`, or `together:` token to keep sibling loops in lockstep:
+
+```dart
+TrackBuilder(
+  animations: [
+    bar([
+      .to(0.2), // intro plays once
+      .loop([.to(1), .to(0.2)], together: #pulse),
+    ]),
+    dot([
+      .loop([.to(big), .hold(d), .to(small)], together: #pulse),
+    ]),
+  ],
+  builder: ...,
+)
+```
+
+- `LoopMode.loop` (default) replays the steps from the first one in order, continuing smoothly from the current value and velocity.
+- `LoopMode.pingPong` plays forward, then reverses back to the loop's first target, and repeats.
+- `LoopMode.seamless` jumps back to the loop's first target without animating and replays — author the last target to match the first (e.g. `0` and `2π` for a continuous rotation) so the seam is invisible.
+- `LoopMode.none` plays the steps once and continues.
+- `count:` stops after that many cycles (full round-trips for `.pingPong`) and moves on to any following step.
+- `together:` makes loops sharing the same token wait for each other at the end of every cycle without writing `.sync` steps by hand.
 
 #### Stagger: `delay`
 
@@ -475,8 +501,8 @@ A few phase-specific rules:
   their own `from:` / `withVelocity:` (asserted), since each phase continues
   from where the previous one left off.
 - A `TrackPhaseTimeline` is played by `PhaseTrackBuilder` /
-  `PhaseTrackController`. Its `flattened` clip plays the phases once, in
-  order, anywhere a `TrackTimeline` is accepted.
+  `PhaseTrackController`. Its `flattened` list of `TrackAnimation`s plays the
+  phases once, in order, anywhere `animate` / `TrackBuilder` accepts animations.
 
 #### Imperative control
 
@@ -485,14 +511,13 @@ When you need control outside a builder (gestures, custom sequencing), drop down
 ```dart
 final controller = TrackController(vsync: this);
 
-controller.play(timeline);           // run a TrackTimeline
-controller.animate([scale([.to(1.2)])]); // redirect specific tracks only
-controller.set([scale.value(1.0)]);  // jump without animating
-controller.stop(tracks: [scale]);    // settle (springs) or halt these tracks
-controller.pause();                  // freeze without losing the plan
+controller.animate([scale([.to(1.2)])]); // play or redirect tracks
+controller.set([scale.value(1.0)]);      // jump without animating
+controller.stop(tracks: [scale]);        // settle (springs) or halt these tracks
+controller.pause();                      // freeze without losing the plan
 controller.scrubTo(const Duration(milliseconds: 240));
-controller.resume();                 // continue smoothly from the scrub
-final s = controller.value(scale);   // read via the reader
+controller.resume();                     // continue smoothly from the scrub
+final s = controller.value(scale);       // read via the reader
 ```
 
 #### Interop with Flutter animations
@@ -830,10 +855,13 @@ final single = SingleMotionController(
 
 controller.animateTo(const Offset(100, 0));
 controller.play([ // multi-step playback on one value
-  .to(const Offset(0, 100)), // uses the controller's motion
-  .hold(const Duration(milliseconds: 200)),
-  .to(.zero, motion: .smoothSpring()),
-], loop: .pingPong);
+  .loop([
+    .to(.zero),
+    .to(const Offset(0, 100)), // uses the controller's motion
+    .hold(const Duration(milliseconds: 200)),
+    .to(.zero, motion: .smoothSpring()),
+  ], mode: .pingPong),
+]);
 ```
 
 `MotionController` is a thin wrapper around a single-track `TrackController`,
@@ -923,8 +951,14 @@ Motor's widgets can tick at a lower, fixed rate using [`fixed_ticker`](https://p
 TickerRateScope(
   rate: .fps(30),
   child: TrackBuilder(
-    animations: [shimmer([.to(1, motion: .linear(Duration(seconds: 2)))])],
-    loop: .loop,
+    animations: [
+      shimmer([
+        .loop([
+          .to(1, motion: .linear(Duration(seconds: 2))),
+          .to(0, motion: .linear(Duration(seconds: 2))),
+        ]),
+      ]),
+    ],
     tickerRate: .fps(10), // overrides the scope
     builder: (context, value, child) => ...,
   ),

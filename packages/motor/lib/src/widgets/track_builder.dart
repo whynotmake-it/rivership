@@ -3,10 +3,8 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
-import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion_velocity_tracker.dart';
 import 'package:motor/src/track.dart';
-import 'package:motor/src/track_timeline.dart';
 import 'package:motor/src/widgets/ticker_rate_state_mixin.dart';
 
 /// Builds a widget from a multi-track animation.
@@ -18,17 +16,13 @@ typedef TrackWidgetBuilder = Widget Function(
 
 /// Declaratively plays multiple [TrackAnimation]s on one ticker.
 ///
-/// Use the default constructor with an inline list of [animations] (mirroring
-/// [TrackController.animate]), or [TrackBuilder.timeline] with a reusable
-/// [TrackTimeline] (mirroring [TrackController.play]). Each [TrackAnimation]
-/// carries its own `from`/`withVelocity`; [loop] (or the timeline's loop)
-/// controls repetition.
+/// Each [TrackAnimation] carries its own `from`/`withVelocity`/`delay`, and
+/// loops live inside its steps via `TrackStep.loop`.
 class TrackBuilder extends StatefulWidget {
-  /// Plays an inline list of [animations].
+  /// Plays a list of [animations].
   const TrackBuilder({
     required this.animations,
     required this.builder,
-    this.loop = LoopMode.none,
     this.restartTrigger,
     this.active = true,
     this.initialValues,
@@ -39,43 +33,15 @@ class TrackBuilder extends StatefulWidget {
     this.debugLabel,
     this.tickerRate,
     super.key,
-  }) : timeline = null;
+  });
 
-  /// Plays a reusable [timeline].
-  const TrackBuilder.timeline(
-    this.timeline, {
-    required this.builder,
-    this.restartTrigger,
-    this.active = true,
-    this.initialValues,
-    this.velocityTracking = const VelocityTracking.on(),
-    this.onStep,
-    this.onAnimationStatusChanged,
-    this.child,
-    this.debugLabel,
-    this.tickerRate,
-    super.key,
-  })  : animations = null,
-        loop = LoopMode.none;
-
-  /// The inline track animations to play (default constructor).
+  /// The track animations to play.
   ///
   /// Animations compare by value. When a rebuild changes the list, only the
   /// tracks whose animation changed restart, from their current value and
   /// velocity; the others keep playing. So one track can follow user input
-  /// while another plays keyframes.
-  final List<TrackAnimation>? animations;
-
-  /// The reusable timeline to play ([TrackBuilder.timeline]).
-  ///
-  /// Like [animations], a changed timeline restarts only the tracks whose
-  /// animation changed, unless its loop mode changed too.
-  final TrackTimeline? timeline;
-
-  /// How the inline [animations] should loop.
-  ///
-  /// Ignored when a [timeline] is used (the timeline owns its loop).
-  final LoopMode loop;
+  /// while another loops or plays keyframes.
+  final List<TrackAnimation> animations;
 
   /// Restarts playback from the start when this value changes.
   ///
@@ -196,7 +162,6 @@ class _TrackBuilderState extends State<TrackBuilder>
 
     if (!widget.active) {
       if (oldWidget.active ||
-          widget.timeline != oldWidget.timeline ||
           !listEquals(widget.animations, oldWidget.animations)) {
         _jumpToEnd();
       }
@@ -211,33 +176,21 @@ class _TrackBuilderState extends State<TrackBuilder>
 
     if (restartTriggerChanged) {
       _updatePlayback(restart: true);
-    } else if (widget.active != oldWidget.active ||
-        widget.loop != oldWidget.loop ||
-        (widget.timeline == null) != (oldWidget.timeline == null) ||
-        widget.timeline?.loop != oldWidget.timeline?.loop) {
+    } else if (widget.active != oldWidget.active) {
       _updatePlayback();
-    } else if (widget.timeline case final timeline?) {
-      _animateChanged(
-        timeline.animations,
-        oldWidget.timeline!.animations,
-        loop: timeline.loop,
-      );
-    } else if (widget.animations case final animations?) {
-      _animateChanged(animations, oldWidget.animations!, loop: widget.loop);
+    } else {
+      _animateChanged(widget.animations, oldWidget.animations);
     }
   }
 
   /// Forgets, without canceling shared futures, the tracks [oldWidget] had
   /// that this widget no longer has, so they stop animating.
   void _forgetDroppedTracks(TrackBuilder oldWidget) {
-    Set<Track> tracksOf(TrackBuilder of) {
-      final animations = of.timeline?.animations ?? of.animations;
-      return {for (final animation in animations!) animation.track};
-    }
-
-    final kept = tracksOf(widget);
-    for (final track in tracksOf(oldWidget)) {
-      if (!kept.contains(track)) _controller.forgetTrack(track);
+    final kept = {for (final animation in widget.animations) animation.track};
+    for (final animation in oldWidget.animations) {
+      if (!kept.contains(animation.track)) {
+        _controller.forgetTrack(animation.track);
+      }
     }
   }
 
@@ -248,12 +201,10 @@ class _TrackBuilderState extends State<TrackBuilder>
     final initialValues = widget.initialValues;
     if (initialValues == null || initialValues.isEmpty) return;
     final oldTracks = {
-      for (final animation
-          in oldWidget.timeline?.animations ?? oldWidget.animations!)
-        animation.track,
+      for (final animation in oldWidget.animations) animation.track,
     };
     final added = {
-      for (final animation in widget.timeline?.animations ?? widget.animations!)
+      for (final animation in widget.animations)
         if (!oldTracks.contains(animation.track) && animation.from == null)
           animation.track,
     };
@@ -268,9 +219,8 @@ class _TrackBuilderState extends State<TrackBuilder>
   /// Stops every track and moves it straight to its animation's end value.
   void _jumpToEnd() {
     _controller.stop(canceled: true);
-    final animations = widget.timeline?.animations ?? widget.animations!;
     final values = [
-      for (final animation in animations)
+      for (final animation in widget.animations)
         if (animation.endValue case final value?) value,
     ];
     if (values.isNotEmpty) _controller.set(values);
@@ -281,9 +231,8 @@ class _TrackBuilderState extends State<TrackBuilder>
   /// to a track that follows user input.
   void _animateChanged(
     List<TrackAnimation> animations,
-    List<TrackAnimation> oldAnimations, {
-    required LoopMode loop,
-  }) {
+    List<TrackAnimation> oldAnimations,
+  ) {
     if (!widget.active) return;
     final old = {
       for (final animation in oldAnimations) animation.track: animation,
@@ -293,7 +242,7 @@ class _TrackBuilderState extends State<TrackBuilder>
         if (old[animation.track] != animation) animation,
     ];
     if (changed.isEmpty) return;
-    _controller.animate(changed, loop: loop, onStep: _onStep);
+    _controller.animate(changed, onStep: _onStep);
   }
 
   @override
@@ -332,24 +281,11 @@ class _TrackBuilderState extends State<TrackBuilder>
       }
     }
 
-    final timeline = widget.timeline;
-    if (timeline != null) {
-      _controller.play(timeline, onStep: _onStep);
-    } else {
-      _controller.animate(
-        widget.animations!,
-        loop: widget.loop,
-        onStep: _onStep,
-      );
-    }
+    _controller.animate(widget.animations, onStep: _onStep);
   }
 
-  List<TrackValue> _startValues() {
-    final timeline = widget.timeline;
-    if (timeline != null) return timeline.startValues;
-    return [
-      for (final animation in widget.animations!)
-        animation.track.value(animation.resolveStartValue()),
-    ];
-  }
+  List<TrackValue> _startValues() => [
+        for (final animation in widget.animations)
+          animation.track.value(animation.resolveStartValue()),
+      ];
 }

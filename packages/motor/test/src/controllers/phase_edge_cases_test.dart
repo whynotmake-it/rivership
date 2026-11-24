@@ -126,8 +126,10 @@ void main() {
         await pumpFrames(tester, 3);
         expect(controller.value(track), greaterThan(2));
 
+        // Phase b (40ms) + phase c (40ms) = 80ms. At 84ms (4 * 21ms), the
+        // seamless wrap jumped 3 -> 1 at 80ms and is 4ms (0.1) into phase b.
         await pumpFrames(tester, 1);
-        expect(controller.value(track), closeTo(1, error));
+        expect(controller.value(track), closeTo(1.1, error));
         expect(transitions, const [
           PhaseTransitioning(from: 'b', to: 'c'),
           PhaseTransitioning(from: 'c', to: 'a'),

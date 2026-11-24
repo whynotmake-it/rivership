@@ -14,36 +14,40 @@ void main() {
     Offset(1, 1),
     motionPerDimension: [linear100, linear200],
   );
+  const perDimensionBack = TrackStep.to(
+    Offset.zero,
+    motionPerDimension: [linear100, linear200],
+  );
 
   group('Per-dimension motion in StepPlayback', () {
     // At 100ms a fast (x) dimension is done while a slow (y) one is only
     // halfway. A segment ends when its slow dimension finishes (200ms), and
     // the way back reuses the per-dimension motions.
-    for (final (name, step, loop, fallback, samples) in [
+    for (final (name, steps, loop, fallback, samples) in [
       (
         "a step's motionPerDimension drives each dimension",
-        perDimension,
+        [perDimension],
         LoopMode.none,
         null,
         [(0.1, Offset(1, 0.5)), (0.2, Offset(1, 1))],
       ),
       (
         'fallbackMotionPerDimension is used when a step omits its motion',
-        TrackStep.to(Offset(1, 1)),
+        [TrackStep.to(Offset(1, 1))],
         LoopMode.none,
         [linear100, linear200],
         [(0.1, Offset(1, 0.5))],
       ),
       (
         'a single step motion still applies to every dimension',
-        TrackStep.to(Offset(1, 1), motion: linear100),
+        [TrackStep.to(Offset(1, 1), motion: linear100)],
         LoopMode.none,
         null,
         [(0.1, Offset(1, 1))],
       ),
       (
         'a loop replays with per-dimension motion',
-        perDimension,
+        [perDimension, perDimensionBack],
         LoopMode.loop,
         null,
         [
@@ -55,7 +59,7 @@ void main() {
       ),
       (
         'a pingPong reverses with per-dimension motion',
-        perDimension,
+        [perDimensionBack, perDimension],
         LoopMode.pingPong,
         null,
         [(0.2, Offset(1, 1)), (0.25, Offset(0.5, 0.75)), (0.4, Offset.zero)],
@@ -63,10 +67,11 @@ void main() {
     ]) {
       test(name, () {
         final playback = StepPlayback<Offset>(
-          steps: [step],
+          steps: loop == LoopMode.none
+              ? steps
+              : [TrackStep.loop(steps, mode: loop)],
           converter: MotionConverter.offset,
           start: Offset.zero,
-          loop: loop,
           fallbackMotionPerDimension: fallback,
         );
         for (final (seconds, value) in samples) {

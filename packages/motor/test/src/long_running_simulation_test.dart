@@ -18,11 +18,12 @@ StepPlayback<double> _playback(
   double? velocity,
 }) =>
     StepPlayback<double>(
-      steps: steps,
+      steps: loop == LoopMode.none
+          ? steps
+          : [TrackStep.loop(steps, mode: loop)],
       converter: MotionConverter.single,
       start: 0,
       velocity: velocity,
-      loop: loop,
     );
 
 /// About as many `isDone` calls as one sampled search makes: a 1/60 s grid
@@ -644,7 +645,9 @@ void main() {
       ];
       unawaited(
         controller
-            .animate([track(steps)], loop: LoopMode.loop)
+            .animate([
+              track(const [TrackStep.loop(steps)]),
+            ])
             .orCancel
             .then((_) {}, onError: (_) {}),
       );

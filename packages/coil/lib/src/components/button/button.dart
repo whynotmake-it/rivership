@@ -654,9 +654,13 @@ class _CoilSpinner extends StatelessWidget {
     final painter = CustomPaint(painter: _SpinnerPainter(color));
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return painter;
     return TrackBuilder(
-      loop: LoopMode.loop,
       animations: [
-        _turn([const .to(1, motion: _lap)], from: 0),
+        _turn(const [
+          .loop(
+            [.to(0, motion: .instant()), .to(1, motion: _lap)],
+            mode: .seamless,
+          ),
+        ], from: 0),
       ],
       builder: (context, value, child) =>
           Transform.rotate(angle: value(_turn) * 2 * math.pi, child: child),

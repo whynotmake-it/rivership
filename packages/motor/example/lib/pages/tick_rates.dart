@@ -42,8 +42,9 @@ final _lanes = [
 const _code =
     'TrackBuilder(\n'
     '  tickerRate: .fps(15),\n'
-    '  loop: .pingPong,\n'
-    '  animations: [dot([.to(1)])],\n'
+    '  animations: [\n'
+    '    dot([.loop([.to(1), .to(0)])]),\n'
+    '  ],\n'
     '  builder: …,\n'
     ')\n'
     '\n'
@@ -164,9 +165,10 @@ class _LaneViewState extends State<_LaneView> {
         TrackBuilder(
           debugLabel: 'Tick rate ${widget.lane.label}',
           tickerRate: widget.lane.rate,
-          loop: .pingPong,
           animations: [
-            _position([.to(1, motion: _motion)]),
+            _position([
+              .loop([.to(1, motion: _motion), .to(0, motion: _motion)]),
+            ]),
           ],
           builder: (context, value, _) {
             _builds++;

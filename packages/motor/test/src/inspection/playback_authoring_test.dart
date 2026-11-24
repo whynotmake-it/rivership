@@ -80,21 +80,26 @@ void main() {
       initialValues: [track.value(5)],
     );
 
-    controller.animate(
-      [
-        track(
-          [const TrackStep.free(motion: FrictionMotion())],
-          withVelocity: 100,
-        ),
-      ],
-      loop: LoopMode.seamless,
-    );
+    controller.animate([
+      track(
+        [
+          const TrackStep.loop(
+            [TrackStep.free(motion: FrictionMotion())],
+            mode: LoopMode.seamless,
+          ),
+        ],
+        withVelocity: 100,
+      ),
+    ]);
     await tester.pump();
 
     final plan = controller.inspectPlayback().plans.single;
     expect(plan.startValues.single.value, 5);
-    expect(plan.loop, LoopMode.seamless);
     expect(plan.animations.single.track, track);
+    expect(
+      plan.animations.single.steps.single,
+      isA<StepLoop<Object>>().having((s) => s.mode, 'mode', LoopMode.seamless),
+    );
 
     controller.dispose();
     subscription.dispose();

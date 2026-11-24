@@ -129,7 +129,7 @@ TimelineLayout layoutTimeline(
   PlaybackSnapshot snapshot, {
   TimelineWindow? window,
 }) {
-  final looping = snapshot.tracks.where((track) => track.loop != LoopMode.none);
+  final looping = snapshot.tracks.where((track) => track.isLooping);
   final horizon = window?.end ?? _loopHorizon(snapshot, looping);
   final lanes = [
     for (final playback in snapshot.tracks) _LaneBuilder(playback, horizon),

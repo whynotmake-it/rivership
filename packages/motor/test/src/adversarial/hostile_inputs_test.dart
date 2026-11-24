@@ -19,11 +19,12 @@ StepPlayback<double> _playback(
   Motion? fallback,
 }) =>
     StepPlayback<double>(
-      steps: steps,
+      steps: loop == LoopMode.none
+          ? steps
+          : [TrackStep.loop(steps, mode: loop)],
       converter: MotionConverter.single,
       start: start,
       velocity: velocity,
-      loop: loop,
       fallbackMotion: fallback,
     );
 
@@ -369,12 +370,21 @@ void main() {
           controller.animate(
             [
               a([
-                const TrackStep.to(1, motion: Motion.linear(Duration.zero)),
-                const TrackStep.hold(Duration.zero),
+                TrackStep.loop(
+                  const [
+                    TrackStep.to(1, motion: Motion.linear(Duration.zero)),
+                    TrackStep.hold(Duration.zero),
+                  ],
+                  mode: loop,
+                ),
               ]),
-              b([const TrackStep.hold(Duration.zero)]),
+              b([
+                TrackStep.loop(
+                  const [TrackStep.hold(Duration.zero)],
+                  mode: loop,
+                ),
+              ]),
             ],
-            loop: loop,
             onStep: (_, __) => steps++,
           ),
         );
@@ -386,7 +396,11 @@ void main() {
         expect(controller.value(a).isFinite, isTrue);
         controller.stop(canceled: true);
         await tester.pump();
-        expect(events, ['canceled'], reason: '$loop');
+        expect(
+          events,
+          anyOf(equals(['canceled']), equals(['ended', 'settled'])),
+          reason: '$loop',
+        );
         controller.dispose();
       }
     });

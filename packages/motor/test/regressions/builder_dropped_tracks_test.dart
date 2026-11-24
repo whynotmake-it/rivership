@@ -14,7 +14,6 @@ void main() {
 
     Widget build(List<TrackAnimation> animations) => TrackBuilder(
           animations: animations,
-          loop: LoopMode.loop,
           builder: (context, value, child) {
             keptValue = value(kept);
             droppedValue = value(dropped);
@@ -22,12 +21,27 @@ void main() {
           },
         );
 
-    final keptAnimation =
-        kept([const TrackStep.to(1, motion: linear)], from: 0);
+    final keptAnimation = kept(
+      const [
+        TrackStep.loop([
+          TrackStep.to(1, motion: linear),
+          TrackStep.to(0, motion: linear),
+        ]),
+      ],
+      from: 0,
+    );
     await tester.pumpWidget(
       build([
         keptAnimation,
-        dropped([const TrackStep.to(1, motion: linear)], from: 0),
+        dropped(
+          const [
+            TrackStep.loop([
+              TrackStep.to(1, motion: linear),
+              TrackStep.to(0, motion: linear),
+            ]),
+          ],
+          from: 0,
+        ),
       ]),
     );
     await tester.pump(const Duration(milliseconds: 50));

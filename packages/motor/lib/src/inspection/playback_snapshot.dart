@@ -3,7 +3,6 @@ import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/inspection/controller_registry.dart';
-import 'package:motor/src/loop_mode.dart';
 import 'package:motor/src/motion.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_step.dart';
@@ -31,13 +30,13 @@ class PlaybackSnapshot {
   /// Playback details for every slot that still retains a playback plan.
   final List<TrackPlayback> tracks;
 
-  /// The most recent plans submitted with `play` or `animate`, oldest first.
+  /// The most recent plans submitted with `animate`, oldest first.
   ///
   /// Recorded only while an inspection observer is attached, up to 16.
   final List<PlaybackPlan> plans;
 }
 
-/// A plan submitted to a [TrackController] with `play` or `animate`.
+/// A plan submitted to a [TrackController] with `animate`.
 @experimental
 @immutable
 class PlaybackPlan {
@@ -45,7 +44,6 @@ class PlaybackPlan {
   PlaybackPlan({
     required this.start,
     required List<TrackAnimation> animations,
-    required this.loop,
     required List<TrackValue> startValues,
   })  : animations = List.unmodifiable(animations),
         startValues = List.unmodifiable(startValues);
@@ -55,9 +53,6 @@ class PlaybackPlan {
 
   /// The animations as they were submitted.
   final List<TrackAnimation> animations;
-
-  /// The loop mode the animations were played with.
-  final LoopMode loop;
 
   /// Each animated track's value when the plan started.
   ///
@@ -74,8 +69,7 @@ class TrackPlayback {
   TrackPlayback({
     required this.track,
     required List<TrackStep<Object>> steps,
-    required this.hasSyntheticReturnStep,
-    required this.loop,
+    required this.isLooping,
     required this.currentStepIndex,
     required this.direction,
     required this.isWaitingForSync,
@@ -94,15 +88,11 @@ class TrackPlayback {
   /// The identity of the track represented by this snapshot.
   final Track<Object> track;
 
-  /// The actual running plan, including a synthetic loop-return step when
-  /// [hasSyntheticReturnStep] is true.
+  /// The flattened leaf steps of this track's running plan.
   final List<TrackStep<Object>> steps;
 
-  /// Whether the final entry in [steps] was synthesized for [LoopMode.loop].
-  final bool hasSyntheticReturnStep;
-
-  /// The loop mode used by this track's running plan.
-  final LoopMode loop;
+  /// Whether this track's running plan contains an infinite loop.
+  final bool isLooping;
 
   /// The active step index, or `-1` once playback has settled.
   final int currentStepIndex;

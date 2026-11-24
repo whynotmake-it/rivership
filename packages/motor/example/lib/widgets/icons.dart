@@ -88,6 +88,10 @@ class Glyph {
     LucideIcons400.gripVertical,
   );
   static const repeat = Glyph(LucideIcons300.repeat, LucideIcons400.repeat);
+  static const infinity = Glyph(
+    LucideIcons300.infinity,
+    LucideIcons400.infinity,
+  );
   static const plus = Glyph(LucideIcons300.plus, LucideIcons400.plus);
   static const minus = Glyph(LucideIcons300.minus, LucideIcons400.minus);
   static const chevronDown = Glyph(

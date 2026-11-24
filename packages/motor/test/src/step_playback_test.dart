@@ -299,22 +299,24 @@ void main() {
           TrackStep.hold(Duration.zero),
           TrackStep.to(0.5, motion: Motion.linear(Duration.zero)),
         ],
-        [(10, 0)],
+        [(10, 0.5)],
         loop: LoopMode.loop,
         tolerance: 0,
       ),
       const _Timeline(
-        'a pingPong reversing a hold before returning to the start',
+        'a pingPong skips turnaround hold when reversing back to first target',
         [
+          TrackStep.to(0, motion: linear100),
           TrackStep.to(1, motion: linear100),
           TrackStep.hold(Duration(milliseconds: 100)),
         ],
-        [(0.05, 0.5), (0.15, 1), (0.25, 1), (0.35, 0.5), (0.4, 0), (0.45, 0.5)],
+        [(0.05, 0.5), (0.15, 1), (0.25, 0.5), (0.3, 0), (0.35, 0.5)],
         loop: LoopMode.pingPong,
       ),
       const _Timeline(
         'a pingPong reversing through each previous waypoint',
         [
+          TrackStep.to(0, motion: linear100),
           TrackStep.to(0.5, motion: linear100),
           TrackStep.to(1, motion: linear100),
         ],
@@ -332,6 +334,7 @@ void main() {
       const _Timeline(
         'a pingPong mirroring .at timing on the reverse leg',
         [
+          TrackStep.to(0, motion: linear100),
           TrackStep.to(1, motion: linear100),
           TrackStep.at(Duration(milliseconds: 300), 2, motion: linear100),
         ],
@@ -351,6 +354,7 @@ void main() {
       const _Timeline(
         'a pingPong reversing to the target before a hold',
         [
+          TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
           TrackStep.to(1, motion: Motion.linear(Duration(seconds: 1))),
           TrackStep.hold(Duration(seconds: 1)),
           TrackStep.to(2, motion: Motion.linear(Duration(seconds: 1))),
@@ -358,11 +362,12 @@ void main() {
         [(2.5, 1.5), (3, 2), (3.5, 1.5), (4, 1), (4.5, 1), (5.5, 0.5)],
         loop: LoopMode.pingPong,
       ),
-      // Back over the .at, which arrives the moment the step before ends, at
-      // 300 ms, then halfway from 5 to 0.
+      // Back over the .at (turnaround hold is skipped), which arrives at
+      // 200 ms, then halfway from 5 to 0 at 250 ms.
       _Timeline(
         'a pingPong returning over an instant .at step',
         [
+          const TrackStep.to(0, motion: linear100),
           const TrackStep.to(5, motion: linear100),
           TrackStep.at(
             const Duration(milliseconds: 100),
@@ -371,16 +376,17 @@ void main() {
           ),
           const TrackStep.hold(Duration(milliseconds: 100)),
         ],
-        [(0.35, 2.5)],
+        [(0.25, 2.5)],
         loop: LoopMode.pingPong,
       ),
     ]) {
       test(timeline.name, () {
         final playback = StepPlayback<double>(
-          steps: timeline.steps,
+          steps: timeline.loop == LoopMode.none
+              ? timeline.steps
+              : [TrackStep.loop(timeline.steps, mode: timeline.loop)],
           converter: MotionConverter.single,
           start: timeline.start,
-          loop: timeline.loop,
         );
         for (final (index, (seconds, value)) in timeline.samples.indexed) {
           playback.advanceTo(seconds);
@@ -401,11 +407,15 @@ void main() {
 
     test('a pingPong holds instead of reversing a free step', () {
       final playback = StepPlayback<double>(
-        steps: const [TrackStep.free(motion: FrictionMotion(drag: 0.1))],
+        steps: const [
+          TrackStep.loop(
+            [TrackStep.free(motion: FrictionMotion(drag: 0.1))],
+            mode: LoopMode.pingPong,
+          ),
+        ],
         converter: MotionConverter.single,
         start: 0,
         velocity: 10,
-        loop: LoopMode.pingPong,
       );
 
       playback.advanceTo(10);
@@ -418,27 +428,31 @@ void main() {
       expect(playback.isDone, isFalse);
     });
 
-    test('a pingPong reverses to where a free step ended', () {
+    test('a pingPong reverses to where an interior free step ended', () {
       StepPlayback<double> play() => StepPlayback<double>(
             steps: const [
-              TrackStep.free(motion: FrictionMotion(drag: 0.1)),
-              TrackStep.to(10, motion: Motion.linear(Duration(seconds: 1))),
+              TrackStep.loop(
+                [
+                  TrackStep.to(0, motion: Motion.linear(Duration(seconds: 1))),
+                  TrackStep.free(motion: FrictionMotion(drag: 0.1)),
+                  TrackStep.to(10, motion: Motion.linear(Duration(seconds: 1))),
+                ],
+                mode: LoopMode.pingPong,
+              ),
             ],
             converter: MotionConverter.single,
-            start: 0,
-            velocity: 2,
-            loop: LoopMode.pingPong,
+            start: -2,
           );
 
-      final probe = play()..advanceTo(60);
+      final probe = play()..advanceTo(10);
       final forward = probe.segmentsView.firstWhere(
-        (segment) => segment.stepIndex == 1,
+        (segment) => segment.stepIndex == 2,
       );
       final freeEnd = probe.fork()..advanceTo(forward.start);
       final freeEndValue = freeEnd.values.single;
       expect(freeEndValue, greaterThan(0.1));
 
-      // Back from 10 toward where the free step ended, not toward the start.
+      // Back from 10 toward where the free step ended, not toward 0.
       final playback = play()..advanceTo(forward.start + 1.5);
       expect(playback.values.single, closeTo((10 + freeEndValue) / 2, 0.01));
       playback.advanceTo(forward.start + 2);

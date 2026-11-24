@@ -61,7 +61,7 @@ extension MotorDevToolsSession on TrackController {
     final plan = plans.last;
     stop(canceled: true);
     set(plan.startValues);
-    animate(plan.animations, loop: plan.loop);
+    animate(plan.animations);
   }
 }
 

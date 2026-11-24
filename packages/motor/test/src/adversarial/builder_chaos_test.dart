@@ -220,10 +220,30 @@ Future<void> _rebuildTrackBuilder(
   var key = 0;
   var rate = _rates.first;
   var ticking = true;
-  var useTimeline = false;
   late TrackValueReader shown;
   final statuses = <(int, AnimationStatus)>[];
   final entered = <(Track, int)>[];
+
+  List<TrackAnimation> effectiveAnimations() => loop == LoopMode.none
+      ? animations
+      : [
+          for (final animation in animations)
+            switch (animation.track) {
+              final Track<double> track => track([
+                  TrackStep.loop(
+                    animation.steps.cast<TrackStep<double>>(),
+                    mode: loop,
+                  ),
+                ]),
+              final Track<Offset> track => track([
+                  TrackStep.loop(
+                    animation.steps.cast<TrackStep<Offset>>(),
+                    mode: loop,
+                  ),
+                ]),
+              _ => animation,
+            },
+        ];
 
   Widget build() {
     Widget builder(BuildContext context, TrackValueReader value, Widget? _) {
@@ -236,28 +256,16 @@ Future<void> _rebuildTrackBuilder(
       return const SizedBox();
     }
 
-    final child = useTimeline
-        ? TrackBuilder.timeline(
-            TrackTimeline(animations, loop: loop),
-            key: ValueKey(key),
-            active: active,
-            restartTrigger: restart,
-            tickerRate: rate,
-            onStep: (track, step) => entered.add((track, step)),
-            onAnimationStatusChanged: (status) => statuses.add((key, status)),
-            builder: builder,
-          )
-        : TrackBuilder(
-            key: ValueKey(key),
-            animations: animations,
-            loop: loop,
-            active: active,
-            restartTrigger: restart,
-            tickerRate: rate,
-            onStep: (track, step) => entered.add((track, step)),
-            onAnimationStatusChanged: (status) => statuses.add((key, status)),
-            builder: builder,
-          );
+    final child = TrackBuilder(
+      key: ValueKey(key),
+      animations: effectiveAnimations(),
+      active: active,
+      restartTrigger: restart,
+      tickerRate: rate,
+      onStep: (track, step) => entered.add((track, step)),
+      onAnimationStatusChanged: (status) => statuses.add((key, status)),
+      builder: builder,
+    );
     return TickerMode(enabled: ticking, child: child);
   }
 
@@ -266,10 +274,8 @@ Future<void> _rebuildTrackBuilder(
   // inactive then jump them to their end values.
   var atStart = false;
   for (var frame = 0; frame < 100; frame++) {
-    final change = random.nextInt(14);
-    final previousTimeline = TrackTimeline(animations, loop: loop);
-    final previousAnimations = animations;
-    final wasTimeline = useTimeline;
+    final change = random.nextInt(13);
+    final previousEffective = effectiveAnimations();
     switch (change) {
       case 0 || 1 || 2 || 3:
         final index = random.nextInt(_tracks.length);
@@ -295,16 +301,10 @@ Future<void> _rebuildTrackBuilder(
       case 9:
         ticking = !ticking;
         log.add('frame $frame: ticking $ticking');
-      case 10:
-        useTimeline = !useTimeline;
-        log.add('frame $frame: timeline $useTimeline');
     }
     if (change == 6 && !active) atStart = true;
     if (change == 4 ||
-        wasTimeline != useTimeline ||
-        (useTimeline
-            ? previousTimeline != TrackTimeline(animations, loop: loop)
-            : !_sameAnimations(previousAnimations, animations))) {
+        !_sameAnimations(previousEffective, effectiveAnimations())) {
       atStart = false;
     }
     await tester.pumpWidget(

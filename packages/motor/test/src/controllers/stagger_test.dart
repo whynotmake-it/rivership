@@ -173,15 +173,17 @@ void main() {
     testWidgets('applies once with LoopMode.loop', (tester) async {
       await setUpController(tester);
       controller.set([solo.value(0)]);
-      controller.animate(
-        [
-          solo(
-            const [TrackStep.to(1, motion: Motion.linear(_second100))],
-            delay: _t(200),
-          ),
-        ],
-        loop: LoopMode.loop,
-      );
+      controller.animate([
+        solo(
+          const [
+            TrackStep.loop([
+              TrackStep.to(1, motion: Motion.linear(_second100)),
+              TrackStep.to(0, motion: Motion.linear(_second100)),
+            ]),
+          ],
+          delay: _t(200),
+        ),
+      ]);
       await tester.pump();
       await tester.pump(_t(100));
       expect(controller.value(solo), 0);
@@ -210,22 +212,23 @@ void main() {
         expect(controller.value(solo), closeTo(0.5, 1e-6));
 
         // Cycle 0 is 100 ms of the old motion, then 100 ms to the target.
-        controller.animate(
-          [
-            solo([
-              const TrackStep.hold(_second100),
-              const TrackStep.to(0.5, motion: Motion.linear(_second100)),
-            ]),
-          ],
-          loop: loop,
-        );
+        controller.animate([
+          solo([
+            TrackStep.loop(
+              const [
+                TrackStep.hold(_second100),
+                TrackStep.to(0.5, motion: Motion.linear(_second100)),
+              ],
+              mode: loop,
+            ),
+          ]),
+        ]);
         await tester.pump();
         await tester.pump(_t(50));
         expect(controller.value(solo), closeTo(0.55, 1e-6), reason: '$loop');
         // Later cycles hold at rest at 0.5: the old motion is not replayed.
-        // The second cycle starts at 200 ms, or 300 ms after a return step.
-        final second = loop == LoopMode.loop ? 300 : 200;
-        await tester.pump(_t(second + 50 - 50));
+        // The second cycle starts at 200 ms.
+        await tester.pump(_t(200));
         for (var i = 0; i < 3; i++) {
           await tester.pump(_t(30));
           expect(controller.value(solo), 0.5, reason: '$loop $i');

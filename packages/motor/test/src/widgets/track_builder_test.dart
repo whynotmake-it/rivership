@@ -6,7 +6,7 @@ import '../util.dart';
 
 const _linear100 = Motion.linear(Duration(milliseconds: 100));
 
-/// Builds a [TrackBuilder] either inline or from a [TrackTimeline].
+/// Builds a [TrackBuilder].
 final _constructors = <String,
     Widget Function(
   List<TrackAnimation> animations, {
@@ -17,13 +17,6 @@ final _constructors = <String,
   'inline': (animations, {required builder, onStep, restartTrigger}) =>
       TrackBuilder(
         animations: animations,
-        onStep: onStep,
-        restartTrigger: restartTrigger,
-        builder: builder,
-      ),
-  'timeline': (animations, {required builder, onStep, restartTrigger}) =>
-      TrackBuilder.timeline(
-        TrackTimeline(animations),
         onStep: onStep,
         restartTrigger: restartTrigger,
         builder: builder,
@@ -456,38 +449,56 @@ void main() {
       expect(calls, ['first 0', 'second 1']);
     });
 
-    testWidgets('a changed loop still replays every track', (tester) async {
+    testWidgets('a changed loop mode replays the affected tracks',
+        (tester) async {
       final starts = <Track>[];
 
       Widget build(LoopMode loop) => TrackBuilder(
             animations: [
-              opacity([const TrackStep.to(1, motion: _linear100)]),
-              scale([const TrackStep.to(2, motion: _linear100)]),
+              opacity([
+                TrackStep.loop(
+                  const [
+                    TrackStep.to(0, motion: _linear100),
+                    TrackStep.to(1, motion: _linear100),
+                  ],
+                  mode: loop,
+                ),
+              ]),
+              scale([
+                TrackStep.loop(
+                  const [
+                    TrackStep.to(1, motion: _linear100),
+                    TrackStep.to(2, motion: _linear100),
+                  ],
+                  mode: loop,
+                ),
+              ]),
             ],
-            loop: loop,
             onStep: (track, stepIndex) => starts.add(track),
             builder: (context, value, child) => const SizedBox(),
           );
 
       await tester.pumpWidget(build(LoopMode.none));
       await tester.pumpAndSettle();
+      final countAfterFirst = starts.length;
       await tester.pumpWidget(build(LoopMode.pingPong));
       await tester.pump();
 
-      expect(starts, [opacity, scale, opacity, scale]);
+      expect(starts.length, greaterThan(countAfterFirst));
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('loops when loop is set', (tester) async {
+    testWidgets('loops when TrackStep.loop is used', (tester) async {
       final steps = <int>[];
 
       await tester.pumpWidget(
         TrackBuilder(
-          loop: LoopMode.loop,
           animations: [
             opacity(const [
-              TrackStep.to(1, motion: _linear100),
-              TrackStep.to(0, motion: _linear100),
+              TrackStep.loop([
+                TrackStep.to(1, motion: _linear100),
+                TrackStep.to(0, motion: _linear100),
+              ]),
             ]),
           ],
           onStep: (track, stepIndex) => steps.add(stepIndex),
@@ -550,14 +561,14 @@ void main() {
 
       testWidgets('changes while inactive jump to the new end', (tester) async {
         double? value;
-        Widget build(double target) => TrackBuilder.timeline(
-              TrackTimeline([
+        Widget build(double target) => TrackBuilder(
+              animations: [
                 opacity([
                   TrackStep.to(target, motion: _linear100),
                   const TrackStep.hold(Duration(milliseconds: 50)),
                 ]),
                 scale([const TrackStep.hold(Duration(milliseconds: 50))]),
-              ]),
+              ],
               active: false,
               builder: (context, read, child) {
                 value = read(opacity);

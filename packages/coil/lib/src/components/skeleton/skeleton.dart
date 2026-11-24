@@ -192,26 +192,27 @@ class CoilSkeleton extends StatelessWidget {
             CoilSkeletonTrack.appear([
               .to(1, motion: appearMotion),
             ], delay: grace),
+          if (pulsing)
+            CoilSkeletonTrack.pulse([
+              .loop([
+                .to(0.5, motion: pulseMotion),
+                .to(1, motion: pulseMotion),
+              ]),
+            ], from: 1)
+          else
+            CoilSkeletonTrack.pulse(const [.to(1, motion: .instant())]),
         ],
-        builder: (context, value, _) => Opacity(
-          opacity: value(CoilSkeletonTrack.appear).clamp(0, 1),
-          child: pulsing
-              ? TrackBuilder(
-                  loop: LoopMode.loop,
-                  animations: [
-                    CoilSkeletonTrack.pulse([
-                      .to(0.5, motion: pulseMotion),
-                      .to(1, motion: pulseMotion),
-                    ], from: 1),
-                  ],
-                  builder: (context, value, child) => Opacity(
-                    opacity: value(CoilSkeletonTrack.pulse).clamp(0, 1),
-                    child: child,
-                  ),
-                  child: block,
-                )
-              : block,
-        ),
+        builder: (context, value, child) {
+          final pulse = pulsing
+              ? value(CoilSkeletonTrack.pulse).clamp(0, 1)
+              : 1;
+          return Opacity(
+            opacity: (value(CoilSkeletonTrack.appear).clamp(0, 1) * pulse)
+                .toDouble(),
+            child: child,
+          );
+        },
+        child: block,
       ),
     );
   }

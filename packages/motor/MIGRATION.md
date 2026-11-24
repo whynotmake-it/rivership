@@ -501,7 +501,7 @@ The legacy sequence stack — `MotionSequence` (with `StateSequence`,
 | Legacy | Replacement |
 |--------|-------------|
 | `MotionSequence.states({...}, motion: m)` + `SequenceMotionBuilder` | `TrackPhaseTimeline({...})` with one `Track` + `PhaseTrackBuilder` |
-| `MotionSequence.steps([...])` | one track animation with multiple `.to` steps (or a `TrackTimeline` with `loop:`) |
+| `MotionSequence.steps([...])` | one track animation with multiple `.to` steps (wrap in `.loop(...)` to repeat) |
 | `MotionSequence.spanning({...})` | `.at` absolute-time steps |
 | `SequenceMotionController.playSequence` | `PhaseTrackController.playPhases` |
 | `currentSequencePhase` / `isPlayingSequence` / `sequenceProgress` | `currentPhase` (see note below) |
@@ -547,19 +547,18 @@ final sequence = MotionSequence.steps<double>(
   loop: .loop,
 );
 
-// After: one track with multiple steps, looped via the timeline.
-final progress = Track(.single, initial: 0.0);
+// After: one track with a `.loop` step.
+final progress = Track(.single, initial: 0.0, motion: .smoothSpring());
 
-final timeline = TrackTimeline(
-  [
-    progress([
-      .to(0.0, motion: .smoothSpring()),
-      .to(0.5, motion: .smoothSpring()),
-      .to(1.0, motion: .smoothSpring()),
+final animations = [
+  progress([
+    .loop([
+      .to(0.0),
+      .to(0.5),
+      .to(1.0),
     ]),
-  ],
-  loop: .loop,
-);
+  ]),
+];
 ```
 
 ### Spanning sequences → absolute-time steps

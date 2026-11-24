@@ -277,22 +277,29 @@ void main() {
           );
       await tester.pumpWidget(host(enabled: true));
       final controller = key.currentState!.controller;
-      final timeline = TrackTimeline(
-        [
-          a([
-            const TrackStep.to(1, motion: Motion.bouncySpring()),
-            const TrackStep.sync(token: #meet),
-            const TrackStep.to(0, motion: _linear100),
-          ]),
-          b([
-            const TrackStep.to(1, motion: Motion.linear(Duration(seconds: 2))),
-            const TrackStep.sync(token: #meet),
-            const TrackStep.to(3, motion: Motion.smoothSpring()),
-          ]),
-        ],
-        loop: LoopMode.pingPong,
-      );
-      controller.play(timeline);
+      final plan = <TrackAnimation>[
+        a([
+          const TrackStep.loop(
+            [
+              TrackStep.to(1, motion: Motion.bouncySpring()),
+              TrackStep.sync(token: #meet),
+              TrackStep.to(0, motion: _linear100),
+            ],
+            mode: LoopMode.pingPong,
+          ),
+        ]),
+        b([
+          const TrackStep.loop(
+            [
+              TrackStep.to(1, motion: Motion.linear(Duration(seconds: 2))),
+              TrackStep.sync(token: #meet),
+              TrackStep.to(3, motion: Motion.smoothSpring()),
+            ],
+            mode: LoopMode.pingPong,
+          ),
+        ]),
+      ];
+      controller.animate(plan);
       await tester.pump();
       for (var i = 0; i < 20; i++) {
         await tester.pump(_frame);
@@ -309,7 +316,7 @@ void main() {
       expect(position, greaterThan(const Duration(seconds: 30)));
 
       final reference = TrackController(vsync: tester)
-        ..play(timeline)
+        ..animate(plan)
         ..pause()
         ..scrubTo(position);
       addTearDown(reference.dispose);
@@ -324,7 +331,7 @@ void main() {
       final subscription = MotorInspectionRegistry.attach(_Observer());
       addTearDown(subscription.dispose);
       addTearDown(() => timeDilation = 1);
-      final timeline = TrackTimeline([
+      final plan = <TrackAnimation>[
         a([
           const TrackStep.to(1, motion: Motion.bouncySpring()),
           const TrackStep.at(
@@ -343,11 +350,11 @@ void main() {
           ),
           const TrackStep.to(-1, motion: Motion.linear(Duration(seconds: 1))),
         ]),
-      ]);
-      final controller = TrackController(vsync: tester)..play(timeline);
+      ];
+      final controller = TrackController(vsync: tester)..animate(plan);
       addTearDown(controller.dispose);
       final reference = TrackController(vsync: tester)
-        ..play(timeline)
+        ..animate(plan)
         ..pause();
       addTearDown(reference.dispose);
 
@@ -382,7 +389,7 @@ void main() {
         (tester) async {
       final subscription = MotorInspectionRegistry.attach(_Observer());
       addTearDown(subscription.dispose);
-      final timeline = TrackTimeline([
+      final plan = <TrackAnimation>[
         a([
           const TrackStep.to(1, motion: Motion.bouncySpring()),
           const TrackStep.sync(token: #s),
@@ -393,8 +400,8 @@ void main() {
           const TrackStep.sync(token: #s),
           const TrackStep.to(0, motion: _linear100),
         ]),
-      ]);
-      final live = TrackController(vsync: tester)..play(timeline);
+      ];
+      final live = TrackController(vsync: tester)..animate(plan);
       addTearDown(live.dispose);
       final recorded = <(Duration, double, double)>[];
       await tester.pump();
@@ -409,7 +416,7 @@ void main() {
         );
       }
 
-      final scrubbed = TrackController(vsync: tester)..play(timeline);
+      final scrubbed = TrackController(vsync: tester)..animate(plan);
       addTearDown(scrubbed.dispose);
       await tester.pump();
       scrubbed.pause();

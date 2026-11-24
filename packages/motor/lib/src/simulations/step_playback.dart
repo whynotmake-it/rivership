@@ -36,7 +36,6 @@ class StepPlayback<T extends Object> {
     required MotionConverter<T> converter,
     required T start,
     T? velocity,
-    LoopMode loop = LoopMode.none,
     Motion? fallbackMotion,
     List<Motion>? fallbackMotionPerDimension,
   }) : this.normalized(
@@ -45,7 +44,6 @@ class StepPlayback<T extends Object> {
           initialValues: converter.normalize(start),
           initialVelocities:
               velocity == null ? null : converter.normalize(velocity),
-          loop: loop,
           fallbackMotion: fallbackMotion,
           fallbackMotionPerDimension: fallbackMotionPerDimension,
         );
@@ -66,12 +64,12 @@ class StepPlayback<T extends Object> {
     required this.converter,
     required List<double> initialValues,
     List<double>? initialVelocities,
-    LoopMode loop = LoopMode.none,
     Motion? fallbackMotion,
     List<Motion>? fallbackMotionPerDimension,
     List<List<double>>? waypoints,
     this.incoming,
     this.delay = 0,
+    bool unrollLoopsOnce = false,
   })  : assert(steps.isNotEmpty, 'steps must not be empty'),
         assert(
           fallbackMotion == null || fallbackMotionPerDimension == null,
@@ -90,8 +88,7 @@ class StepPlayback<T extends Object> {
           ),
           'durations must not be negative',
         ),
-        _steps = List.of(steps),
-        _loop = loop,
+        _rawSteps = List.of(steps),
         _fallbackMotion = fallbackMotion,
         _fallbackMotionPerDimension = fallbackMotionPerDimension,
         _initialValues = List<double>.of(initialValues, growable: false),
@@ -102,29 +99,9 @@ class StepPlayback<T extends Object> {
     _velocities = List<double>.of(_initialVelocities, growable: false);
     _viewValues = List<double>.of(_initialValues, growable: false);
     _viewVelocities = List<double>.of(_initialVelocities, growable: false);
-    if (loop == LoopMode.loop) {
-      // `loop` animates back to the start after the last step. Model that as a
-      // synthetic final step that returns to the start snapshot, reusing the
-      // first real step's motion(s) and how it ends. The wrap (in
-      // `_advanceStep`) then continues from there without a jump. `seamless`
-      // skips this and jumps.
-      final returnMotions = _firstStepMotions(_steps, _initialValues.length) ??
-          _fallbackMotionPerDimension ??
-          (fallbackMotion != null
-              ? List<Motion>.filled(_initialValues.length, fallbackMotion)
-              : null);
-      if (returnMotions != null) {
-        _steps.add(
-          StepTo<T>(
-            // Only shown by inspection: the target is [_initialValues].
-            converter.denormalize(_initialValues),
-            motionPerDimension: returnMotions,
-            until: _firstStepWait(_steps),
-          ),
-        );
-        _hasReturnStep = true;
-      }
-    }
+
+    _compileSteps(_rawSteps, unrollLoopsOnce: unrollLoopsOnce);
+
     assert(
       _steps.every(
         (step) => switch (step) {
@@ -137,7 +114,14 @@ class StepPlayback<T extends Object> {
       'A TrackStep has no motion and no fallback motion was provided. '
       'Either pass a motion to the step or set a default motion on the Track.',
     );
-    _canFold = loop.isLooping && !_steps.any((step) => step is StepSync<T>);
+
+    _hasInfiniteLoop = _loops.any((frame) => frame.isInfinite);
+    final primaryLoop = _primaryLoopIndex = _findPrimaryLoopIndex();
+    _canFold = primaryLoop != null &&
+        !_hasSyncInRange(
+          _loops[primaryLoop].start,
+          _loops[primaryLoop].afterLoop - 1,
+        );
     _forwardSegmentSeconds = List<double?>.filled(_steps.length, null);
     _buildWaypoints(waypoints);
     if (delay > 0) {
@@ -148,33 +132,121 @@ class StepPlayback<T extends Object> {
     _show(0);
   }
 
-  /// Returns the per-dimension motions of the first step that targets a value,
-  /// or `null` if it uses the track's motion or no step targets a value.
-  static List<Motion>? _firstStepMotions<S extends Object>(
-    List<TrackStep<S>> steps,
-    int dimensions,
-  ) {
-    for (final step in steps) {
-      switch (step) {
-        case StepTo<S>(:final motion, :final motionPerDimension) ||
-              StepAt<S>(:final motion, :final motionPerDimension):
-          if (motionPerDimension != null) return motionPerDimension;
-          if (motion != null) return List<Motion>.filled(dimensions, motion);
-          return null;
-        default:
-          break;
+  void _compileSteps(
+    List<TrackStep<T>> rawSteps, {
+    required bool unrollLoopsOnce,
+  }) {
+    final flat = <TrackStep<T>>[];
+    final reported = <int>[];
+    final enclosing = <int?>[];
+    final loops = <_LoopFrame>[];
+    final startingAt = <int, List<int>>{};
+    var userIndex = 0;
+
+    void emit(
+      List<TrackStep<T>> list, {
+      required int? parentLoop,
+      required bool insidePingPong,
+    }) {
+      for (final step in list) {
+        if (step
+            case StepLoop<T>(
+              :final steps,
+              :final mode,
+              :final count,
+              :final together,
+            )) {
+          assert(steps.isNotEmpty, 'TrackStep.loop steps must not be empty.');
+          assert(
+            !insidePingPong,
+            'Nested TrackStep.loop inside a LoopMode.pingPong loop is not '
+            'supported.',
+          );
+          final effectiveMode = unrollLoopsOnce ? LoopMode.none : mode;
+          final effectiveCount =
+              effectiveMode == LoopMode.none ? 1 : count;
+          final frameIndex = loops.length;
+          final start = flat.length;
+          final frame = _LoopFrame(
+            start: start,
+            mode: effectiveMode,
+            count: effectiveCount,
+            parent: parentLoop,
+          );
+          loops.add(frame);
+          (startingAt[start] ??= []).add(frameIndex);
+
+          emit(
+            steps,
+            parentLoop: frameIndex,
+            insidePingPong:
+                insidePingPong || effectiveMode == LoopMode.pingPong,
+          );
+
+          final end = flat.length - 1;
+          frame.end = end;
+
+          // Identify first, second, and last target steps in this loop body.
+          for (var i = start; i <= end; i++) {
+            final leaf = flat[i];
+            if (leaf is StepTo<T> || leaf is StepAt<T>) {
+              if (frame.firstTarget == null) {
+                frame.firstTarget = i;
+              } else {
+                frame.secondTarget ??= i;
+              }
+              frame.lastTarget = i;
+            }
+          }
+
+          if (together != null) {
+            if (effectiveMode == LoopMode.pingPong &&
+                frame.secondTarget != null) {
+              frame.turnaroundBarrier = flat.length;
+              flat.add(
+                LoopBarrier<T>(
+                  token: LoopSyncToken(together, turnaround: true),
+                ),
+              );
+              reported.add(-1);
+              enclosing.add(frameIndex);
+            }
+            frame.togetherBarrier = flat.length;
+            flat.add(LoopBarrier<T>(token: LoopSyncToken(together)));
+            reported.add(-1);
+            enclosing.add(frameIndex);
+          }
+
+          frame.afterLoop = flat.length;
+        } else {
+          flat.add(step);
+          reported.add(step is LoopBarrier<T> ? -1 : userIndex++);
+          enclosing.add(parentLoop);
+        }
       }
+    }
+
+    emit(rawSteps, parentLoop: null, insidePingPong: false);
+    _steps = flat;
+    _reportedStepIndices = reported;
+    _enclosingLoop = enclosing;
+    _loops = loops;
+    _loopsStartingAt = startingAt;
+  }
+
+  int? _findPrimaryLoopIndex() {
+    for (var i = 0; i < _loops.length; i++) {
+      final frame = _loops[i];
+      if (frame.parent == null && frame.isInfinite) return i;
     }
     return null;
   }
 
-  /// What the step after the first one that targets a value waits for.
-  static WaitUntil _firstStepWait<S extends Object>(List<TrackStep<S>> steps) {
-    for (final step in steps) {
-      if (step is StepTo<S>) return step.until;
-      if (step is StepAt<S>) return WaitUntil.settled;
+  bool _hasSyncInRange(int start, int end) {
+    for (var i = start; i <= end; i++) {
+      if (_steps[i] is StepSync<T>) return true;
     }
-    return WaitUntil.settled;
+    return false;
   }
 
   static bool _validateStepTiming<S extends Object>(List<TrackStep<S>> steps) {
@@ -195,6 +267,8 @@ class StepPlayback<T extends Object> {
       } else if (step is PhaseBoundary<S>) {
         // Keyframes after it count from the start of its phase.
         minElapsed = Duration.zero;
+      } else if (step case StepLoop<S>(steps: final inner)) {
+        _validateStepTiming(inner);
       }
     }
     return true;
@@ -219,26 +293,32 @@ class StepPlayback<T extends Object> {
     for (final motion in fallbackMotionPerDimension ?? const <Motion>[]) {
       check(motion, 'A track motion');
     }
-    for (var i = 0; i < steps.length; i++) {
-      final where = 'The motion of the step at index $i';
-      switch (steps[i]) {
-        case StepHold<S>(:final duration) when duration.isNegative:
-          throw AssertionError(
-            'TrackStep.hold at index $i has a negative duration '
-            '(${duration.inMicroseconds} µs).',
-          );
-        case StepTo<S>(:final motion, :final motionPerDimension) ||
-              StepAt<S>(:final motion, :final motionPerDimension):
-          check(motion, where);
-          for (final motion in motionPerDimension ?? const <Motion>[]) {
+    void checkSteps(List<TrackStep<S>> list) {
+      for (var i = 0; i < list.length; i++) {
+        final where = 'The motion of the step at index $i';
+        switch (list[i]) {
+          case StepHold<S>(:final duration) when duration.isNegative:
+            throw AssertionError(
+              'TrackStep.hold at index $i has a negative duration '
+              '(${duration.inMicroseconds} µs).',
+            );
+          case StepTo<S>(:final motion, :final motionPerDimension) ||
+                StepAt<S>(:final motion, :final motionPerDimension):
             check(motion, where);
-          }
-        case StepFree<S>(:final motion):
-          check(motion, where);
-        default:
-          break;
+            for (final motion in motionPerDimension ?? const <Motion>[]) {
+              check(motion, where);
+            }
+          case StepFree<S>(:final motion):
+            check(motion, where);
+          case StepLoop<S>(steps: final inner):
+            checkSteps(inner);
+          default:
+            break;
+        }
       }
     }
+
+    checkSteps(steps);
     return true;
   }
 
@@ -266,18 +346,23 @@ class StepPlayback<T extends Object> {
   /// Gaps shorter than this (one microsecond) count as no time at all.
   static const _instant = 1e-6;
 
-  final List<TrackStep<T>> _steps;
+  final List<TrackStep<T>> _rawSteps;
+  late final List<TrackStep<T>> _steps;
+  late final List<int> _reportedStepIndices;
+  late final List<int?> _enclosingLoop;
+  late final List<_LoopFrame> _loops;
+  late final Map<int, List<int>> _loopsStartingAt;
+  late final bool _hasInfiniteLoop;
+  late final int? _primaryLoopIndex;
 
   /// The converter, which a converter swap that keeps playing replaces with
   /// one that reads the normalized values the same way.
   MotionConverter<T> converter;
 
-  final LoopMode _loop;
   final Motion? _fallbackMotion;
   final List<Motion>? _fallbackMotionPerDimension;
   final List<double> _initialValues;
   final List<double> _initialVelocities;
-  var _hasReturnStep = false;
 
   /// The normalized value each step ends at, used by pingPong to reverse.
   /// A step without a target keeps the value of the step before it.
@@ -345,6 +430,10 @@ class StepPlayback<T extends Object> {
   var _isDone = false;
   var _isWaitingForSync = false;
 
+  /// True once an infinite loop completed a full cycle with zero elapsed time
+  /// and unchanged state, stopping further resolution so it cannot spin.
+  var _stalled = false;
+
   /// How long the running segment lasts, or null if it never settles;
   /// only valid once [_segmentEndFound].
   double? _segmentDuration;
@@ -358,12 +447,11 @@ class StepPlayback<T extends Object> {
   /// When the running step yields to a following [StepAt], if it has to.
   double? _cutAt;
 
-  // Loop cycles. A cycle ends where the forward pass ends (for pingPong it
-  // spans the reverse and the next forward pass). Once a cycle starts in the
-  // same state as the previous one, playback repeats with a fixed period and
+  // Loop cycles. Once a cycle of the primary infinite loop starts in the same
+  // state as the previous one, playback repeats with a fixed period and
   // resolution stops ("folding").
-  // Plans with sync steps never fold because their release times come from
-  // other tracks; they, and loops that have not folded after
+  // Plans with sync steps inside the loop never fold because their release
+  // times come from other tracks; they, and loops that have not folded after
   // [_foldAttempts] cycles, keep only the most recent cycles instead.
   late final bool _canFold;
   late final List<_CycleStart> _cycleStarts = [];
@@ -427,11 +515,8 @@ class StepPlayback<T extends Object> {
     ];
     _waypoints = reused ??
         [
-          for (final (index, step) in _steps.indexed)
+          for (final step in _steps)
             last = switch (step) {
-              // The return step goes back to exactly where the plan started.
-              StepTo<T>() when _hasReturnStep && index == _steps.length - 1 =>
-                _initialValues,
               StepTo<T>(:final value) ||
               StepAt<T>(:final value) =>
                 normalize(value),
@@ -450,10 +535,10 @@ class StepPlayback<T extends Object> {
     return _waypoints[index - 1];
   }
 
-  /// A fresh copy of this plan that plays its steps once, from the same
+  /// A fresh copy of this plan that plays each loop once, from the same
   /// start, for resolving ahead without affecting this playback.
   StepPlayback<T> fork() => StepPlayback<T>.normalized(
-        steps: _steps,
+        steps: _rawSteps,
         converter: converter,
         initialValues: _initialValues,
         initialVelocities: _initialVelocities,
@@ -462,6 +547,7 @@ class StepPlayback<T extends Object> {
         waypoints: _waypoints,
         incoming: incoming,
         delay: delay,
+        unrollLoopsOnce: true,
       );
 
   /// The simulations playing at the time shown, continuing from there, for a
@@ -539,12 +625,6 @@ class StepPlayback<T extends Object> {
     }
   }
 
-  void _restoreInitialState() {
-    _handsOver = false;
-    _copyInto(_values, _initialValues);
-    _copyInto(_velocities, _initialVelocities);
-  }
-
   bool get _viewIsLatest => _viewIndex == _segments.length - 1;
 
   /// The currently active step index.
@@ -572,15 +652,15 @@ class StepPlayback<T extends Object> {
   ///
   /// That holds whatever the step's [WaitUntil]. A hold ends after its
   /// duration and a `.at` at its time. A motion without a duration and a
-  /// barrier end when playback settles. Looping playback never ends.
+  /// barrier end when playback settles. Infinitely looping playback never ends.
   bool get hasEnded {
     if (isDone) return true;
     final end = _lastEndsAt;
     return end != null && _lastElapsedSeconds >= end;
   }
 
-  /// When the last step of a plan that doesn't loop ends, once it has
-  /// started; infinite if it ends when it settles.
+  /// When the last step of a finite plan ends, once it has started; infinite
+  /// if it ends when it settles.
   double? _lastEndsAt;
 
   /// Whether playback is paused at a [StepSync], waiting for external release.
@@ -593,14 +673,84 @@ class StepPlayback<T extends Object> {
     return (_steps[_view.stepIndex] as StepSync<T>).token;
   }
 
-  /// The actual playback plan, including a synthetic loop-return step.
+  /// Whether this playback can still reach a [StepSync] with [token] from its
+  /// current resolution position.
+  ///
+  /// Used by [TrackController] so tracks that have exited a finite loop (or
+  /// already passed all their barriers for [token]) do not hold sibling tracks
+  /// waiting on later rounds of [token].
+  bool canReachSyncToken(Object token) {
+    if (_isDone || _stalled || _period != null) return false;
+    if (_leading) return _hasSyncTokenInRange(token, 0, _steps.length - 1);
+    if (_settlingTail) return false;
+    if (_hasSyncTokenAt(_stepIndex, token)) return true;
+
+    var frameIdx = _enclosingLoop[_stepIndex];
+    var cursor = _stepIndex;
+    while (frameIdx != null) {
+      final loop = _loops[frameIdx];
+      if (loop.direction < 0) {
+        if (_hasSyncTokenInRange(token, loop.secondTarget!, cursor - 1)) {
+          return true;
+        }
+        if (loop.togetherBarrier case final barrier?
+            when _hasSyncTokenAt(barrier, token)) {
+          return true;
+        }
+      } else {
+        if (cursor < loop.end &&
+            _hasSyncTokenInRange(token, cursor + 1, loop.end)) {
+          return true;
+        }
+        if (loop.mode == LoopMode.pingPong && loop.secondTarget != null) {
+          if (loop.turnaroundBarrier case final barrier?
+              when cursor != barrier && _hasSyncTokenAt(barrier, token)) {
+            return true;
+          }
+          if (_hasSyncTokenInRange(
+            token,
+            loop.secondTarget!,
+            loop.lastTarget!,
+          )) {
+            return true;
+          }
+        }
+        if (loop.togetherBarrier case final barrier?
+            when cursor != barrier && _hasSyncTokenAt(barrier, token)) {
+          return true;
+        }
+      }
+      final hasMoreCycles = loop.mode.isLooping &&
+          (loop.count == null || loop.iteration + 1 < loop.count!);
+      if (hasMoreCycles &&
+          _hasSyncTokenInRange(token, loop.start, loop.afterLoop - 1)) {
+        return true;
+      }
+      if (loop.isInfinite) return false;
+      cursor = loop.afterLoop - 1;
+      frameIdx = loop.parent;
+    }
+    return _hasSyncTokenInRange(token, cursor + 1, _steps.length - 1);
+  }
+
+  bool _hasSyncTokenAt(int index, Object token) =>
+      index >= 0 &&
+      index < _steps.length &&
+      _steps[index] is StepSync<T> &&
+      (_steps[index] as StepSync<T>).token == token;
+
+  bool _hasSyncTokenInRange(Object token, int start, int end) {
+    for (var i = start; i <= end; i++) {
+      if (_hasSyncTokenAt(i, token)) return true;
+    }
+    return false;
+  }
+
+  /// The flattened leaf steps of this playback plan.
   List<TrackStep<T>> get stepsView => List.unmodifiable(_steps);
 
-  /// Whether [stepsView] ends with a synthetic loop-return step.
-  bool get hasSyntheticReturnStep => _hasReturnStep;
-
-  /// The loop mode used by this playback.
-  LoopMode get loop => _loop;
+  /// Whether this playback contains an infinite loop.
+  bool get isLooping => _hasInfiniteLoop;
 
   /// Recorded forward segment durations, in seconds.
   List<double?> get forwardSegmentSeconds =>
@@ -726,8 +876,8 @@ class StepPlayback<T extends Object> {
       }
       final segment = _segments[index];
       if (segment.tail) continue;
-      final step = segment.stepIndex;
-      if (!_hasReturnStep || step != _steps.length - 1) entered.add(step);
+      final reported = _reportedStepIndices[segment.stepIndex];
+      if (reported >= 0) entered.add(reported);
     }
     return entered;
   }
@@ -777,6 +927,7 @@ class StepPlayback<T extends Object> {
     var stalled = 0;
     var from = _segmentStartSeconds;
     while (!_isDone &&
+        !_stalled &&
         !_isWaitingForSync &&
         _period == null &&
         stalled < _maxSegmentsPerCall) {
@@ -935,48 +1086,266 @@ class StepPlayback<T extends Object> {
       _startPlan();
       return;
     }
-    _stepIndex += _direction;
 
-    if (_direction > 0 && _stepIndex >= _steps.length) {
-      switch (_loop) {
-        case LoopMode.none:
-          if (_handsOver) {
-            _startSettlingTail();
-          } else {
-            _isDone = true;
-          }
-          return;
-        case LoopMode.loop:
-          // The synthetic return step appended at construction has already
-          // animated back to the start snapshot, so just continue the next
-          // cycle from there without jumping. Timelines without a target
-          // motion have no return step, so restart from their initial state.
-          if (!_hasReturnStep) {
-            _restoreInitialState();
-          }
-          _stepIndex = 0;
-        case LoopMode.pingPong:
-          // Reverse direction from the last step.
-          _direction = -1;
-          _stepIndex = _steps.length - 1;
-        case LoopMode.seamless:
-          // Jump straight back to the start snapshot and replay. The timeline
-          // is expected to end where it began, so the jump is invisible.
-          _restoreInitialState();
-          _stepIndex = 0;
+    final frame = _enclosingLoop[_stepIndex];
+    if (frame == null) {
+      final next = _stepIndex + 1;
+      if (next >= _steps.length) {
+        _finishOrTail();
+        return;
       }
-      _cycleStartSeconds = _segmentStartSeconds;
-      _cycle++;
-      if (_startCycle()) return;
-    } else if (_direction < 0 && _stepIndex < 0) {
-      // PingPong: reached start while reversing, so go forward again from
-      // step 0 which targets the first step value.
+      _stepIndex = next;
       _direction = 1;
-      _cycleStartSeconds = _segmentStartSeconds;
-      _stepIndex = 0;
+      _enterLoopsAt(_stepIndex);
+      _startCurrentStep();
+      return;
     }
 
+    final loop = _loops[frame];
+
+    // Just released from a pingPong turnaround barrier.
+    if (_stepIndex == loop.turnaroundBarrier) {
+      loop.direction = -1;
+      _direction = -1;
+      _stepIndex = loop.lastTarget!;
+      _startCurrentStep();
+      return;
+    }
+
+    // Just released from a cycle-end together barrier.
+    if (_stepIndex == loop.togetherBarrier) {
+      _completeLoopCycle(frame);
+      return;
+    }
+
+    // Reversing inside a pingPong loop.
+    if (loop.direction < 0) {
+      final next = _stepIndex - 1;
+      if (next < loop.secondTarget!) {
+        loop.direction = 1;
+        _direction = 1;
+        if (loop.togetherBarrier case final barrier?) {
+          _stepIndex = barrier;
+          _startCurrentStep();
+          return;
+        }
+        _completeLoopCycle(frame);
+        return;
+      }
+      _stepIndex = next;
+      _direction = -1;
+      _startCurrentStep();
+      return;
+    }
+
+    // Moving forward inside `loop`.
+    var next = _stepIndex + 1;
+    if (loop.shouldSkipFirstTarget && next == loop.firstTarget) {
+      next++;
+    }
+    if (next <= loop.end) {
+      _stepIndex = next;
+      _direction = 1;
+      _enterLoopsAt(_stepIndex, stopAtParent: frame);
+      _startCurrentStep();
+      return;
+    }
+
+    // Reached the end of `loop`'s forward pass.
+    if (loop.mode == LoopMode.pingPong && loop.secondTarget != null) {
+      if (loop.turnaroundBarrier case final barrier?) {
+        _stepIndex = barrier;
+        _direction = 1;
+        _startCurrentStep();
+        return;
+      }
+      loop.direction = -1;
+      _direction = -1;
+      _stepIndex = loop.lastTarget!;
+      _startCurrentStep();
+      return;
+    }
+
+    if (loop.togetherBarrier case final barrier?) {
+      _stepIndex = barrier;
+      _direction = 1;
+      _startCurrentStep();
+      return;
+    }
+    _completeLoopCycle(frame);
+  }
+
+  void _finishOrTail() {
+    if (_handsOver) {
+      _startSettlingTail();
+    } else {
+      _isDone = true;
+    }
+  }
+
+  void _enterLoopsAt(int index, {int? stopAtParent}) {
+    final frames = _loopsStartingAt[index];
+    if (frames == null) return;
+    for (final frameIndex in frames) {
+      if (stopAtParent != null && frameIndex <= stopAtParent) continue;
+      _loops[frameIndex]
+        ..iteration = 0
+        ..direction = 1
+        ..iterationStartSeconds = _segmentStartSeconds
+        ..iterationStartValues = List.of(_values)
+        ..iterationStartVelocities = List.of(_velocities)
+        ..entryValues = List.of(_values)
+        ..entryVelocities = List.of(_velocities);
+      _cycleStartSeconds = _segmentStartSeconds;
+      if (frameIndex == _primaryLoopIndex &&
+          _canFold &&
+          (index > 0 || incoming == null)) {
+        _recordCycleStart();
+      }
+    }
+  }
+
+  void _completeLoopCycle(int frameIndex) {
+    final loop = _loops[frameIndex];
+    loop.iteration++;
+    final doneWithLoop = !loop.mode.isLooping ||
+        (loop.count != null && loop.iteration >= loop.count!);
+
+    if (doneWithLoop) {
+      _exitLoop(frameIndex);
+      return;
+    }
+
+    // Guard against zero-duration infinite loops that cannot fold (e.g.
+    // barriered loops where every step is a 0ms no-op): park resolution once
+    // a full cycle makes zero time progress with unchanged state.
+    if (loop.isInfinite &&
+        !_canFold &&
+        loop.iteration >= 2 &&
+        _segmentStartSeconds - loop.iterationStartSeconds <= _instant &&
+        _sameState(
+          loop.iterationStartValues,
+          loop.iterationStartVelocities,
+        )) {
+      _stalled = true;
+      _period = 0;
+      return;
+    }
+
+    if (loop.mode == LoopMode.seamless) {
+      _handsOver = false;
+      if (loop.firstTarget case final targetIdx?) {
+        _copyInto(_values, _waypoints[targetIdx]);
+        // Keep velocities across a direct seam (firstTarget == start) so
+        // until: .ended springs carry momentum; if a leading non-free step
+        // runs first, start it at rest.
+        if (targetIdx > loop.start && _steps[loop.start] is! StepFree<T>) {
+          _velocities.fillRange(0, _velocities.length, 0);
+        }
+      } else {
+        // Loop has no target steps (e.g. only .free): restore entry state.
+        _copyInto(_values, loop.entryValues!);
+        _copyInto(_velocities, loop.entryVelocities!);
+      }
+    }
+
+    loop
+      ..direction = 1
+      ..iterationStartSeconds = _segmentStartSeconds
+      ..iterationStartValues = List.of(_values)
+      ..iterationStartVelocities = List.of(_velocities);
+    _cycleStartSeconds = _segmentStartSeconds;
+    _direction = 1;
+
+    if (frameIndex == _primaryLoopIndex) {
+      _cycle++;
+      if (_startCycle()) return;
+    }
+
+    var next = loop.start;
+    if (loop.shouldSkipFirstTarget && next == loop.firstTarget) {
+      next++;
+    }
+    if (next > loop.end) {
+      // Single-step seamless/pingPong loop has no second target to run.
+      _stalled = true;
+      _period = 0;
+      return;
+    }
+    _stepIndex = next;
+    _enterLoopsAt(_stepIndex, stopAtParent: frameIndex);
     _startCurrentStep();
+  }
+
+  void _exitLoop(int frameIndex) {
+    var current = frameIndex;
+    while (true) {
+      final loop = _loops[current];
+      final next = loop.afterLoop;
+      final parent = loop.parent;
+      if (parent == null) {
+        if (next >= _steps.length) {
+          _finishOrTail();
+          return;
+        }
+        _stepIndex = next;
+        _direction = 1;
+        _enterLoopsAt(_stepIndex);
+        _startCurrentStep();
+        return;
+      }
+      final parentLoop = _loops[parent];
+      if (next <= parentLoop.end) {
+        var target = next;
+        if (parentLoop.shouldSkipFirstTarget &&
+            target == parentLoop.firstTarget) {
+          target++;
+        }
+        if (target <= parentLoop.end) {
+          _stepIndex = target;
+          _direction = 1;
+          _enterLoopsAt(_stepIndex, stopAtParent: parent);
+          _startCurrentStep();
+          return;
+        }
+      }
+      if (parentLoop.mode == LoopMode.pingPong &&
+          parentLoop.secondTarget != null) {
+        if (parentLoop.turnaroundBarrier case final barrier?) {
+          _stepIndex = barrier;
+          _direction = 1;
+          _startCurrentStep();
+          return;
+        }
+        parentLoop.direction = -1;
+        _direction = -1;
+        _stepIndex = parentLoop.lastTarget!;
+        _startCurrentStep();
+        return;
+      }
+      if (parentLoop.togetherBarrier case final barrier?) {
+        _stepIndex = barrier;
+        _direction = 1;
+        _startCurrentStep();
+        return;
+      }
+      parentLoop.iteration++;
+      final parentDone = !parentLoop.mode.isLooping ||
+          (parentLoop.count != null &&
+              parentLoop.iteration >= parentLoop.count!);
+      if (!parentDone) {
+        parentLoop.iteration--;
+        _completeLoopCycle(parent);
+        return;
+      }
+      current = parent;
+    }
+  }
+
+  bool _sameState(List<double>? values, List<double>? velocities) {
+    if (values == null || velocities == null) return false;
+    return _CycleStart._near(_values, values) &&
+        _CycleStart._near(_velocities, velocities);
   }
 
   /// Waits for [delay], playing [incoming] or resting, before the first step.
@@ -1006,10 +1375,9 @@ class StepPlayback<T extends Object> {
     if (incoming == null) {
       // The hold of a delay has no velocity; the plan starts with its own.
       _copyInto(_velocities, _initialVelocities);
-      // The motion handed over is not part of what a later cycle repeats.
-      if (_loop.isLooping) _recordCycleStart();
     }
     _handsOver = incoming != null;
+    _enterLoopsAt(0);
     _startCurrentStep();
   }
 
@@ -1117,7 +1485,7 @@ class StepPlayback<T extends Object> {
       _startForwardStep();
     }
     _startSegmentEnd();
-    if (!_loop.isLooping && _stepIndex == _steps.length - 1) {
+    if (!_isFollowed()) {
       _lastEndsAt =
           _segmentStartSeconds + (_lastStepSeconds() ?? double.infinity);
     }
@@ -1142,7 +1510,6 @@ class StepPlayback<T extends Object> {
   /// the spring out until it has settled: the timeline never cuts a motion
   /// short.
   void _startSettlingTail() {
-    _stepIndex = _steps.length - 1;
     _settlingTail = true;
     _cutAt = null;
     _plannedEnd = null;
@@ -1178,6 +1545,7 @@ class StepPlayback<T extends Object> {
       StepAt<T>(:final at, :final motion, :final motionPerDimension) =>
         _simulateAt(at, _motions(motion, motionPerDimension)),
       StepSync<T>() => _wait(0),
+      StepLoop<T>() => throw StateError('StepLoop must be flattened.'),
     };
   }
 
@@ -1203,12 +1571,17 @@ class StepPlayback<T extends Object> {
   }
 
   List<Simulation> _simulateFree(FreeMotion motion) {
-    _askEnd = true;
-    if (_isFollowed()) _planHandOver([motion]);
-    return [
+    final simulations = [
       for (var i = 0; i < _values.length; i++)
         motion.createSimulation(start: _values[i], velocity: _velocities[i]),
     ];
+    if (_allDoneAtStart(simulations)) {
+      _plannedEnd = 0;
+      return simulations;
+    }
+    _askEnd = true;
+    if (_isFollowed()) _planHandOver([motion]);
+    return simulations;
   }
 
   /// Holds [values] for [seconds].
@@ -1221,9 +1594,7 @@ class StepPlayback<T extends Object> {
   }
 
   List<Simulation> _simulateTo(List<Motion> motions, List<double> targets) {
-    _askEnd = true;
-    if (_isFollowed()) _planHandOver(motions);
-    return [
+    final simulations = [
       for (var i = 0; i < targets.length; i++)
         motions[i].createSimulation(
           start: _values[i],
@@ -1231,6 +1602,24 @@ class StepPlayback<T extends Object> {
           velocity: _velocities[i],
         ),
     ];
+    if (_allDoneAtStart(simulations)) {
+      _plannedEnd = 0;
+      return simulations;
+    }
+    _askEnd = true;
+    if (_isFollowed()) _planHandOver(motions);
+    return simulations;
+  }
+
+  static bool _allDoneAtStart(List<Simulation> simulations) {
+    for (final simulation in simulations) {
+      if (!simulation.isDone(0)) return false;
+      if (simulation is SettlingSimulation &&
+          simulation.settlesAt != Duration.zero) {
+        return false;
+      }
+    }
+    return true;
   }
 
   List<Simulation> _simulateAt(Duration at, List<Motion> motions) {
@@ -1277,6 +1666,7 @@ class StepPlayback<T extends Object> {
       StepFree<T>() => null,
       StepHold<T>() => null,
       StepSync<T>() => null,
+      StepLoop<T>() => throw StateError('StepLoop must be flattened.'),
     };
 
     if (motions != null) {
@@ -1298,9 +1688,13 @@ class StepPlayback<T extends Object> {
   double? _lastStepSeconds() => switch (_steps[_stepIndex]) {
         StepSync<T>() => null,
         StepTo<T>(:final motion, :final motionPerDimension) =>
-          _stepSeconds(motion, motionPerDimension),
-        StepFree<T>(:final motion) => motion.duration?.toSeconds(),
+          _plannedEnd == 0 && !_handsOver
+              ? 0.0
+              : _stepSeconds(motion, motionPerDimension),
+        StepFree<T>(:final motion) =>
+          _plannedEnd == 0 && !_handsOver ? 0.0 : motion.duration?.toSeconds(),
         StepHold<T>() || StepAt<T>() => _plannedEnd,
+        StepLoop<T>() => throw StateError('StepLoop must be flattened.'),
       };
 
   /// The [MotionBase.duration] of a target step's motions, as
@@ -1317,7 +1711,63 @@ class StepPlayback<T extends Object> {
   /// Whether a step follows the running one, so that with
   /// [WaitUntil.ended] it ends after its motion's [MotionBase.duration]
   /// instead of when it has settled. A last step plays out until settled.
-  bool _isFollowed() => _loop.isLooping || _stepIndex < _steps.length - 1;
+  bool _isFollowed() {
+    final frameIdx = _enclosingLoop[_stepIndex];
+    if (frameIdx == null) return _stepIndex < _steps.length - 1;
+    final loop = _loops[frameIdx];
+
+    if (_stepIndex == loop.turnaroundBarrier) return true;
+
+    if (_stepIndex != loop.togetherBarrier) {
+      if (_direction < 0) {
+        if (_stepIndex > loop.secondTarget!) return true;
+        if (loop.togetherBarrier != null) return true;
+      } else {
+        var next = _stepIndex + 1;
+        if (loop.shouldSkipFirstTarget && next == loop.firstTarget) next++;
+        if (next <= loop.end) return true;
+        if (loop.mode == LoopMode.pingPong && loop.secondTarget != null) {
+          return true;
+        }
+        if (loop.togetherBarrier != null) return true;
+      }
+    }
+
+    // At the end of `loop`'s current cycle: followed if another cycle runs or
+    // anything follows after `loop` exits.
+    return _hasStepAfterCycle(frameIdx);
+  }
+
+  bool _hasStepAfterCycle(int frameIdx) {
+    var current = frameIdx;
+    while (true) {
+      final loop = _loops[current];
+      final hasMoreCycles = loop.mode.isLooping &&
+          (loop.count == null || loop.iteration + 1 < loop.count!);
+      if (hasMoreCycles) return true;
+      final next = loop.afterLoop;
+      final parent = loop.parent;
+      if (parent == null) return next < _steps.length;
+      final parentLoop = _loops[parent];
+      if (next <= parentLoop.end) return true;
+      if (parentLoop.mode == LoopMode.pingPong &&
+          parentLoop.secondTarget != null) {
+        return true;
+      }
+      if (parentLoop.togetherBarrier != null) return true;
+      current = parent;
+    }
+  }
+
+  bool get _inInfiniteLoop {
+    if (_leading || _settlingTail) return false;
+    var frame = _enclosingLoop[_stepIndex];
+    while (frame != null) {
+      if (_loops[frame].isInfinite) return true;
+      frame = _loops[frame].parent;
+    }
+    return false;
+  }
 
   /// Ends the running step after its [motions]' [MotionBase.duration], when
   /// it ends at its duration ([WaitUntil.ended]) instead of once settled, so
@@ -1371,8 +1821,16 @@ class StepPlayback<T extends Object> {
   void _scheduleCutForNextAt() {
     _cutAt = null;
     if (_direction < 0 || _steps[_stepIndex] is StepSync<T>) return;
-    final next = _stepIndex + 1;
+    final frame = _enclosingLoop[_stepIndex];
+    var next = _stepIndex + 1;
+    if (frame != null) {
+      final loop = _loops[frame];
+      if (loop.shouldSkipFirstTarget && next == loop.firstTarget) next++;
+      if (next > loop.end) return;
+    }
     if (next >= _steps.length) return;
+    // Keyframes inside a following loop count from when that loop starts.
+    if (_loopsStartingAt.containsKey(next)) return;
     if (_steps[next]
         case StepAt<T>(:final at, :final motion, :final motionPerDimension)) {
       final arrival = _absoluteTimeFor(at);
@@ -1440,7 +1898,7 @@ class StepPlayback<T extends Object> {
     _scanHigh = 0;
     if (_plannedEnd case final end?) _endSegmentAt(end);
     assert(
-      !_loop.isLooping || _segmentEndFound || !_neverEnds(),
+      !_inInfiniteLoop || _segmentEndFound || !_neverEnds(),
       'Step $_stepIndex of a looping plan never ends: its motion never '
       'settles (settlesAt is null) and the step does not end at a '
       'duration, so the loop would never repeat. Give the step '
@@ -1675,6 +2133,54 @@ class _HoldSimulation extends Simulation with SettlingSimulation {
 
   @override
   bool isDone(double time) => time >= seconds;
+}
+
+/// Compiled metadata and runtime cursor state for one [StepLoop].
+class _LoopFrame {
+  _LoopFrame({
+    required this.start,
+    required this.mode,
+    required this.count,
+    required this.parent,
+  });
+
+  final int start;
+  final LoopMode mode;
+  final int? count;
+  final int? parent;
+
+  /// Last body leaf step index (inclusive), before any synthetic barriers.
+  late int end;
+
+  /// First leaf index after this loop and any synthetic barriers it owns.
+  late int afterLoop;
+
+  /// Target-step indices (`StepTo` / `StepAt`) inside `[start..end]`.
+  int? firstTarget;
+  int? secondTarget;
+  int? lastTarget;
+
+  /// Synthetic `together` barrier indices, if any.
+  int? turnaroundBarrier;
+  int? togetherBarrier;
+
+  /// Mutable resolution state, reset on each entry from outside the loop.
+  int iteration = 0;
+  int direction = 1;
+  double iterationStartSeconds = 0;
+  List<double>? iterationStartValues;
+  List<double>? iterationStartVelocities;
+  List<double>? entryValues;
+  List<double>? entryVelocities;
+
+  bool get isInfinite => mode.isLooping && count == null;
+
+  /// On cycles after the first in [LoopMode.seamless] or [LoopMode.pingPong],
+  /// playback is already at [firstTarget], so skip re-running it.
+  bool get shouldSkipFirstTarget =>
+      iteration > 0 &&
+      firstTarget != null &&
+      (mode == LoopMode.seamless || mode == LoopMode.pingPong);
 }
 
 extension on Duration {

@@ -223,27 +223,28 @@ void main() {
     testWidgets('a faster track in a loop waits for a slower one each cycle',
         (tester) async {
       controller = TrackController(vsync: tester);
-      controller.animate(
-        [
-          trackA([
-            const StepTo(1.0, motion: linear100),
-            const StepSync(token: #beat),
-            const StepTo(0.0, motion: linear100),
+      controller.animate([
+        trackA([
+          const TrackStep.loop([
+            StepTo(1.0, motion: linear100),
+            StepSync(token: #beat),
+            StepTo(0.0, motion: linear100),
           ]),
-          trackB([
-            const StepTo(
+        ]),
+        trackB([
+          const TrackStep.loop([
+            StepTo(
               1.0,
               motion: Motion.linear(Duration(milliseconds: 300)),
             ),
-            const StepSync(token: #beat),
-            const StepTo(
+            StepSync(token: #beat),
+            StepTo(
               0.0,
               motion: Motion.linear(Duration(milliseconds: 500)),
             ),
           ]),
-        ],
-        loop: LoopMode.seamless,
-      );
+        ]),
+      ]);
       await tester.pump();
 
       // Both meet at 300ms. trackA's next cycle reaches the barrier at 500ms

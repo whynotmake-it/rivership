@@ -25,7 +25,6 @@ import 'package:motor/src/playback/playback_clock.dart';
 import 'package:motor/src/simulations/step_playback.dart';
 import 'package:motor/src/track.dart';
 import 'package:motor/src/track_step.dart';
-import 'package:motor/src/track_timeline.dart';
 
 part '_track_slot.dart';
 part 'track_animation.dart';
@@ -58,7 +57,7 @@ extension type const TrackValueReader(
   T call<T extends Object>(Track<T> track) => _read(track);
 }
 
-/// Controls a single active [TrackTimeline] from a ticker.
+/// Controls multi-track animations from a single ticker.
 ///
 /// This is an `Animation<TrackValueReader>`, so [value] is a reader function:
 /// call it with a [Track] to get that track's current value. It works with
@@ -86,7 +85,7 @@ class TrackController extends Animation<TrackValueReader>
   /// starts with: the first animation continues with it unless that
   /// animation has its own `withVelocity`. An entry from [Track.velocity]
   /// sets only the velocity. They are consulted only
-  /// when a track's state is first created; later [play]/[animate] calls do
+  /// when a track's state is first created; later [animate] calls do
   /// not re-apply them, and an animation's own `from` still jumps the track
   /// when it plays.
   ///
@@ -157,8 +156,7 @@ class TrackController extends Animation<TrackValueReader>
 
   Ticker? _ticker;
 
-  /// The futures returned by [play], [animate] and [stop] that are still
-  /// pending.
+  /// The futures returned by [animate] and [stop] that are still pending.
   // Linked: O(1) removal, resolved in creation order.
   final LinkedHashSet<_TrackFuture> _futures = LinkedHashSet();
 
@@ -285,7 +283,7 @@ class TrackController extends Animation<TrackValueReader>
   ///   estimate velocity from the history of samples (unless
   ///   [velocityTracking] is off).
   ///
-  /// Subsequent [play] or [animate] calls inherit the velocity.
+  /// Subsequent [animate] calls inherit the velocity.
   ///
   /// Like a [stop] with `canceled: true`, this cancels the futures of the
   /// calls that played these tracks and detaches them: they no longer play,
@@ -368,41 +366,6 @@ class TrackController extends Animation<TrackValueReader>
     return tracker;
   }
 
-  /// Plays [timeline].
-  ///
-  /// {@template TrackController.future}
-  /// Returns a [MotionFuture] for this call's tracks. It completes when they
-  /// have all settled, and [MotionFuture.ended] when they have all ended.
-  /// Restarting one of them, or `stop(canceled: true)`, cancels it. A
-  /// graceful [stop] completes it once the tracks rest. A looping animation
-  /// never completes, so don't await it.
-  ///
-  /// A track whose animation is a single [TrackStep.to] that its motion
-  /// finishes at once from where the track is, such as a spring at rest on
-  /// its target, doesn't play: it doesn't tick or change [status], and
-  /// counts as settled right away.
-  /// {@endtemplate}
-  ///
-  /// {@template TrackController.onStep}
-  /// [onStep] is called once for every step each track enters, in order,
-  /// including steps shorter than a frame. It is not called while scrubbing,
-  /// or for the internal step that returns a [LoopMode.loop] to its start.
-  /// It belongs to the plans this call starts: a later call that restarts a
-  /// track replaces it for that track only, and tracks the later call
-  /// doesn't name keep reporting to it. An error it throws is reported to
-  /// [FlutterError.reportError], and playback goes on.
-  /// {@endtemplate}
-  MotionFuture play(
-    TrackTimeline timeline, {
-    void Function(Track track, int stepIndex)? onStep,
-  }) {
-    return _startAnimations(
-      animations: timeline.animations,
-      loop: timeline.loop,
-      onStep: onStep,
-    );
-  }
-
   /// Animates a list of track [animations].
   ///
   /// This works like [set] but animates to the target values instead of
@@ -411,31 +374,42 @@ class TrackController extends Animation<TrackValueReader>
   /// specific tracks. Passing an empty list is a no-op.
   ///
   /// Per-track start values and velocities are carried on each
-  /// [TrackAnimation] (`from:` / `withVelocity:`). [loop] applies to every
-  /// animation in this call.
+  /// [TrackAnimation] (`from:` / `withVelocity:`). Loops live inside each
+  /// animation's steps via [TrackStep.loop].
   ///
-  /// {@macro TrackController.future}
+  /// {@template TrackController.future}
+  /// Returns a [MotionFuture] for this call's tracks. It completes when they
+  /// have all settled, and [MotionFuture.ended] when they have all ended.
+  /// Restarting one of them, or `stop(canceled: true)`, cancels it. A
+  /// graceful [stop] completes it once the tracks rest. An infinitely looping
+  /// animation never completes, so don't await it.
+  ///
+  /// A track whose animation is a single [TrackStep.to] that its motion
+  /// finishes at once from where the track is, such as a spring at rest on
+  /// its target, doesn't play: it doesn't tick or change [status], and
+  /// counts as settled right away.
+  /// {@endtemplate}
   ///
   /// Passing an empty list returns an already-complete future.
   ///
-  /// {@macro TrackController.onStep}
+  /// {@template TrackController.onStep}
+  /// [onStep] is called once for every authored leaf step each track enters,
+  /// in order, including steps shorter than a frame. It is not called while
+  /// scrubbing or for implicit `together` loop barriers.
+  /// It belongs to the plans this call starts: a later call that restarts a
+  /// track replaces it for that track only, and tracks the later call
+  /// doesn't name keep reporting to it. An error it throws is reported to
+  /// [FlutterError.reportError], and playback goes on.
+  /// {@endtemplate}
   MotionFuture animate(
     List<TrackAnimation> animations, {
-    LoopMode loop = LoopMode.none,
     void Function(Track track, int stepIndex)? onStep,
   }) {
-    return _startAnimations(
-      animations: animations,
-      loop: loop,
-      onStep: onStep,
+    assert(
+      _ticker != null,
+      'Cannot animate a disposed TrackController.',
     );
-  }
-
-  MotionFuture _startAnimations({
-    required List<TrackAnimation> animations,
-    required LoopMode loop,
-    void Function(Track track, int stepIndex)? onStep,
-  }) {
+    if (_ticker == null) return MotionFuture.complete();
     assert(
       () {
         final seen = <Track>{};
@@ -444,7 +418,7 @@ class TrackController extends Animation<TrackValueReader>
         }
         return true;
       }(),
-      'animate/play received multiple animations for the same track. '
+      'animate received multiple animations for the same track. '
       'To sequence steps on one track, use a single entry: '
       'track([.to(a), .to(b)]).',
     );
@@ -466,11 +440,9 @@ class TrackController extends Animation<TrackValueReader>
     }
 
     final resting = <Track, List<double>>{};
-    if (!loop.isLooping) {
-      for (final animation in animations) {
-        if (_restingValues(animation) case final values?) {
-          resting[animation.track] = values;
-        }
+    for (final animation in animations) {
+      if (_restingValues(animation) case final values?) {
+        resting[animation.track] = values;
       }
     }
     final moving = resting.isEmpty
@@ -501,13 +473,12 @@ class TrackController extends Animation<TrackValueReader>
     for (final animation in moving) {
       _playAnimation(
         _applyMotionOverride(animation),
-        loop: loop,
         startOffset: startOffset,
       );
     }
 
     final inspecting = MotorInspectionRegistry.isInspecting;
-    if (inspecting) _recordPlan(moving, loop: loop, start: startOffset);
+    if (inspecting) _recordPlan(moving, start: startOffset);
     final future = _futureFor(movingTracks);
     _startTicker();
     if (inspecting) _tryEstimateDurations(movingTracks);
@@ -674,7 +645,7 @@ class TrackController extends Animation<TrackValueReader>
   /// status event is dispatched: pausing is an inspection and authoring action,
   /// not a completed or canceled animation outcome. Like [stop], it doesn't
   /// notify value listeners. Use [scrubTo] to inspect a position and [resume]
-  /// to continue from it. Starting any playback with [play] or [animate] also
+  /// to continue from it. Starting any playback with [animate] also
   /// resumes the paused tracks from where they stopped.
   void pause() {
     final ticker = _ticker;
@@ -718,7 +689,6 @@ class TrackController extends Animation<TrackValueReader>
 
   void _recordPlan(
     List<TrackAnimation> animations, {
-    required LoopMode loop,
     required Duration start,
   }) {
     _hasInspectionData = true;
@@ -726,7 +696,6 @@ class TrackController extends Animation<TrackValueReader>
       PlaybackPlan(
         start: start,
         animations: animations,
-        loop: loop,
         startValues: [
           for (final animation in animations) _currentValueOf(animation.track),
         ],
@@ -810,11 +779,6 @@ class TrackController extends Animation<TrackValueReader>
 
   MotionFuture _gracefulStop(List<Track>? tracks) {
     final targets = tracks ?? _slots.keys.toList();
-    for (final future in _futures) {
-      if (future.repeats && future.tracks.every(targets.contains)) {
-        future.repeats = false;
-      }
-    }
     final settling = <Track>{};
     for (final track in targets) {
       final slot = _slots[track];
@@ -943,42 +907,6 @@ class TrackController extends Animation<TrackValueReader>
     }
   }
 
-  /// Marks [future], returned by [play] or [animate], as spanning a looping
-  /// sequence of runs: it never ends or settles on its own, and runs started
-  /// with [internalContinueRepeating] don't cancel it.
-  @internal
-  void internalRepeat(MotionFuture future) {
-    if (future is _TrackFuture && future._completed == null) {
-      future.repeats = true;
-    }
-  }
-
-  /// Starts the next run of a looping sequence from [onPlaybackSettled],
-  /// keeping the futures marked with [internalRepeat].
-  @internal
-  void internalContinueRepeating(List<TrackAnimation> animations) {
-    _continuingRepeat = true;
-    try {
-      animate(animations);
-    } finally {
-      _continuingRepeat = false;
-    }
-  }
-
-  /// Sets [values] between the runs of a looping sequence from
-  /// [onPlaybackSettled], keeping the futures marked with [internalRepeat].
-  @internal
-  void internalJumpRepeating(List<TrackValue> values) {
-    _continuingRepeat = true;
-    try {
-      internalSet(values);
-    } finally {
-      _continuingRepeat = false;
-    }
-  }
-
-  var _continuingRepeat = false;
-
   /// Plays [animations], which settle a graceful stop of controllers that
   /// settle with their own animation. Pending futures are not canceled: their
   /// [MotionFuture.ended] completes now and they complete once the tracks
@@ -986,9 +914,7 @@ class TrackController extends Animation<TrackValueReader>
   @internal
   MotionFuture internalSettle(List<TrackAnimation> animations) {
     for (final future in _futures) {
-      future
-        ..repeats = false
-        ..end();
+      future.end();
     }
     _keepingFutures = true;
     try {
@@ -1032,8 +958,7 @@ class TrackController extends Animation<TrackValueReader>
           steps: [
             for (final step in playback.stepsView) step,
           ],
-          hasSyntheticReturnStep: playback.hasSyntheticReturnStep,
-          loop: playback.loop,
+          isLooping: playback.isLooping,
           currentStepIndex: playback.currentStepIndex,
           direction: playback.direction,
           isWaitingForSync: playback.isWaitingForSync,
@@ -1107,7 +1032,6 @@ class TrackController extends Animation<TrackValueReader>
 
   void _playAnimation<T extends Object>(
     TrackAnimation<T> animation, {
-    required LoopMode loop,
     required Duration startOffset,
   }) {
     _applyPendingVelocity(animation.track, consume: true);
@@ -1118,7 +1042,6 @@ class TrackController extends Animation<TrackValueReader>
     }
     slot.play(
       animation.steps,
-      loop: loop,
       startOffset: startOffset,
       velocity: animation.withVelocity == null
           ? null
@@ -1217,8 +1140,9 @@ class TrackController extends Animation<TrackValueReader>
     }
   }
 
-  /// Adds [track] as a participant of every sync token in [steps], joining
-  /// the round the other participants are in.
+  /// Adds [track] as a participant of every sync token in [steps] (including
+  /// nested [StepLoop] bodies and `together` loop barriers), joining the round
+  /// the other participants are in.
   ///
   /// [rounds] caches that round per token. Joining never raises it, so it
   /// stays valid for every track joined in the same call.
@@ -1227,14 +1151,45 @@ class TrackController extends Animation<TrackValueReader>
     Iterable<TrackStep<Object>> steps,
     Map<Object, int> rounds,
   ) {
-    for (final step in steps) {
-      if (step is! StepSync) continue;
-      (_tokenParticipants[step.token] ??= {}).add(track);
-      final counts = _syncPasses[step.token] ??= {};
+    void register(Object token) {
+      (_tokenParticipants[token] ??= {}).add(track);
+      final counts = _syncPasses[token] ??= {};
       counts.putIfAbsent(
         track,
-        () => rounds[step.token] ??= counts.values.fold(0, math.max),
+        () => rounds[token] ??= counts.values.fold(0, math.max),
       );
+    }
+
+    bool hasTwoTargets(List<TrackStep<Object>> list) {
+      var targets = 0;
+      void scan(List<TrackStep<Object>> items) {
+        for (final step in items) {
+          if (step is StepTo || step is StepAt) {
+            if (++targets >= 2) return;
+          } else if (step case StepLoop(:final steps)) {
+            scan(steps);
+            if (targets >= 2) return;
+          }
+        }
+      }
+
+      scan(list);
+      return targets >= 2;
+    }
+
+    for (final step in steps) {
+      if (step case StepSync(:final token)) {
+        register(token);
+      } else if (step
+          case StepLoop(:final steps, :final mode, :final together)) {
+        _joinSyncTokens(track, steps, rounds);
+        if (together != null) {
+          if (mode == LoopMode.pingPong && hasTwoTargets(steps)) {
+            register(LoopSyncToken(together, turnaround: true));
+          }
+          register(LoopSyncToken(together));
+        }
+      }
     }
   }
 
@@ -1265,10 +1220,11 @@ class TrackController extends Animation<TrackValueReader>
   ///
   /// A track's arrivals at a token are counted in rounds: its next arrival is
   /// round `passes + 1`, where `passes` counts how often it was released at
-  /// that token. A round releases once every other animating participant has
-  /// arrived at the same round or already passed it, so in a loop a fast
-  /// track cannot lap a slow one. Barriers with a [FrameAnchoredSyncToken]
-  /// release at [now] when [anchorFrames] is true.
+  /// that token. A round releases once every other animating participant that
+  /// can still reach `token` has arrived at the same round or already passed
+  /// it, so in a loop a fast track cannot lap a slow one, while a track that
+  /// exited a finite loop does not hold siblings waiting. Barriers with a
+  /// [FrameAnchoredSyncToken] release at [now] when [anchorFrames] is true.
   ///
   /// [slots] and [passes] default to the controller's own; estimation passes
   /// forks and a copy of the pass counts to resolve ahead of playback.
@@ -1297,7 +1253,11 @@ class TrackController extends Animation<TrackValueReader>
       var allArrived = true;
       for (final track in participants) {
         final slot = lookup[track];
-        if (slot == null || !slot.isAnimating) continue;
+        if (slot == null ||
+            !slot.isAnimating ||
+            !slot.canReachSyncToken(token)) {
+          continue;
+        }
         final passed = counts[track] ?? 0;
         if (slot.pendingSyncToken == token && passed + 1 == round) {
           final arrival = slot.pendingSyncArrival;
@@ -1330,8 +1290,9 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   void _startTicker() {
-    final ticker = _ticker!;
-    if (ticker.isActive) return;
+    final ticker = _ticker;
+    assert(ticker != null, 'Cannot animate a disposed TrackController.');
+    if (ticker == null || ticker.isActive) return;
     _clock.tickerStarted();
     ticker.start();
   }
@@ -1348,9 +1309,7 @@ class TrackController extends Animation<TrackValueReader>
     if (_futures.isEmpty || _keepingFutures) return;
     final canceled = [
       for (final future in _futures)
-        if ((tracks == null || tracks.any(future.tracks.contains)) &&
-            !(future.repeats && _continuingRepeat))
-          future,
+        if (tracks == null || tracks.any(future.tracks.contains)) future,
     ];
     for (final future in canceled) {
       _futures.remove(future);
@@ -1364,7 +1323,6 @@ class TrackController extends Animation<TrackValueReader>
     if (_futures.isEmpty) return;
     List<_TrackFuture>? settled;
     for (final future in _futures) {
-      if (future.repeats) continue;
       if (!future.tracks.any((track) => _slots[track]?.isAnimating ?? false)) {
         (settled ??= []).add(future);
       } else if (future.awaitsEnd && _haveEnded(future.tracks)) {

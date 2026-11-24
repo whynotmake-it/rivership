@@ -84,11 +84,12 @@ final class _Plan {
   final Motion? fallback;
 
   StepPlayback<Offset> build() => StepPlayback<Offset>(
-        steps: steps,
+        steps: loop == LoopMode.none
+            ? steps
+            : [TrackStep.loop(steps, mode: loop)],
         converter: MotionConverter.offset,
         start: start,
         velocity: velocity,
-        loop: loop,
         fallbackMotion: fallback,
       );
 

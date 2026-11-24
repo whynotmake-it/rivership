@@ -326,16 +326,15 @@ void main() {
       addTearDown(subscription.dispose);
       const linear10 = Motion.linear(Duration(milliseconds: 10));
       controller = TrackController(vsync: tester);
-      controller.animate(
-        [
-          trackA([
-            const TrackStep.to(1, motion: linear10),
-            const TrackStep.to(0, motion: linear10),
-            const TrackStep.sync(token: #cycle),
+      controller.animate([
+        trackA([
+          const TrackStep.loop([
+            TrackStep.to(1, motion: linear10),
+            TrackStep.to(0, motion: linear10),
+            TrackStep.sync(token: #cycle),
           ]),
-        ],
-        loop: LoopMode.loop,
-      );
+        ]),
+      ]);
       await tester.pump();
       final recorded = <(Duration, double)>[];
       for (var i = 0; i < 1000; i++) {
@@ -568,15 +567,14 @@ void main() {
       const linear100 = Motion.linear(Duration(milliseconds: 100));
       final other = Track<double>(MotionConverter.single, initial: 0);
       final controller = TrackController(vsync: tester)
-        ..animate(
-          [
-            track([
-              const TrackStep.to(1, motion: linear100),
-              const TrackStep.to(0, motion: linear100),
+        ..animate([
+          track([
+            const TrackStep.loop([
+              TrackStep.to(1, motion: linear100),
+              TrackStep.to(0, motion: linear100),
             ]),
-          ],
-          loop: LoopMode.loop,
-        )
+          ]),
+        ])
         ..animate([
           other([
             const TrackStep.to(1, motion: linear1s),

@@ -54,14 +54,12 @@ class _HarnessState extends State<_Harness>
   @override
   void initState() {
     super.initState();
-    _controller.play(
-      TrackTimeline([
-        _track(const [
-          TrackStep.to(1, motion: Motion.linear(Duration(seconds: 1))),
-          TrackStep.hold(Duration(milliseconds: 100)),
-        ]),
+    _controller.animate([
+      _track(const [
+        TrackStep.to(1, motion: Motion.linear(Duration(seconds: 1))),
+        TrackStep.hold(Duration(milliseconds: 100)),
       ]),
-    );
+    ]);
   }
 
   @override

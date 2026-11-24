@@ -65,12 +65,8 @@ void main() {
         track([TrackStep.to(1, motion: spring)]),
       );
       expectSame(
-        TrackTimeline([
-          track([TrackStep.to(1, motion: linear)]),
-        ]),
-        TrackTimeline([
-          track([TrackStep.to(1, motion: curved)]),
-        ]),
+        TrackStep<double>.loop([TrackStep.to(1, motion: linear)]),
+        TrackStep<double>.loop([TrackStep.to(1, motion: curved)]),
       );
       expectSame(
         TrackPhaseTimeline({
@@ -284,25 +280,25 @@ void main() {
       expectDifferent(a([TrackStep.to(1)]), b([TrackStep.to(1)]));
     });
 
-    test('timelines compare animations and loop mode', () {
+    test('loop steps compare steps, mode, count, and together', () {
       expectSame(
-        TrackTimeline([
-          a([TrackStep.to(1)]),
-        ]),
-        TrackTimeline([
-          a([TrackStep.to(1)]),
-        ]),
+        const TrackStep<double>.loop([TrackStep.to(1)]),
+        const TrackStep<double>.loop([TrackStep.to(1)]),
       );
       expectDifferent(
-        TrackTimeline([
-          a([TrackStep.to(1)]),
-        ]),
-        TrackTimeline(
-          [
-            a([TrackStep.to(1)]),
-          ],
-          loop: LoopMode.loop,
+        const TrackStep<double>.loop([TrackStep.to(1)]),
+        const TrackStep<double>.loop(
+          [TrackStep.to(1)],
+          mode: LoopMode.pingPong,
         ),
+      );
+      expectDifferent(
+        const TrackStep<double>.loop([TrackStep.to(1)]),
+        const TrackStep<double>.loop([TrackStep.to(1)], count: 2),
+      );
+      expectDifferent(
+        const TrackStep<double>.loop([TrackStep.to(1)]),
+        const TrackStep<double>.loop([TrackStep.to(1)], together: #pulse),
       );
     });
 

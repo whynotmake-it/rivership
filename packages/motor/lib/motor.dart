@@ -17,6 +17,7 @@ export 'src/controllers/motion_controller.dart'
 export 'src/controllers/phase_track_controller.dart';
 export 'src/controllers/single_motion_controller.dart';
 export 'src/controllers/track_controller.dart';
+export 'src/loop_mode.dart';
 export 'src/motion.dart';
 export 'src/motion_converter.dart' hide debugCheckDimensions;
 export 'src/motion_curve.dart';
@@ -27,8 +28,7 @@ export 'src/phase_transition.dart';
 export 'src/settling_simulation.dart';
 export 'src/track.dart';
 export 'src/track_phase_timeline.dart';
-export 'src/track_step.dart' hide PhaseBoundary;
-export 'src/track_timeline.dart';
+export 'src/track_step.dart' hide LoopBarrier, LoopSyncToken, PhaseBoundary;
 export 'src/widgets/motion_builder.dart';
 export 'src/widgets/phase_track_builder.dart';
 export 'src/widgets/sequence_motion_builder.dart';

@@ -69,21 +69,22 @@ class _ControllersPageState extends State<ControllersPage>
   void _playSteps() {
     _code.value =
         '// Plays the steps, then back again, until stopped.\n'
-        'fader.play(\n'
-        '  [\n'
+        'fader.play([\n'
+        '  .loop([\n'
         '    .to(1),\n'
         '    .hold(Duration(milliseconds: 200)),\n'
         '    .to(0.3, motion: .bouncySpring()),\n'
         '    .to(0.7),\n'
-        '  ],\n'
-        '  loop: .pingPong,\n'
-        ');';
+        '  ], mode: .pingPong),\n'
+        ']);';
     _fader.play([
-      .to(1),
-      .hold(const Duration(milliseconds: 200)),
-      .to(0.3, motion: .bouncySpring()),
-      .to(0.7),
-    ], loop: .pingPong);
+      .loop([
+        .to(1),
+        .hold(const Duration(milliseconds: 200)),
+        .to(0.3, motion: .bouncySpring()),
+        .to(0.7),
+      ], mode: .pingPong),
+    ]);
   }
 
   void _stop() {

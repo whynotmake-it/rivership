@@ -107,17 +107,19 @@ void main() {
       testWidgets('alternates in a $loop loop with holds', (tester) async {
         final controller = TrackController(vsync: tester);
         addTearDown(controller.dispose);
-        controller.animate(
-          [
-            x([
-              const TrackStep.to(1, motion: _instant),
-              const TrackStep.hold(Duration(milliseconds: 100)),
-              const TrackStep.to(0, motion: _instant),
-              const TrackStep.hold(Duration(milliseconds: 100)),
-            ]),
-          ],
-          loop: loop,
-        );
+        controller.animate([
+          x([
+            TrackStep.loop(
+              const [
+                TrackStep.to(1, motion: _instant),
+                TrackStep.hold(Duration(milliseconds: 100)),
+                TrackStep.to(0, motion: _instant),
+                TrackStep.hold(Duration(milliseconds: 100)),
+              ],
+              mode: loop,
+            ),
+          ]),
+        ]);
 
         final seen = <double>{};
         await tester.pump();

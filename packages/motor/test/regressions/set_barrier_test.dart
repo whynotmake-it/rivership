@@ -15,19 +15,17 @@ void main() {
     final b = Track<double>(MotionConverter.single, initial: 0);
     final c = TrackController(vsync: tester);
     addTearDown(c.dispose);
-    c.play(
-      TrackTimeline([
-        a([
-          const TrackStep.to(1, motion: fast),
-          const TrackStep.sync(token: #meet),
-          const TrackStep.to(2, motion: slow),
-        ]),
-        b([
-          const TrackStep.to(1, motion: slow),
-          const TrackStep.sync(token: #meet),
-        ]),
+    c.animate([
+      a([
+        const TrackStep.to(1, motion: fast),
+        const TrackStep.sync(token: #meet),
+        const TrackStep.to(2, motion: slow),
       ]),
-    );
+      b([
+        const TrackStep.to(1, motion: slow),
+        const TrackStep.sync(token: #meet),
+      ]),
+    ]);
     await tester.pump();
     for (var i = 0; i < 30; i++) {
       await tester.pump(const Duration(milliseconds: 10));
