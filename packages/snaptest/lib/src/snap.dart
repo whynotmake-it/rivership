@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 
 import 'package:device_frame/device_frame.dart';
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';

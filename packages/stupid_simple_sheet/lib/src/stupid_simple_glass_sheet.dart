@@ -2,6 +2,7 @@
 
 import 'dart:ui';
 
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:stupid_simple_sheet/src/glass_sheet_transitions.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';

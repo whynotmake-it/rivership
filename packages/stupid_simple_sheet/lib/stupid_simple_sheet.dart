@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:motor/motor.dart';
 import 'package:scroll_drag_detector/scroll_drag_detector.dart';

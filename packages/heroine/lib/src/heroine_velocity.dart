@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:heroine/src/drag_dismissable.dart';
 import 'package:heroine/src/heroines.dart';

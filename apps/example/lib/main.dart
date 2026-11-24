@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:coil_example/coil_example.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:heroine_example/main.dart';
 import 'package:motor_devtools/motor_devtools.dart';

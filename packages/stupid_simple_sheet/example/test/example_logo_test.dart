@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:example_design/example_design.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';

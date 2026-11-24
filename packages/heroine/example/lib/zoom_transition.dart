@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 import 'package:heroine/heroine.dart';

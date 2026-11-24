@@ -1,4 +1,6 @@
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 import 'package:stupid_simple_sheet/src/optimized_clip.dart';

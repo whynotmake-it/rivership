@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:rivership/rivership.dart';
 import 'package:rivership_test/rivership_test.dart';

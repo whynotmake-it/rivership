@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:heroine/heroine.dart';
 import 'package:heroine_example/image_grid.dart';

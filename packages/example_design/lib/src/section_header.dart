@@ -1,4 +1,5 @@
 import 'package:example_design/src/example_theme.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
 /// A centered header with an optional logo, a featherweight display title,

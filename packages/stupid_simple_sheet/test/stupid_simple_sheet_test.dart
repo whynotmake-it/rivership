@@ -1,7 +1,9 @@
 // ignore_for_file: avoid_redundant_argument_values
 
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
