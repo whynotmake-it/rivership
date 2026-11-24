@@ -308,7 +308,6 @@ class _CoilAdaptivePopupState extends State<CoilAdaptivePopup> {
         context: context,
         presentation: CoilModalPresentation.floating,
         anchor: widget.floatingAnchor,
-        anchor: widget.floatingAnchor,
         origin: origin,
         motion: widget.motion,
         // A swipe (sideways or down, the route's default), back and Esc
