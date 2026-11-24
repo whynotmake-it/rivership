@@ -1,6 +1,5 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability_sheet.dart';
 import 'package:stupid_simple_sheet_example/shell/coil_sheets.dart';
@@ -14,7 +13,7 @@ final dismissalCapabilities = <Capability>[
         'stays put.',
     code: _shrinkCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         dismissalMode: DismissalMode.shrink,
         child: CapabilitySheet(
@@ -48,7 +47,7 @@ final dismissalCapabilities = <Capability>[
     description: 'Dragging does nothing; only the buttons close it.',
     code: _notDraggableCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         draggable: false,
         child: const CapabilitySheet(
@@ -64,20 +63,22 @@ final dismissalCapabilities = <Capability>[
   ),
   Capability(
     title: 'Confirm before closing',
-    description: 'A drag down asks first, and the sheet stays until you '
+    description:
+        'A drag down asks first, and the sheet stays until you '
         'answer.',
     code: _confirmCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(context: context, child: const _ConfirmSheet()),
+      exampleSheetRoute<void>(context: context, child: const _ConfirmSheet()),
     ),
   ),
   Capability(
     title: "Barrier doesn't dismiss",
-    description: 'Tapping outside leaves the sheet open; dragging still '
+    description:
+        'Tapping outside leaves the sheet open; dragging still '
         'closes it.',
     code: _barrierCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         barrierDismissible: false,
         child: const CapabilitySheet(

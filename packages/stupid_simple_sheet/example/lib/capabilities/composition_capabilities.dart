@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:coil/coil.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability_sheet.dart';
 import 'package:stupid_simple_sheet_example/shell/code_block.dart';
@@ -15,23 +14,26 @@ import 'package:stupid_simple_sheet_example/shell/rows.dart';
 final compositionCapabilities = <Capability>[
   Capability(
     title: 'Stacked sheets',
-    description: 'A sheet opens another one over itself, as deep as you '
+    description:
+        'A sheet opens another one over itself, as deep as you '
         'like.',
     code: _stackedCode,
     open: (context) => _openStacked(context, 1),
   ),
   Capability(
     title: 'Nested navigation',
-    description: 'Pages pushed inside one sheet, which still drags away '
+    description:
+        'Pages pushed inside one sheet, which still drags away '
         'from any of them.',
     code: _nestedCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(context: context, child: const _NestedSheet()),
+      exampleSheetRoute<void>(context: context, child: const _NestedSheet()),
     ),
   ),
   Capability(
     title: 'Background snapshot',
-    description: 'The page behind is rasterized while the sheet opens and '
+    description:
+        'The page behind is rasterized while the sheet opens and '
         'rests.',
     code: _snapshotCode,
     open: (context) => Navigator.of(context).push(
@@ -96,7 +98,7 @@ class _Rows extends StatelessWidget {
 
 Future<void> _openStacked(BuildContext context, int depth) =>
     Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         child: _StackedSheet(depth: depth),
       ),
@@ -188,7 +190,10 @@ class _NestedSheetState extends State<_NestedSheet> {
             return Opacity(
               opacity: (1 - leaving) * entering,
               child: FractionalTranslation(
-                translation: Offset(sign * ((1 - entering) - 0.25 * leaving), 0),
+                translation: Offset(
+                  sign * ((1 - entering) - 0.25 * leaving),
+                  0,
+                ),
                 child: child,
               ),
             );

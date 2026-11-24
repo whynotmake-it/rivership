@@ -228,12 +228,8 @@ class SheetConfig {
   String? disabledReason(SheetSetting setting) => switch ((route, setting)) {
     (SheetRouteKind.coil, SheetSetting.motion) =>
       "coil's sheet moves on the theme's motion tokens.",
-    (SheetRouteKind.coil, SheetSetting.draggable) =>
-      "coil's sheet always drags.",
     (SheetRouteKind.coil, SheetSetting.aboveKeyboard) =>
       "coil's sheet always rides on the keyboard.",
-    (SheetRouteKind.coil, SheetSetting.snapshot) =>
-      "coil's sheet doesn't take a snapshot mode.",
     (
       SheetRouteKind.glass || SheetRouteKind.cupertino,
       SheetSetting.barrierDismissible,
@@ -246,13 +242,10 @@ class SheetConfig {
   bool takes(SheetSetting setting) => disabledReason(setting) == null;
 
   /// Whether the opened sheet can be dragged.
-  bool get effectiveDraggable =>
-      !takes(SheetSetting.draggable) || draggable;
+  bool get effectiveDraggable => !takes(SheetSetting.draggable) || draggable;
 
   /// Whether a tap outside the opened sheet closes it.
-  bool get effectiveBarrierDismissible => takes(
-    SheetSetting.barrierDismissible,
-  )
+  bool get effectiveBarrierDismissible => takes(SheetSetting.barrierDismissible)
       ? barrierDismissible
       : snappingConfig.hasInbetweenSnaps;
 
@@ -324,11 +317,13 @@ class SheetConfig {
       context,
     );
     final route = switch (this.route) {
-      SheetRouteKind.coil => DemoSheetRoute<void>(
+      SheetRouteKind.coil => exampleSheetRoute<void>(
         context: context,
         snappingConfig: snappingConfig,
         dragHandoff: handoff,
         dismissalMode: dismissal,
+        draggable: draggable,
+        backgroundSnapshotMode: snapshot,
         barrierDismissible: barrierDismissible,
         child: CoilPlaygroundSheet(config: this),
       ),
@@ -360,9 +355,7 @@ class SheetConfig {
         backgroundColor: cupertinoBackground,
         motion:
             effectiveMotion ??
-            const CupertinoMotion.smooth(
-              duration: Duration(milliseconds: 350),
-            ),
+            const CupertinoMotion.smooth(duration: Duration(milliseconds: 350)),
         child: CupertinoPlaygroundSheet(config: this, glass: true),
       ),
       SheetRouteKind.cupertino => StupidSimpleCupertinoSheetRoute<void>(
@@ -375,9 +368,7 @@ class SheetConfig {
         backgroundColor: cupertinoBackground,
         motion:
             effectiveMotion ??
-            const CupertinoMotion.smooth(
-              duration: Duration(milliseconds: 350),
-            ),
+            const CupertinoMotion.smooth(duration: Duration(milliseconds: 350)),
         child: CupertinoPlaygroundSheet(config: this, glass: false),
       ),
     };
@@ -406,14 +397,6 @@ class SheetConfig {
       'child: ${_childCode()},',
     ];
     final buffer = StringBuffer();
-    if (route == SheetRouteKind.coil && !_usesPlainCoilRoute) {
-      buffer.writeln(
-        "// CoilSheetRoute doesn't take snapping, handoff or dismissal yet,",
-      );
-      buffer.writeln(
-        '// so this example subclasses it (see lib/shell/coil_sheets.dart).',
-      );
-    }
     buffer.writeln('Navigator.of(context).push(');
     buffer.writeln('  $_constructor');
     for (final arg in args) {
@@ -424,16 +407,8 @@ class SheetConfig {
     return buffer.toString();
   }
 
-  /// Whether `CoilSheetRoute` itself can open this sheet: it takes no
-  /// snapping, handoff or dismissal of its own, so only its defaults.
-  bool get _usesPlainCoilRoute =>
-      _snappingIsDefault &&
-      handoff == SheetDragHandoff.gestureStart &&
-      dismissal == DismissalMode.slide;
-
   String get _constructor => switch (route) {
-    SheetRouteKind.coil when _usesPlainCoilRoute => 'CoilSheetRoute<void>(',
-    SheetRouteKind.coil => 'DemoSheetRoute<void>(',
+    SheetRouteKind.coil => 'CoilSheetRoute<void>(',
     SheetRouteKind.plain => 'StupidSimpleSheetRoute<void>(',
     SheetRouteKind.glass => 'StupidSimpleGlassSheetRoute<void>(',
     SheetRouteKind.cupertino => 'StupidSimpleCupertinoSheetRoute<void>(',

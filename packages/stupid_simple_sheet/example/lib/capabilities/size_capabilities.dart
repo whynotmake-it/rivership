@@ -12,7 +12,7 @@ final sizeCapabilities = <Capability>[
     description: 'A list grows the sheet up to the top cap.',
     code: _fullCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         child: const CapabilitySheet(
           title: 'Full height',
@@ -31,7 +31,7 @@ final sizeCapabilities = <Capability>[
     description: 'Three rows make a sheet three rows tall.',
     code: _fitsCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         child: const CapabilitySheet(
           title: 'Fits its content',
@@ -47,7 +47,7 @@ final sizeCapabilities = <Capability>[
     description: 'Add a row and the sheet springs to its new height.',
     code: _growingCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(context: context, child: const _GrowingSheet()),
+      exampleSheetRoute<void>(context: context, child: const _GrowingSheet()),
     ),
   ),
   Capability(
@@ -55,7 +55,7 @@ final sizeCapabilities = <Capability>[
     description: 'A focused field rides up with the keyboard.',
     code: _keyboardCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(context: context, child: const _KeyboardSheet()),
+      exampleSheetRoute<void>(context: context, child: const _KeyboardSheet()),
     ),
   ),
 ];

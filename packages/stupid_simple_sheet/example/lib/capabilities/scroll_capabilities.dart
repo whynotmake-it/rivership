@@ -1,6 +1,5 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability_sheet.dart';
 import 'package:stupid_simple_sheet_example/shell/coil_sheets.dart';
@@ -14,7 +13,7 @@ final scrollCapabilities = <Capability>[
         'top edge.',
     code: _handoffCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         child: const CapabilitySheet(
           title: 'Scroll handoff',
@@ -30,11 +29,12 @@ final scrollCapabilities = <Capability>[
   ),
   Capability(
     title: 'Continuous handoff',
-    description: 'One fling down carries from the middle of the list into '
+    description:
+        'One fling down carries from the middle of the list into '
         'the sheet.',
     code: _continuousCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         dragHandoff: SheetDragHandoff.continuous,
         child: const CapabilitySheet(
@@ -51,11 +51,12 @@ final scrollCapabilities = <Capability>[
   ),
   Capability(
     title: 'Pages inside a sheet',
-    description: 'A PageView of lists, with vertical drags still reaching '
+    description:
+        'A PageView of lists, with vertical drags still reaching '
         'the sheet.',
     code: _pagesCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(context: context, child: const _PagesSheet()),
+      exampleSheetRoute<void>(context: context, child: const _PagesSheet()),
     ),
   ),
 ];
@@ -160,11 +161,7 @@ class _PagesSheetState extends State<_PagesSheet> {
       ),
       const SizedBox(height: 8),
       Center(
-        child: CoilCarouselDots(
-          count: _pages,
-          value: _page,
-          onChanged: _goTo,
-        ),
+        child: CoilCarouselDots(count: _pages, value: _page, onChanged: _goTo),
       ),
     ],
   );

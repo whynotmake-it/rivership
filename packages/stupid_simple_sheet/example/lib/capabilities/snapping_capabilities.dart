@@ -1,6 +1,5 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability.dart';
 import 'package:stupid_simple_sheet_example/capabilities/capability_sheet.dart';
 import 'package:stupid_simple_sheet_example/shell/coil_sheets.dart';
@@ -12,7 +11,7 @@ final snappingCapabilities = <Capability>[
     description: 'Three stops, opening at the middle one.',
     code: _detentsCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         snappingConfig: _detents,
         child: const CapabilitySheet(
@@ -30,7 +29,7 @@ final snappingCapabilities = <Capability>[
     description: 'Send the sheet to a stop, or take its stops away.',
     code: _controllerCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         snappingConfig: _detents,
         child: const _ControllerSheet(),
@@ -42,12 +41,13 @@ final snappingCapabilities = <Capability>[
     description: 'A fling moves one stop, however hard you throw it.',
     code: _flingCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
-        snappingConfig: const SheetSnappingConfig(
-          [0.33, 0.66, 1],
-          initialSnap: 0.33,
-        ),
+        snappingConfig: const SheetSnappingConfig([
+          0.33,
+          0.66,
+          1,
+        ], initialSnap: 0.33),
         child: const CapabilitySheet(
           title: 'Fling physics',
           hint:
@@ -65,7 +65,7 @@ final snappingCapabilities = <Capability>[
     description: 'A hard fling carries past a stop, as scrolling does.',
     code: _frictionCode,
     open: (context) => Navigator.of(context).push(
-      DemoSheetRoute<void>(
+      exampleSheetRoute<void>(
         context: context,
         snappingConfig: const SheetSnappingConfig(
           [0.33, 0.66, 1],

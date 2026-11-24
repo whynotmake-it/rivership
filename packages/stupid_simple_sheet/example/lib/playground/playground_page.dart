@@ -1,6 +1,5 @@
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
-import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 import 'package:stupid_simple_sheet_example/playground/sheet_config.dart';
 import 'package:stupid_simple_sheet_example/shell/code_block.dart';
 import 'package:stupid_simple_sheet_example/shell/demo_scaffold.dart';
