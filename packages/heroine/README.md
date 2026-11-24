@@ -9,36 +9,31 @@ The queen of hero transitions. Flutter's most addictive interactions.
 
 ![Showcase GIF](doc/main.gif)
 
-
 > "this will be such an addictive #FlutterDev interaction!"
 >
 > ~ [Mike Rydstrom](https://x.com/RydMike/status/1876323718194184657)
 
-## Features 🎯
+[Try the interactive example in your browser](https://whynotmake-it.github.io/rivership/#/heroine).
 
-- 🌊 Smooth spring-based hero transitions with customizable bounce and duration
-- 🔄 Drag-to-dismiss gestures with velocity-aware animations
-- 🎨 Beautiful transition effects with customizable shuttle builders
-- 📱 Route-aware transitions that adapt to navigation gestures
-- 🎯 Seamless integration with Flutter's navigation system
+## What Heroine adds over `Hero`
 
-## Try it out
+- **Spring-driven flights:** Powered by [Motor](https://pub.dev/packages/motor) so flights redirect smoothly and preserve gesture velocity.
+- **Drag-to-dismiss:** Wrap any `Heroine` in `DragDismissable` for interactive, velocity-aware route dismissal.
+- **Composable shuttle builders:** Cross-fade, 3D flip, fade-through color, or chain multiple effects with `.chain()`.
+- **Route-aware dismissal:** Fade or transform surrounding route UI in sync with the dismiss gesture via `HeroinePageRouteMixin` and `ReactToHeroineDismiss`.
+- **Nested fullscreen transitions:** Nest `Heroine` widgets across separate routes as long as they don't fly in the same transition.
 
-[Open Example](https://whynotmake-it.github.io/rivership/#/heroine)
-
-## Installation 💻
-
-**❗ In order to start using Heroine you must have the [Flutter SDK][flutter_install_link] installed on your machine.**
+## Installation
 
 ```sh
 flutter pub add heroine
 ```
 
-## Usage 💡
+## Usage
 
-### Set up HeroineController for your app
+### 1. Register `HeroineController`
 
-To use heroines in your app, it is important that you register a `HeroineController` in your app's navigator.
+Add a `HeroineController` to your app's `navigatorObservers`:
 
 ```dart
 MaterialApp( // or CupertinoApp, or WidgetsApp
@@ -47,11 +42,11 @@ MaterialApp( // or CupertinoApp, or WidgetsApp
 )
 ```
 
-> **Note:** In some nested routing scenarios, `HeroineController` might have to be registered in all of the nested navigators as well.
+> **Note:** When using nested navigators, register a `HeroineController` on each nested navigator that participates in transitions.
 
-### Basic Hero Transition
+### 2. Add a `Heroine`
 
-Use `Heroine` for spring-based hero transitions between routes, just like you would with the `Hero` widget:
+Use `Heroine` between two routes just like Flutter's `Hero`:
 
 ```dart
 // In the source route
@@ -67,9 +62,9 @@ Heroine(
 )
 ```
 
-### Custom Transition Effects
+### 3. Customize flight transitions
 
-Choose from predefined shuttle builders or create your own:
+Pass a built-in shuttle builder or build your own:
 
 ```dart
 Heroine(
@@ -83,37 +78,25 @@ Heroine(
 )
 ```
 
-Available shuttle builders:
-- `FadeShuttleBuilder` - Smooth fade transition between heroes
-- `FlipShuttleBuilder` - 3D flip animation with customizable axis and direction
-- `SingleShuttleBuilder` - Only displays the destination widget – like Flutter's default hero transition
-- `FadeThroughShuttleBuilder` - Fades through a specified color during transition
-- `ChainedShuttleBuilder` - Combines multiple shuttle builders for complex effects
-- `HeroineShuttleBuilder.fromHero()` - Use existing `HeroFlightShuttleBuilder` implementations
+Built-in shuttle builders:
 
-
-#### Chaining Multiple Effects
-
-Combine multiple shuttle builders for complex transitions:
+- `FadeShuttleBuilder` — Cross-fade between source and destination heroes.
+- `FlipShuttleBuilder` — 3D flip with configurable axis and half-flip count.
+- `SingleShuttleBuilder` — Displays only the destination widget (like Flutter's default `Hero`).
+- `FadeThroughShuttleBuilder` — Fades through a solid color during flight.
+- `ChainedShuttleBuilder` — Combines multiple `SimpleShuttleBuilder`s (or chain them with `.chain()`).
+- `HeroineShuttleBuilder.fromHero()` — Adapts an existing Flutter `HeroFlightShuttleBuilder`.
 
 ```dart
+// Chaining multiple shuttle builders:
 Heroine(
   tag: 'unique-tag',
   flightShuttleBuilder: const FlipShuttleBuilder()
-    .chain(const FadeShuttleBuilder()),
-  // or using ChainedShuttleBuilder directly:
-  // flightShuttleBuilder: const ChainedShuttleBuilder(
-  //   builders: [FlipShuttleBuilder(), FadeShuttleBuilder()],
-  // ),
+      .chain(const FadeShuttleBuilder()),
   child: MyWidget(),
 )
-```
 
-#### Custom Color Fade Through
-
-Fade through a specific color during transition:
-
-```dart
+// Fading through a specific color:
 Heroine(
   tag: 'unique-tag',
   flightShuttleBuilder: const FadeThroughShuttleBuilder(
@@ -123,9 +106,9 @@ Heroine(
 )
 ```
 
-### Drag-to-Dismiss
+### Drag-to-dismiss
 
-Enable drag-to-dismiss gestures with spring return animations, by wrapping your `Heroine` in a `DragDismissable` widget. Dismissing pops the current route and respects its `popDisposition`:
+Wrap a `Heroine` in `DragDismissable` to enable interactive drag-to-dismiss with spring return. Dismissing pops the current route and respects its `popDisposition`:
 
 ```dart
 DragDismissable(
@@ -136,29 +119,27 @@ DragDismissable(
 )
 ```
 
-Use `DragDismissable.custom` to run your own `onDismiss` callback instead.
+Use `DragDismissable.custom` to supply your own `onDismiss` callback instead of popping the route.
 
-### Fullscreen Transitions (aka Container Transform)
+### Fullscreen transitions (container transform)
 
-Like with Flutter's default hero transition, heroine does not support nested transitions.
+Like Flutter's `Hero`, Heroine cannot fly two nested heroines in the same transition. Unlike `Hero`, however, Heroine allows nesting heroines across separate routes as long as they aren't part of the same flight — enabling fullscreen container transforms across multiple routes.
 
-Unlike Flutter however, it will allow you to nest heroines, as long as they are not part of the same transition.
-This allows you to have fullscreen transitions, in multiple, nested routes like in the fullscreen example.
+![Fullscreen Example](doc/fullscreen.gif)
 
-[Fullscreen Example](doc/fullscreen.gif)
+See the fullscreen example implementation in [zoom_transition.dart](example/lib/zoom_transition.dart).
 
-Check out the fullscreen example code: [zoom_transition.dart](example/lib/zoom_transition.dart).
+> **Warning:** Heroine asserts in debug builds if two nested heroines fly in the same transition, but this tree walk is skipped in release builds. Make sure nested heroines belong to distinct transitions.
 
 ### Heroine-aware routes
 
-Make your routes respond to `Heroine` dismiss gestures:
+Mix `HeroinePageRouteMixin` into your route and use `ReactToHeroineDismiss` to animate surrounding UI as the user drags to dismiss:
 
 ```dart
 class MyCustomRoute<T> extends PageRoute<T> with HeroinePageRouteMixin {
-  // ... your route implementation, see example for more details
+  // ... your route implementation
 }
 
-// React to dismiss gestures in your UI
 ReactToHeroineDismiss(
   builder: (context, progress, offset, child) {
     return Opacity(
@@ -170,32 +151,24 @@ ReactToHeroineDismiss(
 )
 ```
 
-This will fade out `MyWidget` progressively, as the user dismisses the heroine.
+As the user drags the heroine away, `progress` moves from `0` to `1` and fades `MyWidget` out in sync.
 
-If you look closely at the example GIF, you will see that the details page fades out as the user drags the heroine away.
+## Motion configuration
 
-
-**Warning:** While Heroine throws an assertion error if it detects that you are trying to fly two nested heroines at the same time, it can't check for this in release builds, since it needs to walk the widget tree. If you miss an occurrence of this, it will break your heroine transitions.
-
-## Motion Configuration 🎯
-
-Heroine uses [Motor](https://pub.dev/packages/motor) for motion animations. You can customize the motion:
+Heroine uses [Motor](https://pub.dev/packages/motor) for its flight animations, so you can pass any `Motion`:
 
 ```dart
 final springMotion = Motion.spring(
   Spring.withDurationAndBounce(
-    duration: Duration(milliseconds: 500), 
+    duration: Duration(milliseconds: 500),
     bounce: 0.5,
   ),
 );
 
 final cupertinoMotion = CupertinoMotion.smooth();
-
 final linearMotion = Motion.linear(Duration(milliseconds: 300));
-
 final ease = Motion.curved(Duration(milliseconds: 300), Curves.easeInOut);
 
-// Then pass it to the Heroine widget
 return Heroine(
   tag: 'unique-tag',
   motion: springMotion,
@@ -203,11 +176,11 @@ return Heroine(
 );
 ```
 
-## Advanced Features 🚀
+## Advanced features
 
-### Continuously Track Target
+### Continuously tracking the target
 
-Enable `continuouslyTrackTarget` to handle dynamic layout changes during hero animations:
+Set `continuouslyTrackTarget: true` on the destination `Heroine` if the target's layout may shift mid-flight (for example, when an autofocus text field opens the keyboard or the device rotates). Heroine checks the target's position each frame and smoothly redirects the spring while keeping its velocity. Disabled by default to avoid unnecessary per-frame layout lookups.
 
 ```dart
 Heroine(
@@ -217,32 +190,13 @@ Heroine(
 )
 ```
 
-When enabled on the destination `Heroine`, the animation will check the target widget's position on every frame. If the target moves (e.g., keyboard appears/disappears, device rotates, or any layout change occurs), the animation will smoothly redirect to the new position.
+### Tickers during flight
 
-This is particularly useful when:
-- Pushing a route with an autofocus text field (keyboard appears mid-animation)
-- Handling device rotation during transitions
-- Any scenario where layout shifts occur during the hero flight
+By default (`pauseTickersDuringFlight: false`), animations inside your heroine keep running during flight. Pass `pauseTickersDuringFlight: true` to match Flutter's default `Hero` behavior of pausing child tickers while flying.
 
-This works best with spring-based motions like `CupertinoMotion` or `SpringMotion` that can dynamically redirect while retaining velocity. Disabled by default for performance reasons.
+### Velocity-aware transitions
 
-### Ticker Behavior During Flight
-
-By default, `Heroine` keeps tickers running during flight animations. This means any animations inside your heroine (like button press animations) will continue playing during the transition:
-
-```dart
-Heroine(
-  tag: 'unique-tag',
-  pauseTickersDuringFlight: false, // default - tickers keep running
-  child: MyAnimatedButton(),
-)
-```
-
-If you prefer Flutter's default `Hero` behavior where tickers are paused during flight, set `pauseTickersDuringFlight: true`.
-
-### Velocity-Aware Transitions
-
-Provide velocity information for smoother transitions from gestures using `HeroineVelocity`:
+Wrap a `Heroine` in `HeroineVelocity` to hand a gesture's release velocity directly to the flight simulation (this is how `DragDismissable` passes drag velocity to the returning heroine):
 
 ```dart
 HeroineVelocity(
@@ -254,48 +208,15 @@ HeroineVelocity(
 )
 ```
 
-The `HeroineVelocity` widget automatically provides velocity context to any `Heroine` widgets below it in the widget tree. This is particularly useful when transitioning from gesture-based interactions.
+### User-gesture pops
 
-Check out the implementation of `DragDismissable`, to see how that widget uses `HeroineVelocity` to pass the user's drag velocity to the heroine.
+When a route is popped via a platform back gesture (such as the iOS edge swipe), Heroine skips its flight animation so the gesture and the hero don't fight each other.
 
-For full control however, just pass in a custom `Motion` to the `Heroine` widget with whatever duration you want.
+## API overview
 
-## Available Tools & Widgets 🛠️
-
-### Core Widgets
-- **`Heroine`** - The main hero widget with spring-based animations
-- **`HeroineController`** - Navigator observer for managing hero transitions
-- **`DragDismissable`** - Wrapper for drag-to-dismiss functionality
-- **`HeroineVelocity`** - Provides velocity context for gesture-based transitions
-- **`ReactToHeroineDismiss`** - Responds to dismiss gestures in your UI
-
-### Route Integration
-- **`HeroinePageRouteMixin`** - Mixin for creating heroine-aware routes
-- **`HeroinePageRoute`** - Interface of routes that report the progress and offset of a dismiss gesture
-
-### Shuttle Builders
-- **`FadeShuttleBuilder`** - Cross-fade between heroes
-- **`FlipShuttleBuilder`** - 3D flip transitions (customizable axis, direction, and flip count)
-- **`SingleShuttleBuilder`** - Show only source or destination hero
-- **`FadeThroughShuttleBuilder`** - Fade through a specified color
-- **`ChainedShuttleBuilder`** - Combine multiple effects
-- **`HeroineShuttleBuilder.fromHero()`** - Adapter for existing Flutter hero builders
-- **`SimpleShuttleBuilder`** - Base class for chainable shuttle builders
-- **Extension methods** - `.chain()` method for fluent builder chaining (only for `SimpleShuttleBuilder`s)
-
-### User Gesture Pop Behavior
-
-When a route is popped via a user gesture (like iOS back swipe), `Heroine` will not perform any transition animation. This prevents jarring double-animations where both the gesture and the heroine try to animate simultaneously.
-
-## Best Practices 📝
-
-1. Use unique tags for each hero pair
-2. Keep heroine widget's shapes similar in both routes
-3. Register `HeroineController` in your app's navigator observers
-4. Use `HeroineVelocity` for gesture-driven transitions
-5. Test transitions with different motion configurations
-6. Handle edge cases with custom shuttle builders
-7. Avoid nested heroines in the same transition
+- **Core widgets:** `Heroine`, `HeroineController`, `DragDismissable`, `HeroineVelocity`, `ReactToHeroineDismiss`
+- **Routes:** `HeroinePageRouteMixin`, `HeroinePageRoute`
+- **Shuttle builders:** `FadeShuttleBuilder`, `FlipShuttleBuilder`, `SingleShuttleBuilder`, `FadeThroughShuttleBuilder`, `ChainedShuttleBuilder`, `SimpleShuttleBuilder`, `HeroineShuttleBuilder.fromHero()`, `.chain()`
 
 ---
 
@@ -303,5 +224,3 @@ When a route is popped via a user gesture (like iOS back swipe), `Heroine` will 
 [mason_badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftinyurl.com%2Fmason-badge
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
 [lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40
-[flutter_install_link]: https://docs.flutter.dev/get-started/install
-
