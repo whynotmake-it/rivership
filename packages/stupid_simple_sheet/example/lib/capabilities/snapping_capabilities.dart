@@ -105,11 +105,11 @@ final sheet = StupidSimpleSheetController.maybeOf<void>(context);
 // Move to a stop.
 sheet?.animateToRelative(0.33, snap: true);
 
-// Leave only the full stop, and go there. animateToComply
-// would pick the closest stop, which from a third is closed.
-sheet
-  ?..overrideSnappingConfig(SheetSnappingConfig.full)
-  ..animateToRelative(1);
+// Leave only the full stop, and go there.
+sheet?.overrideSnappingConfig(
+  SheetSnappingConfig.full,
+  animateToComply: true,
+);
 
 // Give the stops back.
 sheet?.overrideSnappingConfig(null);''';
@@ -176,12 +176,10 @@ class _ControllerSheetState extends State<_ControllerSheet> {
     if (_onlyFull) {
       sheet.overrideSnappingConfig(null);
     } else {
-      // `animateToComply` picks the closest point of the new config, and
-      // from a third of the height that is the closed one. Animate to
-      // full explicitly instead.
-      sheet
-        ..overrideSnappingConfig(SheetSnappingConfig.full)
-        ..animateToRelative(1);
+      sheet.overrideSnappingConfig(
+        SheetSnappingConfig.full,
+        animateToComply: true,
+      );
     }
     setState(() => _onlyFull = !_onlyFull);
   }
