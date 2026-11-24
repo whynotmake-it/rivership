@@ -230,7 +230,7 @@ class SnapRecording {
   late int _originUs;
   late int _nextOutputFrame = 0;
   late final _frameCapture = VideoFrameCapture(settings, crop);
-  late final _overlayBuilder = settings.effectiveOverlay;
+  late final _overlayBuilder = settings.overlay;
   late final _pointers = _overlayBuilder == null
       ? null
       : PointerTracker(settings.minimumPointerDuration);

@@ -9,7 +9,8 @@ import 'package:snaptest/src/video/video_frame.dart';
 /// Shows where pointers are in a recording, like a screen recorder's
 /// "show touches".
 ///
-/// The default overlay for [SnapVideoSettings.showPointers]. Each pointer
+/// Pass [SnapPointerOverlay.builder] as [SnapVideoSettings.overlay] to use
+/// it on its own. Each pointer
 /// gets a ring-and-dot indicator that:
 ///
 ///  * shows a soft, smaller dot while a mouse or stylus hovers,
@@ -37,6 +38,14 @@ class SnapPointerOverlay extends StatefulWidget {
 
   /// The pointers to show, usually [SnapVideoFrame.pointers].
   final List<SnapPointer> pointers;
+
+  /// A [SnapVideoOverlayBuilder] that shows the frame's pointers.
+  ///
+  /// ```dart
+  /// SnapVideoSettings(overlay: SnapPointerOverlay.builder)
+  /// ```
+  static Widget builder(BuildContext context, SnapVideoFrame frame) =>
+      SnapPointerOverlay(pointers: frame.pointers);
 
   @override
   State<SnapPointerOverlay> createState() => _SnapPointerOverlayState();

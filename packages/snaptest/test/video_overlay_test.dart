@@ -90,7 +90,7 @@ void main() {
   );
 
   testWidgets('the overlay leaves the app untouched', (tester) async {
-    Future<List<Uint8List>> recordApp({required bool showPointers}) async {
+    Future<List<Uint8List>> recordApp({required bool overlay}) async {
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(
         RepaintBoundary(
@@ -119,9 +119,9 @@ void main() {
       }
 
       final recording = await snap.recordVideo(
-        name: 'overlay_untouched_$showPointers',
+        name: 'overlay_untouched_$overlay',
         settings: SnapVideoSettings(
-          showPointers: showPointers,
+          overlay: overlay ? SnapPointerOverlay.builder : null,
           minimumPointerDuration: const Duration(milliseconds: 200),
         ),
       );
@@ -144,8 +144,8 @@ void main() {
       return images;
     }
 
-    final without = await recordApp(showPointers: false);
-    final withOverlay = await recordApp(showPointers: true);
+    final without = await recordApp(overlay: false);
+    final withOverlay = await recordApp(overlay: true);
     expect(withOverlay, hasLength(without.length));
     for (var i = 0; i < without.length; i++) {
       expect(withOverlay[i], orderedEquals(without[i]), reason: 'frame $i');
@@ -157,7 +157,7 @@ void main() {
     final recording = await snap.recordVideo(
       name: 'overlay_settles',
       settings: const SnapVideoSettings(
-        showPointers: true,
+        overlay: SnapPointerOverlay.builder,
         minimumPointerDuration: Duration(milliseconds: 150),
       ),
     );

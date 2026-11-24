@@ -3,13 +3,12 @@
 /// @docImport 'package:snaptest/src/snap.dart';
 /// @docImport 'package:snaptest/src/test_devices_variant.dart';
 /// @docImport 'package:snaptest/src/video/ffmpeg_encoder.dart';
+/// @docImport 'package:snaptest/src/video/pointer_overlay.dart';
 /// @docImport 'package:snaptest/src/video/snap_recording.dart';
 library;
 
 import 'package:flutter/widgets.dart';
-import 'package:meta/meta.dart';
 import 'package:snaptest/src/constants.dart';
-import 'package:snaptest/src/video/pointer_overlay.dart';
 import 'package:snaptest/src/video/video_frame.dart';
 
 /// How a [SnapRecording] advances the test clock while observing pumps.
@@ -176,7 +175,6 @@ class SnapVideoSettings {
     this.encoding = const VideoEncoding.h264(),
     this.includeDeviceFrame = false,
     this.renderShadows = false,
-    this.showPointers = false,
     this.minimumPointerDuration = Duration.zero,
     this.overlay,
     this.backgroundColor,
@@ -219,19 +217,6 @@ class SnapVideoSettings {
   /// repainted without pumping or advancing the test clock.
   final bool renderShadows;
 
-  /// Whether to show where pointers are, using [SnapPointerOverlay].
-  ///
-  /// Like a screen recorder's "show touches", this draws an animated
-  /// indicator at each pointer: a soft dot for a hovering mouse or stylus,
-  /// a ring-and-dot that springs in on press and follows the pointer, and a
-  /// fade-out on release. Indicators appear only in captured frames, so a
-  /// quick tap between pumps shows nothing unless [minimumPointerDuration]
-  /// keeps it around.
-  ///
-  /// Ignored when [overlay] is set; build a [SnapPointerOverlay] there to
-  /// combine it with your own overlay. Defaults to `false`.
-  final bool showPointers;
-
   /// Minimum simulated time to show a pointer, measured from pointer-down.
   ///
   /// After pointer-up a pointer stays in [SnapVideoFrame.pointers] as
@@ -252,8 +237,14 @@ class SnapVideoSettings {
   /// frame. The overlay is one widget tree that lives for the whole
   /// recording, so it can hold state: key per-pointer widgets by
   /// [SnapPointer.id] to animate presses, follow positions and fade out
-  /// released pointers. Setting it enables pointer tracking regardless of
-  /// [showPointers].
+  /// released pointers. Pointers are only tracked while an overlay is set.
+  ///
+  /// To show where pointers are, like a screen recorder's "show touches",
+  /// pass the built-in [SnapPointerOverlay.builder]:
+  ///
+  /// ```dart
+  /// SnapVideoSettings(overlay: SnapPointerOverlay.builder)
+  /// ```
   ///
   /// The overlay never joins your app's widget tree. It is built, laid out
   /// and painted in a separate tree with its own [BuildOwner] and
@@ -273,6 +264,8 @@ class SnapVideoSettings {
   /// settling while the recording runs. The overlay is disposed when the
   /// recording stops, which stops its animations.
   ///
+  /// Combine it with your own widgets in a custom overlay:
+  ///
   /// ```dart
   /// SnapVideoSettings(
   ///   minimumPointerDuration: const Duration(milliseconds: 300),
@@ -289,15 +282,6 @@ class SnapVideoSettings {
   /// )
   /// ```
   final SnapVideoOverlayBuilder? overlay;
-
-  /// The overlay a recording draws: [overlay], or a [SnapPointerOverlay]
-  /// when only [showPointers] is set.
-  @internal
-  SnapVideoOverlayBuilder? get effectiveOverlay =>
-      overlay ?? (showPointers ? _pointerOverlay : null);
-
-  static Widget _pointerOverlay(BuildContext context, SnapVideoFrame frame) =>
-      SnapPointerOverlay(pointers: frame.pointers);
 
   /// The background composited behind every frame.
   ///

@@ -209,7 +209,7 @@ final recording = await snap.recordVideo(
     // backgroundColor: Color(0xFF000000), // behind the frame; null = transparent
                                          // on alpha codecs, opaque white else
     includeDeviceFrame: true,             // render inside the device frame
-    showPointers: true,                   // animated pointer indicator
+    overlay: SnapPointerOverlay.builder,  // animated pointer indicator
     minimumPointerDuration: Duration(milliseconds: 100), // show quick taps too
     renderShadows: true,                  // real shadows and Material elevation
     finalHold: Duration(milliseconds: 400), // linger on the last frame
@@ -221,9 +221,8 @@ final recording = await snap.recordVideo(
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
 - **`VideoEncoding.vp9()`** produces a WebM with an alpha channel (`libvpx-vp9` + `yuva420p`, CRF default 32). H.264 is better for sharing everywhere; VP9 for compositing or posting to tools that preserve transparency.
 - **`backgroundColor`** defaults to transparent on alpha-capable encodings (VP9) and opaque white otherwise. Pass any color to flatten the video onto it.
-- **`showPointers`** draws the built-in animated `SnapPointerOverlay`: a soft dot while a mouse or stylus hovers, a ring-and-dot that springs in on press and follows the pointer, and a fade-out on release.
+- **`overlay`** is a widget drawn over every captured frame; `null` (the default) draws none. Pass `SnapPointerOverlay.builder` to show pointers like a screen recorder's "show touches": a soft dot while a mouse or stylus hovers, a ring-and-dot that springs in on press and follows the pointer, and a fade-out on release. Pointers are only tracked while an overlay is set. See [Custom overlays](#custom-overlays).
 - **`minimumPointerDuration`** keeps a released pointer in the frame (as `SnapPointerPhase.released`) until that much simulated time has passed since pointer-down, so quick taps between pumps become visible. A mouse or stylus still over the view goes back to `hovering` afterwards. This is overlay-only: it never pumps, changes input events or the test clock, and never extends the video. Use `finalHold` explicitly for taps near the end; cancellation removes a pointer immediately.
-- **`overlay`** is a widget drawn over every captured frame, see [Custom overlays](#custom-overlays). It replaces `showPointers`' default.
 - **`renderShadows`** opts into real shadows and Material elevation while recording. Defaults to false, matching Flutter test rendering. It repaints an existing scene without pumping and restores the previous shadow state on stop, failure, truncation, or automatic teardown.
 - **`includeDeviceFrame`** composites each frame inside the device frame of the active `TestDevicesVariant` device. Combine it with a device variant for ready-to-share recordings:
 
@@ -341,7 +340,7 @@ testWidgets('demo', (tester) async {
   final recording = await snap.recordVideo(
     name: 'demo',
     settings: const SnapVideoSettings(
-      showPointers: true,
+      overlay: SnapPointerOverlay.builder,
       minimumPointerDuration: Duration(milliseconds: 300),
       timing: VideoTiming.smooth,
       finalHold: Duration(seconds: 1),

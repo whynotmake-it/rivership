@@ -424,7 +424,7 @@ class VideoFrameCapture {
       }
     }
     final captured = await captureElementImage(element);
-    if (settings.effectiveOverlay != null) {
+    if (settings.overlay != null) {
       _scene?.image.dispose();
       _scene = CapturedImage(
         image: captured.image.clone(),

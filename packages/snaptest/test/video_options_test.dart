@@ -144,7 +144,6 @@ void main() {
           frameRate: 20,
           encoding: const VideoEncoding.h264(crf: 0),
           timing: smooth ? VideoTiming.smooth : VideoTiming.observed,
-          showPointers: true,
           minimumPointerDuration: const Duration(milliseconds: 100),
           overlay: _redPointers,
         ),
