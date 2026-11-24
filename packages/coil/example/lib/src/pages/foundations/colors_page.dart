@@ -41,6 +41,8 @@ final _tints = <_Token>[
 
 final _brand = <_Token>[
   ('brand', (c) => c.brand),
+  ('brandFill', (c) => c.brandFill),
+  ('onBrandFill', (c) => c.onBrandFill),
   ('red', (c) => c.red),
   ('redLabel', (c) => c.redLabel),
   ('destructive', (c) => c.destructive),
@@ -83,7 +85,8 @@ class ColorsPage extends StatelessWidget {
         title: 'Brand and status',
         description:
             'These colors carry meaning, so coil spends them only where the '
-            'meaning matters.',
+            'meaning matters. Brand fill is the brand as a surface that '
+            'carries text, under its own label color.',
         tokens: _TokenGroup.brand,
       ),
       DemoSection(

@@ -5,6 +5,22 @@ import 'package:coil/src/foundation/color_mix.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+/// How [CoilColors.fromSeed] turns the brand into [CoilColors.brandFill],
+/// the fill of surfaces that carry text on the brand (the brand button, the
+/// brand badge).
+enum CoilBrandFill {
+  /// The brand, deepened or lightened in Oklch (hue and chroma kept) until
+  /// its label reaches 4.5 : 1, coil's floor for text, also at the button's
+  /// slightly lighter hover and darker pressed tones. A brand that already
+  /// passes is kept. The default.
+  accessible,
+
+  /// The brand exactly as given, under whichever label (white or
+  /// near-black) reads better by APCA. On a mid-tone brand, such as coil's
+  /// own blue or an orange, the label falls below 4.5 : 1.
+  exact,
+}
+
 /// coil's color tokens.
 ///
 /// [CoilColors.light] and [CoilColors.dark] are the defaults. Change any
@@ -28,6 +44,8 @@ class CoilColors with Diagnosticable {
     required this.success,
     required this.warning,
     required this.brand,
+    required this.brandFill,
+    required this.onBrandFill,
     required this.overlay,
     required this.hover,
     required this.active,
@@ -38,6 +56,7 @@ class CoilColors with Diagnosticable {
     required this.shadowColor,
     required this.scrim,
     this.borderAlpha = 0.12,
+    this.brandFillPolicy = CoilBrandFill.accessible,
   });
 
   /// A full palette from a [brand] color and a neutral tone, for
@@ -55,8 +74,14 @@ class CoilColors with Diagnosticable {
   /// background: if the tint lowers it, they get lighter or darker, never a
   /// different hue.
   ///
-  /// [brand] is used as given (the default is coil's blue). The focus ring
-  /// follows it; [highContrast] darkens it to 3 : 1 against the background.
+  /// [brand] is used as given (the default is coil's blue), in light,
+  /// dark and high contrast alike: focus rings, selection, the cursor and
+  /// the switch follow it (the theme's high contrast darkens only the focus
+  /// ring, to 3 : 1). Surfaces that carry text on the brand use
+  /// [CoilColors.brandFill] and [CoilColors.onBrandFill], derived from it by
+  /// [brandFill] ([CoilBrandFill.accessible] by default). In dark, the
+  /// accessible fill of a deep brand, such as navy, is first lifted to
+  /// Oklch lightness 0.5 so it stands off the page.
   ///
   /// With the defaults this is [CoilColors.light] or [CoilColors.dark].
   ///
@@ -73,6 +98,7 @@ class CoilColors with Diagnosticable {
   factory CoilColors.fromSeed({
     required Brightness brightness,
     Color? brand,
+    CoilBrandFill brandFill = CoilBrandFill.accessible,
     double neutralHue = 0,
     double neutralChroma = 0,
   }) {
@@ -96,6 +122,7 @@ class CoilColors with Diagnosticable {
         );
     Color text(Color token) => legible(token, neutral(token));
     Color status(Color token) => legible(token, token);
+    final tones = brandTones(brand ?? base.brand, brightness, brandFill);
     return base.copyWith(
       surfaces: surfaces,
       foreground: text(base.foreground),
@@ -109,6 +136,9 @@ class CoilColors with Diagnosticable {
       success: status(base.success),
       warning: status(base.warning),
       brand: brand,
+      brandFill: tones.fill,
+      onBrandFill: tones.label,
+      brandFillPolicy: brandFill,
       overlay: neutral(base.overlay),
       hover: neutral(base.hover),
       active: neutral(base.active),
@@ -145,6 +175,8 @@ class CoilColors with Diagnosticable {
     success: Color(0xFF22C55E),
     warning: Color(0xFFF59E0B),
     brand: Color(0xFF6B97FF),
+    brandFill: Color(0xFF4168CB), // brand, deepened to 4.5 : 1
+    onBrandFill: Color(0xFFFFFFFF),
     overlay: Color(0xFF000000),
     hover: Color(0x0A000000), // rgb(0 0 0 / 0.04)
     active: Color(0x12000000), // rgb(0 0 0 / 0.07)
@@ -181,6 +213,8 @@ class CoilColors with Diagnosticable {
     success: Color(0xFF86EFAC),
     warning: Color(0xFFFCD34D),
     brand: Color(0xFF6B97FF),
+    brandFill: Color(0xFF4168CB), // brand, deepened to 4.5 : 1
+    onBrandFill: Color(0xFFFFFFFF),
     overlay: Color(0xFFFFFFFF),
     hover: Color(0x0FFFFFFF), // rgb(255 255 255 / 0.06)
     active: Color(0x1AFFFFFF), // rgb(255 255 255 / 0.1)
@@ -238,8 +272,27 @@ class CoilColors with Diagnosticable {
   /// `--warning`.
   final Color warning;
 
-  /// The one brand color (switch track, focus rings).
+  /// The one brand color, exactly as the theme gives it: focus rings, the
+  /// on switch, text selection and other marks. Text never sits on it; see
+  /// [brandFill] for that.
   final Color brand;
+
+  /// The fill of a surface that carries text on the brand: the brand
+  /// button, the brand badge. Under [onBrandFill].
+  ///
+  /// [CoilColors.fromSeed] derives it from [brand] by a [CoilBrandFill]
+  /// policy; the default themes use [CoilBrandFill.accessible], which can
+  /// make it a little deeper than [brand]. High contrast always uses the
+  /// accessible fill.
+  final Color brandFill;
+
+  /// The label and icon color on [brandFill]: white or near-black.
+  final Color onBrandFill;
+
+  /// How [brandFill] and [onBrandFill] derive from [brand]: what
+  /// [CoilColors.fromSeed] was given, and what [copyWith] uses when it
+  /// derives them again for a new brand.
+  final CoilBrandFill brandFillPolicy;
 
   /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
   final double borderAlpha;
@@ -299,6 +352,8 @@ class CoilColors with Diagnosticable {
       success: c(a.success, b.success),
       warning: c(a.warning, b.warning),
       brand: c(a.brand, b.brand),
+      brandFill: c(a.brandFill, b.brandFill),
+      onBrandFill: c(a.onBrandFill, b.onBrandFill),
       overlay: c(a.overlay, b.overlay),
       hover: c(a.hover, b.hover),
       active: c(a.active, b.active),
@@ -309,11 +364,15 @@ class CoilColors with Diagnosticable {
       shadowColor: c(a.shadowColor, b.shadowColor),
       scrim: c(a.scrim, b.scrim),
       borderAlpha: a.borderAlpha + (b.borderAlpha - a.borderAlpha) * t,
+      brandFillPolicy: t < 0.5 ? a.brandFillPolicy : b.brandFillPolicy,
     );
   }
 
   /// Returns a copy with the given tokens replaced. Change the brand color
-  /// with `copyWith(brand: …)`; focus rings follow it.
+  /// with `copyWith(brand: …)`; focus rings follow it, and [brandFill] and
+  /// [onBrandFill] are derived again by [brandFillPolicy] (the one given
+  /// here, or this palette's) unless you pass them too. A new policy alone
+  /// derives them again as well.
   CoilColors copyWith({
     Brightness? brightness,
     List<Color>? surfaces,
@@ -329,6 +388,8 @@ class CoilColors with Diagnosticable {
     Color? success,
     Color? warning,
     Color? brand,
+    Color? brandFill,
+    Color? onBrandFill,
     Color? overlay,
     Color? hover,
     Color? active,
@@ -339,32 +400,50 @@ class CoilColors with Diagnosticable {
     Color? shadowColor,
     Color? scrim,
     double? borderAlpha,
-  }) => CoilColors(
-    brightness: brightness ?? this.brightness,
-    surfaces: surfaces ?? this.surfaces,
-    foreground: foreground ?? this.foreground,
-    muted: muted ?? this.muted,
-    mutedForeground: mutedForeground ?? this.mutedForeground,
-    accent: accent ?? this.accent,
-    selected: selected ?? this.selected,
-    input: input ?? this.input,
-    destructive: destructive ?? this.destructive,
-    destructiveLight: destructiveLight ?? this.destructiveLight,
-    info: info ?? this.info,
-    success: success ?? this.success,
-    warning: warning ?? this.warning,
-    brand: brand ?? this.brand,
-    overlay: overlay ?? this.overlay,
-    hover: hover ?? this.hover,
-    active: active ?? this.active,
-    tint: tint ?? this.tint,
-    tintHover: tintHover ?? this.tintHover,
-    red: red ?? this.red,
-    redLabel: redLabel ?? this.redLabel,
-    shadowColor: shadowColor ?? this.shadowColor,
-    scrim: scrim ?? this.scrim,
-    borderAlpha: borderAlpha ?? this.borderAlpha,
-  );
+    CoilBrandFill? brandFillPolicy,
+  }) {
+    final newBrightness = brightness ?? this.brightness;
+    final newBrand = brand ?? this.brand;
+    final newPolicy = brandFillPolicy ?? this.brandFillPolicy;
+    // A new brand, side or policy gets its own fill unless one is given.
+    final derive =
+        (brandFill == null || onBrandFill == null) &&
+        (newBrand != this.brand ||
+            newBrightness != this.brightness ||
+            newPolicy != this.brandFillPolicy);
+    final tones = derive
+        ? brandTones(newBrand, newBrightness, newPolicy)
+        : null;
+    return CoilColors(
+      brightness: newBrightness,
+      surfaces: surfaces ?? this.surfaces,
+      foreground: foreground ?? this.foreground,
+      muted: muted ?? this.muted,
+      mutedForeground: mutedForeground ?? this.mutedForeground,
+      accent: accent ?? this.accent,
+      selected: selected ?? this.selected,
+      input: input ?? this.input,
+      destructive: destructive ?? this.destructive,
+      destructiveLight: destructiveLight ?? this.destructiveLight,
+      info: info ?? this.info,
+      success: success ?? this.success,
+      warning: warning ?? this.warning,
+      brand: newBrand,
+      brandFill: brandFill ?? tones?.fill ?? this.brandFill,
+      onBrandFill: onBrandFill ?? tones?.label ?? this.onBrandFill,
+      overlay: overlay ?? this.overlay,
+      hover: hover ?? this.hover,
+      active: active ?? this.active,
+      tint: tint ?? this.tint,
+      tintHover: tintHover ?? this.tintHover,
+      red: red ?? this.red,
+      redLabel: redLabel ?? this.redLabel,
+      shadowColor: shadowColor ?? this.shadowColor,
+      scrim: scrim ?? this.scrim,
+      borderAlpha: borderAlpha ?? this.borderAlpha,
+      brandFillPolicy: newPolicy,
+    );
+  }
 
   /// The surface at [level] (1–8, clamped): `--surface-N`. Popups sit one
   /// or two levels above what opened them.
@@ -430,14 +509,96 @@ class CoilColors with Diagnosticable {
   static double _drop(int i) =>
       const [1.0, 3.0, 6.0, 12.0, 24.0, 48.0, 96.0][i - 1];
 
+  /// How far (Oklch lightness) the brand button moves from [brandFill]:
+  /// this much lighter under the pointer and this much darker pressed.
+  /// [CoilBrandFill.accessible] checks its label at both tones too, so no
+  /// state drops it below 4.5 : 1.
+  static const brandStateShift = 0.03;
+
+  /// [brandFill] and its label for [brand] in [brightness] under [policy],
+  /// as [CoilColors.fromSeed] derives them.
+  ///
+  /// The label is white or near-black ([CoilColors.light]'s foreground),
+  /// whichever reads better on the brand by APCA: white on a mid blue,
+  /// orange, green or purple, dark on a yellow or lime. [CoilBrandFill.exact]
+  /// stops there. [CoilBrandFill.accessible] then moves the fill in Oklch,
+  /// hue and chroma kept, until the label reaches 4.5 : 1 at the hover and
+  /// pressed tones too ([brandStateShift] lighter and darker); in dark it
+  /// first lifts a brand darker than Oklch lightness 0.5 to 0.5.
+  static ({Color fill, Color label}) brandTones(
+    Color brand,
+    Brightness brightness,
+    CoilBrandFill policy,
+  ) => _brandTonesCache[(brand, brightness, policy)] ??= _resolveBrandTones(
+    brand,
+    brightness,
+    policy,
+  );
+
+  static final _brandTonesCache =
+      <(Color, Brightness, CoilBrandFill), ({Color fill, Color label})>{};
+
+  static ({Color fill, Color label}) _resolveBrandTones(
+    Color brand,
+    Brightness brightness,
+    CoilBrandFill policy,
+  ) {
+    const white = Color(0xFFFFFFFF);
+    final ink = light.foreground;
+    Color labelFor(Color fill) =>
+        CoilColorMix.apcaContrast(ink, fill).abs() >=
+            CoilColorMix.apcaContrast(white, fill).abs()
+        ? ink
+        : white;
+    if (policy == CoilBrandFill.exact) {
+      return (fill: brand, label: labelFor(brand));
+    }
+    var (:l, :c, :h) = CoilColorMix.toOklch(brand);
+    final lifted = brightness == Brightness.dark && l < 0.5;
+    if (lifted) l = 0.5;
+    Color at(double lightness) =>
+        CoilColorMix.oklch(lightness, c, h, alpha: brand.a);
+    final start = lifted ? at(l) : brand;
+    final label = labelFor(start);
+    // A hair over 4.5, so the fill still passes once stored in 8 bits.
+    bool passes(double lightness) => [
+      lightness - brandStateShift,
+      lightness + brandStateShift,
+    ].every((tone) => CoilColorMix.contrastRatio(label, at(tone)) >= 4.55);
+    if (passes(l)) return (fill: start, label: label);
+    // The tone closest to the brand that passes: darker under a white
+    // label, lighter under a dark one.
+    var fails = l;
+    var ok = label == white ? 0.0 : 1.0;
+    for (var i = 0; i < 24; i++) {
+      final mid = (fails + ok) / 2;
+      if (passes(mid)) {
+        ok = mid;
+      } else {
+        fails = mid;
+      }
+    }
+    return (fill: at(ok), label: label);
+  }
+
   /// These colors resolved for high contrast
   /// (`MediaQuery.highContrastOf`): borders at foreground 40% and a
   /// stronger off-state track ([accent] pushed toward the foreground). The
   /// theme's high contrast also strengthens the focus ring.
-  CoilColors highContrast() => copyWith(
-    accent: CoilColorMix.oklab(accent, foreground, 0.7),
-    borderAlpha: 0.4,
-  );
+  ///
+  /// [brandFill] and [onBrandFill] take the [CoilBrandFill.accessible]
+  /// values, whatever the theme chose, and [brandFillPolicy] says so;
+  /// [brand] itself is kept.
+  CoilColors highContrast() {
+    final tones = brandTones(brand, brightness, CoilBrandFill.accessible);
+    return copyWith(
+      accent: CoilColorMix.oklab(accent, foreground, 0.7),
+      borderAlpha: 0.4,
+      brandFill: tones.fill,
+      onBrandFill: tones.label,
+      brandFillPolicy: CoilBrandFill.accessible,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -456,6 +617,8 @@ class CoilColors with Diagnosticable {
       other.success == success &&
       other.warning == warning &&
       other.brand == brand &&
+      other.brandFill == brandFill &&
+      other.onBrandFill == onBrandFill &&
       other.overlay == overlay &&
       other.hover == hover &&
       other.active == active &&
@@ -465,7 +628,8 @@ class CoilColors with Diagnosticable {
       other.redLabel == redLabel &&
       other.shadowColor == shadowColor &&
       other.scrim == scrim &&
-      other.borderAlpha == borderAlpha;
+      other.borderAlpha == borderAlpha &&
+      other.brandFillPolicy == brandFillPolicy;
 
   @override
   int get hashCode => Object.hashAll([
@@ -483,6 +647,8 @@ class CoilColors with Diagnosticable {
     success,
     warning,
     brand,
+    brandFill,
+    onBrandFill,
     overlay,
     hover,
     active,
@@ -492,6 +658,8 @@ class CoilColors with Diagnosticable {
     redLabel,
     shadowColor,
     scrim,
+    borderAlpha,
+    brandFillPolicy,
   ]);
 
   @override
@@ -501,6 +669,15 @@ class CoilColors with Diagnosticable {
       ..add(EnumProperty('brightness', brightness))
       ..add(ColorProperty('foreground', foreground))
       ..add(ColorProperty('background', background))
-      ..add(ColorProperty('brand', brand));
+      ..add(ColorProperty('brand', brand))
+      ..add(ColorProperty('brandFill', brandFill))
+      ..add(ColorProperty('onBrandFill', onBrandFill))
+      ..add(
+        EnumProperty(
+          'brandFillPolicy',
+          brandFillPolicy,
+          defaultValue: CoilBrandFill.accessible,
+        ),
+      );
   }
 }

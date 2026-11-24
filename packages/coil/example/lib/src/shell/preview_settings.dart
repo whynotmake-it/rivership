@@ -247,6 +247,19 @@ List<Widget> _colorRows(CatalogSettings settings) => [
     icon: (brand) => _Swatch(brand.color),
     onChanged: (value) => settings.brand = value,
   ),
+  _SelectRow<CoilBrandFill>(
+    label: const Text('Brand fill'),
+    description: const Text(
+      'Accessible deepens it until labels reach 4.5 : 1.',
+    ),
+    value: settings.brandFill,
+    values: CoilBrandFill.values,
+    text: (policy) => switch (policy) {
+      CoilBrandFill.accessible => 'Accessible',
+      CoilBrandFill.exact => 'Exact',
+    },
+    onChanged: (value) => settings.brandFill = value,
+  ),
   _SliderRow(
     label: 'Neutral hue',
     leading: _Swatch(

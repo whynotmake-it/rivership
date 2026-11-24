@@ -153,13 +153,17 @@ enum CatalogFont {
 }
 
 /// The brand color, the one accent coil uses (switch track, focus ring,
-/// slider fill, text selection).
+/// text selection, the brand badge). Yellow and navy are the hard cases: a
+/// light brand that needs a dark label, and a deep one that has to lift in
+/// dark.
 enum CatalogBrand {
   blue('Blue', Color(0xFF6B97FF)),
   violet('Violet', Color(0xFF8B5CF6)),
   teal('Teal', Color(0xFF14B8A6)),
   orange('Orange', Color(0xFFF97316)),
   pink('Pink', Color(0xFFEC4899)),
+  yellow('Yellow', Color(0xFFFACC15)),
+  navy('Navy', Color(0xFF1E3A8A)),
   graphite('Graphite', Color(0xFF71717A));
 
   const CatalogBrand(this.label, this.color);
@@ -413,6 +417,11 @@ class CatalogSettings extends ChangeNotifier {
   CatalogBrand _brand = CatalogBrand.blue;
   set brand(CatalogBrand value) => _set(() => _brand = value);
 
+  /// How fills that carry text on the brand derive from it.
+  CoilBrandFill get brandFill => _brandFill;
+  CoilBrandFill _brandFill = CoilBrandFill.accessible;
+  set brandFill(CoilBrandFill value) => _set(() => _brandFill = value);
+
   /// The neutral tone's Oklch hue, in degrees.
   double get neutralHue => _neutralHue;
   double _neutralHue = 0;
@@ -473,6 +482,7 @@ class CatalogSettings extends ChangeNotifier {
       colors: CoilColors.fromSeed(
         brightness: brightness,
         brand: brand.color,
+        brandFill: brandFill,
         neutralHue: neutralHue,
         neutralChroma: neutralChroma,
       ),
