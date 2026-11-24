@@ -1,27 +1,24 @@
 # Rivership Test
 
 [![Pub Version](https://img.shields.io/pub/v/rivership_test)](https://pub.dev/packages/rivership_test)
-[![lintervention_badge]]([lintervention_link])
+[![lintervention_badge]][lintervention_link]
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
-A package containing testing utilites to accompany the rivership package.
+A package containing testing utilities to accompany the rivership package.
 
 ## Installation 💻
 
-**❗ In order to start using Rivership Test you must have the [Dart SDK][dart_install_link] installed on your machine.**
-
-Install via `dart pub add`:
+Add it as a dev dependency:
 
 ```sh
-dart pub add rivership_test
+flutter pub add dev:rivership_test
 ```
 
----
+## What's included 📦
 
-## Continuous Integration 🤖
-
-Rivership Test comes with a built-in [GitHub Actions workflow][github_actions_link] but you can also add your preferred CI/CD solution.
-
+- `MockProviderListener` is a mocktail mock you pass to `ref.listen`, so you can `verify` the changes a provider emits.
+- `isShuffled(other)` matches an iterable that has the same elements as `other` in a different order.
+- It re-exports `flutter_test`, `mocktail`, `fake_async` and `clock`, so one import covers a test file.
 
 ---
 

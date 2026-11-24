@@ -33,16 +33,18 @@ void main() {
     await tester.pumpWidget(
       _app(
         CoilScrollArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < 12; i++)
-                CoilButton(
-                  onPressed: () {},
-                  variant: CoilButtonVariant.ghost,
-                  child: Text('Row $i'),
-                ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < 12; i++)
+                  CoilButton(
+                    onPressed: () {},
+                    variant: CoilButtonVariant.ghost,
+                    child: Text('Row $i'),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

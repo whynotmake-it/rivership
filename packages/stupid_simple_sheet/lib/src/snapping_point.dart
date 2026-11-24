@@ -64,9 +64,25 @@ class SheetSnappingConfig {
   ///
   /// If you want to find the target snap point based on velocity and position,
   /// use [findTargetSnapPoint] instead.
-  double findClosestSnapPoint(double target) {
+  ///
+  /// By default the implicit closed point (0.0) is a candidate, so a [target]
+  /// below the midpoint between 0.0 and the lowest snap point resolves to 0.0.
+  /// Pass `includeClosed: false` when the sheet has to stay open (for example
+  /// when complying with a new configuration), so that only the configured
+  /// [points] are considered.
+  double findClosestSnapPoint(double target, {bool includeClosed = true}) {
     final allPoints = getAllPoints();
-    return physics.findClosestPoint(allPoints, target);
+
+    final effectivePoints = includeClosed
+        ? allPoints
+        : allPoints.where((p) => p > sheetPositionTolerance).toList();
+
+    // A config always has at least one real point, but never fail on an
+    // (assert-guarded) degenerate one.
+    return physics.findClosestPoint(
+      effectivePoints.isEmpty ? allPoints : effectivePoints,
+      target,
+    );
   }
 
   /// Gets the closest snapping point to the given relative position and

@@ -10,7 +10,7 @@ import 'package:stupid_simple_sheet/src/snapping_point.dart';
 
 export 'package:motor/src/motion.dart';
 export 'package:scroll_drag_detector/scroll_drag_detector.dart'
-    show ScrollDragBehavior;
+    show ExcludeScrollDrag, ScrollDragBehavior;
 
 export 'src/dismissal_mode.dart';
 export 'src/route_snapshot_mode.dart';
@@ -771,10 +771,10 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       // Find the closest snapping point that isn't 0.0
       final config = effectiveSnappingConfig;
 
-      target = switch (config.findClosestSnapPoint(relativePosition)) {
-        0.0 => config.points.first,
-        final v => v,
-      };
+      target = config.findClosestSnapPoint(
+        relativePosition,
+        includeClosed: false,
+      );
     } else {
       target = relativePosition;
     }
@@ -826,8 +826,11 @@ mixin StupidSimpleSheetController<T> on StupidSimpleSheetTransitionMixin<T> {
       final currentPosition = controller!.value;
 
       // Find the nearest snapping point in the new configuration
-      final targetPosition =
-          effectiveSnappingConfig.findClosestSnapPoint(currentPosition);
+      // (never the implicit closed point, the route must stay open).
+      final targetPosition = effectiveSnappingConfig.findClosestSnapPoint(
+        currentPosition,
+        includeClosed: false,
+      );
 
       // If the current position is already at a valid snap point, don't animate
       if ((targetPosition - currentPosition).abs() < sheetPositionTolerance) {

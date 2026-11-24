@@ -18,6 +18,14 @@ import 'package:flutter_test/flutter_test.dart';
 final _allowed = {
   'primitives/text_field_core.dart CoilTextFieldCore.obscuringCharacter':
       'the character that hides obscured text, not a label',
+  'components/input/input.dart CoilInput.obscuringCharacter':
+      'the character that hides obscured text, not a label',
+  'primitives/text_field_core.dart CoilTextFieldCore.restorationId':
+      'the id state restoration saves under, not text shown',
+  'components/input/input.dart CoilInput.restorationId':
+      'the id state restoration saves under, not text shown',
+  'components/input_message/input_message.dart CoilInputMessage.restorationId':
+      'the id state restoration saves under, not text shown',
   'components/input_copy/input_copy.dart CoilInputCopy.value':
       'the value that gets copied',
   'components/ask_user_questions/question.dart CoilAnswer.text':

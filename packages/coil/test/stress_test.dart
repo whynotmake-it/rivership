@@ -853,7 +853,6 @@ final stories = <StressStory>[
             actions: [
               CoilChatMessageAction(
                 label: _t(h.short),
-                semanticLabel: 'Copy',
                 icon: _icon(),
                 onPressed: () {},
               ),
@@ -921,8 +920,10 @@ final stories = <StressStory>[
     (context, h) => SizedBox(
       height: 200,
       child: CoilScrollArea(
-        child: Column(
-          children: [for (var i = 0; i < h.count; i++) Text('${h.text} $i')],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [for (var i = 0; i < h.count; i++) Text('${h.text} $i')],
+          ),
         ),
       ),
     ),
@@ -965,7 +966,7 @@ final stories = <StressStory>[
       child: CoilQueuedStack(
         messages: [
           for (var i = 0; i < h.count.clamp(0, 20); i++)
-            CoilQueuedMessage(id: i, semanticLabel: h.text, child: _t(h.text)),
+            CoilQueuedMessage(id: i, child: _t(h.text)),
         ],
         onChanged: (_) {},
         onEdit: (_) {},
