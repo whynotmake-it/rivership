@@ -108,7 +108,8 @@ void main() {
     await scene('+ ${DotLoaders.all.length} loaders', second * 4);
 
     await recording.stop();
-  });
+    // Rendering 1,300 frames of 1080 x 1080 on the CPU takes a while.
+  }, timeout: const Timeout(Duration(minutes: 45)));
 }
 
 class _Stage extends StatefulWidget {
