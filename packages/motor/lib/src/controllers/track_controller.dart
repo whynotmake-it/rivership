@@ -1209,21 +1209,32 @@ class TrackController extends Animation<TrackValueReader>
     Set<Track> timelineTracks,
   ) {
     _pruneTokenParticipants(timelineTracks);
+    // The round each token's participants are in, looked up once per token
+    // so that joining many tracks stays linear.
+    final rounds = <Object, int>{};
     for (final animation in animations) {
-      _joinSyncTokens(animation.track, animation.steps);
+      _joinSyncTokens(animation.track, animation.steps, rounds);
     }
   }
 
   /// Adds [track] as a participant of every sync token in [steps], joining
   /// the round the other participants are in.
-  void _joinSyncTokens(Track track, Iterable<TrackStep<Object>> steps) {
+  ///
+  /// [rounds] caches that round per token. Joining never raises it, so it
+  /// stays valid for every track joined in the same call.
+  void _joinSyncTokens(
+    Track track,
+    Iterable<TrackStep<Object>> steps,
+    Map<Object, int> rounds,
+  ) {
     for (final step in steps) {
       if (step is! StepSync) continue;
       (_tokenParticipants[step.token] ??= {}).add(track);
       final counts = _syncPasses[step.token] ??= {};
-      if (!counts.containsKey(track)) {
-        counts[track] = counts.values.fold(0, math.max);
-      }
+      counts.putIfAbsent(
+        track,
+        () => rounds[step.token] ??= counts.values.fold(0, math.max),
+      );
     }
   }
 
