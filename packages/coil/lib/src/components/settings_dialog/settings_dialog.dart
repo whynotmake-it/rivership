@@ -276,47 +276,49 @@ class _Panel<T> extends StatelessWidget {
     // description or large text never pushes the content out of a short
     // window.
     return CoilScrollArea(
-      padding: EdgeInsetsDirectional.fromSTEB(
-        sheet ? 16 : 24,
-        0,
-        sheet ? 16 : 24,
-        24,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            // The end clears the dialog's close button; a sheet's is in
-            // its header.
-            padding: sheet
-                ? const EdgeInsetsDirectional.fromSTEB(0, 8, 0, 16)
-                : const EdgeInsetsDirectional.fromSTEB(0, 20, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 4,
-              children: [
-                if (title case final title?) ...[
-                  _Title(title),
-                  const SizedBox(height: 8),
-                ],
-                if (picker case final picker?)
-                  picker
-                else ...[
-                  DefaultTextStyle(
-                    style: _heading(text),
-                    child: section.label,
-                  ),
-                  if (description != null)
+      child: SingleChildScrollView(
+        padding: EdgeInsetsDirectional.fromSTEB(
+          sheet ? 16 : 24,
+          0,
+          sheet ? 16 : 24,
+          24,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              // The end clears the dialog's close button; a sheet's is in
+              // its header.
+              padding: sheet
+                  ? const EdgeInsetsDirectional.fromSTEB(0, 8, 0, 16)
+                  : const EdgeInsetsDirectional.fromSTEB(0, 20, 24, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 4,
+                children: [
+                  if (title case final title?) ...[
+                    _Title(title),
+                    const SizedBox(height: 8),
+                  ],
+                  if (picker case final picker?)
+                    picker
+                  else ...[
                     DefaultTextStyle(
-                      style: text.muted.body,
-                      child: description,
+                      style: _heading(text),
+                      child: section.label,
                     ),
+                    if (description != null)
+                      DefaultTextStyle(
+                        style: text.muted.body,
+                        child: description,
+                      ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          Builder(builder: section.builder),
-        ],
+            Builder(builder: section.builder),
+          ],
+        ),
       ),
     );
   }

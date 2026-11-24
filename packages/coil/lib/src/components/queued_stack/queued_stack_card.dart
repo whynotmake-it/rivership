@@ -328,15 +328,15 @@ class _CardBodyState extends State<_CardBody> {
                                 ),
                               ),
                             ),
+                          // Its semantics merge into the card's, after
+                          // the card's place in the queue.
                           Expanded(
-                            child: ExcludeSemantics(
-                              child: DefaultTextStyle.merge(
-                                style: look.textStyle,
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.ellipsis,
-                                child: message.child ?? const SizedBox.shrink(),
-                              ),
+                            child: DefaultTextStyle.merge(
+                              style: look.textStyle,
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                              child: message.child ?? const SizedBox.shrink(),
                             ),
                           ),
                         ],

@@ -154,7 +154,7 @@ class CoilTabs<T> extends StatefulWidget {
 }
 
 class _CoilTabsState<T> extends State<CoilTabs<T>>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   /// The enter and exit motions of [track]: the instance's or the style's
   /// override for both, else the tokens.
   ({Motion enter, Motion exit}) _motionFor(

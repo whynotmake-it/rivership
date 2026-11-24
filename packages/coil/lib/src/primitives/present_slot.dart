@@ -111,7 +111,7 @@ class CoilPresentSlot extends StatefulWidget {
 }
 
 class _CoilPresentSlotState extends State<CoilPresentSlot>
-    with TickerProviderStateMixin {
+    with FixedTickerProviderStateMixin {
   late final SingleMotionController _room;
   late final SingleMotionController _fade;
 
