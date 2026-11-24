@@ -159,16 +159,23 @@ class _StageState extends State<_Stage> with FixedTickerProviderStateMixin {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(60, 50, 60, 90),
                   child: _showLoaders
-                      ? GridView.count(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 28,
-                          crossAxisSpacing: 28,
-                          physics: const NeverScrollableScrollPhysics(),
+                      ? Column(
                           children: [
-                            for (final loader in picks)
-                              Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: DotLoaderView(loader: loader),
+                            for (var row = 0; row < 3; row++)
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    for (var column = 0; column < 3; column++)
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(22),
+                                          child: DotLoaderView(
+                                            loader: picks[row * 3 + column],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                           ],
                         )

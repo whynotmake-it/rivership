@@ -223,7 +223,7 @@ abstract final class BlobCharacter {
         left: dot(0),
         middle: dot(1),
         right: dot(2),
-        bodyLayer: const SceneLayer(blend: 7),
+        bodyLayer: const SceneLayer(blend: 4),
       );
     }
 
