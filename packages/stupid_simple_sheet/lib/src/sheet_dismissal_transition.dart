@@ -1,3 +1,6 @@
+/// @docImport 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
@@ -8,7 +11,7 @@ import 'package:stupid_simple_sheet/src/shrink_transition.dart';
 /// A widget that animates its child based on a [DismissalMode] and an
 /// [Animation<double>].
 ///
-/// This is the public building block used by `StupidSimpleSheetTransitionMixin`
+/// This is the public building block used by [StupidSimpleSheetTransitionMixin]
 /// to drive the sheet's enter/exit transition. It can also be used standalone
 /// to build custom sheet-like transitions.
 ///

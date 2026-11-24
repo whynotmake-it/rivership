@@ -28,13 +28,13 @@ enum SheetRouteKind {
 /// A height the sheet snaps to, as a fraction of its full height.
 enum SheetStop {
   /// A quarter of the way up.
-  quarter(0.25, '25 %', '25 %'),
+  quarter(0.25, '25%', '25%'),
 
   /// Halfway up.
-  half(0.5, '50 %', '50 %'),
+  half(0.5, '50%', '50%'),
 
   /// Three quarters of the way up.
-  threeQuarter(0.75, '75 %', '75 %'),
+  threeQuarter(0.75, '75%', '75%'),
 
   /// All the way up.
   full(1, 'Full', 'full');
@@ -287,7 +287,7 @@ class SheetConfig {
       physics == SnapPhysicsKind.fling;
 
   /// The sheet's settings in one muted line, shown at the top of the
-  /// sheet: "Stops at 50 % and full · shrink · continuous handoff".
+  /// sheet: "Stops at 50% and full · shrink · continuous handoff".
   String get summary {
     final stopsPhrase = switch (sortedStops) {
       [SheetStop.full] => 'Full height',

@@ -6,10 +6,10 @@
 
 [![Pub Version](https://img.shields.io/pub/v/stupid_simple_sheet)](https://pub.dev/packages/stupid_simple_sheet)
 [![Coverage](./coverage.svg)](./test/)
-[![lintervention_badge]][lintervention_link]
+[![lints by lintervention][lintervention_badge]][lintervention_link]
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
-The only Flutter sheet that **seamlessly transitions between scrolling content and sheet dragging** -- with real spring physics.
+The only Flutter sheet that **transitions directly between scrolling content and sheet dragging** — with real spring physics.
 
 Put a `ListView`, `CustomScrollView`, `PageView`, or any scrollable inside the sheet. When the user scrolls to the edge, the gesture hands off to the sheet drag automatically. You don't need to worry about stuff like `DraggableScrollableSheet`. Just smooth, physics-driven motion powered by [motor](https://pub.dev/packages/motor).
 
@@ -35,7 +35,7 @@ Navigator.of(context).push(
 );
 ```
 
-That gives you an iOS 26 glass sheet with spring physics and seamless scroll-to-drag transitions out of the box.
+That gives you an iOS 26 glass sheet with spring physics and scroll-to-drag handoff out of the box.
 
 ## Important
 
@@ -58,7 +58,7 @@ Each recipe below is a self-contained pattern you can copy into your project. Fu
 
 ### Glass sheet (iOS 26)
 
-The modern iOS sheet style with liquid glass blur. Glass sheets stack seamlessly -- only the first sheet blurs the backdrop.
+The modern iOS sheet style with liquid glass blur. Stacked glass sheets coordinate automatically — only the first sheet blurs the backdrop.
 
 > [Full example](./example/lib/capabilities/route_capabilities.dart)
 
@@ -167,7 +167,7 @@ Navigator.of(context).push(
 ```
 
 > This differs from `draggable: false`, which disables all drag gestures
-> entirely. `PopScope` only prevents the dismiss -- the sheet is still
+> entirely. `PopScope` only prevents the dismiss — the sheet is still
 > draggable between its snap points.
 
 ---
@@ -252,10 +252,11 @@ controller?.overrideSnappingConfig(null);
 
 ### Sheet with a persistent footer (shrink dismissal)
 
-Use `DismissalMode.shrink` to make the sheet collapse from the top instead of
-sliding down. Because `ShrinkTransition` pins content to the **bottom**, any
-footer stays visible as the sheet shrinks -- perfect for share sheets, action
-bars, or confirmation buttons.
+Use `DismissalMode.shrink` to shrink the sheet's height instead of sliding it
+down. `ShrinkTransition` tightens the child's `maxHeight` constraint as the
+sheet closes, so flexible content like `Expanded(child: ListView(...))` shrinks
+first while fixed headers and footers stay visible — useful for share sheets,
+action bars, or confirmation buttons.
 
 > [Full example](./example/lib/capabilities/dismissal_capabilities.dart)
 
@@ -275,7 +276,7 @@ Navigator.of(context).push(
           // Scrollable content — shrinks away first
           Expanded(child: ListView(...)),
 
-          // Footer — stays pinned at bottom during shrink
+          // Footer — stays visible while the list shrinks
           Row(
             children: [
               Expanded(child: CupertinoButton(child: Text('Copy Link'), ...)),
@@ -290,9 +291,11 @@ Navigator.of(context).push(
 ```
 
 **How it works:** With `DismissalMode.slide` (the default), the entire sheet
-translates downward. With `DismissalMode.shrink`, the visible height of the
-sheet decreases instead. The child is laid out at full size and clipped from the
-top, so bottom-aligned content (footers, buttons) remains on screen the longest.
+translates downward. With `DismissalMode.shrink`, `ShrinkTransition` reduces the
+child's `maxHeight` constraint down to its minimum intrinsic height, so flexible
+or scrollable children shrink while fixed headers and footers stay visible. Once
+the target height falls below the child's minimum intrinsic height, the child is
+laid out at its minimum height and clipped at the bottom.
 
 ---
 
@@ -327,7 +330,7 @@ Navigator.of(context).push(
 ```
 
 Note: `StupidSimpleSheetRoute` provides **no background, shape, or SafeArea by
-default** -- you style everything yourself. This is what lets you build floating
+default** — you style everything yourself. This is what lets you build floating
 cards, full-bleed layouts, or anything else.
 
 ---
@@ -335,7 +338,7 @@ cards, full-bleed layouts, or anything else.
 ### Unstyled sheet (`StupidSimpleSheetRoute`)
 
 `StupidSimpleSheetRoute` is the bare-bones base. It provides no background,
-shape, or safe area -- giving you total control. Wrap content in
+shape, or safe area, so you can style the sheet however you want. Wrap content in
 `SheetBackground` if you want the standard look:
 
 ```dart
@@ -421,9 +424,9 @@ StupidSimpleCupertinoSheetRoute(
 
 ---
 
-### Custom routes (maximum control)
+### Custom routes
 
-For full control, create a custom route using `StupidSimpleSheetTransitionMixin`:
+To customize route behavior directly, create a custom route using `StupidSimpleSheetTransitionMixin`:
 
 ```dart
 class MySheetRoute<T> extends PopupRoute<T>
@@ -457,6 +460,5 @@ class MySheetRoute<T> extends PopupRoute<T>
 
 ---
 
-[flutter_install_link]: https://flutter.dev/docs/get-started/install
 [lintervention_link]: https://github.com/whynotmake-it/lintervention
 [lintervention_badge]: https://img.shields.io/badge/lints_by-lintervention-3A5A40

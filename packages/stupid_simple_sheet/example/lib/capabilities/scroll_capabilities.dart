@@ -18,8 +18,9 @@ final scrollCapabilities = <Capability>[
         child: const CapabilitySheet(
           title: 'Scroll handoff',
           hint:
-              'Scroll the list down, then keep dragging: at the top edge '
-              'the sheet takes over and closes.',
+              'Start a drag down when the list is already at the top to '
+              'close the sheet. If you scroll back from further down, '
+              'release and drag again.',
           code: _handoffCode,
           layout: CapabilitySheetLayout.fills,
           children: [_Rows(24)],
@@ -84,9 +85,11 @@ Navigator.of(context).push(
 const _pagesCode = '''
 PageView(
   // A PageView brings its own scroll behavior, which would
-  // keep the sheet out of the gesture. This one hands
-  // vertical drags back to it.
-  scrollBehavior: CoilSheetRoute.scrollBehaviorOf(context),
+  // keep the sheet out of the gesture. Wrapping it in
+  // ScrollDragBehavior hands vertical drags back to the sheet.
+  scrollBehavior: ScrollDragBehavior(
+    parent: ScrollConfiguration.of(context),
+  ),
   controller: controller,
   children: [for (final page in pages) YourList(page)],
 );''';

@@ -44,7 +44,7 @@ final sizeCapabilities = <Capability>[
   ),
   Capability(
     title: 'Growing content',
-    description: 'Add a row and the sheet springs to its new height.',
+    description: 'Add a row and the sheet resizes around its new content.',
     code: _growingCode,
     open: (context) => Navigator.of(context).push(
       exampleSheetRoute<void>(context: context, child: const _GrowingSheet()),
@@ -79,9 +79,9 @@ Navigator.of(context).push(
 );''';
 
 const _growingCode = '''
-// The sheet is laid out around its content, so a row added
-// inside it springs the whole sheet to its new height. There
-// is nothing to call for it.
+// StupidSimpleSheetRoute sizes itself around its content, so
+// adding a row grows the sheet automatically. Wrap the child
+// in a size animation if you want the resize to animate.
 setState(() => _rows += 1);''';
 
 const _keyboardCode = '''
@@ -121,7 +121,7 @@ class _GrowingSheetState extends State<_GrowingSheet> {
   @override
   Widget build(BuildContext context) => CapabilitySheet(
     title: 'Growing content',
-    hint: 'Add rows: the sheet springs to each new height.',
+    hint: 'Add rows: the sheet resizes around its new content.',
     code: _growingCode,
     footer: Padding(
       padding: const EdgeInsets.symmetric(horizontal: sheetInset),

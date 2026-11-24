@@ -203,8 +203,8 @@ class _ControllerSheetState extends State<_ControllerSheet> {
               spacing: 8,
               children: [
                 for (final (label, position) in const [
-                  ('33 %', 0.33),
-                  ('66 %', 0.66),
+                  ('33%', 0.33),
+                  ('66%', 0.66),
                   ('Full', 1.0),
                 ])
                   Expanded(

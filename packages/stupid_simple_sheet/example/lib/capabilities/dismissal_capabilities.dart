@@ -9,8 +9,8 @@ final dismissalCapabilities = <Capability>[
   Capability(
     title: 'Shrink to close',
     description:
-        'The sheet shrinks from the top instead of sliding, so a footer '
-        'stays put.',
+        'The sheet shrinks its height instead of sliding, so flexible '
+        'content gives way while headers and footers stay visible.',
     code: _shrinkCode,
     open: (context) => Navigator.of(context).push(
       exampleSheetRoute<void>(
@@ -19,9 +19,9 @@ final dismissalCapabilities = <Capability>[
         child: CapabilitySheet(
           title: 'Shrink to close',
           hint:
-              'Drag it down: the sheet loses height from the top and the '
-              'footer stays on screen. Every other sheet here slides '
-              'away instead.',
+              'Drag it down: the sheet shrinks its height so the list gives '
+              'way while the header and footer stay visible, then clips at '
+              'the bottom. Every other sheet here slides away instead.',
           code: _shrinkCode,
           layout: CapabilitySheetLayout.fills,
           footer: Padding(
@@ -97,8 +97,8 @@ final dismissalCapabilities = <Capability>[
 const _shrinkCode = '''
 Navigator.of(context).push(
   StupidSimpleSheetRoute(
-    // Shrinking keeps the content pinned to the bottom, so a
-    // pinned footer is the last thing to go.
+    // Tightens the child's maxHeight as it closes, so flexible
+    // content shrinks while fixed headers and footers stay visible.
     dismissalMode: DismissalMode.shrink,
     child: YourContent(),
   ),

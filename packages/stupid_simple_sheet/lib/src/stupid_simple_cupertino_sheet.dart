@@ -6,7 +6,7 @@ import 'package:stupid_simple_sheet/src/clamped_animation.dart';
 import 'package:stupid_simple_sheet/src/cupertino_sheet_copy.dart';
 import 'package:stupid_simple_sheet/stupid_simple_sheet.dart';
 
-/// Simular to [CupertinoSheetRoute] but with the drag gesture improvements from
+/// Similar to [CupertinoSheetRoute] but with the drag gesture improvements from
 /// this package.
 class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
     with StupidSimpleSheetTransitionMixin<T>, StupidSimpleSheetController<T> {
@@ -49,7 +49,7 @@ class StupidSimpleCupertinoSheetRoute<T> extends PopupRoute<T>
 
   /// The background color of the sheet.
   ///
-  /// Will default [CupertinoColors.secondarySystemBackground] if not provided.
+  /// Defaults to [CupertinoColors.systemBackground].
   final Color backgroundColor;
 
   /// The widget to display in the sheet.
