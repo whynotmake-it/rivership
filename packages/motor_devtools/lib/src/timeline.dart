@@ -118,7 +118,7 @@ class TimelineLayout {
 }
 
 /// Lays [snapshot] out on the controller's playback clock, the axis that
-/// `TrackController.scrubTo` takes.
+/// [TrackController.scrubTo] takes.
 ///
 /// Without [window], the window spans the tracks of the latest run: tracks
 /// that settled before the most recent track started are left out of it.
@@ -656,7 +656,9 @@ class MotorTimelineLane {
   /// The lane's name.
   final String label;
 
-  /// The tracks drawn in this lane. Several tracks are merged.
+  /// The tracks drawn in this lane.
+  ///
+  /// Several tracks are merged.
   final List<Track<Object>> tracks;
 
   /// The color of the lane's bars, or null for the text color.
@@ -693,11 +695,15 @@ class MotorTimeline extends StatefulWidget {
   /// The controller to show.
   final TrackController controller;
 
-  /// The lanes to show, in order. When null, each track gets a lane named
-  /// after its `debugLabel`, or a guessed name without one.
+  /// The lanes to show, in order.
+  ///
+  /// When null, each track gets a lane named after its `debugLabel`, or a
+  /// guessed name without one.
   final List<MotorTimelineLane>? lanes;
 
-  /// The playhead's color. Defaults to the tools' blue accent.
+  /// The playhead's color.
+  ///
+  /// Defaults to the tools' blue accent.
   final Color? playheadColor;
 
   @override
