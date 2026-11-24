@@ -47,6 +47,14 @@ Widget _fadeTransition(
   );
 }
 
+/// The route name of each package's example, by the package's pub name.
+const _exampleRouteNames = {
+  'coil': 'Coil',
+  'motor': 'Motor',
+  'heroine': 'Heroine',
+  'stupid_simple_sheet': 'Stupid Simple Sheet',
+};
+
 NamedRouteDef _exampleRoute({
   required String name,
   required String path,
@@ -88,7 +96,17 @@ void main() async {
           onHome: () => router.navigate(const NamedRoute('Home')),
         ),
       ),
-      coilCatalogRoute(path: '/coil'),
+      coilCatalogRoute(
+        path: '/coil',
+        // The coil wordmark leads back to the landing page, and the
+        // catalog's mentions of another package open its example.
+        onHome: () => router.navigate(const NamedRoute('Home')),
+        onOpenPackage: (package) {
+          if (_exampleRouteNames[package] case final name?) {
+            router.navigate(NamedRoute(name));
+          }
+        },
+      ),
       _exampleRoute(
         name: 'Stupid Simple Sheet',
         path: '/stupid_simple_sheet',
