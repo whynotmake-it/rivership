@@ -1,16 +1,10 @@
 # Motor Widgets
 
-Spring-driven versions of Flutter's implicit animation widgets, built on
-[Motor](../motor).
+Spring-driven versions of Flutter's implicit animation widgets, plus layout transitions and drag-and-drop, built on [Motor](../motor).
 
-Flutter's `AnimatedContainer`, `AnimatedSwitcher`, `AnimatedSize` and friends
-run on an `AnimationController` with a duration and a curve. When their value
-changes mid-flight, they start a new curve from where they are, at zero
-velocity, so a quick series of changes stutters. They can't use springs.
+Flutter's `AnimatedContainer`, `AnimatedSwitcher`, `AnimatedSize`, and similar widgets run on an `AnimationController` with a fixed duration and curve. When a target value changes mid-flight, they start a new curve from zero velocity, which makes rapid updates feel stuttery.
 
-The widgets here take a Motor `motion` instead. When their value changes
-mid-flight, they head for the new value with the velocity they already have.
-There is no `AnimationController`, `Tween` or curve in this package.
+The widgets in this package take a Motor `motion` instead. Whenever a target changes mid-flight, the animation redirects smoothly while keeping its current velocity.
 
 ## Installation
 
@@ -18,105 +12,27 @@ There is no `AnimationController`, `Tween` or curve in this package.
 flutter pub add motor_widgets
 ```
 
-## Flutter widget → Motor widget
+## Widget overview
 
-| Flutter | Motor widgets | Notes |
+| Flutter widget | Motor widget | Notes |
 |---|---|---|
-| `AnimatedOpacity` | `MotionOpacity` | The shown opacity stays within 0 and 1 while the spring overshoots. |
-| `AnimatedAlign` | `MotionAlign` | `alignment`, `widthFactor` and `heightFactor` each have their own track. |
-| `AnimatedPadding` | `MotionPadding` | Allows the negative padding a spring overshoots into, through `PaddingExtended`. |
-| `AnimatedPositioned` | `MotionPositioned` | Also `MotionPositioned.fromRect`. |
+| `AnimatedOpacity` | `MotionOpacity` | Visible opacity stays clamped to `0..1` even if the spring overshoots. |
+| `AnimatedAlign` | `MotionAlign` | `alignment`, `widthFactor`, and `heightFactor` each run on their own track. |
+| `AnimatedPadding` | `MotionPadding` | Handles negative padding during spring overshoot via `PaddingExtended`. |
+| `AnimatedPositioned` | `MotionPositioned` | Also includes `MotionPositioned.fromRect`. |
 | `AnimatedScale` | `MotionScale` | |
-| `AnimatedRotation` | `MotionRotation` | `turns`, like `AnimatedRotation`. |
+| `AnimatedRotation` | `MotionRotation` | Takes `turns`, matching `AnimatedRotation`. |
 | `AnimatedSlide` | `MotionSlide` | `offset` is a fraction of the child's size. |
-| `AnimatedContainer` | `MotionContainer` | One track per property; see below for what animates. |
-| `AnimatedSize` | `MotionSize` | A render object that springs toward its child's size when the child's content changes. It snaps when a change in its constraints changes the child's size. |
-| `AnimatedSwitcher` | `MotionSwitcher` | Same `transitionBuilder` and `layoutBuilder`, fed by a presence spring per child. Leaving children are inert. |
-| rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | `MotionSwitcher` inside `MotionSize`. New children fade in as the width grows. |
-| (none) | `MotionLayoutGroup`, `MotionLayoutItem` | Flies items to their new places when a rebuild moves them. See [Layout groups](#layout-groups). |
-| `Draggable`, `LongPressDraggable` | `MotionDraggable` | The feedback lands with a spring; plain `DragTarget`s work unchanged. `start: .longPress` stands in for `LongPressDraggable`. See [Dragging](#dragging). |
-| `ReorderableListView` | `MotionReorderable` | Tells your builder where a drag would drop, so you can show a gap or a line in any list, grid or sliver. See [Reordering](#reordering). |
-| (none) | `MotionDragToScroll` | Scrolls the scroll view below it while a drag is near one of its edges. See [Scrolling while dragging](#scrolling-while-dragging). |
+| `AnimatedContainer` | `MotionContainer` | Runs one track per animated property (see below). |
+| `AnimatedSize` | `MotionSize` | Springs when the child's content changes size; snaps when incoming constraints change. |
+| `AnimatedSwitcher` | `MotionSwitcher` | Same `transitionBuilder` and `layoutBuilder` API, driven by a presence spring per child. |
+| rivership `AnimatedSizeSwitcher` | `MotionSizeSwitcher` | Combines `MotionSwitcher` and `MotionSize`; new children fade in as width grows. |
+| — | `MotionLayoutGroup`, `MotionLayoutItem` | Animates items to their new positions when a rebuild moves them. See [Layout groups](#layout-groups). |
+| `Draggable`, `LongPressDraggable` | `MotionDraggable` | Drag feedback lands with a spring; works with standard `DragTarget`s. Use `start: .longPress` for long-press drags. See [Dragging](#dragging). |
+| `ReorderableListView` | `MotionReorderable` | Reports where a drag would drop so your builder can render a gap or indicator in any list, grid, or sliver. See [Reordering](#reordering). |
+| — | `MotionDragToScroll` | Auto-scrolls the scroll view below it while a drag hovers near an edge. See [Scrolling while dragging](#scrolling-while-dragging). |
 
-Each widget takes `motion` where the Flutter widget takes `duration` and
-`curve`. Every widget also takes `tickerRate` and `debugLabel`, like Motor's
-builders, so it shows up by name in `motor_devtools`.
-
-## Differences from Flutter
-
-- **No reverse timing.** `MotionSize` has no `reverseDuration`, because a
-  spring has no reverse leg. The switchers have no `reverseDuration`,
-  `switchInCurve` or `switchOutCurve`; `exitMotion` sets the motion of a
-  leaving child and defaults to `motion`.
-- **`MotionSize` tells why the child's size changed.** When the child's
-  content changes, the size springs. When a change in the incoming
-  constraints changes the child's size, such as a window being resized, the
-  size snaps at once and drops any spring in flight. A change in the
-  constraints that leaves the child's size alone keeps the spring running.
-  `AnimatedSize` springs in every case. A change of the ambient text scale
-  snaps too.
-- **Leaving children are inert.** In `MotionSwitcher` and
-  `MotionSizeSwitcher`, a leaving child can't be tapped, focused or read by a
-  screen reader. It keeps its state, and is interactive again if its key
-  comes back while it is still leaving. `AnimatedSwitcher` doesn't do this.
-- **`MotionSizeSwitcher` has no `layoutBuilder`.** It lays its children out
-  itself.
-- **`MotionSizeSwitcher` fades new children in with the width.** While the
-  size grows in width, the new child is clipped, so it stays nearly
-  transparent until the width has arrived. Leaving children, a shrinking size
-  and growth in height only don't fade.
-- **`MotionSizeSwitcher(immediateResize: true)` doesn't stretch leaving
-  children.** They are laid out with the switcher's own incoming constraints,
-  so wrapping text doesn't reflow while it fades. They sit by `alignment`,
-  clipped to the new size. A leaving child keeps its state in both modes.
-  `AnimatedSizeSwitcher` lays them out at the new size.
-- **`MotionSizeSwitcher.sizeMotion`** gives the size its own spring, for
-  example a spatial spring while the children fade on `motion`.
-- **Some `MotionContainer` properties change at once:** the border, shadows,
-  gradient and image of a `BoxDecoration`, any other kind of `Decoration`,
-  and unbounded (infinite) constraints. A `transform` loses perspective and
-  skew while it animates, as it does in `AnimatedContainer`.
-- **A `MotionContainer.transform` rotation turns the short way.** Each
-  rotation is taken as at most half a turn either way, so -100° to -140°
-  turns 40°. `AnimatedContainer` turns that one the long way, because the
-  quaternion `Matrix4.decompose` returns flips sign past about 240°. For
-  spins past half a turn, use `MotionRotation`.
-- **Directional values are resolved first.** `MotionAlign`, `MotionContainer`
-  and `MotionPadding` resolve `AlignmentDirectional` and
-  `EdgeInsetsDirectional` against the ambient `Directionality`, then animate.
-  A change of text direction jumps.
-- **Not ported:** `AnimatedPositionedDirectional`, `AnimatedCrossFade` (use
-  `MotionSwitcher`), `AnimatedPhysicalModel`, `AnimatedDefaultTextStyle` and
-  `AnimatedFractionallySizedBox`.
-
-## One motion per property: `motions`
-
-Widgets that animate several properties (`MotionContainer`, `MotionAlign`,
-`MotionPositioned`) play one Motor `Track` per property. Each widget
-declares its tracks on its own track class (`MotionContainerTrack`,
-`MotionAlignTrack`, `MotionPositionedTrack`). `motion` is the default for
-every track, and `motions` overrides it for single tracks:
-
-```dart
-MotionContainer(
-  motion: const .smoothSpring(),
-  motions: {
-    .color: const .snappySpring(),
-    .padding: const .bouncySpring(),
-  },
-  color: selected ? Colors.indigo : Colors.grey,
-  padding: .all(selected ? 24 : 12),
-  child: child,
-)
-```
-
-Keys are typed per widget, so another widget's track doesn't compile, and
-dot shorthand finds them: `.color` is `MotionContainerTrack.color`. Motions
-compare by value, so rebuilding the map in `build` changes nothing unless a
-motion changed.
-
-Widgets with a single value (`MotionOpacity`, `MotionScale`, `MotionSlide`,
-…) just take `motion`.
+Every widget accepts `motion` where Flutter's counterpart takes `duration` and `curve`, plus `tickerRate` and `debugLabel` so it appears by name in `motor_devtools`.
 
 ## Examples
 
@@ -143,12 +59,28 @@ MotionContainer(
 )
 ```
 
-Every property is its own track, so changing the color doesn't touch a
-width that is still moving. `MotionContainer` animates `alignment`,
-`padding`, `margin`, `color`, `width`, `height`, `constraints`, `transform`
-and `transformAlignment`, and the `color` and `borderRadius` of a
-`BoxDecoration` in `decoration` or `foregroundDecoration`. As in
-`AnimatedContainer`, a property that goes from null to a value starts there.
+Each property animates on its own track, so changing a color won't disturb a width that is already in motion. `MotionContainer` animates `alignment`, `padding`, `margin`, `color`, `width`, `height`, `constraints`, `transform`, `transformAlignment`, and the `color` and `borderRadius` of a `BoxDecoration` in `decoration` or `foregroundDecoration`. Just like `AnimatedContainer`, a property transitioning from `null` to a value starts at that value immediately.
+
+### Per-property motions
+
+Widgets that animate multiple properties (`MotionContainer`, `MotionAlign`, `MotionPositioned`) run one Motor `Track` per property. Use `motion` as the default for all tracks and `motions` to override specific ones:
+
+```dart
+MotionContainer(
+  motion: const .smoothSpring(),
+  motions: {
+    .color: const .snappySpring(),
+    .padding: const .bouncySpring(),
+  },
+  color: selected ? Colors.indigo : Colors.grey,
+  padding: .all(selected ? 24 : 12),
+  child: child,
+)
+```
+
+Track keys are typed per widget (`MotionContainerTrack`, `MotionAlignTrack`, `MotionPositionedTrack`), so dot-shorthand resolves them directly (`.color` is `MotionContainerTrack.color`). Motions compare by value, so rebuilding the map in `build` only restarts a track when its motion actually changes.
+
+Single-value widgets (`MotionOpacity`, `MotionScale`, `MotionSlide`, and so on) only take `motion`.
 
 ### Size
 
@@ -172,23 +104,13 @@ MotionSwitcher(
 )
 ```
 
-`MotionSwitcher` has `AnimatedSwitcher`'s API: the same `transitionBuilder`
-(defaulting to `AnimatedSwitcher.defaultTransitionBuilder`, a fade) and
-`layoutBuilder`. As with `AnimatedSwitcher`, a child that can't update the
-previous one (a different type or key) switches.
+`MotionSwitcher` mirrors `AnimatedSwitcher`'s API, including `transitionBuilder` (defaulting to a fade) and `layoutBuilder`. A child with a different type or key triggers a switch.
 
-The `Animation<double>` each child gets is its presence spring (a Motor
-`SingleMotionController`): `motion` takes new children from 0 to 1,
-`exitMotion` (usually a tighter spring) takes old ones to 0. Its status is
-`forward` while entering and `reverse` while leaving. A child whose key comes
-back while it is still leaving turns around from where it is, with its
-velocity, and keeps its state.
+Each child receives a presence `Animation<double>` driven by a `SingleMotionController`: `motion` brings new children from `0` to `1`, and `exitMotion` (often a tighter spring) takes leaving children back to `0`. Its status is `forward` while entering and `reverse` while leaving. If a child's key returns before it finishes exiting, it reverses course with its current velocity and preserves its state.
 
-The animation is the raw spring value and can overshoot 0..1; see
-`MotionSwitcher`.
+Note that the presence animation exposes the raw spring value and can overshoot `0..1`; transitions that require bounded values (like opacity) should clamp it or use a non-bouncing spring.
 
-`MotionSizeSwitcher` adds a `MotionSize` around it, so the size springs to
-the new child too:
+`MotionSizeSwitcher` wraps `MotionSwitcher` in a `MotionSize` so the container springs to the new child's size at the same time:
 
 ```dart
 MotionSizeSwitcher(
@@ -199,9 +121,7 @@ MotionSizeSwitcher(
 
 ### Layout groups
 
-`MotionLayoutGroup` flies each of its `MotionLayoutItem`s from where it was
-painted to its new place when a rebuild moves it. Give each item its
-identity as its `id`:
+`MotionLayoutGroup` animates each `MotionLayoutItem` from its previous painted position to its new position whenever a rebuild moves it. Identify each item with an `id`:
 
 ```dart
 MotionLayoutGroup(
@@ -214,54 +134,32 @@ MotionLayoutGroup(
 )
 ```
 
-- Reorders, inserts and removals around an item all fly, and so does a
-  move to another container of the same group, such as another column of a
-  board.
-- An item is found by its id, not by its widget. It flies even when a lazy
-  list builds it anew, so the list needs no keys or
-  `findChildIndexCallback`.
-- An item checks whether it moved only when it is rebuilt. Scrolling never
-  makes it fly, and nothing runs in frames without a rebuild.
-- A neighbor that grows on its own, such as a `MotionSize`, moves an item
-  without a rebuild, so the item follows it frame by frame instead of
-  flying.
-- An item that wasn't on screen in the last frame appears in place.
-- Hit testing and semantics stay at the layout position.
+- Reorders, insertions, removals, and moves between containers in the same group (such as columns on a Kanban board) all animate automatically.
+- Items are matched by `id` rather than widget identity, so lazy lists don't need keys or `findChildIndexCallback`.
+- Position changes are checked only on rebuild, so scrolling never triggers spurious animations and idle frames do no extra work.
+- If a neighbor grows on its own (such as a `MotionSize`), adjacent items follow it frame by frame rather than flying.
+- Items that weren't on screen in the previous frame appear in place.
+- Hit testing and semantics always stay at the item's layout position.
 
 ### Dragging
 
-`MotionDraggable` is Flutter's `Draggable` with a feedback that is animated
-from pickup to landing. It uses Flutter's `Draggable` underneath, so plain
-`DragTarget`s get the same data and callbacks as before.
+`MotionDraggable` wraps Flutter's `Draggable` with spring-animated pickup and landing. Plain `DragTarget`s receive the exact same data and callbacks as usual.
 
-When the drag ends, the feedback flies to where the item now lives. Like a
-`Hero` looks for its tag, it looks for the landing site with its `id`
-(`data` by default) once the drop has been laid out:
+When a drag ends, the feedback looks for a landing site with its `id` (`data` by default) after the drop lays out:
 
-- **Accepted, and the item moved** (for example to another column): it
-  flies to the new place.
-- **Rejected or canceled:** it springs back to where the drag started.
-- **Nowhere to land** (the target removed the item): it plays its exit at
-  the drop point, by default shrinking and fading out.
+- **Accepted and moved** (for example, to another column): the feedback springs to the item's new position.
+- **Rejected or canceled:** it springs back to where the drag began.
+- **Removed by the target:** it plays its exit animation at the drop point (shrinking and fading out by default).
 
-Landing sites are `MotionLayoutItem`s and the draggable itself, and ids
-only need to be unique within a `MotionLayoutGroup`. An accepted drop lands
-in the group that the target names (a `MotionReorderable` names its own),
-else in the innermost group under the pointer, else in the group it was
-dragged from.
+Landing sites are `MotionLayoutItem`s and the draggable itself, and `id`s only need to be unique within a `MotionLayoutGroup`. An accepted drop lands in the target's group (a `MotionReorderable` uses its own), falling back to the innermost group under the pointer, and then to the source group.
 
-The feedback flies in the `Overlay` only while it has to. Once it is inside
-the destination item's visible area, usually the frame after the drop, it
-hands the rest of the landing to the item's spring. The item then finishes
-in the tree with the feedback's velocity, scale, rotation and opacity,
-clipped and stacked like itself. `handoff` picks when that happens:
-`.onEnter` (the default), `.immediate`, or `.never`.
+The feedback stays in the `Overlay` only as long as necessary. Once it enters the destination item's visible bounds (typically on the frame after drop), it hands off to the item's own spring so the item finishes landing inside the widget tree with the feedback's velocity, scale, rotation, and opacity — properly clipped and layered. Control this with `handoff`: `.onEnter` (default), `.immediate`, or `.never`.
 
 ```dart
 MotionDraggable<Task>(
   data: task,
   start: .longPress,
-  // Out of the layout while dragged, so a gap can open in its place.
+  // Collapse the source slot while dragging so a gap can open instead.
   childWhenDragging: (context, size) => const SizedBox.shrink(),
   transitions: (drag) => switch (drag.phase) {
     .dragging => [MotionDraggableTrack.scale([.to(1.05)])],
@@ -275,42 +173,26 @@ MotionDraggable<Task>(
 )
 ```
 
-- `start: .longPress` starts the drag after a long press, like
-  `LongPressDraggable`, with a selection click unless
-  `hapticFeedbackOnStart` is false.
-- With `handleOnly`, only a pointer on a `MotionDragHandle` inside the
-  child starts the drag. The whole draggable flies.
-- `childWhenDragging` and `feedback` get the child's measured size.
-  `childWhenDragging` defaults to the child, hidden but keeping its room.
-  `feedback` is laid out at `drag.size`; wrap it in an `Align` to give it
-  its own size.
-- `transitions` returns Motor track animations of `scale`, `rotation` and
-  `opacity` for each phase. It runs again when the destination is found or
-  lost, and the tracks it doesn't mention spring back to rest.
-- `drag.morph` springs from 0 to 1 while an accepted drop lands on its
-  destination. A `feedback` that reads it can turn into what it lands on,
-  such as a button into a card.
-- Grabbing a card while it lands, on the feedback or on its slot, picks the
-  landing up again.
+- `start: .longPress` starts dragging after a long press (like `LongPressDraggable`), triggering a selection haptic unless `hapticFeedbackOnStart` is `false`.
+- Set `handleOnly: true` to restrict drag starts to a `MotionDragHandle` inside the child while still flying the whole draggable.
+- Both `childWhenDragging` and `feedback` receive the child's measured size. By default, `childWhenDragging` keeps the child's space hidden, and `feedback` is laid out at `drag.size` (wrap it in an `Align` if it needs its own size).
+- `transitions` returns Motor track animations for `scale`, `rotation`, and `opacity` per drag phase; omitted tracks spring back to rest.
+- `drag.morph` springs from `0` to `1` while an accepted drop lands, letting `feedback` morph into the destination widget (for instance, a button turning into a card).
+- Grabbing an item mid-landing (either on the feedback or on its slot) picks it right back up.
 
-Differences from `Draggable`:
+Differences from Flutter's `Draggable`:
 
-- `onLanded` is called when the feedback has landed, even after the
-  draggable has left the tree.
-- A plain `DragTargetDetails.offset` is the unscaled top-left Flutter
-  computes, not the transformed feedback's.
+- `onLanded` fires once the feedback finishes landing, even if the original draggable has already left the tree.
+- `DragTargetDetails.offset` reports Flutter's standard unscaled top-left offset rather than the transformed feedback's bounds.
 
 ### Reordering
 
-`MotionReorderable` takes drags over its content and tells its builder
-where they would drop: between `drop.after` and `drop.before`. It lays
-nothing out and adds no children, so the builder decides how a drop shows:
+`MotionReorderable` tracks drags over its child and tells your builder where the drop would land (`drop.after` and `drop.before`). It doesn't impose a layout or wrap your items, so you decide whether to open a gap or draw an insertion line:
 
 ```dart
 MotionReorderable<Task>(
   items: tasks,
-  // The index counts after the task has left its old place, so this is
-  // the whole job for a reorder within the list.
+  // `move.index` is already adjusted for removing the dragged item.
   onMove: (move) => setState(() {
     tasks
       ..remove(move.item)
@@ -336,51 +218,37 @@ MotionReorderable<Task>(
 )
 ```
 
-- Each `MotionReorderableItem` is a `MotionLayoutItem`, so the items fly
-  aside when the drop moves them. The reorderable makes its own
-  `MotionLayoutGroup` unless one is already above it.
-- A `MotionDropGap` opens room for the drop, and the feedback lands in it.
-  To mark the drop with a line instead, draw it on the items on either side
-  of it, and let the dragged item keep its room (the default
-  `childWhenDragging`), so nothing moves.
-- `onMove` covers reorders within the list, drops from other reorderables
-  and moves by a screen reader. `onWillAccept` takes other data, such as a
-  new item dragged in from a button.
-- Geometry places the drop. The pointer, or the feedback's center with
-  `point: .feedbackCenter`, picks a line of items and passes their painted
-  centers, with a few pixels of slack so the drop doesn't flicker. Lists,
-  grids and wraps work alike, and the order comes from `items`.
-- The whole content takes drags, headers included. A drop past the items
-  goes to the nearest end.
-- When the drag leaves, the drop stays, so nothing around the reorderable
-  changes size. Letting go outside drops there. `keepsDropOnLeave: false`
-  removes the drop as the drag leaves.
-- When `onMove` returns a `Future`, the drop stays pending
-  (`drop.pending`) and the feedback waits over the gap. If the future
-  throws, or completes without the item in `items`, the card flies back.
-- `MotionReorderable.sliver` takes drags over a sliver, such as one section
-  of a `CustomScrollView`. It must be inside a `MotionLayoutGroup`.
+- Each `MotionReorderableItem` is a `MotionLayoutItem`, so neighboring items spring out of the way when the drop shifts. `MotionReorderable` creates its own `MotionLayoutGroup` unless one already exists above it.
+- Insert a `MotionDropGap` to open space for the landing feedback. If you prefer an insertion line without shifting items, draw it on the neighboring items and keep the default `childWhenDragging`.
+- `onMove` handles intra-list reorders, drops from other reorderables, and screen-reader moves. Use `onWillAccept` to accept other data types (such as dragging a button to create a new item).
+- Drop placement is computed from item geometry (using the pointer, or the feedback center with `point: .feedbackCenter`) with a small deadband to prevent flicker, so lists, grids, and wraps all work the same way.
+- The entire child area accepts drags, including headers; dragging past the first or last item targets the nearest end.
+- By default, the drop indicator stays active if the pointer leaves the reorderable so surrounding layout doesn't jump, and releasing outside still commits the drop. Set `keepsDropOnLeave: false` to clear it on leave.
+- If `onMove` returns a `Future`, the drop stays pending (`drop.pending`) and the feedback waits over the gap. If the future throws or finishes without adding the item to `items`, the feedback springs back.
+- Use `MotionReorderable.sliver` for slivers inside a `CustomScrollView` (must be wrapped in a `MotionLayoutGroup`).
 
 ### Scrolling while dragging
 
-`MotionDragToScroll` scrolls the nearest scroll view below it while a drag
-is near one of its edges: faster the closer to the edge, with a speed that
-follows a spring, and on for as long as the drag holds still.
+`MotionDragToScroll` scrolls the nearest scroll view beneath it when a drag nears an edge. Speed increases as the pointer approaches the edge, eases smoothly via a spring, and continues while the pointer is held still.
 
-- Each scroll view that should scroll gets its own. On a board, one goes
-  around the board's horizontal scroll view and one around each column's
-  list. Of two on the same axis, the inner one scrolls first.
-- It runs on frames only while a drag is in an edge band, or while its
-  speed springs back to zero.
-- A `MotionDraggable` is tracked wherever its pointer is. With `outside`
-  (the default), a scroll view that is already scrolling keeps going while
-  the drag stays past its edge. A drag elsewhere never starts it.
-- A plain `Draggable` is only seen while it is over the widget. A
-  `MotionReorderable` inside passes it on.
+- Wrap each scrollable that should auto-scroll with its own `MotionDragToScroll`. On a board, put one around the horizontal scroll view and one around each vertical column; when two share an axis, the inner one scrolls first.
+- It only ticks frames while a drag is inside an edge band or while its scroll speed is springing back to zero.
+- `MotionDraggable`s are tracked anywhere on screen. With `outside: true` (the default), a scroll view that is already scrolling keeps going if the pointer moves past its edge, while drags starting elsewhere won't trigger it.
+- Standard `Draggable`s are tracked while over the widget (or passed through from a nested `MotionReorderable`).
+
+## Differences from Flutter's implicit widgets
+
+- **No reverse durations or curves:** Springs don't have a separate reverse leg, so `MotionSize` has no `reverseDuration`, and the switchers use `exitMotion` (defaulting to `motion`) instead of `reverseDuration`, `switchInCurve`, and `switchOutCurve`.
+- **`MotionSize` distinguishes content changes from constraint changes:** When the child's content resizes, `MotionSize` springs to the new size. When incoming constraints change (such as resizing the window) or the ambient text scale changes, it snaps immediately and cancels any running spring. Constraint changes that don't affect the child's size leave a running spring alone.
+- **Exiting children are non-interactive:** In `MotionSwitcher` and `MotionSizeSwitcher`, leaving children ignore taps, focus, and semantics while preserving their state. If a leaving child's key becomes active again mid-exit, it immediately becomes interactive again.
+- **`MotionSizeSwitcher` manages its own layout:** It doesn't expose a `layoutBuilder`. While growing in width, it fades the incoming child in as space opens so clipped content doesn't pop in; shrinking or height-only growth skips this fade.
+- **`MotionSizeSwitcher(immediateResize: true)` prevents text reflow:** Exiting children keep the switcher's incoming constraints (aligned by `alignment` and clipped to the new bounds) so wrapping text doesn't reflow while fading out.
+- **`MotionSizeSwitcher.sizeMotion`:** Lets you use a separate spring for the container resize (for example, a spatial spring for size while children fade with `motion`).
+- **Properties in `MotionContainer` that update immediately:** `BoxDecoration` borders, shadows, gradients, and images; non-`BoxDecoration` decorations; and unbounded constraints. As in `AnimatedContainer`, animating a `transform` drops perspective and skew during the transition.
+- **Shortest-path rotation in `MotionContainer.transform`:** Rotations always take the shortest path (at most half a turn), avoiding `Matrix4.decompose` sign flips past ~240°. Use `MotionRotation` for multi-turn spins.
+- **Directional values resolve before animating:** `MotionAlign`, `MotionContainer`, and `MotionPadding` resolve `AlignmentDirectional` and `EdgeInsetsDirectional` against the ambient `Directionality` before animating; changing text direction jumps immediately.
+- **Not ported:** `AnimatedPositionedDirectional`, `AnimatedCrossFade` (use `MotionSwitcher`), `AnimatedPhysicalModel`, `AnimatedDefaultTextStyle`, and `AnimatedFractionallySizedBox`.
 
 ## Reduced motion
 
-The widgets take whatever motion you pass. To honor reduced motion, pass
-`Motion.instant()` (or a short spring) when
-`MediaQuery.disableAnimationsOf(context)` is true, ideally once, in your
-design system's motion tokens.
+Every widget uses whichever `motion` you pass. To honor reduced motion, substitute `Motion.instant()` (or a quick non-bouncing spring) when `MediaQuery.disableAnimationsOf(context)` is `true` — ideally in one place inside your design system's motion tokens.

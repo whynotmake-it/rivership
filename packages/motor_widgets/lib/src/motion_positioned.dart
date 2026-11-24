@@ -56,7 +56,9 @@ final class MotionPositionedTrack<T extends Object> extends Track<T> {
 }
 
 /// Animated version of [Positioned] that springs to a new position whenever
-/// it changes. Only works as a child of a [Stack].
+/// it changes.
+///
+/// Only works as a child of a [Stack].
 ///
 /// The Motor version of [AnimatedPositioned]. Each edge and dimension has its
 /// own track, so changing one keeps the others' motion. As in

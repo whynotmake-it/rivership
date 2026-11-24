@@ -1,3 +1,6 @@
+/// @docImport 'package:motor_widgets/src/motion_size.dart';
+library;
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
@@ -39,7 +42,7 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 ///
 /// * Scrolling never moves an item, and neither do animations elsewhere,
 ///   such as a sticky header.
-/// * A neighbor that grows on its own, such as with a `MotionSize`, moves
+/// * A neighbor that grows on its own, such as with a [MotionSize], moves
 ///   an item without a rebuild, so the item follows it frame by frame
 ///   instead of flying.
 /// * An item that wasn't on screen in the last frame appears in place.
@@ -65,7 +68,9 @@ class MotionLayoutGroup extends StatefulWidget {
   /// The motion of every item that has none of its own.
   final Motion motion;
 
-  /// Whether items fly. While false, they jump to their new places.
+  /// Whether items fly.
+  ///
+  /// While false, they jump to their new places.
   final bool enabled;
 
   /// {@macro motor_widgets.debugLabel}
@@ -102,14 +107,20 @@ class MotionLayoutItem extends StatefulWidget {
     super.key,
   });
 
-  /// The item's identity, compared with `==`. Unique within the group, which
-  /// is also where a [MotionDraggable] with the same id lands.
+  /// The item's identity, compared with `==`.
+  ///
+  /// Unique within the group, which is also where a [MotionDraggable] with
+  /// the same id lands.
   final Object id;
 
-  /// The item's motion. Defaults to the group's.
+  /// The item's motion.
+  ///
+  /// Defaults to the group's.
   final Motion? motion;
 
-  /// Whether the item flies. While false, it jumps to its new place.
+  /// Whether the item flies.
+  ///
+  /// While false, it jumps to its new place.
   final bool enabled;
 
   /// The widget below this widget in the tree.

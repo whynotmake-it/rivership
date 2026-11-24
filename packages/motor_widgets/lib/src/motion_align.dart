@@ -68,18 +68,24 @@ class MotionAlign extends StatelessWidget {
          'heightFactor must be non-negative',
        );
 
-  /// How to align the child. See [Align.alignment].
+  /// How to align the child.
+  ///
+  /// See [Align.alignment].
   final AlignmentGeometry alignment;
 
   /// The widget below this widget in the tree.
   final Widget? child;
 
   /// If non-null, sets its height to the child's height multiplied by this
-  /// factor. See [Align.heightFactor].
+  /// factor.
+  ///
+  /// See [Align.heightFactor].
   final double? heightFactor;
 
   /// If non-null, sets its width to the child's width multiplied by this
-  /// factor. See [Align.widthFactor].
+  /// factor.
+  ///
+  /// See [Align.widthFactor].
   final double? widthFactor;
 
   /// The motion every property follows, unless [motions] has its own.

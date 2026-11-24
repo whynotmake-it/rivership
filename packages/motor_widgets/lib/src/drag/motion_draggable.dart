@@ -1,3 +1,6 @@
+/// @docImport 'package:motor_widgets/src/reorder/motion_reorderable.dart';
+library;
+
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
@@ -30,14 +33,18 @@ enum MotionDragPhase {
 /// that is its own landing site, every value behaves like [never].
 enum MotionDragHandoff {
   /// As soon as the feedback's center is inside the destination's visible
-  /// area and the destination's slot is in view. For most drops that is the
-  /// frame after the drop. While the slot is out of view, the feedback stays
-  /// in the overlay, clipped to the destination's visible area.
+  /// area and the destination's slot is in view.
+  ///
+  /// For most drops that is the frame after the drop. While the slot is out of
+  /// view, the feedback stays in the overlay, clipped to the destination's
+  /// visible area.
   onEnter,
 
-  /// On the frame after the drop, wherever the feedback is. From then on the
-  /// destination clips it, so a card dropped outside its column is cut off
-  /// at the column's edge, and one whose slot is out of view isn't painted.
+  /// On the frame after the drop, wherever the feedback is.
+  ///
+  /// From then on the destination clips it, so a card dropped outside its
+  /// column is cut off at the column's edge, and one whose slot is out of view
+  /// isn't painted.
   immediate,
 
   /// Never: the whole landing flies in the overlay, above everything.
@@ -94,7 +101,9 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
     debugLabel: 'MotionDraggable.size',
   );
 
-  /// The feedback's scale around its center. Rests at 1.
+  /// The feedback's scale around its center.
+  ///
+  /// Rests at 1.
   static final scale = MotionDraggableTrack<double>._(
     MotionConverter.single,
     debugLabel: 'MotionDraggable.scale',
@@ -102,6 +111,7 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
   );
 
   /// The feedback's clockwise rotation around its center, in full turns.
+  ///
   /// Rests at 0.
   static final rotation = MotionDraggableTrack<double>._(
     MotionConverter.single,
@@ -109,7 +119,9 @@ final class MotionDraggableTrack<T extends Object> extends Track<T> {
     initial: 0,
   );
 
-  /// The feedback's opacity. Rests at 1.
+  /// The feedback's opacity.
+  ///
+  /// Rests at 1.
   static final opacity = MotionDraggableTrack<double>._(
     MotionConverter.single,
     debugLabel: 'MotionDraggable.opacity',
@@ -161,6 +173,7 @@ final class MotionDragDetails {
   final Size size;
 
   /// How far the feedback has turned into its destination, from 0 to 1.
+  ///
   /// See [MotionDraggableTrack.morph].
   double get morph => _values(MotionDraggableTrack.morph);
 
@@ -172,8 +185,8 @@ final class MotionDragDetails {
   ///
   /// It is null while dragging. After a drop it is the rect of the landing
   /// site with the draggable's [MotionDraggable.id], measured after the drop
-  /// has been laid out: a `MotionLayoutItem`, the draggable itself, or a
-  /// `MotionDropGap` while a `MotionReorderable`'s move is pending. It
+  /// has been laid out: a [MotionLayoutItem], the draggable itself, or a
+  /// [MotionDropGap] while a [MotionReorderable]'s move is pending. It
   /// becomes null if that site unmounts mid-flight.
   final Rect? destination;
 
@@ -190,7 +203,7 @@ final class MotionDragDetails {
   /// The current value of [track]: one of [MotionDraggableTrack]'s, or a
   /// track of your own that [MotionDraggable.transitions] animates.
   ///
-  /// A track of your own needs an `initial` value to be read before its
+  /// A track of your own needs an [Track.initial] value to be read before its
   /// first animation.
   T value<T extends Object>(Track<T> track) => _values(track);
 }
@@ -218,9 +231,9 @@ typedef MotionDraggableTransitions =
 /// unchanged: they receive the same data and callbacks.
 ///
 /// When the drag ends, the feedback flies to where the item now lives. Like
-/// a [Hero], it looks for the `MotionLayoutItem` with the same [id] once the
-/// drop has been laid out: in the `MotionLayoutGroup` that the target names,
-/// as a `MotionReorderable` names its own, else in the innermost group
+/// a [Hero], it looks for the [MotionLayoutItem] with the same [id] once the
+/// drop has been laid out: in the [MotionLayoutGroup] that the target names,
+/// as a [MotionReorderable] names its own, else in the innermost group
 /// under the pointer, else in the group it was dragged from:
 ///
 /// * After an accepted drop that moved the item, for example from one
@@ -230,7 +243,7 @@ typedef MotionDraggableTransitions =
 ///   it, it stays at the drop point and plays its exit: by default it
 ///   shrinks and fades out.
 ///
-/// A draggable that isn't inside a `MotionLayoutItem` with its id is a
+/// A draggable that isn't inside a [MotionLayoutItem] with its id is a
 /// landing site itself, so a rejected drop still flies back to it.
 ///
 /// The landing starts with the release velocity and follows where the
@@ -240,7 +253,7 @@ typedef MotionDraggableTransitions =
 /// from where it is.
 ///
 /// The feedback flies in the [Overlay], above everything, only while it has
-/// to. It hands the rest of the landing to the `MotionLayoutItem` as soon as
+/// to. It hands the rest of the landing to the [MotionLayoutItem] as soon as
 /// the feedback's center is inside the item's visible area (all of its
 /// [Scrollable]s, or the overlay when it has none) and the item's slot is
 /// in view. For most drops that is the frame after the drop, since the
@@ -256,7 +269,6 @@ typedef MotionDraggableTransitions =
 /// destination's slot is scrolled out of view, the feedback stays in the
 /// overlay but is clipped to the destination's visible area, as the list
 /// would clip it.
-
 ///
 /// The feedback is laid out at the child's measured size. A [feedback] that
 /// wants its own size loosens those constraints, for example with [Align].
@@ -333,22 +345,20 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// The data that will be dropped by this draggable.
   final T? data;
 
-  /// The identity of the item: the feedback lands on the
-  /// `MotionLayoutItem` with this id, compared with `==` like [Hero.tag].
+  /// The identity of the item: the feedback lands on the [MotionLayoutItem]
+  /// with this id, compared with `==` like [Hero.tag].
   ///
   /// Defaults to [data]. When both are null, the feedback lands back on
   /// this draggable.
   ///
-  /// Within one `MotionLayoutGroup`, or outside of any within one
-  /// [Overlay], only one landing site should have a given id at a time.
+  /// Within one [MotionLayoutGroup], or outside of any within one [Overlay],
+  /// only one landing site should have a given id at a time.
   final Object? id;
 
   /// The widget below this widget in the tree.
   ///
   /// It is shown when no drag is under way, and while the feedback lands on
   /// this draggable it keeps its place but is hidden.
-  ///
-  /// {@macro flutter.widgets.ProxyWidget.child}
   final Widget child;
 
   /// When the drag starts.
@@ -363,7 +373,9 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   final bool hapticFeedbackOnStart;
 
   /// Whether only a pointer that goes down on a [MotionDragHandle] inside
-  /// [child] starts the drag. The whole draggable flies either way.
+  /// [child] starts the drag.
+  ///
+  /// The whole draggable flies either way.
   final bool handleOnly;
 
   /// Builds what this widget shows in its place while it is dragged, from
@@ -375,7 +387,9 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   final MotionDraggableChildWhenDragging? childWhenDragging;
 
   /// Builds the widget that flies under the pointer and lands, from the
-  /// live drag. Defaults to [child].
+  /// live drag.
+  ///
+  /// Defaults to [child].
   ///
   /// It gets tight constraints at [MotionDragDetails.size]: the child's
   /// measured size while dragging, then the destination's. Wrap it in an
@@ -417,23 +431,26 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// destination's scrollables clip it and the widgets around it stack over
   /// it.
   ///
-  /// Only a `MotionLayoutItem` can take it; a draggable that lands on
+  /// Only a [MotionLayoutItem] can take it; a draggable that lands on
   /// itself stays in the overlay whatever this is.
   ///
   /// Defaults to [MotionDragHandoff.onEnter].
   final MotionDragHandoff handoff;
 
   /// Called when the feedback has landed, has finished its exit, or has
-  /// handed the rest of its landing to a `MotionLayoutItem`.
+  /// handed the rest of its landing to a [MotionLayoutItem].
   ///
   /// Unlike [onDragEnd], it is also called after this widget has been
   /// removed from the tree. It is not called when the feedback is grabbed
   /// again before it lands.
   final VoidCallback? onLanded;
 
-  /// {@macro flutter.widgets.Draggable.axis}
+  /// The [Axis] to restrict this draggable's movement, if specified.
   ///
-  /// Restricts the drag to one axis, like [Draggable.axis].
+  /// When set to [Axis.horizontal], this widget can only be dragged
+  /// horizontally. When set to [Axis.vertical], this widget can only be
+  /// dragged vertically. Defaults to null, allowing movement in any direction.
+  /// See [Draggable.axis].
   final Axis? axis;
 
   /// Controls how this widget competes with other gestures to start a drag,
@@ -490,7 +507,10 @@ class MotionDraggable<T extends Object> extends StatefulWidget {
   /// [Draggable.hitTestBehavior].
   final HitTestBehavior hitTestBehavior;
 
-  /// {@macro flutter.gestures.multidrag._allowedButtonsFilter}
+  /// A filter that decides which pointer buttons can initiate a drag.
+  ///
+  /// If null, only the primary button can start a drag. See
+  /// [Draggable.allowedButtonsFilter].
   final AllowedButtonsFilter? allowedButtonsFilter;
 
   /// {@macro motor_widgets.debugLabel}
@@ -935,10 +955,10 @@ class _FlightDrag extends Drag {
 
 /// Starts the drag of the [MotionDraggable] around it when a pointer goes
 /// down on [child], also when the draggable has
-/// [MotionDraggable.handleOnly] set. The whole draggable flies.
+/// [MotionDraggable.handleOnly] set.
 ///
-/// Outside a draggable, such as in the copy of it that flies, it only shows
-/// [child].
+/// The whole draggable flies. Outside a draggable, such as in the copy of it
+/// that flies, it only shows [child].
 class MotionDragHandle extends StatelessWidget {
   /// Makes [child] start the drag of the draggable around it.
   const MotionDragHandle({required this.child, super.key});

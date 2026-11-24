@@ -36,7 +36,7 @@ import 'package:motor_widgets/src/ticker_rate.dart';
 /// button that is fading out can't be pressed by mistake. This is done before
 /// [layoutBuilder] sees the children, so every layout builder gets it. A
 /// child that starts leaving keeps its state, and one that comes back while
-/// it is leaving is interactive again. Inside a current child, `Focus.of`
+/// it is leaving is interactive again. Inside a current child, [Focus.of]
 /// still finds the enclosing control's focus node. Flutter's
 /// [AnimatedSwitcher] doesn't do this.
 ///
@@ -64,7 +64,9 @@ class MotionSwitcher extends StatefulWidget {
     super.key,
   });
 
-  /// The current child. Null shows nothing once the previous child has left.
+  /// The current child.
+  ///
+  /// Null shows nothing once the previous child has left.
   final Widget? child;
 
   /// The spring an entering child follows to presence 1.
@@ -84,15 +86,18 @@ class MotionSwitcher extends StatefulWidget {
   /// child mounted and ticking for good.
   final Motion? exitMotion;
 
-  /// Wraps a child in a transition driven by its presence. Defaults to
-  /// [AnimatedSwitcher.defaultTransitionBuilder], a [FadeTransition].
+  /// Wraps a child in a transition driven by its presence.
+  ///
+  /// Defaults to [AnimatedSwitcher.defaultTransitionBuilder], a
+  /// [FadeTransition].
   ///
   /// See [AnimatedSwitcher.transitionBuilder]. The animation may leave
   /// `[0, 1]`; see "Presence overshoots" above.
   final AnimatedSwitcherTransitionBuilder transitionBuilder;
 
-  /// Lays out the current and the leaving children, oldest first. Defaults
-  /// to [AnimatedSwitcher.defaultLayoutBuilder].
+  /// Lays out the current and the leaving children, oldest first.
+  ///
+  /// Defaults to [AnimatedSwitcher.defaultLayoutBuilder].
   final AnimatedSwitcherLayoutBuilder layoutBuilder;
 
   /// {@macro motor_widgets.tickerRate}

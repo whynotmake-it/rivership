@@ -36,10 +36,10 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
     debugLabel: 'MotionContainer.padding',
   );
 
-  /// The background color: [MotionContainer.color], or the `color` of a
-  /// [BoxDecoration] in [MotionContainer.decoration].
+  /// The background color: [MotionContainer.color], or [BoxDecoration.color]
+  /// of a [BoxDecoration] in [MotionContainer.decoration].
   ///
-  /// One track for both, as [AnimatedContainer] treats `color` as a
+  /// One track for both, as [AnimatedContainer] treats [Container.color] as a
   /// shorthand for `BoxDecoration(color: color)`: switching from one to the
   /// other animates the color.
   static final color = MotionContainerTrack<Color>._(
@@ -47,24 +47,25 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
     debugLabel: 'MotionContainer.color',
   );
 
-  /// The `color` of a [BoxDecoration] in [MotionContainer.decoration]: the
-  /// same track as [color].
+  /// The [BoxDecoration.color] of a [BoxDecoration] in
+  /// [MotionContainer.decoration]: the same track as [color].
   static final decorationColor = color;
 
-  /// The `borderRadius` of a [BoxDecoration] in [MotionContainer.decoration].
+  /// The [BoxDecoration.borderRadius] of a [BoxDecoration] in
+  /// [MotionContainer.decoration].
   static final decorationBorderRadius = MotionContainerTrack<BorderRadius>._(
     const BorderRadiusMotionConverter(),
     debugLabel: 'MotionContainer.decorationBorderRadius',
   );
 
-  /// The `color` of a [BoxDecoration] in
+  /// The [BoxDecoration.color] of a [BoxDecoration] in
   /// [MotionContainer.foregroundDecoration].
   static final foregroundDecorationColor = MotionContainerTrack<Color>._(
     MotionConverter.colorRgb,
     debugLabel: 'MotionContainer.foregroundDecorationColor',
   );
 
-  /// The `borderRadius` of a [BoxDecoration] in
+  /// The [BoxDecoration.borderRadius] of a [BoxDecoration] in
   /// [MotionContainer.foregroundDecoration].
   static final foregroundDecorationBorderRadius =
       MotionContainerTrack<BorderRadius>._(
@@ -80,7 +81,9 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
   );
 
   /// The maximum width of [MotionContainer.constraints], including
-  /// [MotionContainer.width]. Unused while unbounded.
+  /// [MotionContainer.width].
+  ///
+  /// Unused while unbounded.
   static final maxWidth = MotionContainerTrack<double>._(
     const NonNegativeMotionConverter(),
     debugLabel: 'MotionContainer.maxWidth',
@@ -94,7 +97,9 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
   );
 
   /// The maximum height of [MotionContainer.constraints], including
-  /// [MotionContainer.height]. Unused while unbounded.
+  /// [MotionContainer.height].
+  ///
+  /// Unused while unbounded.
   static final maxHeight = MotionContainerTrack<double>._(
     const NonNegativeMotionConverter(),
     debugLabel: 'MotionContainer.maxHeight',
@@ -106,7 +111,7 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
     debugLabel: 'MotionContainer.margin',
   );
 
-  /// [MotionContainer.transform], decomposed like `Matrix4Tween`.
+  /// [MotionContainer.transform], decomposed like [Matrix4Tween].
   static final transform = MotionContainerTrack<Matrix4>._(
     const Matrix4MotionConverter(),
     debugLabel: 'MotionContainer.transform',
@@ -123,7 +128,7 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
 /// its new value whenever it changes.
 ///
 /// The Motor version of [AnimatedContainer]. Every property is its own track
-/// on one `TrackBuilder`, so changing one property never disturbs another
+/// on one [TrackBuilder], so changing one property never disturbs another
 /// that is still in flight, and a property that is retargeted mid-flight
 /// keeps its velocity.
 ///
@@ -131,16 +136,16 @@ final class MotionContainerTrack<T extends Object> extends Track<T> {
 ///
 /// * [alignment], [padding], [margin] and [transformAlignment]. Directional
 ///   values are resolved against the ambient [Directionality] first.
-/// * [color]. As in [AnimatedContainer], it is the same property as the
-///   `color` of a [BoxDecoration], so switching from one to the other
-///   animates.
-/// * The `color` and `borderRadius` of a [BoxDecoration] in [decoration] and
-///   [foregroundDecoration]. Its other fields (border, shadows, gradient,
-///   image, shape) and other kinds of [Decoration] change at once.
+/// * [color]. As in [AnimatedContainer], it is the same property as
+///   [BoxDecoration.color], so switching from one to the other animates.
+/// * [BoxDecoration.color] and [BoxDecoration.borderRadius] of a
+///   [BoxDecoration] in [decoration] and [foregroundDecoration]. Its other
+///   fields (border, shadows, gradient, image, shape) and other kinds of
+///   [Decoration] change at once.
 /// * [width], [height] and [constraints], as the four bounds of the combined
 ///   constraints. An unbounded (infinite) bound changes at once.
 /// * [transform], decomposed into translation, rotation and scale like
-///   `Matrix4Tween`.
+///   [Matrix4Tween].
 ///
 /// As in [AnimatedContainer], a property that goes from null to a value
 /// starts at that value instead of animating. Padding and margin may
@@ -199,14 +204,19 @@ class MotionContainer extends StatelessWidget {
   /// The [child] contained by the container.
   final Widget? child;
 
-  /// Align the [child] within the container. See [Container.alignment].
+  /// Align the [child] within the container.
+  ///
+  /// See [Container.alignment].
   final AlignmentGeometry? alignment;
 
-  /// Empty space to inscribe inside the [decoration]. See
-  /// [Container.padding].
+  /// Empty space to inscribe inside the [decoration].
+  ///
+  /// See [Container.padding].
   final EdgeInsetsGeometry? padding;
 
-  /// The color to paint behind the [child]. See [Container.color].
+  /// The color to paint behind the [child].
+  ///
+  /// See [Container.color].
   final Color? color;
 
   /// The decoration to paint behind the [child].
@@ -235,8 +245,9 @@ class MotionContainer extends StatelessWidget {
   /// size.
   final AlignmentGeometry? transformAlignment;
 
-  /// The clip behavior when [decoration] is not null. See
-  /// [Container.clipBehavior].
+  /// The clip behavior when [decoration] is not null.
+  ///
+  /// See [Container.clipBehavior].
   final Clip clipBehavior;
 
   /// The motion every property follows, unless [motions] has its own.

@@ -33,7 +33,9 @@ class MotionScale extends StatelessWidget {
   final AlignmentGeometry alignment;
 
   /// The filter quality with which to apply the transform as a bitmap
-  /// operation. See [Transform.filterQuality].
+  /// operation.
+  ///
+  /// See [Transform.filterQuality].
   final FilterQuality? filterQuality;
 
   /// {@macro motor_widgets.onEnd}
