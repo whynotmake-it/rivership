@@ -74,6 +74,8 @@ void main() async {
   registerFontLicenses();
   // Late, so the examples' home links can navigate with it.
   late final RootStackRouter router;
+  // Each example's logo or wordmark leads back to the landing page.
+  void home() => router.navigate(const NamedRoute('Home'));
   router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -85,22 +87,18 @@ void main() async {
       _exampleRoute(
         name: 'Heroine',
         path: '/heroine',
-        children: heroineRoutes,
+        children: heroineRoutesFor(onHome: home),
       ),
       NamedRouteDef.shell(
         name: 'Motor',
         path: '/motor',
         type: exampleRouteType,
-        // The gallery's logo leads back to the landing page.
-        children: motorRoutesFor(
-          onHome: () => router.navigate(const NamedRoute('Home')),
-        ),
+        children: motorRoutesFor(onHome: home),
       ),
       coilCatalogRoute(
         path: '/coil',
-        // The coil wordmark leads back to the landing page, and the
-        // catalog's mentions of another package open its example.
-        onHome: () => router.navigate(const NamedRoute('Home')),
+        onHome: home,
+        // The catalog's mentions of another package open its example.
         onOpenPackage: (package) {
           if (_exampleRouteNames[package] case final name?) {
             router.navigate(NamedRoute(name));
@@ -110,7 +108,7 @@ void main() async {
       _exampleRoute(
         name: 'Stupid Simple Sheet',
         path: '/stupid_simple_sheet',
-        children: stupidSimpleSheetRoutes,
+        children: buildStupidSimpleSheetRoutes(onHome: home),
       ),
     ],
   );
