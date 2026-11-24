@@ -64,7 +64,9 @@ NamedRouteDef _exampleRoute({
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized();
   registerFontLicenses();
-  final router = RootStackRouter.build(
+  // Late, so the examples' home links can navigate with it.
+  late final RootStackRouter router;
+  router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
         path: '/',
@@ -77,10 +79,14 @@ void main() async {
         path: '/heroine',
         children: heroineRoutes,
       ),
-      _exampleRoute(
+      NamedRouteDef.shell(
         name: 'Motor',
         path: '/motor',
-        children: motorRoutes,
+        type: exampleRouteType,
+        // The gallery's logo leads back to the landing page.
+        children: motorRoutesFor(
+          onHome: () => router.navigate(const NamedRoute('Home')),
+        ),
       ),
       coilCatalogRoute(path: '/coil'),
       _exampleRoute(
