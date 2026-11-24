@@ -60,6 +60,23 @@ class CoilInput extends StatefulWidget {
     this.autofillHints,
     this.onChanged,
     this.onSubmitted,
+    this.onTap,
+    this.maxLength,
+    this.maxLengthEnforcement,
+    this.onEditingComplete,
+    this.onTapOutside,
+    this.textAlign = TextAlign.start,
+    this.textDirection,
+    this.undoController,
+    this.contextMenuBuilder = CoilTextFieldCore.defaultContextMenuBuilder,
+    this.enableInteractiveSelection = true,
+    this.keyboardAppearance,
+    this.restorationId,
+    this.spellCheckConfiguration,
+    this.smartDashesType,
+    this.smartQuotesType,
+    this.scrollPadding = const EdgeInsets.all(16),
+    this.obscuringCharacter = '•',
     this.shortcuts = const {},
     this.size,
     this.statesController,
@@ -68,7 +85,8 @@ class CoilInput extends StatefulWidget {
     this.style,
     this.semanticLabel,
   }) : minLines = null,
-       maxLines = 1;
+       maxLines = 1,
+       scrollController = null;
 
   /// Creates a multi-line input (a textarea).
   ///
@@ -99,6 +117,25 @@ class CoilInput extends StatefulWidget {
     this.inputFormatters,
     this.autofillHints,
     this.onChanged,
+    this.onTap,
+    this.onSubmitted,
+    this.textInputAction = TextInputAction.newline,
+    this.scrollController,
+    this.maxLength,
+    this.maxLengthEnforcement,
+    this.onEditingComplete,
+    this.onTapOutside,
+    this.textAlign = TextAlign.start,
+    this.textDirection,
+    this.undoController,
+    this.contextMenuBuilder = CoilTextFieldCore.defaultContextMenuBuilder,
+    this.enableInteractiveSelection = true,
+    this.keyboardAppearance,
+    this.restorationId,
+    this.spellCheckConfiguration,
+    this.smartDashesType,
+    this.smartQuotesType,
+    this.scrollPadding = const EdgeInsets.all(16),
     this.shortcuts = const {},
     this.size,
     this.statesController,
@@ -112,8 +149,7 @@ class CoilInput extends StatefulWidget {
          'maxLines must be at least minLines.',
        ),
        obscureText = false,
-       textInputAction = TextInputAction.newline,
-       onSubmitted = null;
+       obscuringCharacter = '•';
 
   /// The text controller; one is created if null.
   final TextEditingController? controller;
@@ -175,7 +211,7 @@ class CoilInput extends StatefulWidget {
   /// The software keyboard type.
   final TextInputType? keyboardType;
 
-  /// The keyboard's action button. Multi-line inputs use newline.
+  /// The keyboard's action button. A multi-line input defaults to newline.
   final TextInputAction? textInputAction;
 
   /// How the software keyboard capitalizes.
@@ -196,9 +232,83 @@ class CoilInput extends StatefulWidget {
   /// Called when the text changes.
   final ValueChanged<String>? onChanged;
 
-  /// Called when the keyboard's action button submits a single-line input.
-  /// Never called for a Return that only commits an IME composition.
+  /// Called when the keyboard's action button submits the input. A
+  /// multi-line input only submits if [textInputAction] isn't newline. Never
+  /// called for a Return that only commits an IME composition.
   final ValueChanged<String>? onSubmitted;
+
+  /// Called when a pointer or a finger taps the input, never when focus
+  /// arrives some other way (Tab); see [CoilTextFieldCore.onTap].
+  final VoidCallback? onTap;
+
+  /// The most characters the input accepts; null for no limit. See
+  /// `TextField.maxLength`.
+  final int? maxLength;
+
+  /// How [maxLength] is enforced. Defaults to the platform's. See
+  /// `TextField.maxLengthEnforcement`.
+  final MaxLengthEnforcement? maxLengthEnforcement;
+
+  /// Called when the user finishes editing, before [onSubmitted]. See
+  /// `TextField.onEditingComplete`.
+  final VoidCallback? onEditingComplete;
+
+  /// Called when a pointer taps outside the input. Null keeps the default.
+  /// See `TextField.onTapOutside`.
+  final TapRegionCallback? onTapOutside;
+
+  /// How the text, and the placeholder, align horizontally. See
+  /// `TextField.textAlign`.
+  final TextAlign textAlign;
+
+  /// The text's direction. Defaults to the ambient [Directionality]. See
+  /// `TextField.textDirection`.
+  final TextDirection? textDirection;
+
+  /// The undo history controller; one is created if null. See
+  /// `TextField.undoController`.
+  final UndoHistoryController? undoController;
+
+  /// The character shown for each obscured character. See
+  /// `TextField.obscuringCharacter`.
+  final String obscuringCharacter;
+
+  /// Scrolls a multi-line input's text; null for single-line. See
+  /// `TextField.scrollController`.
+  final ScrollController? scrollController;
+
+  /// Builds the selection toolbar. Null shows no menu. See
+  /// `TextField.contextMenuBuilder`.
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+
+  /// Whether the text can be selected and the toolbar shown. See
+  /// `TextField.enableInteractiveSelection`.
+  final bool enableInteractiveSelection;
+
+  /// The software keyboard's brightness. Defaults to the theme's. See
+  /// `TextField.keyboardAppearance`.
+  final Brightness? keyboardAppearance;
+
+  /// The id the input saves its state under for restoration. See
+  /// `TextField.restorationId`.
+  final String? restorationId;
+
+  /// How spell check runs and shows its results. See
+  /// `TextField.spellCheckConfiguration`.
+  final SpellCheckConfiguration? spellCheckConfiguration;
+
+  /// Whether the keyboard replaces dashes with typographic ones. See
+  /// `TextField.smartDashesType`.
+  final SmartDashesType? smartDashesType;
+
+  /// Whether the keyboard replaces quotes with typographic ones. See
+  /// `TextField.smartQuotesType`.
+  final SmartQuotesType? smartQuotesType;
+
+  /// The space kept between the input and the screen edges (and the software
+  /// keyboard) when it scrolls itself into view. See
+  /// `TextField.scrollPadding`.
+  final EdgeInsets scrollPadding;
 
   /// Keys mapped to intents for the field's owner, such as arrows that move
   /// a list's active row. They are off while an IME composes, so Enter
@@ -447,9 +557,24 @@ class _CoilInputState extends State<CoilInput> {
               textCapitalization: widget.textCapitalization,
               autocorrect: widget.autocorrect,
               enableSuggestions: widget.enableSuggestions,
-              keyboardAppearance: theme.brightness,
-              // Keeps the field 16 clear of the keyboard and screen edges.
-              scrollPadding: const EdgeInsets.all(16),
+              keyboardAppearance: widget.keyboardAppearance ?? theme.brightness,
+              scrollPadding: widget.scrollPadding,
+              maxLength: widget.maxLength,
+              maxLengthEnforcement: widget.maxLengthEnforcement,
+              onEditingComplete: widget.onEditingComplete,
+              onTap: widget.onTap,
+              onTapOutside: widget.onTapOutside,
+              textAlign: widget.textAlign,
+              textDirection: widget.textDirection,
+              undoController: widget.undoController,
+              obscuringCharacter: widget.obscuringCharacter,
+              scrollController: widget.scrollController,
+              contextMenuBuilder: widget.contextMenuBuilder,
+              enableInteractiveSelection: widget.enableInteractiveSelection,
+              restorationId: widget.restorationId,
+              spellCheckConfiguration: widget.spellCheckConfiguration,
+              smartDashesType: widget.smartDashesType,
+              smartQuotesType: widget.smartQuotesType,
               inputFormatters: widget.inputFormatters,
               autofillHints: widget.autofillHints,
               minLines: widget.minLines,

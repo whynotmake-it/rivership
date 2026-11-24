@@ -51,8 +51,11 @@ class _ChatMessagePageState extends State<ChatMessagePage> {
               actions: [
                 CoilChatMessageAction(
                   label: const Text('Copy'),
-                  semanticLabel: 'Copy',
-                  icon: CoilCopyGlyph.listening(controller: _copy),
+                  // The icon names the button, as in an IconButton.
+                  icon: Semantics(
+                    label: 'Copy',
+                    child: CoilCopyGlyph.listening(controller: _copy),
+                  ),
                   onPressed: () => _copy.copy(_reply, context: context),
                 ),
               ],
