@@ -127,6 +127,11 @@ class CoilModalStyle extends CoilComponentStyle<CoilModalStyle> {
 /// with the value passed to `Navigator.pop`. [anchor], [dismissDirections],
 /// [origin], [motions] and [style] are for the floating presentation; see
 /// [CoilModalRoute].
+///
+/// [snappingConfig], [dragHandoff], [dismissalMode], [draggable] and
+/// [backgroundSnapshotMode] configure the sheet as [CoilSheetRoute]
+/// documents them, with the same defaults. They apply only when the modal
+/// shows as a sheet; centered and drawer modals ignore them.
 Future<T?> showCoilModal<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -139,6 +144,11 @@ Future<T?> showCoilModal<T>({
   Rect? origin,
   Map<CoilModalTrack<Object>, Motion>? motions,
   CoilModalStyle? style,
+  SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+  SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
+  DismissalMode dismissalMode = DismissalMode.slide,
+  bool draggable = true,
+  RouteSnapshotMode backgroundSnapshotMode = RouteSnapshotMode.never,
 }) => Navigator.of(context).push(
   CoilModalRoute<T>(
     context: context,
@@ -152,6 +162,11 @@ Future<T?> showCoilModal<T>({
     origin: origin,
     motions: motions,
     style: style,
+    snappingConfig: snappingConfig,
+    dragHandoff: dragHandoff,
+    dismissalMode: dismissalMode,
+    draggable: draggable,
+    backgroundSnapshotMode: backgroundSnapshotMode,
   ),
 );
 
@@ -219,6 +234,11 @@ Future<T?> showCoilModal<T>({
 ///
 /// Motion springs resolve from the route's `motions`, then `style` over the
 /// theme's [CoilModalStyle], then the motion tokens.
+///
+/// `snappingConfig`, `dragHandoff`, `dismissalMode`, `draggable` and
+/// `backgroundSnapshotMode` configure the sheet as [CoilSheetRoute]
+/// documents them, with the same defaults. They apply only when the modal
+/// shows as a sheet; centered and drawer modals ignore them.
 sealed class CoilModalRoute<T> implements PopupRoute<T> {
   /// Creates the route for [presentation], or for the presentation that
   /// fits [context] when it's null.
@@ -235,6 +255,11 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
     Rect? origin,
     Map<CoilModalTrack<Object>, Motion>? motions,
     CoilModalStyle? style,
+    SheetSnappingConfig snappingConfig = SheetSnappingConfig.full,
+    SheetDragHandoff dragHandoff = SheetDragHandoff.gestureStart,
+    DismissalMode dismissalMode = DismissalMode.slide,
+    bool draggable = true,
+    RouteSnapshotMode backgroundSnapshotMode = RouteSnapshotMode.never,
   }) {
     final navigator = Navigator.of(context);
     final themes = InheritedTheme.capture(from: context, to: navigator.context);
@@ -266,6 +291,11 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
         barrierDismissible: dismissible,
         barrierLabel: barrierLabel,
         settings: settings,
+        snappingConfig: snappingConfig,
+        dragHandoff: dragHandoff,
+        dismissalMode: dismissalMode,
+        draggable: draggable,
+        backgroundSnapshotMode: backgroundSnapshotMode,
         child: Builder(builder: content),
       ),
       CoilModalPresentation.centered => _CoilPanelRoute<T>(
@@ -356,10 +386,11 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
 /// `Navigator.pages` and routers built on it.
 ///
 /// [presentation], [dismissible], [barrierLabel], [motion], [anchor],
-/// [dismissDirections], [origin], [motions] and [style] are read when
-/// the route is created, from the navigator's context; a changed [child]
-/// rebuilds the open modal. Popping it (the scrim, Esc, back, a drag, or
-/// `Navigator.pop`) calls the navigator's `onDidRemovePage`.
+/// [dismissDirections], [origin], [motions], [style] and the sheet
+/// options are read when the route is created, from the navigator's
+/// context; a changed [child] rebuilds the open modal. Popping it (the
+/// scrim, Esc, back, a drag, or `Navigator.pop`) calls the navigator's
+/// `onDidRemovePage`.
 class CoilModalPage<T> extends Page<T> {
   /// Creates a page that shows [child] as a modal.
   const CoilModalPage({
@@ -377,6 +408,11 @@ class CoilModalPage<T> extends Page<T> {
     this.origin,
     this.motions,
     this.style,
+    this.snappingConfig = SheetSnappingConfig.full,
+    this.dragHandoff = SheetDragHandoff.gestureStart,
+    this.dismissalMode = DismissalMode.slide,
+    this.draggable = true,
+    this.backgroundSnapshotMode = RouteSnapshotMode.never,
   });
 
   /// The modal's content, such as a `CoilDialog`.
@@ -412,6 +448,27 @@ class CoilModalPage<T> extends Page<T> {
   /// Overrides the theme's [CoilModalStyle].
   final CoilModalStyle? style;
 
+  /// The stops a sheet rests at; see [CoilSheetRoute.snappingConfig].
+  /// Ignored unless the modal shows as a sheet.
+  final SheetSnappingConfig snappingConfig;
+
+  /// When scrolling content hands its drag to a sheet; see
+  /// [CoilSheetRoute.dragHandoff]. Ignored unless it shows as a sheet.
+  final SheetDragHandoff dragHandoff;
+
+  /// How a sheet leaves; see [CoilSheetRoute.dismissalMode]. Ignored
+  /// unless it shows as a sheet.
+  final DismissalMode dismissalMode;
+
+  /// Whether a sheet follows the finger; see [CoilSheetRoute.draggable].
+  /// Ignored unless it shows as a sheet.
+  final bool draggable;
+
+  /// Whether the page below a sheet is snapshotted; see
+  /// [CoilSheetRoute.backgroundSnapshotMode]. Ignored unless it shows as a
+  /// sheet.
+  final RouteSnapshotMode backgroundSnapshotMode;
+
   @override
   Route<T> createRoute(BuildContext context) => CoilModalRoute<T>(
     context: context,
@@ -425,6 +482,11 @@ class CoilModalPage<T> extends Page<T> {
     origin: origin,
     motions: motions,
     style: style,
+    snappingConfig: snappingConfig,
+    dragHandoff: dragHandoff,
+    dismissalMode: dismissalMode,
+    draggable: draggable,
+    backgroundSnapshotMode: backgroundSnapshotMode,
     // The latest page's child, so updating the page updates the modal.
     builder: (context) =>
         (ModalRoute.settingsOf(context)! as CoilModalPage<T>).child,
@@ -441,6 +503,11 @@ class _CoilModalSheetRoute<T> extends CoilSheetRoute<T>
     super.barrierLabel,
     super.barrierDismissible,
     super.settings,
+    super.snappingConfig,
+    super.dragHandoff,
+    super.dismissalMode,
+    super.draggable,
+    super.backgroundSnapshotMode,
   });
 
   @override

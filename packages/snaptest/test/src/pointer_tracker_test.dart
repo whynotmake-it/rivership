@@ -1,11 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:snaptest/src/video/pointer_indicators.dart';
+import 'package:snaptest/snaptest.dart';
+import 'package:snaptest/src/video/pointer_tracker.dart';
 
 void main() {
-  late PointerIndicators indicators;
+  late PointerTracker indicators;
   setUp(
-    () => indicators = PointerIndicators(const Duration(microseconds: 100)),
+    () => indicators = PointerTracker(const Duration(microseconds: 100)),
   );
 
   test('a quick tap survives until its down-based deadline', () {
@@ -66,4 +67,8 @@ void main() {
     ]);
     expect(indicators.takeChangesThrough(150).single.timeUs, 150);
   });
+}
+
+extension on ({int timeUs, List<SnapPointer> pointers}) {
+  List<Offset> get positions => [for (final p in pointers) p.position];
 }
