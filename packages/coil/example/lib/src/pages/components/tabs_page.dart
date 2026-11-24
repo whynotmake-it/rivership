@@ -26,7 +26,7 @@ enum _Pane {
 enum _Content {
   text('Label'),
   icons('Icon and label'),
-  selected('Icon, selected label');
+  selected('Selected label only');
 
   const _Content(this.label);
 
@@ -90,12 +90,12 @@ CoilTabs<Pane>(
       ),
       CatalogNote(
         'Motion',
-        'The selected pill springs along the standard track, and when only '
-            'the selected tab shows its label, that label springs open on the '
-            'quick track.',
+        'The selected pill springs smoothly between tabs. When only the '
+            'selected tab shows a label, it springs open quickly as you '
+            'switch.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'It suits 2 to 6 views that sit at the same level. For stepping '
             'through the pages of a flow, use navigation instead.',
       ),

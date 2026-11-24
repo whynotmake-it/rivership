@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/interaction.dart';
+library;
+
 import 'package:coil/src/foundation/focus_ring_theme.dart'
     show CoilFocusRingTheme;
 import 'package:coil/src/foundation/theme.dart';
@@ -6,9 +9,11 @@ import 'package:motor/motor.dart';
 
 /// The focus ring around [child], as the theme's [CoilFocusRingTheme] draws
 /// it: a 1 px line in the brand color by default (2 px in high contrast),
-/// [offset] outside it. It fades in and out and never changes layout.
+/// [offset] outside it.
 ///
-/// Show it only for keyboard focus, which `CoilInteraction` reports as
+/// It fades in and out and never changes layout.
+///
+/// Show it only for keyboard focus, which [CoilInteraction] reports as
 /// [WidgetState.focused].
 class CoilFocusRing extends StatelessWidget {
   /// Creates a focus ring.
@@ -25,20 +30,26 @@ class CoilFocusRing extends StatelessWidget {
   /// Whether the ring shows.
   final bool visible;
 
-  /// The radius of the [child]'s corners. The ring's radius grows by
-  /// [offset] so it stays concentric. Directional radii resolve with the
-  /// ambient [Directionality].
+  /// The radius of the [child]'s corners.
+  ///
+  /// The ring's radius grows by [offset] so it stays concentric.
+  /// Directional radii resolve with the ambient [Directionality].
   final BorderRadiusGeometry borderRadius;
 
-  /// Gap between [child] and the ring. Defaults to the theme's
-  /// [CoilFocusRingTheme.offset].
+  /// Gap between [child] and the ring.
+  ///
+  /// Defaults to the theme's [CoilFocusRingTheme.offset].
   final double? offset;
 
-  /// Ring thickness. Defaults to the theme's [CoilFocusRingTheme.width] (1,
-  /// or 2 in high contrast).
+  /// Ring thickness.
+  ///
+  /// Defaults to the theme's [CoilFocusRingTheme.width] (1, or 2 in high
+  /// contrast).
   final double? width;
 
-  /// Ring color. Defaults to the theme's focus ring color.
+  /// Ring color.
+  ///
+  /// Defaults to the theme's focus ring color.
   final Color? color;
 
   /// The decorated widget.

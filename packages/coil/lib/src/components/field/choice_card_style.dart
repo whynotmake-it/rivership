@@ -1,12 +1,17 @@
+/// @docImport 'package:coil/field.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/field/choice_card.dart'
     show CoilChoiceCardTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilChoiceCard` looks. Unset fields come from
-/// [CoilChoiceCardStyle.fallback]. Set a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilChoiceCard] looks.
+///
+/// Unset fields come from [CoilChoiceCardStyle.fallback]. Set a style app-wide
+/// or for a subtree with [CoilThemeData.withComponentStyle], or per instance
+/// with `style:`.
 ///
 /// [fill] is resolved with [WidgetState.hovered] and [WidgetState.pressed];
 /// [border] with [WidgetState.selected].
@@ -24,9 +29,9 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
     this.motions,
   });
 
-  /// The defaults from the theme's tokens: a hairline at the container
-  /// radius, `foreground` 40 % when selected, the `hover` fill on hover and
-  /// the `active` fill while a touch presses.
+  /// The defaults from the theme's tokens: a hairline at the container radius,
+  /// [CoilColors.foreground] 40 % when selected, the [CoilColors.hover] fill on
+  /// hover and the `active` fill while a touch presses.
   factory CoilChoiceCardStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics,
@@ -77,9 +82,10 @@ class CoilChoiceCardStyle extends CoilComponentStyle<CoilChoiceCardStyle> {
   final TextStyle? descriptionStyle;
 
   /// Springs for the card's animated parts, keyed by [CoilChoiceCardTrack]s:
-  /// `{CoilChoiceCardTrack.fill: const Motion.smoothSpring()}`. A card's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// `{CoilChoiceCardTrack.fill: const Motion.smoothSpring()}`.
+  ///
+  /// A card's own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
   final Map<CoilChoiceCardTrack<Object>, Motion>? motions;
 
   @override

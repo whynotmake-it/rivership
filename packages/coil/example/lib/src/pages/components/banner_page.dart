@@ -46,8 +46,8 @@ _Message _messageFor(CoilBannerStatus status) => switch (status) {
   CoilBannerStatus.warning => (
     name: 'Warning',
     glyph: Glyph.triangleAlert,
-    title: 'Your card expires in May',
-    description: 'Update it before your next invoice on 1 Dec.',
+    title: 'Your card expires in November',
+    description: 'Update it before your next invoice on Dec 1.',
     action: 'Update card',
   ),
   CoilBannerStatus.destructive => (
@@ -89,7 +89,7 @@ CoilBanner(
   variant: CoilBannerVariant.tinted,
   visible: showNotice,
   icon: Icon(Icons.warning),
-  title: Text('Your card expires in May'),
+  title: Text('Your card expires in November'),
   description: Text('Update it before your next invoice.'),
   actions: [CoilButton(onPressed: update, child: Text('Update card'))],
   onDismissRequested: () => setState(() => showNotice = false),
@@ -98,18 +98,18 @@ CoilBanner(
         CatalogNote(
           'Touch',
           'You can swipe a banner sideways to dismiss it, and the close '
-              'button keeps a 44 hit target.',
+              'button keeps a 44 px hit target.',
         ),
         CatalogNote(
           'Motion',
-          'The row opens on standard, and the banner fades and scales in from '
-              'the top on gentle 80 ms later. A description that changes '
-              'springs the height.',
+          'The row springs open, and the banner fades and scales in gently '
+              'from the top 80 ms later. Changing the description springs '
+              'the height.',
         ),
         CatalogNote(
           'Accessibility',
           'A banner is a polite live region, so a screen reader announces it '
-              'when it appears, and its close button is labelled Dismiss.',
+              'when it appears, and its close button is labeled Dismiss.',
         ),
         CatalogNote(
           "Do / Don't",
@@ -190,7 +190,7 @@ CoilBanner(
           description:
               'Color only carries meaning here: the status hue tints the '
               'icon, and in the tinted variant it washes the background '
-              'behind it at 8 %.',
+              'behind it at 8%.',
           child: DemoColumn(
             spacing: 8,
             children: [
@@ -249,7 +249,7 @@ class _BillingPageState extends State<_BillingPage> {
           variant: CoilBannerVariant.tinted,
           visible: _shown,
           icon: const CatalogIcon(Glyph.triangleAlert),
-          title: const Text('Your card expires in May'),
+          title: const Text('Your card expires in November'),
           description: const Text('Update it before your next invoice.'),
           actions: [
             CoilButton(
@@ -263,7 +263,7 @@ class _BillingPageState extends State<_BillingPage> {
         const SizedBox(height: 16),
         for (final (label, value) in const [
           ('Plan', 'Team, 5 seats'),
-          ('Next invoice', '€60 on 1 Dec'),
+          ('Next invoice', '€60 on Dec 1'),
           ('Payment method', 'Visa ending 4242'),
         ]) ...[
           Padding(

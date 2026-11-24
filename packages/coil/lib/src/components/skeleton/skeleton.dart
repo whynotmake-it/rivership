@@ -5,8 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// The animated parts of a [CoilSkeleton]. Use them as keys of
-/// [CoilSkeleton.motions] or [CoilSkeletonStyle.motions].
+/// The animated parts of a [CoilSkeleton].
+///
+/// Use them as keys of [CoilSkeleton.motions] or [CoilSkeletonStyle.motions].
 final class CoilSkeletonTrack<T extends Object> extends Track<T> {
   CoilSkeletonTrack._(
     super.converter, {
@@ -14,23 +15,26 @@ final class CoilSkeletonTrack<T extends Object> extends Track<T> {
     super.initial,
   });
 
-  /// The fade-in after the grace period (default motion: `fade`).
+  /// The fade-in after the grace period (default motion: [CoilMotion.fade]).
   static final appear = CoilSkeletonTrack<double>._(
     .single,
     initial: 0,
     debugLabel: 'CoilSkeleton.appear',
   );
 
-  /// The cross-fade of a [CoilSkeletonSwitcher] between skeleton and
-  /// content (default motion: `fade` in, `fadeExit` out). Set it to
-  /// `Motion.instant()` to swap without a fade.
+  /// The cross-fade of a [CoilSkeletonSwitcher] between skeleton and content
+  /// (default motion: [CoilMotion.fade] in, [CoilMotion.fadeExit] out).
+  ///
+  /// Set it to [Motion.instant] to swap without a fade.
   static final swap = CoilSkeletonTrack<double>._(
     .single,
     initial: 1,
     debugLabel: 'CoilSkeleton.swap',
   );
 
-  /// The opacity pulse. Each leg runs on this motion; the default takes 1 s.
+  /// The opacity pulse.
+  ///
+  /// Each leg runs on this motion; the default takes 1 s.
   static final pulse = CoilSkeletonTrack<double>._(
     .single,
     initial: 1,
@@ -40,9 +44,9 @@ final class CoilSkeletonTrack<T extends Object> extends Track<T> {
 
 /// A loading placeholder block.
 ///
-/// It waits [grace] (160 ms), so content that arrives at once never flashes
-/// a placeholder, fades in on `fade`, then pulses its opacity 1 → 0.5 → 1
-/// every 2 s. Reduced motion keeps the grace and the fade and drops the
+/// It waits [grace] (160 ms), so content that arrives at once never flashes a
+/// placeholder, fades in on [CoilMotion.fade], then pulses its opacity 1 → 0.5
+/// → 1 every 2 s. Reduced motion keeps the grace and the fade and drops the
 /// pulse. Skeletons are excluded from semantics: wrap the loading region in
 /// [CoilSkeletonRegion].
 ///
@@ -218,9 +222,11 @@ class CoilSkeleton extends StatelessWidget {
   }
 }
 
-/// A column of text-line skeletons with the varied widths of real text:
-/// each line takes between 55 % and 82 % of the width, and the last line is
-/// the shortest. [lines] skeletons are as tall as [lines] lines of text.
+/// A column of text-line skeletons with the varied widths of real text: each
+/// line takes between 55 % and 82 % of the width, and the last line is the
+/// shortest.
+///
+/// [lines] skeletons are as tall as [lines] lines of text.
 class CoilSkeletonText extends StatelessWidget {
   /// Creates [lines] text lines.
   const CoilSkeletonText({
@@ -297,10 +303,11 @@ class CoilSkeletonRegion extends StatelessWidget {
 /// Switches between [skeleton] while [loading] and [child] once loaded.
 ///
 /// The two cross-fade in one stack, on the [CoilSkeletonTrack.swap] track
-/// (`fade` in, `fadeExit` out), so the space is never empty. Skeletons shown
-/// first still wait out [CoilSkeleton.grace]; content that arrives sooner
-/// replaces them before they ever show. Skeletons that replace content show
-/// at once. Opt out of the fade with `motions: {.swap: const .instant()}`.
+/// ([CoilMotion.fade] in, [CoilMotion.fadeExit] out), so the space is never
+/// empty. Skeletons shown first still wait out [CoilSkeleton.grace]; content
+/// that arrives sooner replaces them before they ever show. Skeletons that
+/// replace content show at once. Opt out of the fade with
+/// `motions: {.swap: const .instant()}`.
 ///
 /// ```dart
 /// CoilSkeletonSwitcher(

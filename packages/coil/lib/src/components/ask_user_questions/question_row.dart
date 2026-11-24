@@ -35,9 +35,11 @@ class QuestionRowMotions {
   final Motion release;
 }
 
-/// One option row: the label (and description), with the number key at
-/// one edge. The row's selected block, hover highlight and focus ring are
-/// painted by the step's motion layer behind it.
+/// One option row: the label (and description), with the number key at one
+/// edge.
+///
+/// The row's selected block, hover highlight and focus ring are painted by the
+/// step's motion layer behind it.
 class QuestionOptionRow<T> extends StatelessWidget {
   /// Creates a row.
   const QuestionOptionRow({
@@ -75,8 +77,9 @@ class QuestionOptionRow<T> extends StatelessWidget {
   /// Whether the option is picked.
   final bool selected;
 
-  /// Whether number keys show (pointer tier). On touch only a picked
-  /// multiple-choice row shows a check.
+  /// Whether number keys show (pointer tier).
+  ///
+  /// On touch only a picked multiple-choice row shows a check.
   final bool showKeys;
 
   /// The resolved style.
@@ -318,10 +321,14 @@ class QuestionKey extends StatelessWidget {
        filled = false,
        showKeys = true;
 
-  /// The number shown, from 1. Null for [QuestionKey.arrowOnly].
+  /// The number shown, from 1.
+  ///
+  /// Null for [QuestionKey.arrowOnly].
   final int? number;
 
-  /// Single or multiple choice. Null for [QuestionKey.arrowOnly].
+  /// Single or multiple choice.
+  ///
+  /// Null for [QuestionKey.arrowOnly].
   final CoilQuestionKind? kind;
 
   /// Whether the key is picked.

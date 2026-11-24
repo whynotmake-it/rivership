@@ -34,7 +34,9 @@ class CoilDataColumn<T> {
   /// Orders two rows by this column; makes the header sort the table.
   final Comparator<T>? compare;
 
-  /// A fixed width, padding included. Null makes the column flexible.
+  /// A fixed width, padding included.
+  ///
+  /// Null makes the column flexible.
   final double? width;
 
   /// The column's share of the free width, when flexible.
@@ -47,9 +49,10 @@ class CoilDataColumn<T> {
   final AlignmentGeometry alignment;
 }
 
-/// What a [CoilDataTable] shows and announces. The widgets are usually
-/// [Text]s the table styles; the `*Label` strings are for screen readers.
-/// English by default.
+/// What a [CoilDataTable] shows and announces.
+///
+/// The widgets are usually [Text]s the table styles; the `*Label` strings are
+/// for screen readers. English by default.
 @immutable
 class CoilDataTableLabels {
   /// Creates the labels.
@@ -69,8 +72,9 @@ class CoilDataTableLabels {
   final String searchLabel;
 
   /// The footer's count, like "2 of 40 selected", "40 rows" or "1 row".
-  /// It's a live region, so changes are announced. Pass your own to
-  /// localize it, plural rules included.
+  ///
+  /// It's a live region, so changes are announced. Pass your own to localize
+  /// it, plural rules included.
   final Widget Function({required int selected, required int total}) count;
 
   /// The page position, like "Page 2 of 5", from the page number (from 1)
@@ -120,8 +124,9 @@ class CoilDataTable<T> extends StatefulWidget {
   /// The columns, in reading order.
   final List<CoilDataColumn<T>> columns;
 
-  /// Whether a search field shows above the table. It needs the
-  /// controller's `matches`.
+  /// Whether a search field shows above the table.
+  ///
+  /// It needs the controller's `matches`.
   final bool searchable;
 
   /// Whether rows can be selected.
@@ -169,8 +174,10 @@ class _CoilDataTableState<T> extends State<CoilDataTable<T>> {
     super.dispose();
   }
 
-  /// Shows a query set from code in the field. Typing sets the same text,
-  /// so it leaves the field (and its selection) alone.
+  /// Shows a query set from code in the field.
+  ///
+  /// Typing sets the same text, so it leaves the field (and its selection)
+  /// alone.
   void _syncSearch() {
     final query = widget.controller.query;
     if (_search.text == query) return;

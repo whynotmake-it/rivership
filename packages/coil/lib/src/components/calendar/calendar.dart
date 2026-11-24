@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/calendar.dart';
+/// @docImport 'package:coil/date_picker.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
@@ -15,11 +19,11 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// What a [CoilCalendar] (and a `CoilDatePicker`) shows and announces.
-/// English by default.
+/// Display and accessibility labels for a [CoilCalendar] and [CoilDatePicker].
 ///
-/// The builders return what's shown, usually a [Text] that the calendar
-/// styles. The `*Label` functions and strings are for screen readers.
+/// Defaults to English. The builders return what's shown, usually a [Text]
+/// that the calendar styles. The `*Label` functions and strings are for screen
+/// readers.
 @immutable
 class CoilCalendarLabels {
   /// Creates calendar labels.
@@ -45,12 +49,13 @@ class CoilCalendarLabels {
     this.nextYearLabel = 'Next year',
   });
 
-  /// What a date picker's Done will confirm, on the leading side of its
-  /// footer, like "Fri, Nov 22, 2019", with the time when the picker picks
-  /// one ("Fri, Nov 22, 2019, 9:30 AM"). It names the draft, so it stays
-  /// readable however far the calendar has scrolled or zoomed;
-  /// [summaryLabel] announces it. `use24HourFormat` is the locale's clock,
-  /// as `MediaQuery.alwaysUse24HourFormatOf` says.
+  /// Builds the draft summary shown on the leading side of a date picker's
+  /// footer, like "Fri, Nov 22, 2019" (or "Fri, Nov 22, 2019, 9:30 AM" when
+  /// picking a time).
+  ///
+  /// It names the draft so it stays readable however far the calendar has
+  /// scrolled or zoomed; [summaryLabel] announces it. `use24HourFormat` is the
+  /// locale's clock, as [MediaQuery.alwaysUse24HourFormatOf] reports.
   final Widget Function(
     DateTime value, {
     required bool withTime,
@@ -74,8 +79,9 @@ class CoilCalendarLabels {
   /// The next-year button's label in the month view, for screen readers.
   final String nextYearLabel;
 
-  /// The month title, like "November 2026". Tapping it zooms out to the
-  /// month view; [monthLabel] announces it.
+  /// The month title, like "November 2026".
+  ///
+  /// Tapping it zooms out to the month view; [monthLabel] announces it.
   ///
   /// Zooming out, the title turns into the [year]: the box narrows to it,
   /// holding the title's end in place, while this title blur-fades out
@@ -85,14 +91,17 @@ class CoilCalendarLabels {
   final Widget Function(DateTime month) monthTitle;
 
   /// [monthTitle] and a month in the month view for screen readers, like
-  /// "November 2026". It's announced as the month changes.
+  /// "November 2026".
+  ///
+  /// Announced as the month changes.
   final String Function(DateTime month) monthLabel;
 
   /// A month's name in the month view, like "Nov", from 1 to 12.
   final Widget Function(int month) monthName;
 
-  /// The title in the month view, like "2026": the year in view. Tapping
-  /// it zooms back into the days; [yearLabel] announces it.
+  /// The title in the month view, like "2026": the year in view.
+  ///
+  /// Tapping it zooms back into the days; [yearLabel] announces it.
   final Widget Function(int year) year;
 
   /// [year] for screen readers, like "2026".
@@ -107,13 +116,16 @@ class CoilCalendarLabels {
   /// the days of November 2026".
   final String Function(DateTime month) showDaysLabel;
 
-  /// A date picker's confirming button, "Done": it sets the picked date
-  /// and closes the sheet. Only the sheet has one; a popover applies each
-  /// pick at once, with or without a time.
+  /// A date picker's confirming button, "Done", which sets the picked date
+  /// and closes the sheet.
+  ///
+  /// Only the sheet has one; a popover applies each pick at once, with or
+  /// without a time.
   final Widget confirm;
 
-  /// The label beside a date picker's typed time field in a popover,
-  /// "Time". Screen readers skip it: the field names itself.
+  /// The label beside a date picker's typed time field in a popover, "Time".
+  ///
+  /// Screen readers skip it because the field names itself.
   final Widget time;
 
   /// A weekday's column heading, like "Mo", from [DateTime.weekday].
@@ -255,7 +267,7 @@ class CoilCalendarLabels {
 /// month the title names. The scroll carries on with the fling's own
 /// momentum and comes to rest with a month's first row at the top, as the
 /// end of that momentum; a release with no momentum, or a short fling,
-/// springs to the nearest month on the theme's `standard` spring. A
+/// springs to the nearest month on the theme's [CoilMotion.standard] spring. A
 /// trackpad scrolls the same way, and a mouse wheel moves a month a notch.
 /// The arrow buttons scroll a month on any device. A hovering pointer
 /// lights days with a gliding highlight, and the picked day's fill glides
@@ -309,11 +321,14 @@ class CoilCalendar extends StatefulWidget {
   /// The picked day, or null.
   final DateTime? selected;
 
-  /// Called with the day the user picks. Null disables the calendar.
+  /// Called with the day the user picks.
+  ///
+  /// When null, disables the calendar.
   final ValueChanged<DateTime>? onSelected;
 
-  /// Called after [onSelected] when Enter picks the day, which also
-  /// submits it: a date picker confirms with it. Space only picks.
+  /// Called after [onSelected] when Enter picks the day, which also submits it.
+  ///
+  /// A date picker confirms with it; Space only picks.
   final ValueChanged<DateTime>? onSubmitted;
 
   /// The month shown first; the selected day's month, or today's, if null.
@@ -341,9 +356,10 @@ class CoilCalendar extends StatefulWidget {
   final CoilMotion? motion;
 
   /// How far the days sit inside a calendar's box at [context]: room for
-  /// the focus ring around the edge days. Content that lines up with the
-  /// days (a footer, a time band) insets this much from the calendar's
-  /// edges.
+  /// the focus ring around the edge days.
+  ///
+  /// Content that lines up with the days (a footer, a time band) insets this
+  /// much from the calendar's edges.
   static double edgeInsetOf(BuildContext context) =>
       calendarWidths(context).inset;
 
@@ -351,10 +367,11 @@ class CoilCalendar extends StatefulWidget {
   State<CoilCalendar> createState() => _CoilCalendarState();
 }
 
-/// Gives [child] a [CoilCalendar]'s width: seven days when it can choose;
-/// more when it's stretched, until the days are 20 % bigger; centered
-/// past that. Put a calendar and what sits under it (like
-/// `CoilTimeColumns`) in one so they share the width.
+/// Gives [child] a [CoilCalendar]'s width: seven days when it can choose,
+/// more when stretched until the days are 20% bigger, and centered past that.
+///
+/// Put a calendar and what sits under it (like [CoilTimeColumns]) in one so
+/// they share the width.
 class CoilCalendarWidth extends StatelessWidget {
   /// Sizes [child] as wide as a calendar.
   const CoilCalendarWidth({required this.child, super.key});
@@ -374,11 +391,12 @@ class CoilCalendarWidth extends StatelessWidget {
 }
 
 /// Sizes a [CoilCalendar] from the [height] it has: wide enough that its
-/// caption, weekday row and six weeks are exactly [height] tall, so the
-/// days (always square) are as big as that room allows. The width follows
-/// from the rows: as wide as square days of that height need, or wider,
-/// up to the days' natural side, where the parent allows; the days stay
-/// square, centered in their cells.
+/// caption, weekday row, and six weeks are exactly [height] tall, so the
+/// days (always square) are as big as that room allows.
+///
+/// The width follows from the rows: as wide as square days of that height
+/// need, or wider, up to the days' natural side, where the parent allows; the
+/// days stay square, centered in their cells.
 ///
 /// For a window that is short and wide (a phone in landscape), where the
 /// width is plentiful and the height isn't.
@@ -452,8 +470,10 @@ class _CoilCalendarState extends State<CoilCalendar> {
   /// Whether the month view is zoomed out to.
   bool _monthsOpen = false;
 
-  /// The month the title names in the month view: the keyboard's month in
-  /// the year in the middle of the view. Zooming back in shows it.
+  /// The month the title names in the month view: the keyboard's month in the
+  /// year in the middle of the view.
+  ///
+  /// Zooming back in shows it.
   late DateTime _monthsTitle = _month;
 
   /// The open month view, new for each zoom out so it opens on the days'
@@ -573,8 +593,8 @@ class _CoilCalendarState extends State<CoilCalendar> {
     _fittedWeeks = _weeks;
   }
 
-  /// Scrolls to [month]: on the `standard` spring to a neighbor, keeping
-  /// the speed it's moving at, in one step (a cut) further away.
+  /// Scrolls to [month]: on the [CoilMotion.standard] spring to a neighbor,
+  /// keeping the speed it's moving at, in one step (a cut) further away.
   void _turnTo(DateTime month) {
     if (!_scroll.hasClients) {
       _title = month;
@@ -1010,6 +1030,7 @@ class _CoilCalendarState extends State<CoilCalendar> {
   }
 
   /// One chunk: the week rows of the month at [item] (see [CalendarWeeks]).
+  ///
   /// Only the chunk the keyboard's day is in follows the keyboard.
   Widget _chunk(
     int item, {
@@ -1139,9 +1160,10 @@ class _CoilCalendarState extends State<CoilCalendar> {
 }
 
 /// One day's cell: its number, muted outside the month, semibold today and
-/// inverted when selected. The grid's layer paints the fills on a square
-/// of [extent] (smaller in a narrower column) in the middle of the cell;
-/// the whole cell takes the tap.
+/// inverted when selected.
+///
+/// The grid's layer paints the fills on a square of [extent] (smaller in a
+/// narrower column) in the middle of the cell; the whole cell takes the tap.
 class _Day extends StatefulWidget {
   const _Day({
     required this.index,
@@ -1269,11 +1291,12 @@ class _SubmitIntent extends Intent {
   const _SubmitIntent();
 }
 
-/// The month title: a button that zooms out to the month view, with a
-/// chevron that turns as it opens. A new month's name blur-fades in as the
-/// old one leaves, and the button springs to its width. In the month view
-/// it shows only the year: zooming out, the month leaves and the button
-/// narrows to the year ([_ZoomTitle]).
+/// The month title: a button that zooms out to the month view, with a chevron
+/// that turns as it opens.
+///
+/// A new month's name blur-fades in as the old one leaves, and the button
+/// springs to its width. In the month view it shows only the year: zooming out,
+/// the month leaves and the button narrows to the year ([_ZoomTitle]).
 class _MonthTitle extends StatelessWidget {
   const _MonthTitle({
     required this.title,
@@ -1426,13 +1449,15 @@ class _MonthTitle extends StatelessWidget {
   }
 }
 
-/// The title's zoom between the month title ("November 2026") and the
-/// year alone ("2026"). Its width springs from one to the other on
-/// `standard` while the month title blur-fades out on `fade` over the
-/// year, which shows at once; zooming in runs it back, the year staying
-/// until the month title is in. Both hold the box's end, so the year a
-/// month title ends with stays still while the month leaves past the
-/// start, fading out over the button's padding ([edge]).
+/// The title's zoom between the month title ("November 2026") and the year
+/// alone ("2026").
+///
+/// Its width springs from one to the other on [CoilMotion.standard] while the
+/// month title blur-fades out on [CoilMotion.fade] over the year, which shows
+/// at once; zooming in runs it back, the year staying until the month title is
+/// in. Both hold the box's end, so the year a month title ends with stays still
+/// while the month leaves past the start, fading out over the button's padding
+/// ([edge]).
 class _ZoomTitle extends StatelessWidget {
   const _ZoomTitle({
     required this.open,
@@ -1492,10 +1517,11 @@ class _ZoomTitle extends StatelessWidget {
   }
 }
 
-/// Lays out the year and the month title at their own widths and takes a
-/// width [progress] of the way from the month title's (0) to the year's
-/// (1), both at its end. What reaches past its start fades out over
-/// [edge].
+/// Lays out the year and the month title at their own widths and takes a width
+/// [progress] of the way from the month title's (0) to the year's (1), both at
+/// its end.
+///
+/// What reaches past its start fades out over [edge].
 class _ZoomTitleBox extends MultiChildRenderObjectWidget {
   const _ZoomTitleBox({
     required this.progress,
@@ -1710,13 +1736,14 @@ class _RenderZoomTitleBox extends RenderBox
   }
 }
 
-/// The day grid and the month view in one place: zooming out, the days
-/// shrink toward the title and fade as the months settle in from a little
-/// larger; zooming in runs it back. The scale springs on `standard` (none
-/// under reduced motion) and the opacity on `fade`. Whichever is hidden
-/// takes no pointer, focus or semantics; the month view is only built
-/// while it shows. The days keep their layout, so the calendar's height
-/// never changes.
+/// The day grid and the month view in one place: zooming out, the days shrink
+/// toward the title and fade as the months settle in from a little larger;
+/// zooming in runs it back.
+///
+/// The scale springs on [CoilMotion.standard] (none under reduced motion) and
+/// the opacity on [CoilMotion.fade]. Whichever is hidden takes no pointer,
+/// focus or semantics; the month view is only built while it shows. The days
+/// keep their layout, so the calendar's height never changes.
 class _CalendarZoom extends StatelessWidget {
   const _CalendarZoom({
     required this.open,

@@ -1,13 +1,13 @@
 ---
 name: coil
-description: Build Flutter UI with the coil design system, theme it, and eject components into the app to edit them. Use when code imports package:coil, or when asked to restyle, eject or update a coil component.
+description: Build Flutter UI with the Coil design system, theme it, and eject components into the app to edit them. Use when code imports package:coil, or when asked to restyle, eject, or update a Coil component.
 ---
 
-# Using coil
+# Using Coil
 
-coil is a Flutter design system on Motor springs. Use components as they are and change them through the theme first. Eject a component only when the theme can't express the change.
+Coil is a Flutter design system built on Motor springs. Use components as they are and customize them through the theme first. Eject a component only when the theme can't express the change.
 
-The files this skill points to ship with the installed coil version, under the package root (find it in `.dart_tool/package_config.json`). `DESIGN.md` describes the design language and every component, and the library's dartdoc has each API.
+The files this skill points to ship with the installed Coil version, under the package root (find it in `.dart_tool/package_config.json`). `DESIGN.md` describes the design language and every component, and the library's dartdoc documents each API.
 
 ## Use
 
@@ -19,24 +19,27 @@ CoilButton(onPressed: save, child: const Text('Save'))
 
 - Works under any `WidgetsApp`. No Material or Cupertino app is needed.
 - Visible text and icons are `Widget` slots (`child`, `leading`, `label`). Pass `Text`, not `String`.
-- Each component's anatomy, sizes and states are in `DESIGN.md` §14. Its import is `package:coil/<name>.dart`, such as `package:coil/button.dart`.
+- Each component's anatomy, sizes, and states are in `DESIGN.md` §14. Its import is `package:coil/<name>.dart`, such as `package:coil/button.dart`.
 
 ## Theme
 
 Change things here before ejecting. Every layer below wraps a subtree.
 
 - **App-wide:** `CoilTheme(data: CoilThemeData(...), child: app)`. Start from `CoilThemeData.light` or `.dark`.
-- **Colors:** `CoilColors.fromSeed(brightness:, brand:, brandFill:, neutralHue:, neutralChroma:)`. `brand` stays as given; text on the brand sits on `brandFill` under `onBrandFill` (`CoilBrandFill.accessible` by default, `.exact` keeps the raw brand). Selections are monochrome unless `CoilThemeData(brandSelection: true)` (or a nested `CoilTheme.override`) puts the brand on selected tabs, segments, radios and the cursor. Marks (focus ring, on switch, radio dot, cursor) use `brandMark`, the brand moved in lightness only as far as 3 : 1 on page, card and dialog surfaces needs, in both themes; a grey brand (chroma under 0.03) keeps the neutral selection.
-- **Shape:** `shape: CoilShape.rounded`, `.pill` or `.sharp`.
-- **Icons:** `icons: CoilIcons(check: Icon(...), close: Icon(...))` swaps coil's drawn glyphs for an icon set everywhere they show; unnamed roles keep coil's. An icon can animate itself from `CoilIconPresence.maybeOf(context)`. See `doc/icons.md`.
+- **Colors:** Use `CoilColors.fromSeed(...)` with `brightness`, `brand`, `brandFill`, `neutralHue`, and `neutralChroma`.
+  - `brand` stays as given. Text on a brand surface sits on `brandFill` under `onBrandFill` (`CoilBrandFill.accessible` by default; `CoilBrandFill.exact` keeps the raw brand color).
+  - Selections are monochrome by default. Pass `CoilThemeData(brandSelection: true)` (or use a nested `CoilTheme.override`) to apply the brand color to selected tabs, segments, radios, and the text cursor.
+  - Marks (focus ring, active switch, radio dot, and cursor) use `brandMark`, which shifts the brand's lightness just enough to reach 3 : 1 contrast on page, card, and dialog surfaces in both themes. A grey brand (chroma under 0.03) keeps the neutral selection.
+- **Shape:** `shape: CoilShape.rounded`, `.pill`, or `.sharp`.
+- **Icons:** `icons: CoilIcons(check: Icon(...), close: Icon(...))` swaps Coil's drawn glyphs for an icon set everywhere they appear; unnamed roles keep Coil's glyphs. An icon can animate itself from `CoilIconPresence.maybeOf(context)`. See `doc/icons.md`.
 - **Size tier:** `tier: CoilTier.pointer` or `.touch`. By default it follows the platform.
-- **Motion:** `motion: CoilMotion(...)` on `CoilThemeData` for the tokens. For one track of one component type, set its style's `motions`: `theme.withComponentStyle(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: ...}))`. Per instance, use the component's `motion:` and `motions:`.
-- **One component type:** `theme.withComponentStyle(CoilButtonStyle(...))`. Per instance, use the `style:` parameter.
+- **Motion:** Set `motion: CoilMotion(...)` on `CoilThemeData` for the tokens. For one track of one component type, set its style's `motions`: `theme.withComponentStyle(CoilSwitchStyle(motions: {CoilSwitchTrack.thumb: ...}))`. Per instance, use the component's `motion` and `motions` parameters.
+- **One component type:** `theme.withComponentStyle(CoilButtonStyle(...))`. Per instance, use the `style` parameter.
 - **A subtree:** `CoilTheme.override(transform: (t) => t.copyWith(shape: .pill), child: ...)`.
 
 ## Eject
 
-Eject copies a component's source into the app so you can change its look or composition. Hover, press, focus, keyboard and overlay behavior stay in coil's primitives, so fixes to them still arrive through `pub upgrade`.
+Eject copies a component's source into the app so you can change its look or composition. Hover, press, focus, keyboard, and overlay behavior stay in Coil's primitives, so fixes to them still arrive through `pub upgrade`.
 
 The tools live in `coil_cli`, a dev dependency, so the app ships without them:
 
@@ -55,15 +58,15 @@ Eject writes:
 
 - `lib/coil/button/`: the public library `button.dart` and its sources in `src/`.
 - `lib/coil.dart`: the app library. It exports `package:coil/coil.dart` minus the ejected names, plus the copies.
-- `.coil/ejected.yaml` and `.coil/base/`: the coil version, the names, and a pristine copy of each file, which are the merge base for updates.
+- `.coil/ejected.yaml` and `.coil/base/`: the Coil version, the ejected names, and a pristine copy of each file, which serves as the merge base for updates.
 
 After ejecting:
 
-1. Replace `package:coil/coil.dart` imports with the app library (`package:<app>/coil.dart`). Otherwise the app keeps using coil's own component.
+1. Replace `package:coil/coil.dart` imports with the app library (`package:<app>/coil.dart`). Otherwise the app keeps using Coil's own component.
 2. Commit `.coil/`.
-3. Edit the copy. It imports only `package:coil/foundation.dart`, `primitives.dart` and other components' public libraries.
+3. Edit the copy. It imports only `package:coil/foundation.dart`, `primitives.dart`, and other components' public libraries.
 
-**Ejected components use each other.** An ejected Dialog builds the ejected Button, whether you eject them together or one after the other: a later eject re-points the earlier copies (and their bases) at the new one. A component you didn't eject keeps coil's version of everything; coil's own `CoilDialog` still builds coil's `CoilButton`.
+**Ejected components use each other.** An ejected Dialog builds the ejected Button, whether you eject them together or one after the other: a later eject re-points the earlier copies (and their bases) at the new one. A component you didn't eject keeps Coil's version of everything; Coil's own `CoilDialog` still builds Coil's `CoilButton`.
 
 ### Your own names
 
@@ -79,7 +82,7 @@ dart run coil_cli:eject button --library ui   # lib/ui.dart and lib/ui/
 - `--rename From=To` renames one name, and wins over the prefix.
 - `--library` names the app library and the folder the copies go in.
 
-The rename uses the analyzer. It renames declarations, references and `[Name]` doc links. It never touches strings, private names, members or parameters, and primitives keep their `Coil` names.
+The rename uses the analyzer. It renames declarations, references, and `[Name]` doc links. It never touches strings, private names, members, or parameters, and primitives keep their `Coil` names.
 
 ## Update
 
@@ -88,12 +91,12 @@ dart run coil_cli:update button --dry-run  # what would change, as a diff
 dart run coil_cli:update button            # or no name: every ejected component
 ```
 
-Update needs `git` on PATH. It runs `git merge-file` per file, with the base from `.coil/base/`, coil's new version, and the app's copy:
+Update needs `git` on PATH. It runs `git merge-file` per file, with the base from `.coil/base/`, Coil's new version, and the app's copy:
 
 - A clean merge applies, and that file's base and version advance.
-- A conflict writes `<<<<<<< app` / `>>>>>>> coil <version>` markers into the copy. The base stays put, so after resolving, run update again. The exit code is 1 while files need attention.
-- Files coil added are copied. Files coil removed are deleted, unless the app edited them.
-- Renamed copies merge as cleanly as plain ones: update renames coil's new version the same way first.
+- A conflict writes `<<<<<<< app` / `>>>>>>> coil <version>` markers into the copy. The base snapshot is preserved, so after resolving conflicts, run update again. The exit code is 1 while files need attention.
+- Files Coil added are copied. Files Coil removed are deleted, unless the app edited them.
+- Renamed copies merge as cleanly as plain ones: update renames Coil's new version the same way first.
 
 ## Test an ejected copy
 
@@ -103,4 +106,4 @@ import 'package:coil_cli/testing.dart';
 await expectCoilPattern(tester, find.byType(CoilButton), CoilPattern.button);
 ```
 
-`expectCoilPattern` checks semantics, keyboard and focus for one `CoilPattern`. It checks the copy, so run it after editing. It comes with the `coil_cli` dev dependency, so only tests can import it.
+`expectCoilPattern` checks semantics, keyboard, and focus for one `CoilPattern`. It checks the copy, so run it after editing. It comes with the `coil_cli` dev dependency, so only tests can import it.

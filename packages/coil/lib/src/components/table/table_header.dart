@@ -8,10 +8,12 @@ import 'package:coil/src/components/table/table_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Resolves [columns] to widths for [available] width: fixed columns take
-/// their width, flexible ones share the rest by flex without going under
-/// their minimum. When even the minimums don't fit, they get the minimum
-/// and the table scrolls.
+/// Resolves [columns] to widths for [available] width: fixed columns take their
+/// width, flexible ones share the rest by flex without going under their
+/// minimum.
+///
+/// When even the minimums don't fit, they get the minimum and the table
+/// scrolls.
 ///
 /// This is real layout, from the viewport width rather than measured
 /// content. Each flexible column is the equivalent of

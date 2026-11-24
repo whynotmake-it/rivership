@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/layer.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/motion.dart';
@@ -37,8 +40,9 @@ class CoilSelectionRun {
 }
 
 /// Groups a selection into runs with stable ids.
-/// After a split the upper run keeps the id and the
-/// lower one gets a new id; after a merge the run keeps the upper id.
+///
+/// After a split the upper run keeps the id and the lower one gets a new id;
+/// after a merge the run keeps the upper id.
 class CoilSelectionRuns {
   Map<int, int> _byItem = const {};
   int _lastId = 0;
@@ -191,8 +195,9 @@ class _BlockSpec {
 }
 
 /// Paints one block behind each run of adjacent selected items, and
-/// animates runs merging and splitting. A painter for a `CoilMotionLayer`
-/// whose targets are the items.
+/// animates runs merging and splitting.
+///
+/// A painter for a [CoilMotionLayer] whose targets are the items.
 ///
 /// Adjacent selected items share one shape: outer corners round, inner
 /// edges flush. Selecting the single item between two runs **merges**
@@ -219,8 +224,9 @@ class CoilSelectionPainter extends CoilLayerPainter {
   Color _color = const Color(0x12000000);
   CoilMotion _motion = const CoilMotion();
 
-  /// Sets the selection and style. Call on every build; an unchanged
-  /// selection only restyles.
+  /// Sets the selection and style.
+  ///
+  /// Call on every build; an unchanged selection only restyles.
   void update({
     required Set<int> selected,
     required Color color,
@@ -296,8 +302,10 @@ class CoilSelectionPainter extends CoilLayerPainter {
   }
 
   /// Commits a merge once its halves meet: the survivor becomes the whole
-  /// run at once and the absorbed half goes. They already touch, so nothing
-  /// visibly moves. Called at the end of paint.
+  /// run at once and the absorbed half goes.
+  ///
+  /// They already touch, so nothing visibly moves. Called at the end of
+  /// paint.
   void _commit(_Boundary boundary) {
     if (!_boundaries.remove(boundary)) return;
     _apply(instant: {boundary.survivor}, drop: {boundary.other});
@@ -305,9 +313,10 @@ class CoilSelectionPainter extends CoilLayerPainter {
 
   /// Advances merges while painting: once both halves have glided to the
   /// seam and their inner corners have squared off (together, on the same
-  /// spring), the merge commits. It rides the motion tokens, so a slower
-  /// `standard` spring is never cut short and reduced motion commits at
-  /// once.
+  /// spring), the merge commits.
+  ///
+  /// It rides the motion tokens, so a slower `standard` spring is never cut
+  /// short and reduced motion commits at once.
   void _advanceMerges() {
     for (final b in [..._boundaries]) {
       if (b.phase != _Phase.converge || b.committing) continue;
@@ -595,11 +604,13 @@ class _BlockAnimation {
       pendingFrom == null &&
       _controller.value(_delta) == Rect.zero;
 
-  /// Whether the corners reached the spec's corners.
+  /// Whether the animated corner radii have settled at their target values.
   bool get cornersArrived => corners == spec.corners;
 
   /// The rect to paint this frame for [target], starting any glide the
-  /// last [setSpec] asked for. Called while painting.
+  /// last [setSpec] asked for.
+  ///
+  /// Called while painting.
   Rect resolve(Rect target, Rect? from, CoilMotion m) {
     Rect diff(Rect a, Rect b) => Rect.fromLTRB(
       a.left - b.left,

@@ -10,8 +10,10 @@ import 'package:motor/inspection.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
 /// A status line for work in progress: an optional glyph and a word that
-/// changes every 4 seconds. The cycle pauses while tickers are muted, for
-/// example in a route that is covered.
+/// changes every 4 seconds.
+///
+/// The cycle pauses while tickers are muted, for example in a route that is
+/// covered.
 ///
 /// The incoming word rises into place and the outgoing one rises out. The
 /// row is as wide as the longest word, so it never shifts what follows.
@@ -31,6 +33,7 @@ class CoilThinkingIndicator extends StatefulWidget {
   });
 
   /// The words to cycle through, starting with the first, usually [Text]s.
+  ///
   /// Needs at least one. Screen readers hear the current one.
   ///
   /// Words are followed by position, so a parent may rebuild them every
@@ -42,8 +45,9 @@ class CoilThinkingIndicator extends StatefulWidget {
   /// muted color.
   final Widget? leading;
 
-  /// Pins the indicator to one size step. Null follows
-  /// [CoilAdaptiveScope].
+  /// Pins the indicator to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens.
@@ -67,8 +71,10 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
   /// when it is no longer in the list (the next change starts over).
   int _index = 0;
 
-  /// The shown word. It can be a word [CoilThinkingIndicator.words] no
-  /// longer has, until the next change.
+  /// The shown word.
+  ///
+  /// It can be a word [CoilThinkingIndicator.words] no longer has, until the
+  /// next change.
   late Widget _word = widget.words.first;
 
   /// Counts word changes, so a word that repeats still rolls.

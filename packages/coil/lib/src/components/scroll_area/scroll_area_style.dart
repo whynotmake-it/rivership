@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/scroll_area.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/scroll_area/scroll_area.dart'
@@ -5,10 +8,11 @@ import 'package:coil/src/components/scroll_area/scroll_area.dart'
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilScrollArea` looks. Unset fields come from
-/// [CoilScrollAreaStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilScrollArea] looks.
+///
+/// Unset fields come from [CoilScrollAreaStyle.fallback], derived from the
+/// theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// Creates a style.
   const CoilScrollAreaStyle({
@@ -75,9 +79,11 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// How far the edge fades reach.
   final double? fadeExtent;
 
-  /// The solid background the edges fade into. Set it when the area sits
-  /// on a known solid color: the fades are painted on top, which is cheaper
-  /// than masking. Null masks the content, which works over anything.
+  /// The solid background the edges fade into.
+  ///
+  /// Set it when the area sits on a known solid color: the fades are painted on
+  /// top, which is cheaper than masking. Null masks the content, which works
+  /// over anything.
   final Color? fadeColor;
 
   /// How far an arrow key scrolls: about three lines of body text.
@@ -85,12 +91,15 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
 
   /// Springs for the scroll area's animated parts, keyed by
   /// [CoilScrollAreaTrack]s:
-  /// `{CoilScrollAreaTrack.scroll: const Motion.smoothSpring()}`. A scroll
-  /// area's own `motions:` win over these; these win over the motion
+  /// `{CoilScrollAreaTrack.scroll: const Motion.smoothSpring()}`.
+  ///
+  /// A scroll area's own `motions:` win over these; these win over the motion
   /// tokens. [merge] combines the maps key by key.
   final Map<CoilScrollAreaTrack<Object>, Motion>? motions;
 
-  /// The scrollbar look this style describes. Call it on a resolved style.
+  /// The scrollbar look this style describes.
+  ///
+  /// Call it on a resolved style.
   CoilScrollbarLook get scrollbarLook => CoilScrollbarLook(
     color: thumb!,
     hoverColor: thumbHovered!,

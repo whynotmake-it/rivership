@@ -16,9 +16,10 @@ typedef TableRowMotions = ({
   Motion label,
 });
 
-/// One body row. It draws only its label colors, its rule and its own
-/// press fill on touch; the table's layer paints the highlight and the
-/// selection underneath.
+/// One body row.
+///
+/// It draws only its label colors, its rule and its own press fill on touch;
+/// the table's layer paints the highlight and the selection underneath.
 class TableBodyRow<T> extends StatefulWidget {
   /// Creates a body row.
   const TableBodyRow({
@@ -193,10 +194,12 @@ class _TableBodyRowState<T> extends State<TableBodyRow<T>> {
   }
 }
 
-/// The empty state: [child] centered over [rows] rows' height, as one row
-/// with one cell for assistive technology. Each row is framed like a body
-/// row around one line of [CoilTableStyle.cellStyle], so the height follows
-/// the text scale as real rows do.
+/// The empty state: [child] centered over [rows] rows' height, as one row with
+/// one cell for assistive technology.
+///
+/// Each row is framed like a body row around one line of
+/// [CoilTableStyle.cellStyle], so the height follows the text scale as real
+/// rows do.
 class TableEmptyRow extends StatelessWidget {
   /// Creates the empty state.
   const TableEmptyRow({

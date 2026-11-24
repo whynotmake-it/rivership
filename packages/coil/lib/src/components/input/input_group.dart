@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/input.dart';
+library;
+
 import 'package:coil/field.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -7,8 +10,8 @@ import 'package:flutter/widgets.dart';
 ///
 /// The field nearest the mouse shows the hover fill, even when the pointer
 /// is in the gap between fields, so the hover never flickers off. Touch
-/// shows focus only. Each child is usually a `CoilField` around a
-/// `CoilInput`.
+/// shows focus only. Each child is usually a [CoilField] around a
+/// [CoilInput].
 ///
 /// ```dart
 /// CoilInputGroup(
@@ -29,7 +32,9 @@ class CoilInputGroup extends StatelessWidget {
   /// The fields, top to bottom.
   final List<Widget> children;
 
-  /// Pins every field to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins every field to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   @override

@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:coil/src/primitives/adaptive_popup.dart';
+library;
+
 import 'package:coil/src/foundation/metrics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -11,9 +15,11 @@ enum CoilPresentation {
   sheet,
 
   /// A modal panel floating under the top safe area with touch-sized rows,
-  /// dismissed by a horizontal swipe. It hugs its content up to the room
-  /// above the keyboard; phone search lists fill that room, so the search
-  /// field doesn't move as the results shrink.
+  /// dismissed by a horizontal swipe.
+  ///
+  /// It hugs its content up to the room above the keyboard; phone search
+  /// lists fill that room, so the search field doesn't move as the results
+  /// shrink.
   floating;
 
   /// Whether the content lays out in a sheet panel with touch rows: a
@@ -22,13 +28,13 @@ enum CoilPresentation {
 }
 
 /// Pins adaptive decisions for a subtree: the size [tier], the size step
-/// ([size]), the overlay [presentation] and the [platform] whose
+/// ([size]), the overlay [presentation], and the [platform] whose
 /// conventions apply.
 ///
-/// The one adaptive context in coil. Unset values inherit from the nearest
+/// The one adaptive context in Coil. Unset values inherit from the nearest
 /// ancestor scope; without one, the tier comes from the theme and then the
 /// platform, the size is [CoilSize.regular], and the presentation is decided
-/// per overlay when it opens (`CoilAdaptivePopup.presentationOf`).
+/// per overlay when it opens ([CoilAdaptivePopup.presentationOf]).
 ///
 /// It is an [InheritedTheme], so overlays opened below it keep its pins.
 ///
@@ -59,14 +65,14 @@ class CoilAdaptiveScope extends StatelessWidget {
   /// The platform whose conventions this subtree follows, or null to
   /// inherit (and, at the top, to follow [defaultTargetPlatform]).
   ///
-  /// Read it with `CoilTheme.platformOf`. It latches the tier like the real
-  /// platform does, and decides the conventions coil follows per platform:
+  /// Read it with [CoilTheme.platformOf]. It latches the tier like the real
+  /// platform does, and decides the conventions Coil follows per platform:
   /// shortcut modifiers (⌘ or Ctrl), the iOS back swipe over the start
   /// drawer, Android's long-press tooltips, the drawer's fallback screen
-  /// corners and haptics. For a subtree that stands in for another device,
+  /// corners, and haptics. For a subtree that stands in for another device,
   /// such as a phone preview in a desktop window. Flutter's own platform
   /// reads (scroll physics, text editing) don't see it: pair it with a
-  /// `ScrollConfiguration` for those.
+  /// [ScrollConfiguration] for those.
   final TargetPlatform? platform;
 
   /// The subtree.

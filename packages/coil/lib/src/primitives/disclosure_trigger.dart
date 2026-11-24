@@ -61,7 +61,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// Whether the region is open.
   final bool expanded;
 
-  /// Called when the trigger is pressed. Null disables it.
+  /// Called when the trigger is pressed.
+  ///
+  /// Null disables it.
   final VoidCallback? onPressed;
 
   /// The trigger's background.
@@ -70,7 +72,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// The label, glyph and chevron color.
   final WidgetStateProperty<Color?> foreground;
 
-  /// The label's style at rest. Its color comes from [foreground].
+  /// The label's style at rest.
+  ///
+  /// Its color comes from [foreground].
   final TextStyle textStyle;
 
   /// The corner radius of the fill and the focus ring.
@@ -106,9 +110,10 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// An optional glyph before the label.
   final Widget? leading;
 
-  /// Replaces the chevron ([CoilIcons.chevronEnd]). It turns a quarter
-  /// toward the end when expanded, so a replacement points to the end
-  /// in its text direction, like coil's.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]).
+  ///
+  /// It turns a quarter toward the end when expanded, so a replacement
+  /// points to the end in its text direction, like Coil's.
   final Widget? indicator;
 
   /// The trigger's focus node.
@@ -126,8 +131,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// The trigger's opacity while disabled.
   final double disabledOpacity;
 
-  /// How far outside the trigger its focus ring sits. Null draws no ring,
-  /// for a list that draws one shared ring.
+  /// How far outside the trigger its focus ring sits.
+  ///
+  /// Null draws no ring, for a list that draws one shared ring.
   final double? focusRingOffset;
 
   /// Whether the row fills the width or hugs its content.

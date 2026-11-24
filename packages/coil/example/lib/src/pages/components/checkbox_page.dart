@@ -9,7 +9,8 @@ const checkboxEntry = CatalogEntry(
   slug: 'checkbox',
   title: 'Checkbox',
   group: CatalogGroup.leafControls,
-  summary: 'An independent on/off choice with a tick, or a dash when mixed.',
+  summary:
+      'An independent on/off choice with a check, or a dash when mixed.',
   page: CheckboxPage.new,
 );
 
@@ -50,12 +51,12 @@ CoilField(
       ),
       CatalogNote(
         'Touch',
-        'On touch the box is 20 wide with a 44 hit target, and tapping the '
-            'label inside a field toggles it as well.',
+        'On touch the box is 20 px wide with a 44 px hit target, and tapping '
+            'the label inside a field toggles it as well.',
       ),
       CatalogNote(
         'Motion',
-        'The tick draws on and retracts, and changing between tick and dash '
+        'The check draws on and retracts, and changing between check and dash '
             'retracts one before drawing the other. With reduced motion the '
             'new state appears at once.',
       ),

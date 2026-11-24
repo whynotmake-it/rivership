@@ -73,7 +73,7 @@ class _DatePickerPageState extends State<DatePickerPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'DatePicker',
     summary:
-        'The calendar opens in a popover next to the field on a pointer and '
+        'The calendar opens in a popover next to the field on desktop and '
         'in a floating panel on a phone. Picking a day commits straight away, '
         'and when a time comes with it the panel waits for Done.',
     hero: const _TaskForm(),
@@ -104,8 +104,8 @@ CoilField(
       CatalogNote(
         'Keyboard',
         'Everything the calendar supports works here, and on top of that '
-            'Enter confirms the pick, Escape closes without changing the '
-            'value and Space picks a day without closing.',
+            'Enter confirms the pick, Esc closes without changing the '
+            'value, and Space picks a day without closing.',
       ),
       CatalogNote(
         'Accessibility',

@@ -49,20 +49,20 @@ CoilFileThumbnail(
       CatalogNote(
         'Touch',
         'The remove badge stays visible rather than waiting for a hover, and '
-            'although it is drawn small it takes a 44 pixel hit target.',
+            'although it is drawn small it keeps a 44 px hit target.',
       ),
       CatalogNote(
         'Motion',
         'The tile animates nothing by itself; once the image has loaded it '
-            'fades in over the file type on the fade spring.',
+            'fades in smoothly over the file type.',
       ),
       CatalogNote(
         'Accessibility',
-        'A tile with an image is labelled with the file’s name, and one that '
+        'A tile with an image is labeled with the file’s name, and one that '
             'is still waiting for its image announces "Loading preview".',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'Previews that need rendering, such as a page of a PDF or a frame of '
             'a video, belong in the app: render them there and pass the '
             'result as image.',

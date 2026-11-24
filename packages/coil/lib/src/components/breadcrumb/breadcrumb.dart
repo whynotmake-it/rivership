@@ -14,51 +14,64 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// One step of a [CoilBreadcrumb].
+/// A single navigation step in a [CoilBreadcrumb] trail.
 @immutable
 class CoilCrumb {
   /// Creates a crumb.
   const CoilCrumb({required this.label, this.onPressed, this.leading});
 
-  /// The page's name, usually a [Text]. Long names truncate in the trail;
-  /// the "…" menu and screen readers get the full name.
+  /// The page's name, usually a [Text].
+  ///
+  /// Long names truncate in the trail; the "…" menu and screen readers get
+  /// the full name.
   final Widget label;
 
-  /// Goes to the page. Null disables the crumb. The last crumb is the
-  /// current page and ignores it.
+  /// Goes to the page.
+  ///
+  /// When null, disables the crumb. The last crumb represents the current
+  /// page and ignores this callback.
   final VoidCallback? onPressed;
 
   /// A glyph before the label, styled by [IconTheme].
   final Widget? leading;
 }
 
-/// The animated parts of a [CoilBreadcrumb]. Use them as keys of
-/// [CoilBreadcrumb.motions] or [CoilBreadcrumbStyle.motions].
+/// The animated parts of a [CoilBreadcrumb].
+///
+/// Use these as keys of [CoilBreadcrumb.motions] or
+/// [CoilBreadcrumbStyle.motions].
 final class CoilBreadcrumbTrack<T extends Object> extends Track<T> {
   CoilBreadcrumbTrack._(super.converter, {required String super.debugLabel});
 
-  /// The hover highlight gliding between crumbs. Default motion: `quick`.
+  /// The hover highlight gliding between crumbs.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final highlight = CoilBreadcrumbTrack<Rect>._(
     .rect,
     debugLabel: 'CoilBreadcrumb.highlight',
   );
 
-  /// The fill under a crumb a finger presses. Default motion: `fade` in,
-  /// `fadeExit` out; an override applies to both.
+  /// The fill under a crumb a finger presses.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out; an
+  /// override applies to both.
   static final press = CoilBreadcrumbTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilBreadcrumb.press',
   );
 
-  /// The crumb label's color. Default motion: `fade`.
+  /// The crumb label's color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final label = CoilBreadcrumbTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilBreadcrumb.label',
   );
 }
 
-/// The words a [CoilBreadcrumb] gives screen readers. The defaults are
-/// English.
+/// Accessibility labels announced by screen readers for a [CoilBreadcrumb].
+///
+/// Defaults to English.
 @immutable
 class CoilBreadcrumbLabels {
   /// Creates the labels.
@@ -86,8 +99,8 @@ class CoilBreadcrumbLabels {
 /// A trail of links to the current page, which is the last crumb.
 ///
 /// Crumbs are links in Tab order; Enter follows one. The current page is
-/// plain text marked `selected`. A chevron, or [separator], follows each
-/// link and flips in RTL.
+/// plain text marked selected in semantics. A chevron, or [separator],
+/// follows each link and flips in RTL.
 ///
 /// When the row is too narrow, middle crumbs collapse into "…". The first
 /// crumb, the last link and the page always show. On phones the trail
@@ -111,15 +124,20 @@ class CoilBreadcrumb extends StatefulWidget {
   final List<CoilCrumb> crumbs;
 
   /// Replaces the chevron after each link (the theme's
-  /// [CoilIcons.chevronEnd], or coil's drawn one, which points the other
-  /// way in RTL). A replacement isn't mirrored for you.
+  /// [CoilIcons.chevronEnd], or Coil's drawn one, which points the other
+  /// way in RTL).
+  ///
+  /// A replacement isn't mirrored automatically.
   final Widget? separator;
 
-  /// Pins the crumbs to one size step. Null follows [CoilAdaptiveScope],
-  /// else [CoilSize.compact].
+  /// Pins the crumbs to one size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope], else [CoilSize.compact].
   final CoilSize? size;
 
-  /// How the "…" menu opens. Null lets [CoilAdaptivePopup] decide.
+  /// How the "…" menu opens.
+  ///
+  /// When null, lets [CoilAdaptivePopup] decide.
   final CoilPresentation? presentation;
 
   /// The names screen readers hear.
@@ -128,9 +146,10 @@ class CoilBreadcrumb extends StatefulWidget {
   /// Overrides the theme's motion tokens for this breadcrumb.
   final CoilMotion? motion;
 
-  /// Per-track motions for this breadcrumb, keyed by
-  /// [CoilBreadcrumbTrack]s. They win over the style's
-  /// [CoilBreadcrumbStyle.motions] and [motion].
+  /// Per-track motions for this breadcrumb, keyed by [CoilBreadcrumbTrack]
+  /// values.
+  ///
+  /// These take precedence over [CoilBreadcrumbStyle.motions] and [motion].
   final Map<CoilBreadcrumbTrack<Object>, Motion>? motions;
 
   /// Overrides for this breadcrumb's look.

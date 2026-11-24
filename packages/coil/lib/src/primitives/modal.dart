@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/components/dialog/dialog.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -39,18 +42,22 @@ enum CoilModalPresentation {
   floating;
 
   /// Whether the content lays out in a [CoilSheetPanel] with touch rows: a
-  /// [sheet] or a [floating] panel. Dialogs, action bars and search lists
-  /// read it to stack their actions and put the close button in the header.
+  /// [sheet] or a [floating] panel.
+  ///
+  /// Dialogs, action bars and search lists read it to stack their actions
+  /// and put the close button in the header.
   bool get usesSheetPanel => this == sheet || this == floating;
 }
 
 /// Where a [CoilModalPresentation.floating] panel sits and how tall it is.
 enum CoilModalAnchor {
   /// Under the top safe area, hugging its content up to the room down to
-  /// the keyboard (or the home indicator). The keyboard shrinks the room
-  /// from below and never moves the panel. Content that should keep a
-  /// stable height, such as a search list whose results change, fills the
-  /// room itself (a `SizedBox(height: double.infinity)` takes all of it).
+  /// the keyboard (or the home indicator).
+  ///
+  /// The keyboard shrinks the room from below and never moves the panel.
+  /// Content that should keep a stable height, such as a search list whose
+  /// results change, fills the room itself (a `SizedBox(height:
+  /// double.infinity)` takes all of it).
   top,
 
   /// Centered in the room above the keyboard, hugging its content up to
@@ -58,12 +65,14 @@ enum CoilModalAnchor {
   center,
 }
 
-/// The animated parts of a [CoilModalRoute], as Motor tracks. Use them as
-/// keys of the route's `motions` or [CoilModalStyle.motions].
+/// The animated parts of a [CoilModalRoute], as Motor tracks.
+///
+/// Use them as keys of the route's `motions` or [CoilModalStyle.motions].
 final class CoilModalTrack<T extends Object> extends Track<T> {
   CoilModalTrack._(super.converter, {required String super.debugLabel});
 
   /// The panel's blur-fade in and out (all presentations but sheets).
+  ///
   /// Default motion: `gentle` in, `gentleExit` out.
   static final presence = CoilModalTrack<double>._(
     .single,
@@ -71,16 +80,18 @@ final class CoilModalTrack<T extends Object> extends Track<T> {
   );
 
   /// A floating panel settling after a released dismiss drag, back to rest
-  /// or away, starting with the release velocity. Default motion:
-  /// `standard` back to rest, `standardExit` away.
+  /// or away, starting with the release velocity.
+  ///
+  /// Default motion: `standard` back to rest, `standardExit` away.
   static final settle = CoilModalTrack<double>._(
     .single,
     debugLabel: 'CoilModalRoute.settle',
   );
 }
 
-/// Overrides for a [CoilModalRoute]. Unset fields come from
-/// [CoilModalStyle.fallback].
+/// Overrides for a [CoilModalRoute].
+///
+/// Unset fields come from [CoilModalStyle.fallback].
 @immutable
 class CoilModalStyle extends CoilComponentStyle<CoilModalStyle> {
   /// Creates a modal style.
@@ -98,9 +109,10 @@ class CoilModalStyle extends CoilComponentStyle<CoilModalStyle> {
   final double? margin;
 
   /// Springs for the modal's animated parts, keyed by [CoilModalTrack]s:
-  /// `{CoilModalTrack.settle: const Motion.bouncySpring()}`. The route's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// `{CoilModalTrack.settle: const Motion.bouncySpring()}`.
+  ///
+  /// The route's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilModalTrack<Object>, Motion>? motions;
 
   @override
@@ -123,7 +135,7 @@ class CoilModalStyle extends CoilComponentStyle<CoilModalStyle> {
 /// [presentation] decides how it shows; null picks a sheet on the touch tier
 /// in a compact window and centers it elsewhere. With [dismissible] false,
 /// the scrim, Esc, back and dragging don't close it. The future completes
-/// with the value passed to `Navigator.pop`. [anchor], [dismissDirections],
+/// with the value passed to [Navigator.pop]. [anchor], [dismissDirections],
 /// [origin], [motions] and [style] are for the floating presentation; see
 /// [CoilModalRoute].
 ///
@@ -170,11 +182,13 @@ Future<T?> showCoilModal<T>({
 );
 
 /// A route that shows a modal: centered over a scrim, as a sheet, as a
-/// drawer or as a floating panel. [showCoilModal], `showCoilDialog`,
-/// `showCoilSettingsDialog` and `showCoilCommandMenu` push one.
+/// drawer or as a floating panel.
+///
+/// [showCoilModal], `showCoilDialog`, `showCoilSettingsDialog` and
+/// `showCoilCommandMenu` push one.
 ///
 /// Push it yourself, return it from a router's custom route builder, or
-/// use a [CoilModalPage] in `Navigator.pages`:
+/// use a [CoilModalPage] in [Navigator.pages]:
 ///
 /// ```dart
 /// Navigator.of(context).push(
@@ -360,7 +374,9 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
 
   /// The global rect of the widget at [context], to pass as a floating
   /// modal's `origin`: call it with the trigger's own context (a [Builder]
-  /// around the button gives one). Null before it's laid out.
+  /// around the button gives one).
+  ///
+  /// Null before it's laid out.
   static Rect? originOf(BuildContext context) {
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.attached || !box.hasSize) return null;
@@ -371,6 +387,7 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
   }
 
   /// How the [CoilModalRoute] around [context] shows, or null outside one.
+  ///
   /// Content reads it to fit its presentation, such as a dialog stacking
   /// its actions in a sheet.
   static CoilModalPresentation? presentationOf(BuildContext context) =>
@@ -381,13 +398,13 @@ sealed class CoilModalRoute<T> implements PopupRoute<T> {
 }
 
 /// A [Page] that shows [child] in a [CoilModalRoute], for
-/// `Navigator.pages` and routers built on it.
+/// [Navigator.pages] and routers built on it.
 ///
 /// [presentation], [dismissible], [barrierLabel], [motion], [anchor],
 /// [dismissDirections], [origin], [motions], [style] and the sheet
 /// options are read when the route is created, from the navigator's
 /// context; a changed [child] rebuilds the open modal. Popping it (the
-/// scrim, Esc, back, a drag, or `Navigator.pop`) calls the navigator's
+/// scrim, Esc, back, a drag, or [Navigator.pop]) calls the navigator's
 /// `onDidRemovePage`.
 class CoilModalPage<T> extends Page<T> {
   /// Creates a page that shows [child] as a modal.
@@ -413,7 +430,7 @@ class CoilModalPage<T> extends Page<T> {
     this.backgroundSnapshotMode = RouteSnapshotMode.never,
   });
 
-  /// The modal's content, such as a `CoilDialog`.
+  /// The modal's content, such as a [CoilDialog].
   final Widget child;
 
   /// How it shows; null picks a sheet on the touch tier in a compact
@@ -433,6 +450,7 @@ class CoilModalPage<T> extends Page<T> {
   final CoilModalAnchor anchor;
 
   /// The directions a drag throws a floating panel away in; empty for none.
+  ///
   /// See [CoilModalRoute].
   final Set<AxisDirection> dismissDirections;
 
@@ -447,24 +465,30 @@ class CoilModalPage<T> extends Page<T> {
   final CoilModalStyle? style;
 
   /// The stops a sheet rests at; see [CoilSheetRoute.snappingConfig].
+  ///
   /// Ignored unless the modal shows as a sheet.
   final SheetSnappingConfig snappingConfig;
 
   /// When scrolling content hands its drag to a sheet; see
-  /// [CoilSheetRoute.dragHandoff]. Ignored unless it shows as a sheet.
+  /// [CoilSheetRoute.dragHandoff].
+  ///
+  /// Ignored unless it shows as a sheet.
   final SheetDragHandoff dragHandoff;
 
-  /// How a sheet leaves; see [CoilSheetRoute.dismissalMode]. Ignored
-  /// unless it shows as a sheet.
+  /// How a sheet leaves; see [CoilSheetRoute.dismissalMode].
+  ///
+  /// Ignored unless it shows as a sheet.
   final DismissalMode dismissalMode;
 
   /// Whether a sheet follows the finger; see [CoilSheetRoute.draggable].
+  ///
   /// Ignored unless it shows as a sheet.
   final bool draggable;
 
   /// Whether the page below a sheet is snapshotted; see
-  /// [CoilSheetRoute.backgroundSnapshotMode]. Ignored unless it shows as a
-  /// sheet.
+  /// [CoilSheetRoute.backgroundSnapshotMode].
+  ///
+  /// Ignored unless it shows as a sheet.
   final RouteSnapshotMode backgroundSnapshotMode;
 
   @override
@@ -660,7 +684,9 @@ class _CoilFloatingRoute<T> extends RawDialogRoute<T>
     );
   }
 
-  /// Takes the animation over for a drag. False while the route is leaving.
+  /// Takes the animation over for a drag.
+  ///
+  /// False while the route is leaving.
   bool holdForDrag() {
     if (_holding) return true;
     if (!isActive || controller == null) return false;
@@ -711,8 +737,9 @@ const _maxTilt = 0.06;
 const _recede = 0.04;
 
 /// Where a released panel would coast, for the decision to throw it away.
-/// With `drag: 0.03` a panel coasts `v / -ln(0.03)`, about `v / 3.5`:
-/// a flick of 700 px/s from rest lands 200 px out, past half of a phone's
+///
+/// With `drag: 0.03` a panel coasts `v / -ln(0.03)`, about `v / 3.5`: a
+/// flick of 700 px/s from rest lands 200 px out, past half of a phone's
 /// panel (about 190 px), a slower one doesn't, and a panel dragged past the
 /// middle and flicked back lands short of it again.
 const _coast = FrictionMotion(drag: 0.03);
@@ -766,6 +793,7 @@ class _FloatingPanelState extends State<_FloatingPanel>
 
   /// A drag has touched the panel since it last came to rest: its opacity
   /// follows the drag's curve and it doesn't blur or scale with the route.
+  ///
   /// Stays through the spring back, so nothing jumps when it arrives.
   bool _touched = false;
 
@@ -782,11 +810,15 @@ class _FloatingPanelState extends State<_FloatingPanel>
 
   /// How far the panel has to travel to be thrown away, in pixels: half the
   /// extent, capped at half the width, so a tall panel doesn't need a
-  /// half-screen drag. It is gone (scrim clear) at twice this.
+  /// half-screen drag.
+  ///
+  /// It is gone (scrim clear) at twice this.
   double _threshold = 1;
 
-  /// How far the finger has moved along the axis, in pixels. The panel is
-  /// where [_shown] puts it, which is the same unless it's resisted.
+  /// How far the finger has moved along the axis, in pixels.
+  ///
+  /// The panel is where [_shown] puts it, which is the same unless it's
+  /// resisted.
   double _pixels = 0;
 
   /// Where in the panel the finger took hold, which it tilts around; null
@@ -1193,9 +1225,10 @@ const _originMaxTravel = 40.0;
 
 /// Draws [child] [amount] of the way back toward [origin] (a global rect):
 /// shrunk around the point of the child nearest the origin's center and
-/// moved a little toward it. Measured where the child is painted, so it
-/// needs no layout of its own; null [origin] or 0 [amount] paints the child
-/// as is.
+/// moved a little toward it.
+///
+/// Measured where the child is painted, so it needs no layout of its own;
+/// null [origin] or 0 [amount] paints the child as is.
 class _OriginHint extends SingleChildRenderObjectWidget {
   const _OriginHint({
     required this.origin,

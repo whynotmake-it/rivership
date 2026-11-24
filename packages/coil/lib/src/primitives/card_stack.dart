@@ -1,3 +1,8 @@
+/// @docImport 'package:coil/src/components/card/card.dart';
+/// @docImport 'package:coil/src/foundation/metrics.dart';
+/// @docImport 'package:flutter/material.dart';
+library;
+
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
@@ -11,7 +16,9 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// Which edge a [CoilCardStack] grows from. The front card sits at it.
+/// Which edge a [CoilCardStack] grows from.
+///
+/// The front card sits at it.
 enum CoilCardStackAnchor {
   /// The front card at the bottom; the cards behind peek and fan upward,
   /// like a toast stack or a pile above a composer.
@@ -28,12 +35,15 @@ enum CoilCardStackExpand {
   /// pile, until it folds again, see [CoilCardStackFold]).
   auto,
 
-  /// Always, such as while a card is dragged. A pin is kept for when it
-  /// goes back to [auto].
+  /// Always, such as while a card is dragged.
+  ///
+  /// A pin is kept for when it goes back to [auto].
   always,
 
-  /// Never: only the front card shows in full, and cards past the peeks
-  /// are hidden from focus and screen readers. Clears the pin.
+  /// Never: only the front card shows in full, and cards past the peeks are
+  /// hidden from focus and screen readers.
+  ///
+  /// Clears the pin.
   never,
 }
 
@@ -47,8 +57,9 @@ enum CoilCardStackFold {
   manual,
 }
 
-/// The animated parts of a [CoilCardStack]. Use them as keys of
-/// [CoilCardStack.motions].
+/// The animated parts of a [CoilCardStack].
+///
+/// Use them as keys of [CoilCardStack.motions].
 final class CoilCardStackTrack<T extends Object> extends Track<T> {
   CoilCardStackTrack._(
     super.converter, {
@@ -56,23 +67,28 @@ final class CoilCardStackTrack<T extends Object> extends Track<T> {
     super.initial,
   });
 
-  /// The pile fanning out and folding back. Default motion: `standard`
-  /// out, `standardExit` back; an override applies to both.
+  /// The pile fanning out and folding back.
+  ///
+  /// Default motion: `standard` out, `standardExit` back; an override
+  /// applies to both.
   static final expand = CoilCardStackTrack<double>._(
     .single,
     initial: 0,
     debugLabel: 'CoilCardStack.expand',
   );
 
-  /// A card moving to a new place. Default motion: `standard`.
+  /// A card moving to a new place.
+  ///
+  /// Default motion: `standard`.
   static final slot = CoilCardStackTrack<double>._(
     .single,
     initial: 0,
     debugLabel: 'CoilCardStack.slot',
   );
 
-  /// The cards around a leaving card closing its gap. Default motion:
-  /// `standard`.
+  /// The cards around a leaving card closing its gap.
+  ///
+  /// Default motion: `standard`.
   static final leave = CoilCardStackTrack<double>._(
     .single,
     initial: 1,
@@ -92,8 +108,9 @@ class CoilCardStackController extends ChangeNotifier {
   bool _pinned = false;
   bool _expanded = false;
 
-  /// Whether a tap fanned the pile out and it stays so until folded. Set it
-  /// to false to fold the pile, or true to fan it out.
+  /// Whether a tap fanned the pile out and it stays so until folded.
+  ///
+  /// Set it to false to fold the pile, or true to fan it out.
   bool get pinned => _pinned;
   set pinned(bool value) {
     if (value == _pinned) return;
@@ -102,8 +119,10 @@ class CoilCardStackController extends ChangeNotifier {
   }
 
   /// Whether the pile is fanned out (pinned, hovered, focused inside or
-  /// [CoilCardStackExpand.always]). The stack reports a change after the
-  /// frame it happens in, and notifies.
+  /// [CoilCardStackExpand.always]).
+  ///
+  /// The stack reports a change after the frame it happens in, and
+  /// notifies.
   bool get expanded => _expanded;
 
   void _report(bool expanded) {
@@ -133,28 +152,34 @@ class CoilCardStackItem {
   /// The card.
   final Widget child;
 
-  /// Its place from the front, 0 being the front card. Fractional while it
-  /// follows a drag. Null places it by its index among the items that
-  /// aren't [leaving].
+  /// Its place from the front, 0 being the front card.
+  ///
+  /// Fractional while it follows a drag. Null places it by its index among
+  /// the items that aren't [leaving].
   final double? slot;
 
-  /// How it moves to a new [slot]. Null uses the stack's
-  /// [CoilCardStackTrack.slot] motion. `Motion.instant()` makes it follow a
-  /// drag. Reduced motion makes it instant.
+  /// How it moves to a new [slot].
+  ///
+  /// Null uses the stack's [CoilCardStackTrack.slot] motion.
+  /// `Motion.instant()` makes it follow a drag. Reduced motion makes it
+  /// instant.
   final Motion? slotMotion;
 
   /// Whether it paints above the others, such as while it is dragged.
   final bool lifted;
 
-  /// Whether it is on its way out. It takes no input and keeps its place
-  /// while the cards around it close the gap it leaves, smoothly whatever
-  /// their heights. Remove it from the items once its own exit is done.
+  /// Whether it is on its way out.
+  ///
+  /// It takes no input and keeps its place while the cards around it close
+  /// the gap it leaves, smoothly whatever their heights. Remove it from the
+  /// items once its own exit is done.
   final bool leaving;
 }
 
 /// Constraints a [CoilCardStack] gives its `background`: tight to the
-/// stack, carrying the folded pile's extent. Read with
-/// [CoilCardStack.pileExtentOf].
+/// stack, carrying the folded pile's extent.
+///
+/// Read with [CoilCardStack.pileExtentOf].
 class _CardStackConstraints extends BoxConstraints {
   _CardStackConstraints.tight(super.size, {required this.pileExtent})
     : super.tight();
@@ -198,14 +223,14 @@ class _CardStackConstraints extends BoxConstraints {
 ///
 /// [expand] decides when it fans out; [fold] how a tap-pinned pile folds.
 /// [background] fills the stack under the pile; read the folded pile's
-/// extent there with [pileExtentOf] in a `LayoutBuilder`. [leading] and
+/// extent there with [pileExtentOf] in a [LayoutBuilder]. [leading] and
 /// [trailing] sit beside the front card, [sideWidth] wide, and the cards
 /// take the width between.
 ///
-/// The stack needs a bounded width (in a `Row`, wrap it in `Expanded`).
+/// The stack needs a bounded width (in a [Row], wrap it in [Expanded]).
 /// Without a background it is as tall as the pile; with one it fills the
-/// space it's given, so that height must be bounded too (in a `Column` or
-/// a list, wrap it in `Expanded` or a `SizedBox`).
+/// space it's given, so that height must be bounded too (in a [Column] or
+/// a list, wrap it in [Expanded] or a [SizedBox]).
 ///
 /// Cards read the pile's state with [maybeExpandedOf] and leave it with
 /// [maybeLeaveOf].
@@ -243,8 +268,9 @@ class CoilCardStack extends StatefulWidget {
   /// How a pile a tap fanned out folds.
   final CoilCardStackFold fold;
 
-  /// Pins the pile open and reports whether it is fanned out. One is kept
-  /// internally when null.
+  /// Pins the pile open and reports whether it is fanned out.
+  ///
+  /// One is kept internally when null.
   final CoilCardStackController? controller;
 
   /// How far each card behind the front one peeks out, folded.
@@ -256,8 +282,9 @@ class CoilCardStack extends StatefulWidget {
   /// How many cards peek out behind the front one, folded.
   final int maxPeeks;
 
-  /// The space between fanned-out cards. Null uses the theme's
-  /// `CoilMetrics.gap`.
+  /// The space between fanned-out cards.
+  ///
+  /// Null uses the theme's [CoilMetrics.gap].
   final double? gap;
 
   /// Moves the whole pile away from the anchor edge, in logical pixels,
@@ -279,8 +306,9 @@ class CoilCardStack extends StatefulWidget {
   /// Overrides the theme's motion tokens for this stack.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCardStackTrack]s. They win over the
-  /// tokens; reduced motion still makes them instant.
+  /// Per-track motions, keyed by [CoilCardStackTrack]s.
+  ///
+  /// They win over the tokens; reduced motion still makes them instant.
   final Map<CoilCardStackTrack<Object>, Motion>? motions;
 
   /// How far cards peek by default.
@@ -293,24 +321,29 @@ class CoilCardStack extends StatefulWidget {
   static const defaultMaxPeeks = 2;
 
   /// Whether the pile a card at [context] is in is fanned out (or on its
-  /// way there); null outside a pile. Rebuilds [context] when it changes.
+  /// way there); null outside a pile.
+  ///
+  /// Rebuilds [context] when it changes.
   static bool? maybeExpandedOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_CardStackScope>()?.expanded;
 
   /// Starts the card at [context] on its way out of its pile, as an item's
   /// [CoilCardStackItem.leaving] does: the cards around it close its gap,
-  /// then `onLeft` is called. Remove the card from the pile there. Null
-  /// outside a pile. A card that dismisses itself (a dismissible
-  /// `CoilCard`) calls it instead of collapsing its own height.
+  /// then `onLeft` is called.
+  ///
+  /// Remove the card from the pile there. Null outside a pile. A card that
+  /// dismisses itself (a dismissible [CoilCard]) calls it instead of
+  /// collapsing its own height.
   static void Function(VoidCallback onLeft)? maybeLeaveOf(
     BuildContext context,
   ) => context.getInheritedWidgetOfExactType<_CardStackItemScope>()?.leave;
 
   /// The folded pile's extent from the anchor edge, plus the gap, given the
-  /// [constraints] a [background] gets (read them with a `LayoutBuilder`);
+  /// [constraints] a [background] gets (read them with a [LayoutBuilder]);
   /// 0 with no cards, or for constraints that don't come from a stack.
+  ///
   /// Keep the background's content clear of it, the way
-  /// `Scaffold.extendBody` hands its body the bar's height.
+  /// [Scaffold.extendBody] hands its body the bar's height.
   static double pileExtentOf(BoxConstraints constraints) =>
       constraints is _CardStackConstraints ? constraints.pileExtent : 0;
 
@@ -1240,16 +1273,19 @@ class RenderCoilCardStack extends RenderBox
     return constraints.constrain(Size(width, _extent(cards, heights).now));
   }
 
-  /// The stack's width: the width it's given. Unbounded (an error in
-  /// debug), the widest card's plus the sides.
+  /// The stack's width: the width it's given.
+  ///
+  /// Unbounded (an error in debug), the widest card's plus the sides.
   double _widthFor(BoxConstraints constraints) => constraints.hasBoundedWidth
       ? constraints.maxWidth
       : constraints.constrainWidth(
           computeMaxIntrinsicWidth(double.infinity),
         );
 
-  /// The size with a background: all the space it's given. Unbounded
-  /// height (an error in debug) falls back to the pile's [extent].
+  /// The size with a background: all the space it's given.
+  ///
+  /// Unbounded height (an error in debug) falls back to the pile's
+  /// [extent].
   Size _backgroundSize(
     BoxConstraints constraints,
     double width,

@@ -46,8 +46,8 @@ CoilBadge(
       ),
       CatalogNote(
         'Touch',
-        'A badge is 24 tall (20 when compact) on every tier, since there is '
-            'nothing to press and so no need for a larger touch target.',
+        'A badge is 24 px tall (20 px when compact) on every tier, since '
+            'there is nothing to press and no need for a larger touch target.',
       ),
       CatalogNote(
         'Screen readers',
@@ -55,7 +55,7 @@ CoilBadge(
             'status into words rather than relying on color alone.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'Use a badge to show a status or a category, and reach for a '
             'secondary button when the label needs to be tapped.',
       ),

@@ -10,40 +10,50 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilChatMessage]. Use them as keys of
-/// [CoilChatMessage.motions] or [CoilChatMessageStyle.motions].
+/// The animated parts of a [CoilChatMessage].
+///
+/// Use these as keys of [CoilChatMessage.motions] or
+/// [CoilChatMessageStyle.motions].
 final class CoilChatMessageTrack<T extends Object> extends Track<T> {
   CoilChatMessageTrack._(super.converter, {required String super.debugLabel});
 
-  /// The entrance opacity. Default motion: `fade`.
+  /// The entrance opacity.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final opacity = CoilChatMessageTrack<double>._(
     .single,
     debugLabel: 'CoilChatMessage.opacity',
   );
 
-  /// The entrance rise and scale. Default motion: `standard`.
+  /// The entrance rise and scale.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final travel = CoilChatMessageTrack<double>._(
     .single,
     debugLabel: 'CoilChatMessage.travel',
   );
 
-  /// The entrance height, which makes room in the transcript. Default
-  /// motion: `standard`.
+  /// The entrance height, which makes room in the transcript.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final height = CoilChatMessageTrack<double>._(
     .single,
     debugLabel: 'CoilChatMessage.height',
   );
 
-  /// The meta row's opacity as it shows and hides. Default motion: `fade`
-  /// in, `fadeExit` out; an override applies to both.
+  /// The meta row's opacity as it shows and hides.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out; an
+  /// override applies to both.
   static final meta = CoilChatMessageTrack<double>._(
     .single,
     debugLabel: 'CoilChatMessage.meta',
   );
 }
 
-/// The words a [CoilChatMessage] gives screen readers. The defaults are
-/// English.
+/// Accessibility labels announced by screen readers for a [CoilChatMessage].
+///
+/// Defaults to English.
 @immutable
 class CoilChatMessageLabels {
   /// Creates the labels.
@@ -68,7 +78,8 @@ class CoilChatMessageLabels {
   int get hashCode => Object.hash(userLabel, assistantLabel);
 }
 
-/// Who wrote a [CoilChatMessage].
+/// Author role of a [CoilChatMessage], determining alignment and bubble
+/// styling.
 enum CoilChatSender {
   /// The person using the app: a bubble at the end edge.
   user,
@@ -79,13 +90,17 @@ enum CoilChatSender {
 
 /// Whether a [CoilChatMessage] animates in when it first builds.
 enum CoilChatMessageEntrance {
-  /// Fades in, rises 8 px and grows from 0.96 out of the sender's bottom
-  /// corner. Its height opens at the same time, so in a bottom-anchored
-  /// (reversed) list the earlier messages slide up to make room.
+  /// Fades in, rises 8 px, and scales up from 0.96 out of the sender's bottom
+  /// corner.
+  ///
+  /// Its height opens at the same time, so in a bottom-anchored (reversed)
+  /// list the earlier messages slide up to make room.
   animated,
 
-  /// Shows at once. Use it for messages that were already in the transcript
-  /// when it opened, and for messages a lazy list builds again on scroll.
+  /// Shows immediately with no entrance animation.
+  ///
+  /// Use for messages already present in the transcript when it opened, or
+  /// rebuilt on scroll by a lazy list.
   none,
 }
 
@@ -126,16 +141,19 @@ class CoilChatMessage extends StatelessWidget {
   /// Who wrote the message.
   final CoilChatSender sender;
 
-  /// The message body, usually a [Text]. It gets the subtitle text style
-  /// and wraps. Null leaves only the attachments.
+  /// The message body, usually a [Text].
+  ///
+  /// Styled with the subtitle text style and wraps. When null, renders only
+  /// the attachments.
   final Widget? child;
 
   /// Widgets above the body, such as file thumbnails, 6 px apart and
   /// aligned to the sender's side.
   final List<Widget> attachments;
 
-  /// When the message was sent, already formatted for the locale. Usually
-  /// a [Text], shown muted in the meta row.
+  /// When the message was sent, already formatted for the locale.
+  ///
+  /// Usually a [Text], shown muted in the meta row.
   final Widget? time;
 
   /// The time as screen readers hear it, in the container's label.
@@ -154,15 +172,19 @@ class CoilChatMessage extends StatelessWidget {
   /// The sender names screen readers hear.
   final CoilChatMessageLabels labels;
 
-  /// Pins the message to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the message to one size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for this
   /// message.
   final CoilMotion? motion;
 
-  /// Per-track motions for this message, keyed by [CoilChatMessageTrack]s.
-  /// They win over the style's [CoilChatMessageStyle.motions] and [motion].
+  /// Per-track motions for this message, keyed by [CoilChatMessageTrack]
+  /// values.
+  ///
+  /// These take precedence over [CoilChatMessageStyle.motions] and [motion].
   final Map<CoilChatMessageTrack<Object>, Motion>? motions;
 
   /// Overrides for this message's look, on top of the theme's

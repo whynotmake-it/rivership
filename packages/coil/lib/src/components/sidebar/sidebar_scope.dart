@@ -11,7 +11,7 @@ enum CoilSidebarSide {
   end,
 }
 
-/// How the sidebar sits beside the page.
+/// Visual framing and placement of a sidebar beside the page body.
 enum CoilSidebarVariant {
   /// A flush column on the page, with a hairline at its inner edge.
   sidebar,
@@ -23,18 +23,20 @@ enum CoilSidebarVariant {
   inset,
 }
 
-/// How the sidebar folds away.
+/// Whether and how a sidebar collapses away from the page.
 enum CoilSidebarCollapsible {
-  /// It slides off the edge, giving the page its width back. The rail, the
-  /// toggle shortcut, peeking and the phone drawer all work.
+  /// Slides off the edge, giving the page its width back.
+  ///
+  /// The rail, toggle shortcut, peeking, and phone drawer all work.
   offcanvas,
 
-  /// It always shows, as a static column: no rail, no shortcut and no
-  /// drawer. For a sidebar inside a dialog.
+  /// Always visible as a static column with no rail, shortcut, or drawer.
+  ///
+  /// Useful for a sidebar inside a dialog.
   none,
 }
 
-/// What the collapsed edge does.
+/// Interaction behavior for the collapsed edge of a folded sidebar.
 enum CoilSidebarPeek {
   /// Nothing; only the trigger and the shortcut bring the sidebar back.
   none,

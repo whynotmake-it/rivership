@@ -273,8 +273,8 @@ CoilTable<String>(
         ),
         CatalogNote(
           'Pointer',
-          'The row highlight glides on the quick spring, and selected rows '
-              'next to each other merge into one block on standard.',
+          'The row highlight glides quickly between rows, and adjacent '
+              'selected rows merge smoothly into one block.',
         ),
         CatalogNote(
           'Accessibility',

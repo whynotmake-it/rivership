@@ -10,43 +10,56 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilRadioGroup], as Motor tracks. Use them as
-/// keys of [CoilRadioGroup.motions] or [CoilRadioGroupStyle.motions].
+/// The animated parts of a [CoilRadioGroup], as Motor tracks.
+///
+/// Use them as keys of [CoilRadioGroup.motions] or
+/// [CoilRadioGroupStyle.motions].
 final class CoilRadioGroupTrack<T extends Object> extends Track<T> {
   CoilRadioGroupTrack._(super.converter, {required String super.debugLabel});
 
-  /// The selected fill gliding between rows. Default motion: `standard`.
+  /// The selected fill gliding between rows.
+  ///
+  /// Default motion: [CoilMotion.standard].
   static final selection = CoilRadioGroupTrack<double>._(
     .single,
     debugLabel: 'CoilRadioGroup.selection',
   );
 
-  /// The focus ring travelling between rows. Default motion: `quick`.
+  /// The focus ring travelling between rows.
+  ///
+  /// Default motion: [CoilMotion.quick].
   static final ring = CoilRadioGroupTrack<double>._(
     .single,
     debugLabel: 'CoilRadioGroup.ring',
   );
 
-  /// The label color and weight. Default motion: `fade`.
+  /// The label color and weight.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final label = CoilRadioGroupTrack<double>._(
     .single,
     debugLabel: 'CoilRadioGroup.label',
   );
 
-  /// The touch press fill. Default motion: `fade`.
+  /// The touch press fill.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final press = CoilRadioGroupTrack<double>._(
     .single,
     debugLabel: 'CoilRadioGroup.press',
   );
 
-  /// The circle's outline color. Default motion: `fade`.
+  /// The circle's outline color.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final border = CoilRadioGroupTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilRadioGroup.border',
   );
 
-  /// The dot scaling in and fading out. Default motion: `quick` in,
-  /// `fadeExit` out.
+  /// The dot scaling in and fading out.
+  ///
+  /// Default motion: [CoilMotion.quick] in, [CoilMotion.fadeExit] out.
   static final dot = CoilRadioGroupTrack<double>._(
     .single,
     debugLabel: 'CoilRadioGroup.dot',
@@ -111,17 +124,22 @@ class CoilRadioGroup<T> extends StatelessWidget {
     this.semanticLabel,
   }) : options = null;
 
-  /// The rows: each option's [CoilOption.label]. Null for
-  /// [CoilRadioGroup.custom].
+  /// The rows: each option's [CoilOption.label].
+  ///
+  /// Null for [CoilRadioGroup.custom].
   final List<CoilOption<T>>? options;
 
   /// The layout holding the [CoilRadio]s, for [CoilRadioGroup.custom].
   final Widget? child;
 
-  /// The value of the selected row. A value no option has selects none.
+  /// The value of the selected row.
+  ///
+  /// A value no option has selects none.
   final T? value;
 
-  /// Called with the value to select. Null disables the group.
+  /// Called with the value to select.
+  ///
+  /// Null disables the group.
   final ValueChanged<T>? onChanged;
 
   /// Pins the group to one size step.
@@ -130,8 +148,9 @@ class CoilRadioGroup<T> extends StatelessWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilRadioGroupTrack]s. They win over the
-  /// style's [CoilRadioGroupStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilRadioGroupTrack]s.
+  ///
+  /// They win over the style's [CoilRadioGroupStyle.motions] and the tokens.
   final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
 
   /// Overrides for this group's look, on top of the theme's
@@ -301,6 +320,7 @@ class _CustomRadioGroupState<T> extends State<_CustomRadioGroup<T>> {
   }
 
   /// Home and End select the first and last radio, as in the rows.
+  ///
   /// Flutter's group handles the arrows, Space and Tab. Off while focus is
   /// outside the radios, so the keys go on.
   late final _edge = CallbackAction<_EdgeIntent>(

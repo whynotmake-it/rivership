@@ -73,15 +73,14 @@ class CoilKbdStyle extends CoilComponentStyle<CoilKbdStyle> {
 /// A keyboard shortcut, one small cap per key: `CoilKbd('⇧⌘O')` draws ⇧,
 /// ⌘ and O.
 ///
-/// Modifier glyphs (⌘ ⇧ ⌥ ⌃) are keys of their own, `+` and spaces
-/// separate the rest, so `'Ctrl+K'` draws Ctrl and K. Use
-/// [CoilKbd.keys] for a key whose name has a space, like `Page Up`.
-/// Screen readers hear the combination as one label. The caps take their
-/// colors from the ambient [DefaultTextStyle], so they follow the text
-/// around them and suit any surface; a component that wants them muted
-/// (a menu's shortcut column) sets a muted text style around them. With
-/// no ambient color they take the theme's `foreground`, the color text
-/// gets under a `CoilTheme`.
+/// Modifier glyphs (⌘ ⇧ ⌥ ⌃) are keys of their own, `+` and spaces separate the
+/// rest, so `'Ctrl+K'` draws Ctrl and K. Use [CoilKbd.keys] for a key whose
+/// name has a space, like `Page Up`. Screen readers hear the combination as one
+/// label. The caps take their colors from the ambient [DefaultTextStyle], so
+/// they follow the text around them and suit any surface; a component that
+/// wants them muted (a menu's shortcut column) sets a muted text style around
+/// them. With no ambient color they take the theme's [CoilColors.foreground],
+/// the color text gets under a [CoilTheme].
 class CoilKbd extends StatelessWidget {
   /// Shows [combination] split into keys.
   CoilKbd(
@@ -98,8 +97,10 @@ class CoilKbd extends StatelessWidget {
   });
 
   /// Shows the keys that trigger [activator]: a [SingleActivator] or a
-  /// [CharacterActivator]. Modifiers come first, as glyphs on Apple
-  /// platforms (⌃ ⌥ ⇧ ⌘) and as words elsewhere (Ctrl Alt Shift).
+  /// [CharacterActivator].
+  ///
+  /// Modifiers come first, as glyphs on Apple platforms (⌃ ⌥ ⇧ ⌘) and as words
+  /// elsewhere (Ctrl Alt Shift).
   CoilKbd.activator(
     ShortcutActivator activator, {
     super.key,

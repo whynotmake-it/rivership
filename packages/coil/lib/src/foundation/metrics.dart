@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/foundation/adaptive.dart';
+library;
+
 import 'package:coil/src/foundation/typography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show TextStyle;
@@ -5,14 +8,14 @@ import 'package:flutter/painting.dart' show TextStyle;
 /// The input a size set is designed for.
 ///
 /// The tier latches by platform (desktop OS → [pointer], phone/tablet →
-/// [touch]) unless a `CoilAdaptiveScope` or the theme pins it. It only picks
+/// [touch]) unless a [CoilAdaptiveScope] or the theme pins it. It only picks
 /// sizes: whether something hovers or presses is decided by the kind of each
 /// pointer event, so a mouse on an iPad still hovers.
 enum CoilTier {
-  /// Designed for a mouse, trackpad and keyboard: 36 px controls.
+  /// Designed for a mouse, trackpad, and keyboard: 36 px controls.
   pointer,
 
-  /// Touch screens. Raises every hit target to 44 px while keeping the
+  /// Touch screens, raising every hit target to 44 px while keeping the
   /// proportions of the desktop look.
   touch;
 
@@ -101,7 +104,9 @@ class CoilSwitchMetrics {
 /// the same. Heights are minimums: controls grow with the text scale.
 @immutable
 class CoilMetrics {
-  /// Creates metrics. Prefer a copy of a default (`CoilMetrics.touch`).
+  /// Creates metrics.
+  ///
+  /// Prefer copying a default such as [CoilMetrics.touch].
   const CoilMetrics({
     required this.tier,
     required this.size,
@@ -262,14 +267,17 @@ class CoilMetrics {
 
   /// The vertical padding that puts a line box of [text] in a
   /// [controlHeight] control: `(controlHeight − lineHeight) / 2`, e.g. 8 +
-  /// 20 + 8 = 36. The control uses [controlHeight] as a minimum, so it grows
-  /// with the text scale instead of clipping or shifting the label.
+  /// 20 + 8 = 36.
+  ///
+  /// The control uses [controlHeight] as a minimum, so it grows with the text
+  /// scale instead of clipping or shifting the label.
   double controlPaddingY(TextStyle text) =>
       (controlHeight - text.lineHeight) / 2;
 
-  /// The smallest a tappable area may be. Controls whose visual is smaller
-  /// (a checkbox, a compact button on touch) pad their hit area out to this.
-  /// 0 on the pointer tier.
+  /// The smallest a tappable area may be.
+  ///
+  /// Controls whose visual is smaller (a checkbox, a compact button on touch)
+  /// pad their hit area out to this. Zero on the pointer tier.
   final double minHitTarget;
 
   /// Horizontal padding of bounded controls (inputs, tabs, switch rows).
@@ -311,8 +319,10 @@ class CoilMetrics {
   /// Padding of a segmented list around its items.
   final double segmentPadding;
 
-  /// Padding of a popup (popover or sheet list) around its rows. A popup's
-  /// radius is the item radius plus this, so the corners stay concentric.
+  /// Padding of a popup (popover or sheet list) around its rows.
+  ///
+  /// A popup's radius is the item radius plus this, so the corners stay
+  /// concentric.
   final double popupInset;
 
   /// The narrowest a select trigger gets.
@@ -391,7 +401,7 @@ class CoilMetrics {
   int get hashCode => Object.hashAll(_props);
 }
 
-/// The four metric sets coil resolves from, one per tier and size step:
+/// The four metric sets Coil resolves from, one per tier and size step:
 /// a theme field, so apps can change sizes at runtime.
 ///
 /// ```dart
@@ -403,7 +413,7 @@ class CoilMetrics {
 /// ```
 @immutable
 class CoilMetricsTable {
-  /// Creates a table; unset entries keep coil's defaults.
+  /// Creates a table; unset entries keep Coil's defaults.
   const CoilMetricsTable({
     this.pointer = CoilMetrics.pointer,
     this.pointerCompact = CoilMetrics.pointerCompact,

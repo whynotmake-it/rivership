@@ -1,3 +1,9 @@
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:coil/src/primitives/drawer.dart';
+/// @docImport 'package:coil/src/primitives/surface.dart';
+/// @docImport 'package:flutter/widgets.dart';
+library;
+
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -10,25 +16,29 @@ import 'package:flutter/painting.dart';
 /// brand badge).
 enum CoilBrandFill {
   /// The brand, deepened or lightened in Oklch (hue and chroma kept) until
-  /// its label reaches 4.5 : 1, coil's floor for text, also at the button's
-  /// slightly lighter hover and darker pressed tones. A brand that already
-  /// passes is kept. The default.
+  /// its label reaches 4.5 : 1, Coil's floor for text, also at the button's
+  /// slightly lighter hover and darker pressed tones.
+  ///
+  /// A brand that already passes is kept. The default.
   accessible,
 
   /// The brand exactly as given, under whichever label (white or
-  /// near-black) reads better by APCA. On a mid-tone brand, such as coil's
-  /// own blue or an orange, the label falls below 4.5 : 1.
+  /// near-black) reads better by APCA.
+  ///
+  /// On a mid-tone brand, such as Coil's own blue or an orange, the label
+  /// falls below 4.5 : 1.
   exact,
 }
 
-/// coil's color tokens.
+/// Coil's color tokens.
 ///
 /// [CoilColors.light] and [CoilColors.dark] are the defaults. Change any
 /// token with [copyWith].
 @immutable
 class CoilColors with Diagnosticable {
-  /// Creates a color set. Prefer [CoilColors.light] / [CoilColors.dark]
-  /// and [copyWith].
+  /// Creates a color set.
+  ///
+  /// Prefer [CoilColors.light] or [CoilColors.dark] with [copyWith].
   const CoilColors({
     required this.brightness,
     required this.surfaces,
@@ -65,7 +75,7 @@ class CoilColors with Diagnosticable {
   /// A full palette from a [brand] color and a neutral tone, for
   /// [brightness].
   ///
-  /// The neutral tone tints every grey: surfaces, text, fills and borders
+  /// The neutral tone tints every grey: surfaces, text, fills, and borders
   /// take [neutralHue] (an Oklch hue in degrees: about 60 is warm, 250 is
   /// cool) at [neutralChroma] (Oklch chroma: 0 is pure grey, 0.01 a hint,
   /// 0.03 clearly tinted). Each token keeps the lightness and opacity it has
@@ -77,8 +87,8 @@ class CoilColors with Diagnosticable {
   /// background: if the tint lowers it, they get lighter or darker, never a
   /// different hue.
   ///
-  /// [brand] is used as given (the default is coil's blue), in light,
-  /// dark and high contrast alike: focus rings, selection, the cursor and
+  /// [brand] is used as given (the default is Coil's blue), in light,
+  /// dark, and high contrast alike: focus rings, selection, the cursor, and
   /// the switch follow it (the theme's high contrast darkens only the focus
   /// ring, to 3 : 1). Surfaces that carry text on the brand use
   /// [CoilColors.brandFill] and [CoilColors.onBrandFill], derived from it by
@@ -272,7 +282,9 @@ class CoilColors with Diagnosticable {
   final Color mutedForeground;
 
   /// `--accent`: a neutral grey (the switch's off track), not the brand
-  /// color. See [brand] for that.
+  /// color.
+  ///
+  /// See [brand] for the brand color.
   final Color accent;
 
   /// `--selected`.
@@ -297,12 +309,13 @@ class CoilColors with Diagnosticable {
   final Color warning;
 
   /// The one brand color, exactly as the theme gives it: focus rings, the
-  /// on switch, text selection and other marks. Text never sits on it; see
-  /// [brandFill] for that.
+  /// on switch, text selection, and other marks.
+  ///
+  /// Text never sits on it; see [brandFill] for that.
   final Color brand;
 
   /// The fill of a surface that carries text on the brand: the brand
-  /// button, the brand badge. Under [onBrandFill].
+  /// button and the brand badge, under [onBrandFill].
   ///
   /// [CoilColors.fromSeed] derives it from [brand] by a [CoilBrandFill]
   /// policy; the default themes use [CoilBrandFill.accessible], which can
@@ -314,36 +327,39 @@ class CoilColors with Diagnosticable {
   final Color onBrandFill;
 
   /// [brand] as text on the page: the label of a selected tab or toggle
-  /// segment when `CoilThemeData.brandSelection` is on. Under
-  /// [CoilBrandFill.accessible] it's lightened or darkened in Oklch until it
-  /// reaches 4.5 : 1 on [brandWash] over every surface a control sits on
-  /// (levels 1 to 5) and on each bare surface, and a yellow darkens toward
+  /// segment when [CoilThemeData.brandSelection] is on.
+  ///
+  /// Under [CoilBrandFill.accessible] it's lightened or darkened in Oklch
+  /// until it reaches 4.5 : 1 on [brandWash] over every surface a control sits
+  /// on (levels 1 to 5) and on each bare surface, and a yellow darkens toward
   /// amber rather than olive; under [CoilBrandFill.exact] it's [brand].
   final Color brandInk;
 
   /// A translucent brand wash that marks the current item when
-  /// `CoilThemeData.brandSelection` is on: the selected tab's pill, the
-  /// selected toggle segments. Brand at 14 % in light and 22 % in dark.
-  /// Under [CoilBrandFill.accessible] the dark wash lifts a deep brand to
-  /// Oklch lightness 0.5 and leans a yellow or lime toward amber, since a
-  /// thin brand over a dark page reads as a dark shade of it.
+  /// [CoilThemeData.brandSelection] is on: the selected tab's pill and the
+  /// selected toggle segments.
+  ///
+  /// Brand at 14 % in light and 22 % in dark. Under [CoilBrandFill.accessible]
+  /// the dark wash lifts a deep brand to Oklch lightness 0.5 and leans a
+  /// yellow or lime toward amber, since a thin brand over a dark page reads as
+  /// a dark shade of it.
   final Color brandWash;
 
   /// [brand] as a mark: the focus ring, the on switch's track, the
-  /// selected radio's dot and the text cursor. Under
-  /// [CoilBrandFill.accessible] it reaches 3 : 1 against the surfaces
-  /// controls sit on (levels 1 to 5: the page, cards, popovers, sheets and
+  /// selected radio's dot, and the text cursor.
+  ///
+  /// Under [CoilBrandFill.accessible] it reaches 3 : 1 against the surfaces
+  /// controls sit on (levels 1 to 5: the page, cards, popovers, sheets, and
   /// dialogs), as WCAG asks of a control's marks: a brand that doesn't is
-  /// moved in Oklch lightness, chroma kept, darker in light (coil's blue a
+  /// moved in Oklch lightness, chroma kept, darker in light (Coil's blue a
   /// little, a yellow to amber) and lighter in dark (navy, graphite). A
   /// brand that already shows is [brand] itself; so is
   /// [CoilBrandFill.exact].
   final Color brandMark;
 
-  /// How [brandFill], [onBrandFill], [brandInk], [brandWash] and
-  /// [brandMark] derive
-  /// from [brand]: what [CoilColors.fromSeed] was given, and what [copyWith]
-  /// uses when it derives them again for a new brand.
+  /// How [brandFill], [onBrandFill], [brandInk], [brandWash], and
+  /// [brandMark] derive from [brand]: what [CoilColors.fromSeed] was given,
+  /// and what [copyWith] uses when it derives them again for a new brand.
   final CoilBrandFill brandFillPolicy;
 
   /// The [border] opacity over [foreground]: 0.12, 0.4 in high contrast.
@@ -376,10 +392,11 @@ class CoilColors with Diagnosticable {
   /// `--shadow-color`.
   final Color shadowColor;
 
-  /// The scrim behind coil's modal surfaces: sheets, centered and drawer
-  /// dialogs, and a `CoilDrawer` sliding over the page. Black at 20 % in
-  /// light and 30 % in dark, where black dims less. Nothing blurs the page
-  /// behind it.
+  /// The scrim behind Coil's modal surfaces: sheets, centered and drawer
+  /// dialogs, and a [CoilDrawer] sliding over the page.
+  ///
+  /// Black at 20 % in light and 30 % in dark, where black dims less. Nothing
+  /// blurs the page behind it.
   final Color scrim;
 
   /// Linearly interpolates two color sets, for animated theme changes.
@@ -423,11 +440,12 @@ class CoilColors with Diagnosticable {
     );
   }
 
-  /// Returns a copy with the given tokens replaced. Change the brand color
-  /// with `copyWith(brand: …)`; focus rings follow it, and [brandFill],
-  /// [onBrandFill], [brandInk] and [brandWash] are derived again by
-  /// [brandFillPolicy] (the one given here, or this palette's) unless you
-  /// pass them too. A new policy alone derives them again as well.
+  /// Returns a copy with the given tokens replaced.
+  ///
+  /// Change the brand color with `copyWith(brand: …)`; focus rings follow it,
+  /// and [brandFill], [onBrandFill], [brandInk], and [brandWash] are derived
+  /// again by [brandFillPolicy] (the one given here, or this palette's) unless
+  /// you pass them too. A new policy alone derives them again as well.
   CoilColors copyWith({
     Brightness? brightness,
     List<Color>? surfaces,
@@ -513,13 +531,16 @@ class CoilColors with Diagnosticable {
     );
   }
 
-  /// The surface at [level] (1–8, clamped): `--surface-N`. Popups sit one
-  /// or two levels above what opened them.
+  /// The surface at [level] (1–8, clamped): `--surface-N`.
+  ///
+  /// Popups sit one or two levels above what opened them.
   Color surface(int level) => surfaces[level.clamp(1, 8) - 1];
 
-  /// `--shadow-N`, as box shadows. The dark recipe's inset ring and top
-  /// highlight can't be box shadows; [insetRing] and [topHighlight] return
-  /// them to paint inside the shape (see `CoilSurface`).
+  /// `--shadow-N`, as box shadows.
+  ///
+  /// The dark recipe's inset ring and top highlight can't be box shadows;
+  /// [insetRing] and [topHighlight] return them to paint inside the shape
+  /// (see [CoilSurface]).
   ///
   /// Blur is converted from CSS: a CSS blur of `B` has a Gaussian sigma of
   /// `B / 2`, while a [BoxShadow]'s is `0.57735 × blurRadius + 0.5`.
@@ -549,9 +570,10 @@ class CoilColors with Diagnosticable {
   }
 
   /// The [BoxShadow.blurRadius] whose sigma equals that of a CSS blur of
-  /// [cssBlur]: `(B / 2 - 0.5) / 0.57735`, never below 0. The 1 px drop
-  /// (sigma 0.5) comes out as a hard edge, since a [BoxShadow] with no blur
-  /// radius has no sigma.
+  /// [cssBlur]: `(B / 2 - 0.5) / 0.57735`, never below 0.
+  ///
+  /// The 1 px drop (sigma 0.5) comes out as a hard edge, since a [BoxShadow]
+  /// with no blur radius has no sigma.
   static double _blurRadius(double cssBlur) =>
       math.max(0, (cssBlur / 2 - 0.5) / 0.57735);
 
@@ -579,6 +601,7 @@ class CoilColors with Diagnosticable {
 
   /// How far (Oklch lightness) the brand button moves from [brandFill]:
   /// this much lighter under the pointer and this much darker pressed.
+  ///
   /// [CoilBrandFill.accessible] checks its label at both tones too, so no
   /// state drops it below 4.5 : 1.
   static const brandStateShift = 0.03;
@@ -588,7 +611,7 @@ class CoilColors with Diagnosticable {
   ///
   /// The label is white or near-black ([CoilColors.light]'s foreground),
   /// whichever reads better on the brand by APCA: white on a mid blue,
-  /// orange, green or purple, dark on a yellow or lime. [CoilBrandFill.exact]
+  /// orange, green, or purple, dark on a yellow or lime. [CoilBrandFill.exact]
   /// stops there. [CoilBrandFill.accessible] then moves the fill in Oklch,
   /// hue and chroma kept, until the label reaches 4.5 : 1 at the hover and
   /// pressed tones too ([brandStateShift] lighter and darker); in dark it
@@ -657,7 +680,7 @@ class CoilColors with Diagnosticable {
   /// lifts a deep brand's dark wash to Oklch lightness 0.5 and leans a
   /// yellow's toward amber, and moves the ink in Oklch lightness until it
   /// reaches 4.5 : 1 on the wash over every surface a control sits on
-  /// (levels 1 to 5: a selected tab on the page, a card, a popover, a sheet
+  /// (levels 1 to 5: a selected tab on the page, a card, a popover, a sheet,
   /// or a dialog) and on each bare surface.
   static ({Color ink, Color wash}) brandAccents(
     Color brand,
@@ -698,20 +721,26 @@ class CoilColors with Diagnosticable {
   }
 
   /// Below this Oklch chroma a brand reads as grey: graphite (zinc, about
-  /// 0.014), stone (0.010) and Tailwind's gray (0.027) are under it; slate
-  /// (0.046) and muted navies and teals are over it. See [brandIsChromatic].
+  /// 0.014), stone (0.010), and Tailwind's gray (0.027) are under it; slate
+  /// (0.046) and muted navies and teals are over it.
+  ///
+  /// See [brandIsChromatic].
   static const brandChromaFloor = 0.03;
 
   /// Whether [brand] has enough color to mark a selection: its Oklch chroma
-  /// is at least [brandChromaFloor]. A grey brand (graphite) can't, so
-  /// `CoilThemeData.brandSelection` falls back to the neutral selection for
-  /// it; the brand button, the switch and the focus ring still use it.
+  /// is at least [brandChromaFloor].
+  ///
+  /// A grey brand (graphite) can't, so [CoilThemeData.brandSelection] falls
+  /// back to the neutral selection for it; the brand button, the switch, and
+  /// the focus ring still use it.
   bool get brandIsChromatic =>
       CoilColorMix.toOklch(brand).c >= brandChromaFloor;
 
   /// The surface levels brand ink and marks must show on: the page (1) to
-  /// a dialog (5). Levels 6 to 8 are rare stacking (a popover in a dialog),
-  /// and holding them would wash the ink out on every page.
+  /// a dialog (5).
+  ///
+  /// Levels 6 to 8 are rare stacking (a popover in a dialog), and holding them
+  /// would wash the ink out on every page.
   static const _controlLevels = 5;
 
   /// [brandMark] for [brand] over [surfaces] in [brightness] under
@@ -769,15 +798,15 @@ class CoilColors with Diagnosticable {
     return at(ok);
   }
 
-  /// These colors resolved for high contrast
-  /// (`MediaQuery.highContrastOf`): borders at foreground 40% and a
-  /// stronger off-state track ([accent] pushed toward the foreground). The
-  /// theme's high contrast also strengthens the focus ring.
+  /// These colors resolved for high contrast ([MediaQuery.highContrastOf]):
+  /// borders at foreground 40% and a stronger off-state track ([accent]
+  /// pushed toward the foreground).
   ///
-  /// [brandFill], [onBrandFill], [brandInk], [brandWash] and [brandMark]
-  /// take the
-  /// [CoilBrandFill.accessible] values, whatever the theme chose, and
-  /// [brandFillPolicy] says so; [brand] itself is kept.
+  /// The theme's high contrast also strengthens the focus ring.
+  ///
+  /// [brandFill], [onBrandFill], [brandInk], [brandWash], and [brandMark]
+  /// take the [CoilBrandFill.accessible] values, whatever the theme chose,
+  /// and [brandFillPolicy] says so; [brand] itself is kept.
   CoilColors highContrast() {
     final tones = brandTones(brand, brightness, CoilBrandFill.accessible);
     final accents = brandAccents(

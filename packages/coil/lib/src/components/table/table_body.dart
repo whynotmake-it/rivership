@@ -7,8 +7,10 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
 /// The body: the rows over the table's highlight, selection and focus ring
-/// layer. The keyboard's focus ring sits on the [active] row while the
-/// keyboard drives it, inset because the table clips.
+/// layer.
+///
+/// The keyboard's focus ring sits on the [active] row while the keyboard drives
+/// it, inset because the table clips.
 class TableBody<T> extends StatelessWidget {
   /// Creates the body.
   const TableBody({

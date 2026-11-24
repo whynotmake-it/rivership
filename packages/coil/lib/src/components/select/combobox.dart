@@ -51,19 +51,27 @@ class CoilCombobox<T> extends StatelessWidget {
   /// The picked value, or null for none.
   final T? value;
 
-  /// Called with the picked value. Null disables the combobox.
+  /// Called with the picked value.
+  ///
+  /// When null, disables the combobox.
   final ValueChanged<T>? onChanged;
 
-  /// Shown, muted, in the empty field. Usually a [Text].
+  /// Shown, muted, in the empty field.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
-  /// Shown in the list when nothing matches. Usually a [Text].
+  /// Shown in the list when nothing matches.
+  ///
+  /// Usually a [Text].
   final Widget empty;
 
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
 
-  /// Pins the presentation. Null decides per open.
+  /// Pins the presentation.
+  ///
+  /// When null, decides per open.
   final CoilPresentation? presentation;
 
   /// Pins the field's size step.
@@ -103,9 +111,11 @@ class CoilCombobox<T> extends StatelessWidget {
   );
 }
 
-/// A combobox that picks any number of [options]: rows toggle and the list
-/// stays open, and the picks show as chips under the field. Backspace in
-/// the empty field removes the last chip.
+/// A combobox that picks any number of [options], displaying picks as chips
+/// under the field.
+///
+/// Rows toggle and the list stays open. Backspace in the empty field removes
+/// the last chip.
 ///
 /// On a phone it always opens a sheet. Otherwise like [CoilCombobox].
 class CoilMultiCombobox<T> extends StatelessWidget {
@@ -133,13 +143,19 @@ class CoilMultiCombobox<T> extends StatelessWidget {
   /// The picked values.
   final Set<T> values;
 
-  /// Called with the new picks. Null disables the combobox.
+  /// Called with the new picks.
+  ///
+  /// When null, disables the combobox.
   final ValueChanged<Set<T>>? onChanged;
 
-  /// Shown, muted, in the empty field. Usually a [Text].
+  /// Shown, muted, in the empty field.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
-  /// Shown in the list when nothing matches. Usually a [Text].
+  /// Shown in the list when nothing matches.
+  ///
+  /// Usually a [Text].
   final Widget empty;
 
   /// A chip's remove button label for screen readers, before its label.
@@ -148,7 +164,9 @@ class CoilMultiCombobox<T> extends StatelessWidget {
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
 
-  /// Pins the presentation. Null decides per open.
+  /// Pins the presentation.
+  ///
+  /// When null, decides per open.
   final CoilPresentation? presentation;
 
   /// Pins the field's size step.
@@ -212,22 +230,30 @@ class _ComboboxCore<T> extends StatefulWidget {
   /// Whether options toggle and the list stays open.
   final bool multiple;
 
-  /// Called with the new picks. Null disables the combobox.
+  /// Called with the new picks.
+  ///
+  /// Null disables the combobox.
   final ValueChanged<Set<T>>? onChanged;
 
   /// A chip's remove button label.
   final String removeLabel;
 
-  /// Shown, muted, in the empty field. Usually a [Text].
+  /// Shown, muted, in the empty field.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
-  /// Shown in the list when nothing matches. Usually a [Text].
+  /// Shown in the list when nothing matches.
+  ///
+  /// Usually a [Text].
   final Widget empty;
 
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
 
-  /// Pins the presentation. Null decides per open.
+  /// Pins the presentation.
+  ///
+  /// Null decides per open.
   final CoilPresentation? presentation;
 
   /// Pins the field's size step.
@@ -342,8 +368,9 @@ class _ComboboxCoreState<T> extends State<_ComboboxCore<T>> {
     );
   }
 
-  /// Shows the picked label again and stops filtering. From event handlers
-  /// only.
+  /// Shows the picked label again and stops filtering.
+  ///
+  /// From event handlers only.
   void _showPicked() {
     _syncText();
     _query.value = '';
@@ -747,8 +774,9 @@ class _RemoveLastIntent extends Intent {
   const _RemoveLastIntent();
 }
 
-/// Removes the last pick. Disabled while the field has text, so Backspace
-/// then edits it.
+/// Removes the last pick.
+///
+/// Disabled while the field has text, so Backspace then edits it.
 class _RemoveLastAction extends Action<_RemoveLastIntent> {
   _RemoveLastAction({required this.enabled, required this.onInvoke});
 
@@ -762,8 +790,9 @@ class _RemoveLastAction extends Action<_RemoveLastIntent> {
   void invoke(_RemoveLastIntent intent) => onInvoke();
 }
 
-/// A pick of a multi-select combobox, with a button that removes it. It
-/// sits inside the field, one row high.
+/// A pick of a multi-select combobox, with a button that removes it.
+///
+/// It sits inside the field, one row high.
 class _Chip extends StatelessWidget {
   const _Chip({
     required this.label,

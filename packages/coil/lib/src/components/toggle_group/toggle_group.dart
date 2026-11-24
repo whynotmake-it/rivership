@@ -6,38 +6,50 @@ import 'package:coil/src/components/toggle_group/toggle_group_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilToggleGroup], as Motor tracks. Use them as
-/// keys of [CoilToggleGroup.motions] or [CoilToggleGroupStyle.motions].
+/// The animated parts of a [CoilToggleGroup], as Motor tracks.
+///
+/// Use them as keys of [CoilToggleGroup.motions] or
+/// [CoilToggleGroupStyle.motions].
 final class CoilToggleGroupTrack<T extends Object> extends Track<T> {
   CoilToggleGroupTrack._(super.converter, {required String super.debugLabel});
 
-  /// The merged selection blocks. Default motion: `standard`.
+  /// The merged selection blocks.
+  ///
+  /// Default motion: [CoilMotion.standard].
   static final selection = CoilToggleGroupTrack<double>._(
     .single,
     debugLabel: 'CoilToggleGroup.selection',
   );
 
-  /// The focus ring travelling between segments. Default motion: `quick`.
+  /// The focus ring travelling between segments.
+  ///
+  /// Default motion: [CoilMotion.quick].
   static final ring = CoilToggleGroupTrack<double>._(
     .single,
     debugLabel: 'CoilToggleGroup.ring',
   );
 
-  /// The label color. Default motion: `fade`.
+  /// The label color.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final label = CoilToggleGroupTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilToggleGroup.label',
   );
 
   /// A segment's width as its label changes: the segment springs and the
-  /// selection follows it. Default motion: `standard`; the label
-  /// cross-fades on `fade` / `fadeExit`.
+  /// selection follows it.
+  ///
+  /// Default motion: [CoilMotion.standard]; the label cross-fades on
+  /// [CoilMotion.fade] / [CoilMotion.fadeExit].
   static final size = CoilToggleGroupTrack<double>._(
     .single,
     debugLabel: 'CoilToggleGroup.size',
   );
 
-  /// The touch press fill. Default motion: `fade`.
+  /// The touch press fill.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final press = CoilToggleGroupTrack<double>._(
     .single,
     debugLabel: 'CoilToggleGroup.press',
@@ -68,14 +80,18 @@ class CoilToggleGroup<T> extends StatelessWidget {
   });
 
   /// The toggles: each option's [CoilOption.icon] (before the label) and
-  /// [CoilOption.label]. An icon-only segment passes its icon as the label,
-  /// with a [CoilOption.semanticLabel].
+  /// [CoilOption.label].
+  ///
+  /// An icon-only segment passes its icon as the label, with a
+  /// [CoilOption.semanticLabel].
   final List<CoilOption<T>> options;
 
   /// The values of the selected toggles.
   final Set<T> values;
 
-  /// Called with the new set of selected values. Null disables the group.
+  /// Called with the new set of selected values.
+  ///
+  /// Null disables the group.
   final ValueChanged<Set<T>>? onChanged;
 
   /// Pins the group to one size step.
@@ -85,8 +101,8 @@ class CoilToggleGroup<T> extends StatelessWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this group, keyed by [CoilToggleGroupTrack]s.
-  /// They win over the style's [CoilToggleGroupStyle.motions] and the
-  /// tokens.
+  ///
+  /// They win over the style's [CoilToggleGroupStyle.motions] and the tokens.
   final Map<CoilToggleGroupTrack<Object>, Motion>? motions;
 
   /// Overrides for this group's look, on top of the theme's

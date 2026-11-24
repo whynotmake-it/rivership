@@ -47,7 +47,9 @@ class AccordionSection<T> extends StatelessWidget {
   /// The trigger's states.
   final WidgetStatesController statesController;
 
-  /// Toggles the item. Null disables it.
+  /// Toggles the item.
+  ///
+  /// Null disables it.
   final VoidCallback? onPressed;
 
   /// The accordion's metrics.

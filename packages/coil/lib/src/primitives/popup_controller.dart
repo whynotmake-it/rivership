@@ -1,11 +1,18 @@
+/// @docImport 'package:coil/src/primitives/adaptive_popup.dart';
+/// @docImport 'package:coil/src/primitives/anchor.dart';
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'dart:async';
 
 import 'package:coil/src/foundation/adaptive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
-/// Why a popup closed. A [CoilPopupController.open] future resolves with
-/// one of these, exactly once.
+/// Why a popup closed.
+///
+/// A [CoilPopupController.open] future resolves with one of these, exactly
+/// once.
 enum CoilPopupCloseReason {
   /// A pick closed it (a single-choice list, a menu action).
   selected,
@@ -25,7 +32,7 @@ enum CoilPopupCloseReason {
 }
 
 /// Opens and closes a popup (a select's list, later a menu or combobox)
-/// from code, shaped like Flutter's `MenuController`.
+/// from code, shaped like Flutter's [MenuController].
 ///
 /// Hand it to a component's `controller:`. [open] returns a future that
 /// resolves once, when the popup closes, with the [CoilPopupCloseReason];
@@ -35,12 +42,15 @@ class CoilPopupController extends ChangeNotifier {
   _CoilPopupHost? _host;
   Future<CoilPopupCloseReason>? _closed;
 
-  /// Whether the popup is open. It turns false as soon as the popup starts
-  /// to close, before its exit animation ends.
+  /// Whether the popup is open.
+  ///
+  /// It turns false as soon as the popup starts to close, before its exit
+  /// animation ends.
   bool get isOpen => _closed != null;
 
-  /// Opens the popup, or returns the pending future if it is open. The
-  /// future resolves once, when it closes.
+  /// Opens the popup, or returns the pending future if it is open.
+  ///
+  /// The future resolves once, when it closes.
   ///
   /// [position], in the anchor's local coordinates, opens a popover at that
   /// point instead of next to the anchor, like a context menu at the
@@ -55,13 +65,16 @@ class CoilPopupController extends ChangeNotifier {
     return _closed ?? opened ?? Future.value(CoilPopupCloseReason.programmatic);
   }
 
-  /// Closes the popup with [CoilPopupCloseReason.programmatic]. Does
-  /// nothing when it is closed.
+  /// Closes the popup with [CoilPopupCloseReason.programmatic].
+  ///
+  /// Does nothing when it is closed.
   void close() {
     if (isOpen) _host?.close(CoilPopupCloseReason.programmatic);
   }
 
-  /// Connects the popup. `CoilAdaptivePopup` calls this; apps don't.
+  /// Connects the popup.
+  ///
+  /// [CoilAdaptivePopup] calls this; apps don't.
   void attach({
     required Future<CoilPopupCloseReason> Function(Offset? position) open,
     required void Function(CoilPopupCloseReason reason) close,
@@ -69,15 +82,18 @@ class CoilPopupController extends ChangeNotifier {
     _host = _CoilPopupHost(open, close);
   }
 
-  /// Disconnects the popup. A popup that goes away while open still
-  /// resolves its future, but the controller forgets it without notifying.
+  /// Disconnects the popup.
+  ///
+  /// A popup that goes away while open still resolves its future, but the
+  /// controller forgets it without notifying.
   void detach() {
     _host = null;
     _closed = null;
   }
 
   /// Reports that the popup opened; [closed] resolves when it closes.
-  /// `CoilAdaptivePopup` calls this; apps don't.
+  ///
+  /// [CoilAdaptivePopup] calls this; apps don't.
   void didOpen(Future<CoilPopupCloseReason> closed) {
     _closed = closed;
     notifyListeners();
@@ -98,7 +114,7 @@ class _CoilPopupHost {
   final void Function(CoilPopupCloseReason reason) close;
 }
 
-/// One open popup, as `CoilAdaptivePopup` hands it to its content: close it
+/// One open popup, as [CoilAdaptivePopup] hands it to its content: close it
 /// with a reason, or wait for it to close.
 abstract interface class CoilPopupHandle {
   /// How it opened: anchored or in a sheet.
@@ -107,14 +123,16 @@ abstract interface class CoilPopupHandle {
   /// Resolves once, when the popup closes.
   Future<CoilPopupCloseReason> get closed;
 
-  /// Closes the popup with [reason]. Only the first close counts.
+  /// Closes the popup with [reason].
+  ///
+  /// Only the first close counts.
   void close(CoilPopupCloseReason reason);
 
   /// Hands the page back while the popup stays to acknowledge a pick, until
   /// [close].
   ///
   /// A popover stops capturing anything outside itself, as if it were
-  /// already closing (see `CoilPopoverController.release`): the page takes
+  /// already closing (see [CoilPopoverController.release]): the page takes
   /// taps, scrolls and focus again while the pick lands. A sheet is modal
   /// and stays so. Does nothing once it's closed.
   void release();

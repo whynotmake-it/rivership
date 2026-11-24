@@ -30,13 +30,16 @@ class CoilHoverState {
     required this.pointerInside,
   });
 
-  /// The lit item: under the pointer, or holding keyboard focus. Null when
-  /// none.
+  /// The lit item: under the pointer, or holding keyboard focus.
+  ///
+  /// Null when none.
   final int? activeIndex;
 
-  /// Counts pointer entries. It steps when the pointer, having entered the
-  /// region, first lights an item, so a highlight keyed on it fades in at
-  /// that item instead of sliding over from where it was last.
+  /// Counts pointer entries.
+  ///
+  /// It steps when the pointer, having entered the region, first lights an
+  /// item, so a highlight keyed on it fades in at that item instead of
+  /// sliding over from where it was last.
   final int session;
 
   /// Whether a mouse is inside the region.
@@ -91,16 +94,18 @@ class CoilHoverRegion extends StatefulWidget {
   /// The axis [nearest] measures along.
   final CoilHoverAxis axis;
 
-  /// Whether empty space between items lights the nearest one. Off by
-  /// default: only the item under the pointer lights.
+  /// Whether empty space between items lights the nearest one.
+  ///
+  /// Off by default: only the item under the pointer lights.
   final bool nearest;
 
   /// Whether an item that gets keyboard focus lights.
   final bool followFocus;
 
-  /// Shares the lit item with a list's [CoilActiveItemController]. Hovering
-  /// writes into it, and items the keyboard makes active light too. A
-  /// pointer leaving the region clears an item it set.
+  /// Shares the lit item with a list's [CoilActiveItemController].
+  ///
+  /// Hovering writes into it, and items the keyboard makes active light
+  /// too. A pointer leaving the region clears an item it set.
   final CoilActiveItemController? activeItem;
 
   /// Called when the lit item changes.
@@ -144,8 +149,10 @@ class _CoilHoverRegionState extends State<CoilHoverRegion> {
     if (_activeIndex == index) _activeIndex = null;
   }
 
-  /// Lights [index] (or nothing). A shared [CoilActiveItemController] is
-  /// the source of truth when there is one; [_show] applies its value.
+  /// Lights [index] (or nothing).
+  ///
+  /// A shared [CoilActiveItemController] is the source of truth when there
+  /// is one; [_show] applies its value.
   void _setActive(int? index) {
     final controller = widget.activeItem;
     if (controller == null) {
@@ -327,6 +334,7 @@ class CoilHoverHighlight extends StatelessWidget {
   final CoilMotion? motion;
 
   /// The glide between items, for a component's resolved track motion.
+  ///
   /// Defaults to `quick`.
   final Motion? glideMotion;
 
@@ -391,11 +399,15 @@ class CoilHoverItem extends StatefulWidget {
     this.enabled = true,
   });
 
-  /// The item's position in the region. Indices must be unique per region.
+  /// The item's position in the region.
+  ///
+  /// Indices must be unique per region.
   final int index;
 
-  /// Whether the pointer can light this item. A disabled item stays
-  /// registered (so measurements stay stable) but is skipped by hit tests.
+  /// Whether the pointer can light this item.
+  ///
+  /// A disabled item stays registered (so measurements stay stable) but is
+  /// skipped by hit tests.
   final bool enabled;
 
   /// The item.

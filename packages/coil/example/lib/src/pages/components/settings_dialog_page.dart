@@ -69,9 +69,9 @@ class _SettingsDialogPageState extends State<SettingsDialogPage> {
   Widget build(BuildContext context) => CatalogPage(
     title: 'SettingsDialog',
     summary:
-        'An xl dialog with the setting rows next to a sidebar of sections '
-        'that never folds. Below 600 wide a select takes over from the '
-        'sidebar, and on a phone the whole thing opens as a sheet.',
+        'An extra-large dialog with setting rows next to a sidebar of '
+        'sections that never folds. Below 600 px wide a select takes over '
+        'from the sidebar, and on a phone the whole thing opens as a sheet.',
     hero: _AppBar(prefs: _prefs, onOpen: _open),
     usage: '''
 showCoilSettingsDialog<String>(
@@ -107,21 +107,21 @@ showCoilSettingsDialog<String>(
       ),
       CatalogNote(
         'Pointer',
-        'The sections sit in a static sidebar 208 wide, so there is no rail, '
-            'shortcut or drawer here. The panel keeps its heading and '
+        'The sections sit in a static sidebar 208 px wide, so there is no '
+            'rail, shortcut, or drawer here. The panel keeps its heading and '
             'description in place while its body scrolls.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'Put a single control in each row. A whole toggle row is one tap '
-            'target, while a row with a select, slider or button responds only '
-            'on the control itself.',
+            'target, while a row with a select, slider, or button responds '
+            'only on the control itself.',
       ),
       CatalogNote(
         'Accessibility',
         'The title names the route and the close button sits in the corner. A '
             'toggle row reads as a single node, so a screen reader announces '
-            'its label, description and state together.',
+            'its label, description, and state together.',
       ),
     ],
     children: [
@@ -130,7 +130,7 @@ showCoilSettingsDialog<String>(
         description:
             'CoilSettingsDialog is a plain widget, so you can put it in a '
             'CoilModalPage or inline in a page as it is here. Resize the '
-            'window below 600 to watch the select take over from the '
+            'window below 600 px to watch the select take over from the '
             'sidebar.',
         child: CoilSettingsDialog<String>(
           title: const Text('Settings'),

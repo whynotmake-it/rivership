@@ -4,15 +4,15 @@ import 'package:coil/src/foundation/plasticity.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:flutter/widgets.dart';
 
-/// A raised surface: the fill, shadow and edge of one step on the surface
+/// A raised surface: the fill, shadow, and edge of one step on the surface
 /// ladder, and the scope that tells its children which step they sit on.
 ///
 /// A surface opened from another one sits above it, so a menu inside a
-/// dialog doesn't melt into it. The level is `min(ambient + offset, 8)`,
-/// where the ambient level is the nearest [CoilSurface]'s (1, the page,
-/// when there is none). Use [popoverOffset] for popovers, menus and sheets
-/// and [dialogOffset] for dialogs. The level also reaches routes opened
-/// from inside, such as a sheet.
+/// dialog remains visually distinct from it. The level is
+/// `min(ambient + offset, 8)`, where the ambient level is the nearest
+/// [CoilSurface]'s (1, the page, when there is none). Use [popoverOffset] for
+/// popovers, menus, and sheets and [dialogOffset] for dialogs. The level also
+/// reaches routes opened from inside, such as a sheet.
 ///
 /// In dark mode the edge gets a faint inner ring and a lighter top line.
 /// They paint over the fill and under [child].
@@ -20,7 +20,7 @@ import 'package:flutter/widgets.dart';
 /// Pass [shadowLevel] to keep one shadow weight wherever the surface opens
 /// while its fill follows the level, and [color] to replace the fill.
 ///
-/// The surface doesn't clip: clip [child] with `ClipRSuperellipse` when it
+/// The surface doesn't clip: clip [child] with [ClipRSuperellipse] when it
 /// has its own backgrounds.
 class CoilSurface extends StatelessWidget {
   /// Creates a surface [offset] steps above the one it sits on.
@@ -49,7 +49,7 @@ class CoilSurface extends StatelessWidget {
        _paints = false,
        assert(offset >= 0, 'a surface sits at or above its substrate');
 
-  /// The offset of popovers, menus and sheets.
+  /// The offset of popovers, menus, and sheets.
   static const popoverOffset = 2;
 
   /// The offset of dialogs.
@@ -58,14 +58,19 @@ class CoilSurface extends StatelessWidget {
   /// How many steps above the ambient surface this one sits.
   final int offset;
 
-  /// The corner radius of the superellipse. Null is the theme's container
-  /// radius.
+  /// The corner radius of the superellipse.
+  ///
+  /// Null uses the theme's container radius.
   final BorderRadiusGeometry? borderRadius;
 
-  /// The shadow step. Null follows the surface's own level.
+  /// The shadow step.
+  ///
+  /// Null follows the surface's own level.
   final int? shadowLevel;
 
-  /// The fill. Null is the color of the surface's level.
+  /// The fill color.
+  ///
+  /// Null uses the color of the surface's level.
   final Color? color;
 
   /// The content, which sits on this surface's level.
@@ -116,8 +121,10 @@ class CoilSurface extends StatelessWidget {
   }
 }
 
-/// Carries the level. It is an [InheritedTheme] so that routes opened from
-/// inside (through [InheritedTheme.capture]) continue the ladder.
+/// Carries the surface level down the tree.
+///
+/// It is an [InheritedTheme] so that routes opened from inside (through
+/// [InheritedTheme.capture]) continue the ladder.
 class _SurfaceLevel extends InheritedTheme {
   const _SurfaceLevel({required this.level, required super.child});
 

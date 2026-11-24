@@ -1,4 +1,6 @@
-/// The coil `CoilCombobox` component.
+/// The Coil [CoilCombobox] component.
+///
+/// @docImport 'src/components/select/combobox.dart';
 library;
 
 export 'src/components/select/combobox.dart';

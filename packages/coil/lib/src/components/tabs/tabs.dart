@@ -8,13 +8,15 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// Which tabs of [CoilTabs] show their label.
+/// Visibility rule for tab labels in [CoilTabs].
 enum CoilTabLabels {
   /// Every tab shows its label.
   always,
 
-  /// Only the selected tab shows its label; the others show their icon
-  /// alone. Tabs without an icon always show their label.
+  /// Only the selected tab shows its label; unselected tabs show their icon
+  /// alone.
+  ///
+  /// Tabs without an icon always show their label.
   selected,
 }
 
@@ -25,51 +27,64 @@ enum CoilTabLabels {
 final class CoilTabsTrack<T extends Object> extends Track<T> {
   CoilTabsTrack._(super.converter, {required String super.debugLabel});
 
-  /// The selected pill gliding between tabs. Default motion: `standard`.
+  /// The selected pill gliding between tabs.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final selected = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.selected',
   );
 
-  /// The hover pill following the pointer. Default motion: `quick`.
+  /// The hover pill following the pointer.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final hover = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.hover',
   );
 
-  /// The focus ring travelling between tabs. Default motion: `quick`.
+  /// The focus ring travelling between tabs.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final focus = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.focus',
   );
 
-  /// A tab's label opening and closing under
-  /// [CoilTabLabels.selected]. Default motion: `quick`.
+  /// A tab's label opening and closing under [CoilTabLabels.selected].
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final label = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.label',
   );
 
-  /// The pills' opacity as they appear and leave. Default motion: `fade`.
+  /// The pills' opacity as they appear and leave.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final fade = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.fade',
   );
 
-  /// The labels turning foreground and semibold. Default motion: `fade`.
+  /// The labels turning foreground and semibold.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final emphasis = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.emphasis',
   );
 
-  /// The strip scrolling a tab into view. Default motion: `standard`.
+  /// The strip scrolling a tab into view.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final reveal = CoilTabsTrack<double>._(
     .single,
     debugLabel: 'CoilTabs.reveal',
   );
 }
 
-/// One tab of [CoilTabs].
+/// Data describing a single tab in [CoilTabs].
 @immutable
 class CoilTab<T> {
   /// Creates a tab.
@@ -83,15 +98,19 @@ class CoilTab<T> {
   /// What selecting this tab reports.
   final T value;
 
-  /// The tab's label, usually a [Text]. It turns semibold when selected; a
-  /// hidden semibold copy reserves the width so neighbors never shift.
+  /// The tab's label, usually a [Text].
+  ///
+  /// Turns semibold when selected; a hidden semibold copy reserves the width
+  /// so neighbors never shift.
   final Widget label;
 
   /// An optional icon before the label.
   final Widget? icon;
 
-  /// Names the tab for screen readers. Set it with
-  /// [CoilTabLabels.selected], where an unselected tab shows only its icon.
+  /// Names the tab for screen readers.
+  ///
+  /// Set this with [CoilTabLabels.selected], where an unselected tab shows
+  /// only its icon.
   final String? semanticLabel;
 }
 
@@ -123,26 +142,32 @@ class CoilTabs<T> extends StatefulWidget {
   /// The tabs.
   final List<CoilTab<T>> tabs;
 
-  /// The value of the selected tab, matched with [CoilTab.value]. A value
-  /// no tab has selects none.
+  /// The value of the selected tab, matched with [CoilTab.value].
+  ///
+  /// A value that no tab has selects none.
   final T value;
 
-  /// Called with the value of the tab to select. Null disables the tabs.
+  /// Called with the value of the tab to select.
+  ///
+  /// When null, disables the tabs.
   final ValueChanged<T>? onChanged;
 
   /// Which tabs show their label.
   final CoilTabLabels labels;
 
-  /// Pins the tabs to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the tabs to one size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens ([CoilThemeData.motion]) for these
   /// tabs.
   final CoilMotion? motion;
 
-  /// Per-part motions for these tabs, keyed by [CoilTabsTrack]s:
-  /// `motions: {.selected: const .bouncySpring()}`. They win over the
-  /// style's [CoilTabsStyle.motions] and the tokens.
+  /// Per-part motions for these tabs, keyed by [CoilTabsTrack] values.
+  ///
+  /// For example, `motions: {.selected: const .bouncySpring()}`. These take
+  /// precedence over [CoilTabsStyle.motions] and the theme tokens.
   final Map<CoilTabsTrack<Object>, Motion>? motions;
 
   /// Overrides for these tabs' look, on top of the theme's [CoilTabsStyle]
@@ -233,9 +258,11 @@ class _CoilTabsState<T> extends State<CoilTabs<T>>
     }
   }
 
-  /// Scrolls tab [index] (and an edge fade's width around it) into view by
-  /// the least distance. The scroll position follows the `reveal` spring and
-  /// stays tappable; a drag takes over at any time.
+  /// Scrolls tab [index] (and an edge fade's width around it) into view by the
+  /// least distance.
+  ///
+  /// The scroll position follows the `reveal` spring and stays tappable; a drag
+  /// takes over at any time.
   void _reveal(int? index, {bool animate = true}) {
     if (index == null || index >= widget.tabs.length || !_scroll.hasClients) {
       return;

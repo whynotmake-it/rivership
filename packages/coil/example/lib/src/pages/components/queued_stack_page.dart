@@ -58,14 +58,14 @@ CoilQueuedStack(
       ),
       CatalogNote(
         'Motion',
-        'The pile folds and fans out on the standard spring, and a message '
-            'that lands behind a folded pile makes it recoil by 7 pixels on '
-            'the gentle spring.',
+        'The stack folds and fans out smoothly on a spring, and a message '
+            'that lands behind a folded stack makes it recoil gently by '
+            '7 px.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'Give the stack a bounded height and pass the transcript as its '
-            'child, because it adds the pile’s height to the transcript’s '
+            'child, because it adds the stack’s height to the transcript’s '
             'bottom padding so the last message never ends up underneath '
             'it.',
       ),
@@ -384,7 +384,7 @@ class _PileState extends State<_Pile> {
   Widget build(BuildContext context) => DemoSection(
     title: 'The pile on its own',
     description:
-        'While the pile is folded, two cards peek 12 pixels out behind the '
+        'While the stack is folded, two cards peek 12 px out behind the '
         'front one and the rest fade away. Hover it to fan the whole queue '
         'into a list.',
     controls: DemoControls(

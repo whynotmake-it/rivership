@@ -27,7 +27,9 @@ class CoilRadioIndicator extends StatelessWidget {
   /// The states the border reacts to.
   final Set<WidgetState> states;
 
-  /// Pins the circle to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the circle to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens for this instance.

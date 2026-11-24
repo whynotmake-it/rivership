@@ -1,10 +1,14 @@
+/// @docImport 'package:coil/select.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// Overrides for how a `CoilSelect` looks. Unset fields come from
-/// [CoilSelectStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilSelect] looks.
+///
+/// Unset fields come from [CoilSelectStyle.fallback], derived from the theme's
+/// tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// Trigger colors are resolved with [WidgetState.hovered],
 /// [WidgetState.pressed] and [WidgetState.selected] (open).
@@ -75,8 +79,9 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
   /// The trigger and row corner radius; popups add their inset.
   final double? radius;
 
-  /// The popover's fill. Null follows the surface level the popover opens
-  /// on.
+  /// The popover's fill.
+  ///
+  /// Null follows the surface level the popover opens on.
   final Color? surface;
 
   /// The fill behind the picked row (and merged blocks).
@@ -90,9 +95,10 @@ class CoilSelectStyle extends CoilComponentStyle<CoilSelectStyle> {
   /// (rows at full emphasis on touch).
   final WidgetStateProperty<Color?>? rowLabel;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

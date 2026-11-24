@@ -38,8 +38,7 @@ Future<void> showPreviewSettings(
       label: const Text('Appearance'),
       icon: const CatalogIcon(Glyph.palette),
       description: const Text(
-        'Theme, the palette from CoilColors.fromSeed, corner radii and '
-        'spacing.',
+        'Theme, brand color, corner radii, and spacing.',
       ),
       builder: (context) => const _Appearance(),
     ),
@@ -48,8 +47,8 @@ Future<void> showPreviewSettings(
       label: const Text('Type'),
       icon: const CatalogIcon(Glyph.type),
       description: const Text(
-        "The font, with coil's tuned typography for Allo and Inter, which "
-        'this app bundles.',
+        'Font family and OpenType features for the bundled Allo and Inter '
+        'typefaces.',
       ),
       builder: (context) => const _Type(),
     ),
@@ -58,8 +57,7 @@ Future<void> showPreviewSettings(
       label: const Text('Behavior'),
       icon: const CatalogIcon(Glyph.play),
       description: const Text(
-        'The springs components move on, and input and feedback on this '
-        'device.',
+        'Spring feel, frame rate, and input feedback on this device.',
       ),
       builder: (context) => const _Behavior(),
     ),
@@ -68,7 +66,8 @@ Future<void> showPreviewSettings(
       label: const Text('Accessibility'),
       icon: const CatalogIcon(Glyph.user),
       description: const Text(
-        'What the platform tells the app about the person using it.',
+        'Simulate platform accessibility preferences such as text scale, '
+        'contrast, and reduced motion.',
       ),
       builder: (context) => const _Accessibility(),
     ),
@@ -240,7 +239,7 @@ List<Widget> _colorRows(CatalogSettings settings) => [
   ),
   _SelectRow<CatalogBrand>(
     label: const Text('Brand color'),
-    description: const Text('Also the focus ring.'),
+    description: const Text('Also tints the focus ring.'),
     value: settings.brand,
     values: CatalogBrand.values,
     text: (brand) => brand.label,
@@ -250,7 +249,7 @@ List<Widget> _colorRows(CatalogSettings settings) => [
   _SelectRow<CoilBrandFill>(
     label: const Text('Brand fill'),
     description: const Text(
-      'Accessible deepens it until labels reach 4.5 : 1.',
+      'Accessible deepens the fill until labels reach 4.5:1 contrast.',
     ),
     value: settings.brandFill,
     values: CoilBrandFill.values,
@@ -263,7 +262,8 @@ List<Widget> _colorRows(CatalogSettings settings) => [
   _SwitchRow(
     label: 'Brand selection',
     description: const Text(
-      'Selected tabs, segments and radios, and the cursor, in the brand.',
+      'Highlight selected tabs, segments, radios, and the text cursor in '
+      'the brand color.',
     ),
     value: settings.brandSelection,
     onChanged: (value) => settings.brandSelection = value,
@@ -284,7 +284,7 @@ List<Widget> _colorRows(CatalogSettings settings) => [
     max: 0.05,
     divisions: 50,
     value: settings.neutralChroma,
-    valueText: (v) => v == 0 ? 'Grey' : v.toStringAsFixed(3),
+    valueText: (v) => v == 0 ? 'Gray' : v.toStringAsFixed(3),
     onChanged: (value) => settings.neutralChroma = value,
   ),
 ];
@@ -324,8 +324,9 @@ class _Type extends StatelessWidget {
           _SwitchRow(
             label: 'Optical sizing',
             description: const Text(
-              'Spacing and detail follow the size: open for small text, '
-              'tight for titles. Off draws every size with the text cut.',
+              'Adjusts letter spacing and detail by font size: open for small '
+              'text, tighter for titles. When off, every size uses standard '
+              'body proportions.',
             ),
             value: settings.opticalSizing,
             onChanged: (value) => settings.opticalSizing = value,
@@ -339,14 +340,14 @@ class _Type extends StatelessWidget {
           _SwitchRow(
             label: 'Distinct letters and figures',
             description: const Text(
-              'I, l, 1 and 0 that cannot be mistaken for each other.',
+              'Makes I, l, 1, and 0 easy to tell apart.',
             ),
             value: settings.disambiguate,
             onChanged: (value) => settings.disambiguate = value,
           ),
           _SwitchRow(
             label: 'Open figures',
-            description: const Text('Open forms of 4, 6 and 9.'),
+            description: const Text('Open forms of 4, 6, and 9.'),
             value: settings.openFigures,
             onChanged: (value) => settings.openFigures = value,
           ),
@@ -374,7 +375,7 @@ List<Widget> _shapeRows(CatalogSettings settings) => [
   CoilSettingRow(
     label: const Text('Plasticity'),
     description: const Text(
-      'Subtle vertical light on the controls you press.',
+      'Subtle top-to-bottom lighting on interactive controls.',
     ),
     trailing: _Control(
       child: CoilSlider(
@@ -418,7 +419,7 @@ List<Widget> _motionRows(CatalogSettings settings) => [
   _SelectRow<CatalogFrameRate>(
     label: const Text('Frame rate'),
     description: const Text(
-      'Every spring ticks at this rate, through a TickerRateScope.',
+      'Caps how often springs update, to test lower refresh rates.',
     ),
     value: settings.frameRate,
     values: CatalogFrameRate.values,
@@ -453,13 +454,13 @@ class _Accessibility extends StatelessWidget {
         ),
         _SwitchRow(
           label: 'High contrast',
-          description: const Text('Off follows the platform.'),
+          description: const Text('Follows the system setting when off.'),
           value: settings.highContrast,
           onChanged: (value) => settings.highContrast = value,
         ),
         _SwitchRow(
           label: 'Reduce motion',
-          description: const Text('Off follows the platform.'),
+          description: const Text('Follows the system setting when off.'),
           value: settings.reducedMotion,
           onChanged: (value) => settings.reducedMotion = value,
         ),
@@ -470,7 +471,10 @@ class _Accessibility extends StatelessWidget {
         ),
         _SwitchRow(
           label: 'Bold focus ring',
-          description: const Text('2 px instead of 1. High contrast is 2.'),
+          description: const Text(
+            'Draws a 2 px focus ring instead of 1 px. High contrast always '
+            'uses 2 px.',
+          ),
           value: settings.boldFocusRing,
           onChanged: (value) => settings.boldFocusRing = value,
         ),
@@ -495,7 +499,7 @@ List<Widget> _deviceRows(CatalogSettings settings) => [
   _SelectRow<CatalogTier>(
     label: const Text('Size tier'),
     description: const Text(
-      'Auto follows the desktop and mobile toggle, and phones.',
+      'Auto switches between pointer and touch based on the current viewport.',
     ),
     value: settings.tier,
     values: CatalogTier.values,
@@ -504,13 +508,18 @@ List<Widget> _deviceRows(CatalogSettings settings) => [
   ),
   _SwitchRow(
     label: 'Haptics',
-    description: const Text("Off turns coil's haptics off."),
+    description: const Text(
+      'Triggers subtle tactile feedback on supported devices.',
+    ),
     value: !settings.hapticsOff,
     onChanged: (value) => settings.hapticsOff = !value,
   ),
   _SwitchRow(
     label: 'Pointing-hand cursor',
-    description: const Text('Off shows the arrow over controls.'),
+    description: const Text(
+      'Shows a pointing hand over interactive controls; when off, uses the '
+      'default arrow.',
+    ),
     value: settings.pointingCursor,
     onChanged: (value) => settings.pointingCursor = value,
   ),

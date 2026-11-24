@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/field.dart';
+library;
+
 import 'dart:ui' as ui;
 
 import 'package:coil/foundation.dart';
@@ -6,22 +9,24 @@ import 'package:coil/src/components/field/field_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilField], as Motor tracks. Use them as keys of
-/// [CoilField.motions] or [CoilFieldStyle.motions].
+/// The animated parts of a [CoilField], as Motor tracks.
+///
+/// Use these as keys of [CoilField.motions] or [CoilFieldStyle.motions].
 final class CoilFieldTrack<T extends Object> extends Track<T> {
   CoilFieldTrack._(super.converter, {required String super.debugLabel});
 
   /// The room of the description and the error, and an error that changes
-  /// size: the field grows and shrinks to fit them, gap included. Default
-  /// motion: `standard` growing, `standardExit` shrinking; the messages
-  /// fade on `fade` / `fadeExit`.
+  /// size, so the field grows and shrinks to fit them (gap included).
+  ///
+  /// Defaults to [CoilMotion.standard] growing and [CoilMotion.standardExit]
+  /// shrinking; messages fade on [CoilMotion.fade] and [CoilMotion.fadeExit].
   static final message = CoilFieldTrack<double>._(
     .single,
     debugLabel: 'CoilField.message',
   );
 }
 
-/// Where a [CoilField] puts its label.
+/// Layout orientation for a [CoilField]'s label relative to its control.
 enum CoilFieldOrientation {
   /// The label above the control, messages below.
   vertical,
@@ -29,8 +34,8 @@ enum CoilFieldOrientation {
   /// The label and description at the start, the control at the end.
   horizontal,
 
-  /// Vertical in narrow space, horizontal from the style's
-  /// `responsiveBreakpoint` (448 by default).
+  /// Vertical in narrow space, horizontal from
+  /// [CoilFieldStyle.responsiveBreakpoint] (448 by default).
   responsive,
 }
 
@@ -42,7 +47,7 @@ enum CoilFieldOrientation {
 /// control. An error also turns the label red and gives the control its
 /// invalid look.
 ///
-/// Put one control in a field. For a group of controls, use `CoilFieldSet`.
+/// Put one control in a field. For a group of controls, use [CoilFieldSet].
 ///
 /// ```dart
 /// CoilField(
@@ -74,17 +79,23 @@ class CoilField extends StatefulWidget {
   /// The control.
   final Widget child;
 
-  /// Names the control. Usually a [Text].
+  /// Names the control.
+  ///
+  /// Usually a [Text].
   final Widget? label;
 
-  /// One sentence of help under the control. Usually a [Text].
+  /// One sentence of help under the control.
+  ///
+  /// Usually a [Text].
   final Widget? description;
 
-  /// What to fix, under the control. The field is invalid while it's set.
+  /// What to fix, under the control.
+  ///
+  /// The field is invalid while it's set.
   final Widget? error;
 
   /// Replaces the alert before the [error]: the theme's [CoilIcons.alert],
-  /// or coil's drawn one.
+  /// or Coil's drawn one.
   final Widget? errorIcon;
 
   /// Marks the field required: a muted `*` after the label, and "required"
@@ -97,15 +108,17 @@ class CoilField extends StatefulWidget {
   /// Where the label sits.
   final CoilFieldOrientation orientation;
 
-  /// Pins the field's text to one size step. Null follows
-  /// [CoilAdaptiveScope].
+  /// Pins the field's text to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens for this field.
   final CoilMotion? motion;
 
-  /// Per-track motions for this field, keyed by [CoilFieldTrack]s. They win
-  /// over the style's [CoilFieldStyle.motions] and [motion]'s tokens.
+  /// Per-track motions for this field, keyed by [CoilFieldTrack]s.
+  ///
+  /// They win over the style's [CoilFieldStyle.motions] and [motion]'s tokens.
   final Map<CoilFieldTrack<Object>, Motion>? motions;
 
   /// Overrides for this field's look.

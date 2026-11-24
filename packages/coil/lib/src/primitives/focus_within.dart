@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/text_field_core.dart';
+library;
+
 import 'package:coil/src/foundation/input_modality.dart';
 import 'package:flutter/widgets.dart';
 
@@ -5,7 +8,7 @@ import 'package:flutter/widgets.dart';
 /// version of the focus ring, like CSS `:has(:focus-visible)`.
 ///
 /// It's true while something in [child] has focus and either the keyboard
-/// was the last input (`CoilInputModality`, the same rule as a control's
+/// was the last input ([CoilInputModality], the same rule as a control's
 /// ring) or the focused thing sits in a [CoilFocusAlwaysVisible], as a text
 /// field does: its focus shows however it got it. A click or tap on a
 /// button inside never turns it on.
@@ -83,11 +86,13 @@ class _CoilFocusWithinState extends State<CoilFocusWithin> {
   );
 }
 
-/// Marks [child] as a control whose focus is always visible, however it
-/// was focused, as a text field's is (DESIGN.md §8.1). A [CoilFocusWithin]
-/// around it shows focus while anything in [child] has it.
+/// Marks [child] as a control whose focus is always visible, however it was
+/// focused, as a text field's is (DESIGN.md §8.1).
 ///
-/// `CoilTextFieldCore` puts one around its editable text. Wrap a custom
+/// A [CoilFocusWithin] around it shows focus while anything in [child] has
+/// it.
+///
+/// [CoilTextFieldCore] puts one around its editable text. Wrap a custom
 /// text field in one so containers treat it the same way.
 class CoilFocusAlwaysVisible extends InheritedWidget {
   /// Marks [child].

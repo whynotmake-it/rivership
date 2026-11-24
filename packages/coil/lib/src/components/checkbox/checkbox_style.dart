@@ -1,10 +1,13 @@
+/// @docImport 'package:coil/checkbox.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/checkbox/checkbox.dart'
     show CoilCheckboxTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilCheckbox` looks; unset fields come from
+/// Overrides for how a [CoilCheckbox] looks; unset fields come from
 /// [CoilCheckboxStyle.fallback].
 ///
 /// [border] is resolved with [WidgetState.hovered], [WidgetState.pressed],
@@ -60,15 +63,17 @@ class CoilCheckboxStyle extends CoilComponentStyle<CoilCheckboxStyle> {
   /// The box's corner radius before text scaling.
   final double? radius;
 
-  /// Springs for the checkbox's animated parts, keyed by
-  /// [CoilCheckboxTrack]s: `{CoilCheckboxTrack.glyph: const
-  /// Motion.bouncySpring()}`. A checkbox's own `motions:` win over these;
-  /// these win over the motion tokens. [merge] combines the maps key by key.
+  /// Springs for the checkbox's animated parts, keyed by [CoilCheckboxTrack]s:
+  /// `{CoilCheckboxTrack.glyph: const Motion.bouncySpring()}`.
+  ///
+  /// A checkbox's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

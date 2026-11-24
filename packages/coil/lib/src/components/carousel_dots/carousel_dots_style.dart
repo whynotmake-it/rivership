@@ -1,12 +1,16 @@
+/// @docImport 'package:coil/carousel_dots.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/carousel_dots/carousel_dots_track.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilCarouselDots` looks. Unset fields come from
-/// [CoilCarouselDotsStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with `CoilThemeData.withComponentStyle`,
-/// or per instance with `style:`.
+/// Overrides for how a [CoilCarouselDots] looks.
+///
+/// Unset fields come from [CoilCarouselDotsStyle.fallback], derived from the
+/// theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
   /// Creates a style.
   const CoilCarouselDotsStyle({
@@ -58,21 +62,24 @@ class CoilCarouselDotsStyle extends CoilComponentStyle<CoilCarouselDotsStyle> {
   /// The width of the current dot's pill.
   final double? pillWidth;
 
-  /// The size of each dot's own click target. The dot sits centered in it,
-  /// so dots are `targetSize - dotSize` apart.
+  /// The size of each dot's own click target.
+  ///
+  /// The dot sits centered in it, so dots are `targetSize - dotSize` apart.
   final double? targetSize;
 
-  /// The corner radius of the targets and the highlight. Dots and the pill
-  /// are fully rounded unless this is smaller than half their height.
+  /// The corner radius of the targets and the highlight.
+  ///
+  /// Dots and the pill are fully rounded unless this is smaller than half their
+  /// height.
   final double? radius;
 
   /// The gap between the targets and the keyboard focus ring.
   final double? ringOffset;
 
-  /// Springs for the dots' animated parts, keyed by
-  /// [CoilCarouselDotsTrack]s:
-  /// `{CoilCarouselDotsTrack.pill: const Motion.bouncySpring()}`. The dots'
-  /// own `motions:` win over these; these win over the motion tokens.
+  /// Springs for the dots' animated parts, keyed by [CoilCarouselDotsTrack]s:
+  /// `{CoilCarouselDotsTrack.pill: const Motion.bouncySpring()}`.
+  ///
+  /// The dots' own `motions:` win over these; these win over the motion tokens.
   /// [merge] combines the maps key by key.
   final Map<CoilCarouselDotsTrack<Object>, Motion>? motions;
 

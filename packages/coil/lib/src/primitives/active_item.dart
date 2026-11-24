@@ -36,8 +36,9 @@ class CoilActiveItemController extends ChangeNotifier {
   void clear() => activate(null, via: _via);
 
   /// Moves to the next enabled item of [count] in [step] direction (1 or
-  /// -1), from the active one or from before the first. Returns the new
-  /// index, or null if none moved.
+  /// -1), from the active one or from before the first.
+  ///
+  /// Returns the new index, or null if none moved.
   int? move(
     int step, {
     required int count,

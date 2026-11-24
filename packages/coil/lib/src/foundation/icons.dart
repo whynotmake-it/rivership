@@ -1,14 +1,22 @@
+/// @docImport 'package:coil/src/components/banner/banner.dart';
+/// @docImport 'package:coil/src/components/select/select.dart';
+/// @docImport 'package:coil/src/foundation/theme.dart';
+/// @docImport 'package:coil/src/primitives/icon_presence.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// Marks a copyWith argument that wasn't passed.
 const Object _keep = Object();
 
-/// A role an icon plays in coil's components, named for what it means,
-/// not for its shape. Each is a field of [CoilIcons].
+/// A role an icon plays in Coil's components, named for what it means,
+/// not for its shape.
+///
+/// Each value corresponds to a field of [CoilIcons].
 enum CoilIconRole {
-  /// Checked, picked or copied: a checkbox's tick, a select's checkmark,
-  /// a menu's check, a copy that worked.
+  /// Checked, picked, or copied: a checkbox's tick, a select's checkmark,
+  /// a menu's check, or a copy that worked.
   check,
 
   /// Indeterminate: a checkbox that is partly checked.
@@ -21,23 +29,25 @@ enum CoilIconRole {
   failed,
 
   /// Close or remove: a sheet's and a dialog's close button, a banner's or
-  /// card's dismiss, a chip's or attachment's remove.
+  /// card's dismiss, or a chip's or attachment's remove.
   close,
 
   /// A field's error.
   alert,
 
-  /// Toward the start: back, previous month or page. Left in LTR, right in
-  /// RTL.
+  /// Toward the start: back, previous month, or page.
+  ///
+  /// Left in LTR, right in RTL.
   chevronStart,
 
   /// Toward the end: next month or page, a submenu, a breadcrumb separator,
-  /// a disclosure (turned a quarter when it opens). Right in LTR, left in
-  /// RTL.
+  /// or a disclosure (turned a quarter when it opens).
+  ///
+  /// Right in LTR, left in RTL.
   chevronEnd,
 
   /// Opens downward or sorts descending: a select's and a combobox's
-  /// indicator, the calendar's month title, a pile's collapse button.
+  /// indicator, the calendar's month title, or a pile's collapse button.
   chevronDown,
 
   /// Sorts ascending.
@@ -50,22 +60,22 @@ enum CoilIconRole {
   stop,
 }
 
-/// The icons coil's components show, by [CoilIconRole], for an app that
-/// brings its own icon set (`CoilThemeData.icons`).
+/// The icons Coil's components show, by [CoilIconRole], for an app that
+/// brings its own icon set ([CoilThemeData.icons]).
 ///
 /// Each field is any widget, styled like a slot by the ambient [IconTheme]
-/// (size, color, `weight`, `applyTextScaling`): an `Icon` from an icon
-/// font, an SVG, a painter. Null keeps coil's drawn glyph, so a partial set
+/// (size, color, `weight`, `applyTextScaling`): an [Icon] from an icon
+/// font, an SVG, or a painter. Null keeps Coil's drawn glyph, so a partial set
 /// replaces only the roles it names. A widget passed to a component's own
-/// slot (`CoilSelect.checkmark`, `CoilBanner.dismissIcon`) still wins over
+/// slot ([CoilSelect.checkmark], [CoilBanner.dismissIcon]) still wins over
 /// this map.
 ///
 /// Where a component animates an icon (a checkbox's tick, the copy
 /// feedback, the composer's send and stop), it wraps it in a
-/// `CoilIconPresence`: an icon that reads it animates itself, and any other
+/// [CoilIconPresence]: an icon that reads it animates itself, and any other
 /// fades and scales in and out.
 ///
-/// The chevrons are named by direction in the text: coil's drawn
+/// The chevrons are named by direction in the text: Coil's drawn
 /// [chevronStart] and [chevronEnd] mirror in RTL, and a custom one should
 /// too (`Icon(…, matchTextDirection: true)`).
 ///
@@ -81,7 +91,7 @@ enum CoilIconRole {
 /// See doc/icons.md for complete sets.
 @immutable
 class CoilIcons with Diagnosticable {
-  /// Creates an icon set. Unset roles keep coil's drawn glyphs.
+  /// Creates an icon set; unset roles keep Coil's drawn glyphs.
   const CoilIcons({
     this.check,
     this.dash,
@@ -133,7 +143,7 @@ class CoilIcons with Diagnosticable {
   /// See [CoilIconRole.stop].
   final Widget? stop;
 
-  /// The icon for [role], or null for coil's drawn glyph.
+  /// The icon for [role], or null for Coil's drawn glyph.
   Widget? operator [](CoilIconRole role) => switch (role) {
     CoilIconRole.check => check,
     CoilIconRole.dash => dash,
@@ -149,8 +159,9 @@ class CoilIcons with Diagnosticable {
     CoilIconRole.stop => stop,
   };
 
-  /// Returns a copy with the given roles replaced. Pass null for a role to
-  /// go back to coil's drawn glyph.
+  /// Returns a copy with the given roles replaced.
+  ///
+  /// Pass null for a role to go back to Coil's drawn glyph.
   CoilIcons copyWith({
     Object? check = _keep,
     Object? dash = _keep,

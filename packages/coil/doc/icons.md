@@ -1,9 +1,9 @@
 # Icons
 
-coil bundles no icon set and depends on no icon package. It draws a few
-glyphs itself (a tick, a dash, chevrons, an ×), and an app can swap every one
-of them for its own icon set in one place: `CoilThemeData.icons`. This page
-shows how, with complete sets for Lucide and Material Symbols, and how an
+Coil bundles no icon set and depends on no icon package. It draws a few
+glyphs itself (a tick, a dash, chevrons, and an ×), and an app can swap every
+one of them for its own icon set in one place: `CoilThemeData.icons`. This
+page shows how, with complete sets for Lucide and Material Symbols, and how an
 icon can bring its own animation.
 
 The design is in [DESIGN.md](../DESIGN.md) §11.
@@ -11,20 +11,20 @@ The design is in [DESIGN.md](../DESIGN.md) §11.
 ## The role map
 
 `CoilIcons` has one `Widget?` field per role, named for what the icon means,
-not for its shape. Null keeps coil's drawn glyph, so a partial set replaces
+not for its shape. Null keeps Coil's drawn glyph, so a partial set replaces
 only the roles it names.
 
-| Role | Where coil shows it |
+| Role | Where Coil shows it |
 |---|---|
-| `check` | checkbox tick, select and combobox checkmark, menu check, question rows' check, the copy feedback after a copy |
+| `check` | checkbox tick, select and combobox checkmark, menu check, question rows' check, and the copy feedback after a copy |
 | `dash` | an indeterminate checkbox |
 | `copy` | the copy action at rest (`CoilInputCopy`, `CoilCopyGlyph`) |
 | `failed` | the copy feedback after a refused copy |
-| `close` | sheet and dialog close buttons, banner and card dismiss, queued card remove, combobox chip and attachment remove |
+| `close` | sheet and dialog close buttons, banner and card dismiss, queued card remove, and combobox chip and attachment remove |
 | `alert` | a field's error |
-| `chevronStart` | calendar's previous month or year, data table's previous page, a menu's back row |
-| `chevronEnd` | calendar's next month or year, data table's next page, breadcrumb separator, accordion, thinking steps and sidebar disclosures (turned a quarter when open), a menu's submenu row, the arrow a question row's key turns into |
-| `chevronDown` | select and combobox indicator, calendar's month title, the queued stack's collapse button, table sorted descending |
+| `chevronStart` | calendar's previous month or year, data table's previous page, and a menu's back row |
+| `chevronEnd` | calendar's next month or year, data table's next page, breadcrumb separator, accordion, thinking steps and sidebar disclosures (turned a quarter when open), a menu's submenu row, and the arrow a question row's key turns into |
+| `chevronDown` | select and combobox indicator, calendar's month title, the queued stack's collapse button, and table sorted descending |
 | `chevronUp` | table sorted ascending |
 | `send` | the composer's send button |
 | `stop` | the composer's stop button |
@@ -34,7 +34,7 @@ The order of precedence is:
 1. a widget passed to the component's own slot (`CoilSelect.checkmark`,
    `CoilBanner.dismissIcon`, `CoilBreadcrumb.separator`, …);
 2. the theme's `CoilIcons` entry;
-3. coil's drawn glyph.
+3. Coil's drawn glyph.
 
 ```dart
 CoilTheme(
@@ -55,31 +55,31 @@ doesn't name:
 theme.copyWith(icons: theme.icons.merge(const CoilIcons(close: Icon(LucideIcons.x))))
 ```
 
-`CoilIcons.copyWith(check: null)` puts one role back to coil's glyph.
+`CoilIcons.copyWith(check: null)` puts one role back to Coil's glyph.
 
 ### Styling
 
 Icons are plain widgets, styled like any slot by the ambient `IconTheme`:
 `size` (the tier's icon size), `color` (the label's current color),
-`weight` and `applyTextScaling: true`. Flutter's `Icon` reads all of them.
-coil raises `weight` from 400 (`CoilIconWeight.rest`, a 1.5 stroke) to 533
+`weight`, and `applyTextScaling: true`. Flutter's `Icon` reads all of them.
+Coil raises `weight` from 400 (`CoilIconWeight.rest`, a 1.5 stroke) to 533
 (`CoilIconWeight.emphasis`, a 2 stroke) on hover and for indicators (a
-checkbox tick, a select check, a field's alert, the sheet's close ×). A
-variable icon font follows that by itself; a set that ships one static font
+checkbox tick, a select check, a field's alert, or the sheet's close ×). A
+variable icon font follows that automatically; a set that ships one static font
 per stroke can pick a font by weight (see Lucide below); a filled set simply
 loses the cue.
 
 A painted icon should size itself with `CoilIconSize.of(context)`, which
-applies the text scale like `Icon` does. coil lays icons out like `Icon`:
-an icon sits exactly where coil's glyph sat, at the same size and centered
+applies the text scale like `Icon` does. Coil lays icons out like `Icon`:
+an icon sits exactly where Coil's glyph sat, at the same size and centered
 the same way, on both tiers and at any text scale.
 
 ### Right to left
 
-coil's drawn `chevronStart` and `chevronEnd` point the other way in RTL. A
+Coil's drawn `chevronStart` and `chevronEnd` point the other way in RTL. A
 custom icon handles direction itself: use an icon that mirrors with the text
 (`IconData(…, matchTextDirection: true)`, which both sets below use for their
-chevrons), or pick by `Directionality.of(context)`. coil turns a disclosure's
+chevrons), or pick by `Directionality.of(context)`. Coil turns a disclosure's
 `chevronEnd` a quarter toward the end when it opens, so it points down in
 both directions as long as the icon points to the end.
 
@@ -88,7 +88,7 @@ both directions as long as the icon points to the end.
 For [`lucide_icons_flutter`](https://pub.dev/packages/lucide_icons_flutter)
 4.0.3 (Lucide 1.70), the maintained Lucide package on pub.dev. Lucide ships
 one static font per stroke (weights 100 to 600 are strokes 0.5 to 3), so a
-small widget picks coil's two strokes: 1.5 at rest (`LucideIcons300`) and 2
+small widget picks Coil's two strokes: 1.5 at rest (`LucideIcons300`) and 2
 at emphasis (`LucideIcons400`, Lucide's default).
 
 ```dart
@@ -104,7 +104,7 @@ const lucideIcons = CoilIcons(
   failed: LucideIcon(LucideIcons300.x, LucideIcons400.x),
   close: LucideIcon(LucideIcons300.x, LucideIcons400.x),
   alert: LucideIcon(LucideIcons300.circleAlert, LucideIcons400.circleAlert),
-  // The Dir variants mirror in RTL, as coil's chevrons do.
+  // The Dir variants mirror in RTL, as Coil's chevrons do.
   chevronStart: LucideIcon(
     LucideIcons300.chevronLeftDir,
     LucideIcons400.chevronLeftDir,
@@ -119,7 +119,7 @@ const lucideIcons = CoilIcons(
   stop: LucideIcon(LucideIcons300.square, LucideIcons400.square),
 );
 
-/// A Lucide icon at coil's two strokes: 1.5 at rest, 2 where coil raises
+/// A Lucide icon at Coil's two strokes: 1.5 at rest, 2 where Coil raises
 /// the weight to emphasis.
 class LucideIcon extends StatelessWidget {
   const LucideIcon(this.rest, this.emphasis, {super.key});
@@ -136,15 +136,16 @@ class LucideIcon extends StatelessWidget {
 ```
 
 With only `package:lucide_icons_flutter/lucide_icons.dart`, use
-`Icon(LucideIcons.check)` and so on: one stroke (2) everywhere.
+`Icon(LucideIcons.check)` and so on for a single stroke (2) everywhere.
 
 ## Material Symbols
 
 For [`material_symbols_icons`](https://pub.dev/packages/material_symbols_icons)
-4.2960.0. Its fonts are variable, so `Icon` follows coil's `weight` (400 at
+4.2960.0. Its fonts are variable, so `Icon` follows Coil's `weight` (400 at
 rest, 533 at emphasis) with no extra code. Only variable fonts honor
-`IconTheme.weight`: a static icon font, or a filled set, draws one weight
-whatever coil asks for, the same caveat as Fluid Functionalism's filled sets.
+`IconTheme.weight`: static icon fonts and filled icon sets draw at a single
+weight regardless of the requested weight, so they will not reflect Coil's
+hover or emphasis weight changes.
 
 ```dart
 import 'package:coil/coil.dart';
@@ -172,20 +173,20 @@ Use `Symbols.check_rounded` and the like for the rounded style.
 
 ## Animated icons
 
-Where coil animates an icon (it appears, disappears or swaps with another),
-it wraps the icon in a `CoilIconPresence` carrying an `Animation<double>`:
-0 when the icon is absent, 1 when it is fully there. These are the
-checkbox's tick and dash, the select's and question rows' check, the copy
-feedback (copy, check, ×) and the composer's send and stop.
+Where Coil animates an icon (when it appears, disappears, or swaps with
+another), it wraps the icon in a `CoilIconPresence` carrying an
+`Animation<double>`: 0 when the icon is absent, 1 when it is fully visible.
+These are the checkbox's tick and dash, the select's and question rows' check,
+the copy feedback (copy, check, ×), and the composer's send and stop.
 
 - An icon that reads `CoilIconPresence.maybeOf(context)` animates itself
-  from it, and coil leaves it alone.
+  from it, and Coil leaves it alone.
 - An icon that doesn't read it fades in and out and grows from 80 % with
   the same presence (`CoilIconPresence.absentScale`). Every icon above does
   this out of the box.
 - Outside an animation, `maybeOf` returns null: draw the icon complete.
 
-The presence runs on coil's motion tokens (the checkbox's tick on `fade`
+The presence runs on Coil's motion tokens (the checkbox's tick on `fade`
 and `fadeExit`, the copy and send swaps on `quick` and `quickExit`), is
 clamped to 0 to 1 (a bounce belongs outside the icon), and under reduced
 motion jumps to its end. A swap is two presences crossing: the outgoing
@@ -195,7 +196,7 @@ painter's `repaint`, an `AnimatedBuilder`) instead of rebuilding.
 
 ### A check that draws itself
 
-coil's own tick works this way:
+Coil's own tick works this way:
 
 ```dart
 class DrawnCheck extends StatelessWidget {
@@ -210,7 +211,7 @@ class DrawnCheck extends StatelessWidget {
         // Null outside an animation: draw the whole check.
         CoilIconPresence.maybeOf(context),
         icon.color!,
-        // coil's stroke: 1.5 at rest, 2 at emphasis.
+        // Coil's stroke: 1.5 at rest, 2 at emphasis.
         1.5 * icon.weight! / CoilIconWeight.rest,
       ),
     );
@@ -278,7 +279,7 @@ check: Builder(
 
 ### In your own components
 
-`CoilIcon(.check)` shows the theme's icon for a role or coil's glyph, and
+`CoilIcon(.check)` shows the theme's icon for a role or Coil's glyph, and
 `CoilIconSwitcher` shows an icon in a presence and crosses two on a swap:
 
 ```dart
@@ -289,14 +290,14 @@ CoilIconSwitcher(
 )
 ```
 
-## Not covered
+## Limitations
 
-- **Morphs.** There is no contract for one shape turning into another (a
-  copy icon folding into a check); a swap is two icons crossing. A morph
-  could later be a third kind of icon that receives both roles.
-- **Progress.** The presence is how far an icon is in or out, not a linear
-  timeline: it follows a spring and can't be scrubbed at a constant rate. A
-  linear-progress flag for timeline animations is a possible follow-up.
-- **The loading spinner** isn't a role. It loops rather than appearing, and
-  a static icon wouldn't turn; replace it per button with
-  `CoilButton.loadingIndicator`, which shows its widget as it is.
+- **Morphs.** There is no contract for morphing one shape into another (such
+  as a copy icon folding into a check). Swaps cross-fade two separate icons.
+- **Progress.** `CoilIconPresence` represents how far an icon has entered or
+  exited along a spring, not a linear timeline that can be scrubbed at a
+  constant rate.
+- **The loading spinner** isn't an icon role. Because it loops rather than
+  entering and exiting, a static icon wouldn't animate in its place. Replace
+  it per button with `CoilButton.loadingIndicator`, which renders your widget
+  as-is.

@@ -58,20 +58,20 @@ CoilInputMessage(
       CatalogNote(
         'Touch',
         'Return inserts a newline, so sending goes through the button. The '
-            'remove button on an attachment tile is always visible and takes '
-            'a 44 pixel hit target.',
+            'remove button on an attachment tile is always visible and keeps '
+            'a 44 px hit target.',
       ),
       CatalogNote(
         'Motion',
-        'The attachment tray grows in height on the standard spring and '
-            'fades its contents in, and the send button morphs between its '
-            'send, stop and queue shapes.',
+        'The attachment tray springs open smoothly and fades its contents '
+            'in, and the send button morphs between its send, stop, and queue '
+            'shapes.',
       ),
       CatalogNote(
         'Accessibility',
-        'The field is announced as a multiline text field labelled '
-            '"Message", and the button’s label follows whatever it currently '
-            'does, so it reads as Send, Stop or Queue message.',
+        'The field is announced as a multiline text field labeled "Message", '
+            'and the button’s label follows whatever it currently does, so it '
+            'reads as Send, Stop, or Queue message.',
       ),
     ],
     children: [

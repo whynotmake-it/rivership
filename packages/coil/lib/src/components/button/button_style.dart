@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/button.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/button/button.dart' show CoilButtonTrack;
 import 'package:coil/src/components/button/button_variant.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilButton` looks. Every field is optional; unset
-/// fields come from [CoilButtonStyle.fallback], derived from the theme's
-/// tokens. Set one app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per button with `style:`.
+/// Overrides for how a [CoilButton] looks.
+///
+/// Every field is optional; unset fields come from [CoilButtonStyle.fallback],
+/// derived from the theme's tokens. Set one app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per button with `style:`.
 ///
 /// Colors are [WidgetStateProperty]s resolved with the button's states:
 /// [WidgetState.hovered] (hover-capable pointers only), [WidgetState.pressed],
@@ -141,14 +145,16 @@ class CoilButtonStyle extends CoilComponentStyle<CoilButtonStyle> {
   final double? minHeight;
 
   /// Springs for the button's animated parts, keyed by [CoilButtonTrack]s:
-  /// `{CoilButtonTrack.collapse: const Motion.bouncySpring()}`. A button's
-  /// own `motions:` win over these; these win over the motion tokens.
-  /// [merge] combines the maps key by key.
+  /// `{CoilButtonTrack.collapse: const Motion.bouncySpring()}`.
+  ///
+  /// A button's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilButtonTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

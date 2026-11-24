@@ -1,14 +1,18 @@
+/// @docImport 'package:coil/src/components/field/choice_card.dart';
+/// @docImport 'package:coil/src/components/field/field.dart';
+library;
+
 import 'package:coil/src/primitives/interaction.dart';
 import 'package:flutter/widgets.dart';
 
-/// What a `CoilField` tells its control: whether the field is invalid or
+/// What a [CoilField] tells its control: whether the field is invalid or
 /// required, and where its label sends taps.
 ///
 /// A control shows its invalid look when [invalid] is true, and wraps
 /// itself in [CoilFieldControl] so a tap on the label reaches it. The field
 /// handles semantics itself, so controls don't read their label from here.
 ///
-/// A field drawn as a container (a `CoilChoiceCard`) or a row
+/// A field drawn as a container (a [CoilChoiceCard]) or a row
 /// ([CoilFieldRow]) also tells its control when the pointer is over it
 /// ([containerHovered]) or presses it ([containerPressed]). A container
 /// that also draws the focus ring says so with [framed].
@@ -35,16 +39,20 @@ class CoilFieldScope extends InheritedWidget {
   final CoilFieldLabelTarget labelTarget;
 
   /// Whether the field is a container that frames its control: the whole
-  /// container is the tap target and draws the focus ring. The control then
-  /// leaves out its own ring, so one shows, and its hit-area padding.
+  /// container is the tap target and draws the focus ring.
+  ///
+  /// The control then leaves out its own ring, so one shows, and its
+  /// hit-area padding.
   final bool framed;
 
-  /// Whether a hovering pointer is over the field's container. The control
-  /// shows its hover look, as if the pointer were on it.
+  /// Whether a hovering pointer is over the field's container.
+  ///
+  /// The control shows its hover look, as if the pointer were on it.
   final bool containerHovered;
 
-  /// Whether the field's container is pressed outside the control. The
-  /// control shows its pressed look, as if the press were on it.
+  /// Whether the field's container is pressed outside the control.
+  ///
+  /// The control shows its pressed look, as if the press were on it.
   final bool containerPressed;
 
   /// The nearest field scope, if any.
@@ -63,9 +71,11 @@ class CoilFieldScope extends InheritedWidget {
 
 /// Where a tap reaches a field's control.
 enum CoilFieldTapArea {
-  /// The label only. A text field focuses and a copy field copies; a tap
-  /// elsewhere in the row does nothing, so a slider or a select can't be
-  /// changed by a tap that missed it.
+  /// The label only.
+  ///
+  /// A text field focuses and a copy field copies; a tap elsewhere in the
+  /// row does nothing, so a slider or a select can't be changed by a tap
+  /// that missed it.
   label,
 
   /// The field's whole row: a checkbox, switch or radio toggles from
@@ -73,8 +83,9 @@ enum CoilFieldTapArea {
   row,
 }
 
-/// The controls a field holds, registered through [CoilFieldControl]. A
-/// tap on the label runs the last one's action; a tap on the row runs it
+/// The controls a field holds, registered through [CoilFieldControl].
+///
+/// A tap on the label runs the last one's action; a tap on the row runs it
 /// only for a single control that takes row taps.
 class CoilFieldLabelTarget {
   final _controls = <_CoilFieldControlState>[];
@@ -101,10 +112,11 @@ class CoilFieldLabelTarget {
   }
 }
 
-/// Registers [child] as its field's control. A tap on the field's label
-/// runs [onLabelTap], like an HTML `<label for>`: a text field focuses
-/// itself, a checkbox toggles. With [tapArea] [CoilFieldTapArea.row], a tap
-/// anywhere in a [CoilFieldRow] runs it too.
+/// Registers [child] as its field's control.
+///
+/// A tap on the field's label runs [onLabelTap], like an HTML `<label
+/// for>`: a text field focuses itself, a checkbox toggles. With [tapArea]
+/// [CoilFieldTapArea.row], a tap anywhere in a [CoilFieldRow] runs it too.
 class CoilFieldControl extends StatefulWidget {
   /// Creates a field control registration.
   const CoilFieldControl({
@@ -114,8 +126,9 @@ class CoilFieldControl extends StatefulWidget {
     this.tapArea = CoilFieldTapArea.label,
   });
 
-  /// What a tap on the field's label does. Null does nothing (a disabled
-  /// control).
+  /// What a tap on the field's label does.
+  ///
+  /// Null does nothing (a disabled control).
   final VoidCallback? onLabelTap;
 
   /// Where a tap reaches the control.
@@ -160,7 +173,9 @@ class _CoilFieldControlState extends State<CoilFieldControl> {
 /// Makes a field's row one tap target for its toggle, like a native
 /// settings row: a tap anywhere in [child] (the padding, the gap, the
 /// description) toggles the control, and the control shows hover and press
-/// while the row has them. The control keeps its own focus and ring.
+/// while the row has them.
+///
+/// The control keeps its own focus and ring.
 ///
 /// Only a field with one control that takes row taps
 /// ([CoilFieldLabelTarget.takesRowTaps]) responds. A row with a text

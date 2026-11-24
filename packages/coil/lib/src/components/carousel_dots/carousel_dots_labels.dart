@@ -1,11 +1,15 @@
+/// @docImport 'package:coil/carousel_dots.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 
 /// Formats a slide position for screen readers, from the slide's 1-based
 /// [number] and the [count] of slides.
 typedef CoilSlidePositionFormatter = String Function(int number, int count);
 
-/// The words `CoilCarouselDots` speaks to screen readers. Pass translations
-/// for other locales.
+/// The words [CoilCarouselDots] speaks to screen readers.
+///
+/// Pass translations for other locales.
 @immutable
 class CoilCarouselDotsLabels {
   /// Creates the labels.

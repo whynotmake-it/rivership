@@ -507,7 +507,7 @@ class _Wordmark extends StatelessWidget {
           SizedBox(width: hasLink ? 4 : 12),
           Flexible(
             child: Text(
-              'Refined Flutter components on springs',
+              'Flutter components, built on springs',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: text.caption.copyWith(color: colors.mutedForeground),

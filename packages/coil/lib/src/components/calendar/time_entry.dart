@@ -79,10 +79,11 @@ int snapMinute(int minute, {required int interval}) =>
   return (buffer: '$digit', value: digit < min ? null : digit, done: false);
 }
 
-/// The time that typing [digits] on a number pad gives, starting from
-/// [start] (24-hour): the hour first, then the minute, as iOS's time
-/// picker takes them ("1", "4", "3", "0" is 14:30). On the 12-hour clock
-/// the period of [start] stays.
+/// The time that typing [digits] on a number pad gives, starting from [start]
+/// (24-hour): the hour first, then the minute, as iOS's time picker takes them
+/// ("1", "4", "3", "0" is 14:30).
+///
+/// On the 12-hour clock the period of [start] stays.
 ({int hour, int minute}) timeFromDigits(
   String digits, {
   required ({int hour, int minute}) start,
@@ -123,6 +124,7 @@ int snapMinute(int minute, {required int interval}) =>
 final _pasted = RegExp(r'^(\d{1,2})(?::?(\d{2}))?\s*(?:([ap])\.?m\.?)?$');
 
 /// The time written in `text`: "1430", "14:30", "2:30 pm", "2:30PM", "9".
+///
 /// Null when it isn't one.
 ///
 /// With am or pm the hour is on the 12-hour clock. Without, an hour of 13

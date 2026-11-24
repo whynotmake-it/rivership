@@ -1,6 +1,9 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
+/// @docImport 'package:coil/file_thumbnail.dart';
+library;
+
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
@@ -11,8 +14,10 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// The animated parts of a [CoilQueuedStack]. Use them as keys of
-/// [CoilQueuedStack.motions] or [CoilQueuedStackStyle.motions].
+/// The animated parts of a [CoilQueuedStack].
+///
+/// Use these as keys of [CoilQueuedStack.motions] or
+/// [CoilQueuedStackStyle.motions].
 final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
   CoilQueuedStackTrack._(
     super.converter, {
@@ -20,38 +25,45 @@ final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
     super.initial,
   });
 
-  /// The stack fanning out and folding back. Default motion: `standard`
-  /// out, `standardExit` back.
+  /// The stack fanning out and folding back.
+  ///
+  /// Defaults to [CoilMotion.standard] out and [CoilMotion.standardExit] back.
   static final expand = CoilQueuedStackTrack<double>._(
     .single,
     initial: 0,
     debugLabel: 'CoilQueuedStack.expand',
   );
 
-  /// A card moving to a new place in the queue. Default motion: `standard`.
+  /// A card moving to a new place in the queue.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final slot = CoilQueuedStackTrack<double>._(
     .single,
     initial: 0,
     debugLabel: 'CoilQueuedStack.slot',
   );
 
-  /// A card's opacity as it's queued or leaves. Default motion: `fade` in,
-  /// `fadeExit` out.
+  /// A card's opacity as it is queued or leaves.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out.
   static final opacity = CoilQueuedStackTrack<double>._(
     .single,
     initial: 1,
     debugLabel: 'CoilQueuedStack.opacity',
   );
 
-  /// A card's rise and scale as it's queued or leaves. Default motion:
-  /// `standard` in, `standardExit` out.
+  /// A card's rise and scale as it is queued or leaves.
+  ///
+  /// Defaults to [CoilMotion.standard] in and [CoilMotion.standardExit] out.
   static final travel = CoilQueuedStackTrack<double>._(
     .single,
     initial: 1,
     debugLabel: 'CoilQueuedStack.travel',
   );
 
-  /// The dragged card lifting. Default motion: `quick`.
+  /// The dragged card lifting.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final lift = CoilQueuedStackTrack<double>._(
     .single,
     initial: 0,
@@ -59,8 +71,9 @@ final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
   );
 
   /// The collapsed stack recoiling when a message is queued behind the
-  /// visible cards. Default motion: `gentle`; the
-  /// original's one-off spring (bounce 0.5) isn't a tier.
+  /// visible cards.
+  ///
+  /// Defaults to [CoilMotion.gentle].
   static final bump = CoilQueuedStackTrack<double>._(
     .single,
     initial: 0,
@@ -68,7 +81,7 @@ final class CoilQueuedStackTrack<T extends Object> extends Track<T> {
   );
 }
 
-/// A message waiting in a [CoilQueuedStack].
+/// A message waiting to be sent in a [CoilQueuedStack].
 @immutable
 class CoilQueuedMessage {
   /// Creates a queued message.
@@ -82,18 +95,22 @@ class CoilQueuedMessage {
   /// queue changes.
   final Object id;
 
-  /// The message text, usually a [Text]. The card styles it in the subtitle
-  /// role and keeps it to one line with an ellipsis. Screen readers hear
-  /// it after the card's [CoilQueuedStackLabels.messageLabel].
+  /// The message text, usually a [Text].
+  ///
+  /// The card styles it in the subtitle role and keeps it to one line with an
+  /// ellipsis. Screen readers hear it after the card's
+  /// [CoilQueuedStackLabels.messageLabel].
   final Widget? child;
 
-  /// Previews of attached files, such as `CoilFileThumbnail`s. The card
-  /// shows the first three in small squares and counts the rest.
+  /// Previews of attached files, such as [CoilFileThumbnail] widgets.
+  ///
+  /// The card shows the first three in small squares and counts the rest.
   final List<Widget> attachments;
 }
 
-/// The words a [CoilQueuedStack] gives screen readers. The defaults are
-/// English.
+/// Accessibility labels announced by screen readers for a [CoilQueuedStack].
+///
+/// Defaults to English.
 @immutable
 class CoilQueuedStackLabels {
   /// Creates the labels.
@@ -105,21 +122,22 @@ class CoilQueuedStackLabels {
     this.countLabel = _count,
   });
 
-  /// The edit button.
+  /// The edit button label.
   final String editLabel;
 
-  /// The remove button.
+  /// The remove button label.
   final String removeLabel;
 
-  /// The collapse button an expanded stack shows on touch.
+  /// The collapse button label shown by an expanded stack on touch devices.
   final String collapseLabel;
 
-  /// A card: its place in the queue (from 1) and the queue's length.
-  /// Screen readers hear the message's own [CoilQueuedMessage.child] after
-  /// it.
+  /// Builds the announcement for a card from its 1-based position and total
+  /// queue length.
+  ///
+  /// Screen readers hear the message's own [CoilQueuedMessage.child] after it.
   final String Function(int position, int count) messageLabel;
 
-  /// The gutter: how many messages are queued.
+  /// Builds the gutter announcement for how many messages are queued.
   final String Function(int count) countLabel;
 
   static String _message(int position, int count) =>
@@ -151,7 +169,7 @@ class CoilQueuedStackLabels {
 /// recoil, so the user feels it land.
 ///
 /// Place it right above the composer and pass the transcript as [child].
-/// The transcript's `ListView` then keeps its last message clear of the
+/// The transcript's [ListView] then keeps its last message clear of the
 /// pile on its own:
 ///
 /// ```dart
@@ -194,36 +212,46 @@ class CoilQueuedStack extends StatefulWidget {
   /// Called with a message to move back into the composer.
   final ValueChanged<CoilQueuedMessage> onEdit;
 
-  /// The content the pile floats over, usually the transcript. With a
-  /// child, the stack fills the space it's given, lays the child out under
-  /// the pile, and adds the folded pile's height to the child's bottom
-  /// `MediaQuery` padding, so a `ListView` keeps its last message clear of
-  /// the pile. Null leaves only the pile, as tall as its cards.
+  /// The content the pile floats over, usually the transcript.
+  ///
+  /// With a child, the stack fills the space it's given, lays the child out
+  /// under the pile, and adds the folded pile's height to the child's bottom
+  /// [MediaQuery] padding, so a [ListView] keeps its last message clear of
+  /// the pile. When null, renders only the pile, as tall as its cards.
   final Widget? child;
 
   /// The gutter glyph beside the front card, such as an arrow into the
-  /// composer. Null leaves only the count.
+  /// composer.
+  ///
+  /// When null, shows only the count.
   final Widget? icon;
 
-  /// The edit button's glyph. Null leaves no edit button; double-click and
-  /// the keyboard still edit.
+  /// The edit button's glyph.
+  ///
+  /// When null, no edit button is shown; double-click and the keyboard still
+  /// edit.
   final Widget? editIcon;
 
-  /// The remove button's glyph. Null shows the theme's [CoilIcons.close],
-  /// or coil's drawn ×.
+  /// The remove button's glyph.
+  ///
+  /// When null, shows the theme's [CoilIcons.close], or Coil's drawn ×.
   final Widget? removeIcon;
 
   /// The words screen readers hear.
   final CoilQueuedStackLabels labels;
 
-  /// Pins the size step. Null follows [CoilAdaptiveScope].
+  /// Pins the size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens for this stack.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilQueuedStackTrack]s. They win over the
-  /// style's [CoilQueuedStackStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilQueuedStackTrack] values.
+  ///
+  /// These take precedence over [CoilQueuedStackStyle.motions] and the theme
+  /// tokens.
   final Map<CoilQueuedStackTrack<Object>, Motion>? motions;
 
   /// Overrides for this stack's look.

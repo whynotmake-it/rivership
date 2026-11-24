@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/radio_group.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/radio_group/radio_group.dart'
     show CoilRadioGroupTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilRadioGroup` looks. Unset fields come from
-/// [CoilRadioGroupStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilRadioGroup] looks.
+///
+/// Unset fields come from [CoilRadioGroupStyle.fallback], derived from the
+/// theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [label] is resolved with [WidgetState.selected], [WidgetState.hovered]
 /// and [WidgetState.focused]. [border] is resolved with
@@ -98,14 +102,16 @@ class CoilRadioGroupStyle extends CoilComponentStyle<CoilRadioGroupStyle> {
   final double? dotScale;
 
   /// Springs for the radios' animated parts, keyed by [CoilRadioGroupTrack]s:
-  /// `{CoilRadioGroupTrack.dot: const Motion.bouncySpring()}`. A group's or
-  /// radio's own `motions:` win over these; these win over the motion
-  /// tokens. [merge] combines the maps key by key.
+  /// `{CoilRadioGroupTrack.dot: const Motion.bouncySpring()}`.
+  ///
+  /// A group's or radio's own `motions:` win over these; these win over the
+  /// motion tokens. [merge] combines the maps key by key.
   final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
 
-  /// How lit this component is. Defaults to the theme's
-  /// `CoilThemeData.plasticity`; set it here to light (or flatten) one
-  /// component type or instance.
+  /// How lit this component is.
+  ///
+  /// Defaults to the theme's [CoilThemeData.plasticity]; set it here to light
+  /// (or flatten) one component type or instance.
   final CoilPlasticity? plasticity;
 
   @override

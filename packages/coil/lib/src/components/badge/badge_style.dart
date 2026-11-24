@@ -1,14 +1,17 @@
+/// @docImport 'package:coil/badge.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/badge/badge.dart' show CoilBadgeTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// How a `CoilBadge` is drawn.
+/// Visual presentation style of a [CoilBadge].
 enum CoilBadgeVariant {
-  /// The hue at 15 % into the background, foreground text.
+  /// The hue blended at 15% into the background, with foreground text.
   solid,
 
-  /// A hairline outline, foreground text and a colored dot.
+  /// A hairline outline, foreground text, and a colored dot.
   dot,
 
   /// A dot and a label with no outline and no padding; the label inherits
@@ -16,24 +19,27 @@ enum CoilBadgeVariant {
   ghost,
 }
 
-/// The corners of a `CoilBadge`.
+/// Corner radius style of a [CoilBadge].
 enum CoilBadgeShape {
-  /// The theme's item radius, like a button's (`CoilShape.pill` makes
+  /// Uses the theme's item radius, like a button ([CoilShape.pill] makes
   /// that a pill too).
   item,
 
-  /// Fully rounded: half the badge's height, whatever the theme's shape.
+  /// Fully rounded: half the badge's height, regardless of the theme's shape.
   pill,
 }
 
-/// The hue of a `CoilBadge`: gray, the theme's brand, or one of sixteen
+/// The hue of a [CoilBadge]: gray, the theme's brand, or one of sixteen
 /// fixed hues.
 enum CoilBadgeColor {
-  /// The neutral default (`accent` fill, muted dot).
+  /// The neutral default ([CoilColors.accent] fill and muted dot).
   gray(null),
 
-  /// The theme's brand: a `solid` badge is filled with `brandFill` under
-  /// `onBrandFill`; `dot` and `ghost` show `brand` in the dot.
+  /// The theme's brand hue.
+  ///
+  /// A [CoilBadgeVariant.solid] badge is filled with [CoilColors.brandFill]
+  /// under [CoilColors.onBrandFill]; [CoilBadgeVariant.dot] and
+  /// [CoilBadgeVariant.ghost] show [CoilColors.brand] in the dot.
   brand(null),
 
   /// Red.
@@ -89,10 +95,10 @@ enum CoilBadgeColor {
   final Color? _hue;
 }
 
-/// Overrides for how a `CoilBadge` looks. Unset fields come from
-/// [CoilBadgeStyle.fallback].
+/// Style overrides for a [CoilBadge].
 ///
-/// A badge isn't interactive, so its style has no states.
+/// Unset fields fall back to [CoilBadgeStyle.fallback]. A badge isn't
+/// interactive, so its style has no states.
 class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
   /// Creates a badge style.
   const CoilBadgeStyle({
@@ -111,7 +117,7 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
   /// The defaults for [variant] and [color] from [theme]'s tokens.
   ///
   /// A badge never grows a touch bump, so [metrics] only picks the
-  /// regular or compact step (`caption` and `micro` type).
+  /// regular or compact step ([CoilTextTheme.caption] and micro type).
   factory CoilBadgeStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics,
@@ -153,7 +159,8 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
     );
   }
 
-  /// The fill; transparent for `dot` and `ghost`.
+  /// The fill; transparent for [CoilBadgeVariant.dot] and
+  /// [CoilBadgeVariant.ghost].
   final Color? fill;
 
   /// The 1 px outline; null draws none.
@@ -162,12 +169,14 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
   /// The dot color.
   final Color? dotColor;
 
-  /// The label style. Ghost leaves its color unset so it inherits.
+  /// The label style.
+  ///
+  /// [CoilBadgeVariant.ghost] leaves its color unset so it inherits.
   final TextStyle? textStyle;
 
-  /// The corner radius of the superellipse, for the
-  /// [CoilBadgeShape.item] shape (a `pill` badge is always fully
-  /// rounded).
+  /// The corner radius of the superellipse for [CoilBadgeShape.item].
+  ///
+  /// A [CoilBadgeShape.pill] badge is always fully rounded.
   final double? radius;
 
   /// The minimum height, kept by every variant (ghost included); the
@@ -183,10 +192,12 @@ class CoilBadgeStyle extends CoilComponentStyle<CoilBadgeStyle> {
   /// The dot's diameter, before text scaling.
   final double? dotSize;
 
-  /// Springs for the badge's animated parts, keyed by [CoilBadgeTrack]s:
-  /// `{CoilBadgeTrack.size: const Motion.bouncySpring()}`. A badge's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// Springs for the badge's animated parts, keyed by [CoilBadgeTrack] values.
+  ///
+  /// For example, `{CoilBadgeTrack.size: const Motion.bouncySpring()}`.
+  /// [CoilBadge.motions] takes precedence over these, and these take
+  /// precedence over the theme motion tokens. [merge] combines the maps key
+  /// by key.
   final Map<CoilBadgeTrack<Object>, Motion>? motions;
 
   @override

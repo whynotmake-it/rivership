@@ -1,4 +1,6 @@
-/// The coil `CoilContextMenu` component.
+/// The Coil [CoilContextMenu] component.
+///
+/// @docImport 'src/components/dropdown/context_menu.dart';
 library;
 
 export 'src/components/dropdown/context_menu.dart';

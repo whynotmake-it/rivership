@@ -8,11 +8,15 @@ import 'package:flutter/widgets.dart';
 
 /// What a dialog asks of the user, which decides how it opens on a phone.
 enum CoilDialogKind {
-  /// A short decision: a title, a sentence and buttons. Centered everywhere.
+  /// A short decision: a title, a sentence and buttons.
+  ///
+  /// Centered everywhere.
   confirmation,
 
-  /// A dialog with fields. On a phone it opens as a sheet that can be dragged
-  /// away, with the actions stacked full width.
+  /// A dialog with fields.
+  ///
+  /// On a phone it opens as a sheet that can be dragged away, with the actions
+  /// stacked full width.
   form;
 
   /// The [CoilModalRoute] presentation for this kind: centered for a
@@ -30,17 +34,17 @@ enum CoilDialogKind {
 /// [CoilDialogKind.form] opens as a sheet on the touch tier in a compact
 /// window, and centered elsewhere. With [dismissible] false, the scrim, Esc,
 /// back and dragging don't close it. The future completes with the value
-/// passed to `Navigator.pop`.
+/// passed to [Navigator.pop].
 ///
 /// As a sheet, it takes drags from its content; wrap content that needs its
-/// own (a map, a canvas) in `ExcludeScrollDrag`.
+/// own (a map, a canvas) in [ExcludeScrollDrag].
 ///
 /// When it shows as a sheet, [snappingConfig], [dragHandoff],
 /// [dismissalMode], [draggable] and [backgroundSnapshotMode] configure it
 /// as [CoilSheetRoute] documents them, with the same defaults; a centered
 /// dialog ignores them.
 ///
-/// To open a dialog from `Navigator.pages` or a router, show it in a
+/// To open a dialog from [Navigator.pages] or a router, show it in a
 /// [CoilModalPage] with the same [CoilDialogKind.presentation].
 Future<T?> showCoilDialog<T>({
   required BuildContext context,

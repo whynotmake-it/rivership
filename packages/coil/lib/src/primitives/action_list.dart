@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/primitives/sheet.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -38,8 +41,9 @@ enum CoilActionTone {
   /// An ordinary action.
   normal,
 
-  /// An action that destroys something: red. Put it last, after a
-  /// separator.
+  /// An action that destroys something: red.
+  ///
+  /// Put it last, after a separator.
   destructive,
 }
 
@@ -70,12 +74,14 @@ class CoilAction extends CoilMenuEntry {
     this.selected = false,
   });
 
-  /// What the row shows, usually a [Text]. The row styles it and screen
-  /// readers read it.
+  /// What the row shows, usually a [Text].
+  ///
+  /// The row styles it and screen readers read it.
   final Widget label;
 
-  /// The row as plain text: typeahead and a search field match it. Without
-  /// it, they skip the row.
+  /// The row as plain text: typeahead and a search field match it.
+  ///
+  /// Without it, they skip the row.
   final String? searchText;
 
   /// Names the action where it shows as an icon only, such as a sidebar
@@ -89,7 +95,9 @@ class CoilAction extends CoilMenuEntry {
   /// only (a finger has no keyboard).
   final Widget? shortcut;
 
-  /// Runs the action. Null disables the row.
+  /// Runs the action.
+  ///
+  /// Null disables the row.
   final VoidCallback? onPressed;
 
   /// How the row reads.
@@ -169,9 +177,10 @@ class CoilMenuSearch {
   /// Shown when no row matches, usually a [Text].
   final Widget empty;
 
-  /// The type role of the field's text and placeholder (its color is
-  /// the list's), or null for the rows' body role. A command menu's is
-  /// the subtitle role.
+  /// The type role of the field's text and placeholder (its color is the
+  /// list's), or null for the rows' body role.
+  ///
+  /// A command menu's is the subtitle role.
   final TextStyle? textStyle;
 
   /// How tall the search line is at least, or null for a row's height
@@ -250,27 +259,31 @@ class CoilActionList extends StatefulWidget {
 
   /// Shows a search field that keeps focus and filters the rows: typing
   /// narrows them to labels that contain the text, the arrows move through
-  /// the matches and Enter picks one. Headings and separators stay with
-  /// their matching rows.
+  /// the matches and Enter picks one.
+  ///
+  /// Headings and separators stay with their matching rows.
   final CoilMenuSearch? search;
 
   /// A widget at the end of the [search] line, flush with its end edge,
-  /// such as a sheet's `CoilSheetCloseSlot`.
+  /// such as a sheet's [CoilSheetCloseSlot].
   final Widget? searchTrailing;
 
   /// Called when a pick, Escape or Tab closes the menu.
   final ValueChanged<CoilPopupCloseReason> onClose;
 
   /// Called when a checkable row's pick, in this list or a submenu, starts
-  /// the acknowledgement; [onClose] follows once it's over. A menu in a
-  /// popup hands the page back here, with [CoilPopupHandle.release].
+  /// the acknowledgement; [onClose] follows once it's over.
+  ///
+  /// A menu in a popup hands the page back here, with
+  /// [CoilPopupHandle.release].
   final VoidCallback? onAcknowledge;
 
   /// The row sizes, and the tier that picks the rows' resting emphasis.
   final CoilMetrics metrics;
 
-  /// The color behind the list, which the scroll edges fade into. Null is
-  /// the color of the `CoilSurface` level the list sits on.
+  /// The color behind the list, which the scroll edges fade into.
+  ///
+  /// Null is the color of the [CoilSurface] level the list sits on.
   final Color? surface;
 
   /// How the scrollbar looks.
@@ -497,9 +510,10 @@ class _CoilActionListState extends State<CoilActionList>
     );
   }
 
-  /// Closes the menu, then runs the action. A checkable row runs first and
-  /// closes once its mark has landed. A submenu row opens its submenu, and
-  /// the back row leaves one.
+  /// Closes the menu, then runs the action.
+  ///
+  /// A checkable row runs first and closes once its mark has landed. A
+  /// submenu row opens its submenu, and the back row leaves one.
   void _pick(int i) {
     if (_frozen || !_enabled(i)) return;
     switch (_items[i]) {
@@ -582,7 +596,9 @@ class _CoilActionListState extends State<CoilActionList>
 
   /// Whether the pointer at [position] is on its way to the open submenu:
   /// over it, or inside the triangle from where it left the row to the
-  /// submenu's near edge. Hover doesn't move off the row meanwhile.
+  /// submenu's near edge.
+  ///
+  /// Hover doesn't move off the row meanwhile.
   bool _hold(Offset position) {
     // An acknowledged pick keeps its row lit.
     if (_frozen) return true;
@@ -931,8 +947,10 @@ class _CoilActionListState extends State<CoilActionList>
   );
 }
 
-/// One row: leading glyph and label. It paints only its own press fill;
-/// the list's layer paints the highlight and the ring.
+/// One row: leading glyph and label.
+///
+/// It paints only its own press fill; the list's layer paints the highlight
+/// and the ring.
 class _Row extends StatefulWidget {
   const _Row({
     required this.index,

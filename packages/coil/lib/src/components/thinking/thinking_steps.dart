@@ -11,7 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// One step of a [CoilThinkingSteps].
+/// A single reasoning step displayed in [CoilThinkingSteps].
 @immutable
 class CoilThinkingStep {
   /// Creates a step.
@@ -23,90 +23,115 @@ class CoilThinkingStep {
     this.leading,
   });
 
-  /// What the step did, in one line. Usually a [Text].
+  /// What the step did, in one line.
+  ///
+  /// Usually a [Text].
   final Widget title;
 
-  /// More about the step, in a muted caption. Usually a [Text].
+  /// More about the step, in a muted caption.
+  ///
+  /// Usually a [Text].
   final Widget? detail;
 
-  /// Where the step looked, each shown in a small badge. Usually `Text`.
+  /// Where the step looked, each shown in a small badge.
+  ///
+  /// Usually [Text] widgets.
   final List<Widget> sources;
 
   /// An image under the step.
   final Widget? image;
 
-  /// A glyph before the title, styled by [IconTheme]. A small dot when
-  /// null.
+  /// A glyph before the title, styled by [IconTheme].
+  ///
+  /// Shows a small dot when null.
   final Widget? leading;
 }
 
-/// The animated parts of a [CoilThinkingSteps]. Use them as keys of
-/// [CoilThinkingSteps.motions] or [CoilThinkingStepsStyle.motions].
+/// The animated parts of a [CoilThinkingSteps].
+///
+/// Use these as keys of [CoilThinkingSteps.motions] or
+/// [CoilThinkingStepsStyle.motions].
 final class CoilThinkingStepsTrack<T extends Object> extends Track<T> {
   CoilThinkingStepsTrack._(super.converter, {required String super.debugLabel});
 
-  /// The chevron's quarter turn. Default motion: `quick` opening,
-  /// `quickExit` closing.
+  /// The chevron's quarter turn.
+  ///
+  /// Defaults to [CoilMotion.quick] opening and [CoilMotion.quickExit] closing.
   static final chevron = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.chevron',
   );
 
-  /// How open the list of steps is, 0 to 1. Default motion: `standard`
-  /// opening, `standardExit` closing.
+  /// How open the list of steps is, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.standard] opening and [CoilMotion.standardExit]
+  /// closing.
   static final height = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.height',
   );
 
-  /// The list's opacity. Default motion: `fade` opening, `fadeExit`
-  /// closing.
+  /// The list's opacity.
+  ///
+  /// Defaults to [CoilMotion.fade] opening and [CoilMotion.fadeExit] closing.
   static final opacity = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.opacity',
   );
 
-  /// The trigger's fill. Default motion: `fade` showing, `fadeExit`
-  /// clearing.
+  /// The trigger's fill.
+  ///
+  /// Defaults to [CoilMotion.fade] showing and [CoilMotion.fadeExit] clearing.
   static final fill = CoilThinkingStepsTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilThinkingSteps.fill',
   );
 
-  /// The trigger's label color. Default motion: `fade`.
+  /// The trigger's label color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final label = CoilThinkingStepsTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilThinkingSteps.label',
   );
 
-  /// The trigger's label weight, normal to semibold. Default motion:
-  /// `fade`.
+  /// The trigger's label weight, from normal to semibold.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final weight = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.weight',
   );
 
-  /// How open a new step is, 0 to 1. Default motion: `gentle`.
+  /// How open a new step is, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.gentle].
   static final stepHeight = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.stepHeight',
   );
 
-  /// A new step's opacity, after a short delay. Default motion: `fade`.
+  /// A new step's opacity, after a short delay.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final stepOpacity = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.stepOpacity',
   );
 
   /// A step's connector showing or hiding as the step stops or starts
-  /// being the last one, 0 to 1. Default motion: `fade`.
+  /// being the last one, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final connector = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.connector',
   );
 
-  /// A new source badge popping in, 0 to 1. Default motion: `standard`,
-  /// or `fade` under reduced motion.
+  /// A new source badge popping in, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.standard], or [CoilMotion.fade] under reduced
+  /// motion.
   static final sourcePop = CoilThinkingStepsTrack<double>._(
     .single,
     debugLabel: 'CoilThinkingSteps.sourcePop',
@@ -136,22 +161,27 @@ class CoilThinkingSteps extends StatefulWidget {
     this.style,
   });
 
-  /// The trigger's text, for example `Text('Thought for 12s')`. It turns
-  /// semibold while expanded.
+  /// The trigger's text, for example `Text('Thought for 12s')`.
+  ///
+  /// Turns semibold while expanded.
   final Widget label;
 
-  /// The steps, oldest first. Append to add a step.
+  /// The steps, oldest first.
+  ///
+  /// Append to add a step.
   final List<CoilThinkingStep> steps;
 
   /// Whether the steps show.
   final bool expanded;
 
-  /// Called with the new expanded state when the trigger is pressed. Null
-  /// disables the trigger.
+  /// Called with the new expanded state when the trigger is pressed.
+  ///
+  /// When null, disables the trigger.
   final ValueChanged<bool>? onChanged;
 
-  /// Replaces the chevron ([CoilIcons.chevronEnd]). It turns a quarter
-  /// when the steps open.
+  /// Replaces the chevron ([CoilIcons.chevronEnd]).
+  ///
+  /// Turns a quarter when the steps open.
   final Widget? indicator;
 
   /// The trigger's focus node.
@@ -160,16 +190,17 @@ class CoilThinkingSteps extends StatefulWidget {
   /// Whether the trigger takes focus when first built.
   final bool autofocus;
 
-  /// Pins the component to one size step. Null follows
-  /// [CoilAdaptiveScope].
+  /// Pins the component to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions for this component, keyed by
-  /// [CoilThinkingStepsTrack]s. They win over the style's
-  /// [CoilThinkingStepsStyle.motions] and the tokens.
+  /// Per-track motions for this component, keyed by [CoilThinkingStepsTrack]s.
+  ///
+  /// They win over the style's [CoilThinkingStepsStyle.motions] and the tokens.
   final Map<CoilThinkingStepsTrack<Object>, Motion>? motions;
 
   /// Overrides for this component's look, on top of the theme's
@@ -181,8 +212,9 @@ class CoilThinkingSteps extends StatefulWidget {
 }
 
 class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
-  /// Steps at or past this index arrived after the first build. It
-  /// drops when steps are removed, so steps added after a clear (a retry)
+  /// Steps at or past this index arrived after the first build.
+  ///
+  /// It drops when steps are removed, so steps added after a clear (a retry)
   /// grow in again.
   late int _firstNew = widget.steps.length;
 

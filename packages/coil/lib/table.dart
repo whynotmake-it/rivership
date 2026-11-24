@@ -1,4 +1,6 @@
-/// The coil `CoilTable` component.
+/// The Coil [CoilTable] component.
+///
+/// @docImport 'src/components/table/table.dart';
 library;
 
 export 'src/components/table/table.dart';

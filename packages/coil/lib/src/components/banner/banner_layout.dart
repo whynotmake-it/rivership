@@ -99,6 +99,7 @@ class BannerLayout
   }
 }
 
+/// Render object for [BannerLayout].
 class RenderBannerLayout extends RenderBox
     with SlottedContainerRenderObjectMixin<BannerSlot, RenderBox> {
   RenderBannerLayout({
@@ -175,9 +176,11 @@ class RenderBannerLayout extends RenderBox
   }
 
   /// A [ChildLayouter] that answers from a child's intrinsics, for this
-  /// layout's own intrinsic heights: children that can't lay out dry (a
-  /// `LayoutBuilder`) still answer them. A child takes its max intrinsic
-  /// width up to the constraints, as text does, and [heightAt] that width.
+  /// layout's own intrinsic heights.
+  ///
+  /// Children that can't lay out dry (such as a [LayoutBuilder]) still answer
+  /// intrinsics. A child takes its max intrinsic width up to the constraints,
+  /// as text does, and [heightAt] that width.
   static ChildLayouter _intrinsic(
     double Function(RenderBox child, double width) heightAt,
   ) => (child, constraints) {
@@ -233,9 +236,10 @@ class RenderBannerLayout extends RenderBox
     ).size;
   }
 
-  /// Lays the banner out with [layoutChild]: its size, and where the text
-  /// goes (its constraints and its top) for the baseline. With [place], it
-  /// also positions the children.
+  /// Lays the banner out with [layoutChild]: its size, and where the text goes
+  /// (its constraints and its top) for the baseline.
+  ///
+  /// With [place], it also positions the children.
   ({Size size, BoxConstraints textConstraints, double textTop}) _compute(
     BoxConstraints constraints,
     ChildLayouter layoutChild, {

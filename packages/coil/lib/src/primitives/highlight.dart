@@ -1,8 +1,11 @@
+/// @docImport 'package:coil/src/primitives/layer.dart';
+library;
+
 import 'package:coil/src/primitives/motion_layer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// A box that glides between the targets of a `CoilMotionLayer` and fades
+/// A box that glides between the targets of a [CoilMotionLayer] and fades
 /// in and out: the moving fill behind a hovered row, a selected tab's pill,
 /// a focus ring that travels between items.
 ///
@@ -61,7 +64,9 @@ class CoilHighlightPainter extends CoilLayerPainter {
   double _inflate = 0;
 
   /// Points the highlight at [target] (a target index of the layer), or
-  /// hides it when null. Call on every build; unchanged values are no-ops.
+  /// hides it when null.
+  ///
+  /// Call on every build; unchanged values are no-ops.
   void update({
     required int? target,
     required Motion motion,

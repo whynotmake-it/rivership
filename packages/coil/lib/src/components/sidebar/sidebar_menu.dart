@@ -34,11 +34,13 @@ enum CoilSidebarDotStyle {
   ring,
 }
 
-/// When a row's actions show on the pointer tier. Touch always shows its
-/// last one.
+/// When a row's actions show on the pointer tier.
+///
+/// Touch always shows its last one.
 enum CoilSidebarActionsVisibility {
-  /// While the row is hovered or focused, or one of its menus is open. The
-  /// label claims their width only then.
+  /// While the row is hovered or focused, or one of its menus is open.
+  ///
+  /// The label claims their width only then.
   hover,
 
   /// Always.
@@ -55,8 +57,9 @@ enum CoilSidebarMenuFocus {
   highlight,
 }
 
-/// An 8 dot in a 16 box, for a row's leading slot. Use it when
-/// [CoilSidebarStatus] doesn't fit.
+/// An 8 dot in a 16 box, for a row's leading slot.
+///
+/// Use it when [CoilSidebarStatus] doesn't fit.
 class CoilSidebarDot extends StatelessWidget {
   /// Creates a dot.
   const CoilSidebarDot(this.style, {super.key});
@@ -113,25 +116,29 @@ class CoilSidebarItem {
   /// The row's text, styled by [DefaultTextStyle]: one line, ellipsized.
   final Widget label;
 
-  /// The row's name for screen readers. Null reads the text of a [Text]
-  /// [label]; give it for any other widget.
+  /// The row's name for screen readers.
+  ///
+  /// Null reads the text of a [Text] [label]; give it for any other widget.
   final String? semanticLabel;
 
   /// An icon, styled by [IconTheme], or a [CoilSidebarDot].
   final Widget? leading;
 
-  /// Shows a status dot when there is no [leading]. [CoilSidebarStatus.
-  /// active] also selects the row.
+  /// Shows a status dot when there is no [leading].
+  ///
+  /// [CoilSidebarStatus. active] also selects the row.
   final CoilSidebarStatus? status;
 
   /// A badge, such as a count, in a 24 slot at the end.
   final Widget? trailing;
 
-  /// Up to three actions, drawn as 24 icon buttons before [trailing]:
-  /// a [CoilAction] (its `leading` is the icon, its label the tooltip) or a
+  /// Up to three actions, drawn as 24 icon buttons before [trailing]: a
+  /// [CoilAction] (its `leading` is the icon, its label the tooltip) or a
   /// [CoilSubmenu], whose button opens its entries, usually the last, an
-  /// overflow ⋯. Each button is named by the entry's `semanticLabel`, else
-  /// its `searchText`; give every action one.
+  /// overflow ⋯.
+  ///
+  /// Each button is named by the entry's `semanticLabel`, else its
+  /// `searchText`; give every action one.
   ///
   /// The same entries open as a context menu on a right-click, and on a
   /// long press on touch, where only the last action shows (all of them
@@ -144,10 +151,14 @@ class CoilSidebarItem {
   /// Whether this row is the current page.
   final bool selected;
 
-  /// Called when the row is picked. Null with no [children] disables it.
+  /// Called when the row is picked.
+  ///
+  /// Null with no [children] disables it.
   final VoidCallback? onPressed;
 
-  /// The rows nested under this one. They can't nest further.
+  /// The rows nested under this one.
+  ///
+  /// They can't nest further.
   final List<CoilSidebarItem> children;
 
   /// Whether [children] show.
@@ -191,7 +202,9 @@ class CoilSidebarMenu extends StatefulWidget {
   /// How keyboard focus shows.
   final CoilSidebarMenuFocus focus;
 
-  /// Pins the rows to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the rows to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Added to an unread row's name for screen readers.
@@ -204,6 +217,7 @@ class CoilSidebarMenu extends StatefulWidget {
   final CoilMotion? motion;
 
   /// Per-track motions for this instance, keyed by [CoilSidebarTrack]s.
+  ///
   /// They win over the style's [CoilSidebarStyle.motions] and the tokens.
   final Map<CoilSidebarTrack<Object>, Motion>? motions;
 

@@ -1,16 +1,19 @@
+/// @docImport 'package:motor_widgets/motor_widgets.dart';
+library;
+
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/widgets.dart';
 
-/// coil's default enter and exit for overlays: [child] blurs, fades and
+/// Coil's default enter and exit for overlays: [child] blurs, fades and
 /// shrinks a little toward [alignment] as [presence] goes from 1 to 0.
 ///
 /// [presence] is any 0→1 animation driven by a spring: a popover's
-/// presence, a `MotionSwitcher` child's animation. A spring may overshoot
+/// presence, a [MotionSwitcher] child's animation. A spring may overshoot
 /// 0–1: opacity and blur are clamped, scale and offset use the raw value so a
 /// bouncy spring visibly bounces.
 ///
-/// As a `MotionSwitcher` transition:
+/// As a [MotionSwitcher] transition:
 ///
 /// ```dart
 /// MotionSwitcher(
@@ -37,7 +40,7 @@ class CoilBlurFade extends StatelessWidget {
   static const defaultBlur = 1.5;
 
   /// A transition builder with Flutter's `(child, animation)` signature,
-  /// for `MotionSwitcher` and `AnimatedSwitcher`.
+  /// for [MotionSwitcher] and [AnimatedSwitcher].
   static Widget Function(Widget child, Animation<double> animation) transition({
     double blur = defaultBlur,
     double scale = 0.96,

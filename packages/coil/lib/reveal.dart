@@ -1,4 +1,6 @@
-/// The coil `CoilReveal` entrance choreography.
+/// The Coil [CoilReveal] staggered entrance animation component.
+///
+/// @docImport 'src/components/reveal/reveal.dart';
 library;
 
 export 'src/components/reveal/reveal.dart';

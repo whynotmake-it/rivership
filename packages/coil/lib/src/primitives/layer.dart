@@ -15,8 +15,9 @@ import 'package:motor/motor.dart';
 sealed class CoilLayerItem {
   const CoilLayerItem({this.key});
 
-  /// Matches an item to the same item in the next build. Without a key,
-  /// items match by type and position.
+  /// Matches an item to the same item in the next build.
+  ///
+  /// Without a key, items match by type and position.
   final Key? key;
 }
 
@@ -126,8 +127,10 @@ final class CoilHighlight extends CoilLayerItem {
 /// with rounded outer corners, and merging and splitting as the selection
 /// changes.
 final class CoilSelectionBlocks extends CoilLayerItem {
-  /// Creates selection blocks. [selected] is copied, so later changes to
-  /// the set passed in don't reach this item.
+  /// Creates selection blocks.
+  ///
+  /// [selected] is copied, so later changes to the set passed in don't
+  /// reach this item.
   CoilSelectionBlocks({
     required Set<int> selected,
     required this.color,
@@ -173,7 +176,7 @@ final class CoilSelectionBlocks extends CoilLayerItem {
   );
 }
 
-/// A custom layer item, like a `CustomPainter` that can read the rects of
+/// A custom layer item, like a [CustomPainter] that can read the rects of
 /// the layer's targets.
 ///
 /// Extend it with immutable fields for everything it draws. The layer

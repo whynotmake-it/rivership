@@ -80,17 +80,16 @@ class ColorsPage extends StatelessWidget {
       _TokenSection(
         title: 'State tints',
         description:
-            'Hover sits at 4 % and pressed or selected at 7 %, and none of '
+            'Hover sits at 4% and pressed or selected at 7%, and none of '
             'them are derived from the accent color.',
         tokens: _TokenGroup.tints,
       ),
       _TokenSection(
         title: 'Brand and status',
         description:
-            'These colors carry meaning, so coil spends them only where the '
-            'meaning matters. Brand fill is the brand as a surface that '
-            'carries text, under its own label color; the brand wash and ink '
-            'mark the selected tab or segment.',
+            'Reserved for accents and status feedback. Brand fill pairs with '
+            'its own label color for readable buttons and badges, while brand '
+            'wash and ink highlight selected tabs and segments.',
         tokens: _TokenGroup.brand,
       ),
       DemoSection(
@@ -256,7 +255,7 @@ class _Swatch extends StatelessWidget {
     String two(double v) =>
         (v * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase();
     final rgb = '#${two(c.r)}${two(c.g)}${two(c.b)}';
-    return c.a < 1 ? '$rgb · ${(c.a * 100).round()} %' : rgb;
+    return c.a < 1 ? '$rgb · ${(c.a * 100).round()}%' : rgb;
   }
 
   @override

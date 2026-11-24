@@ -97,15 +97,15 @@ class _Hero extends StatelessWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  'Refined components, on springs.',
+                  'Flutter components, built on springs.',
                   style: text.display,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                'coil is a design system for pointer and touch, with every '
-                'bit of motion driven by a spring. Everything on these pages '
-                'is live, so you can hover, press, drag and tab through any '
+                'Coil is a design system for pointer and touch, with every '
+                'interaction driven by a spring. Everything on these pages '
+                'is live, so you can hover, press, drag, and tab through any '
                 'of it.',
                 style: text.muted.subtitle,
               ),
@@ -154,7 +154,7 @@ class _Hero extends StatelessWidget {
                     'Light and dark',
                     'Right to left',
                     'Text up to 2×',
-                    'Fixed frame rates',
+                    'Fixed-rate motion',
                   ])
                     CoilBadge(
                       variant: CoilBadgeVariant.ghost,
@@ -189,7 +189,7 @@ class _Index extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           'Each page shows its component in every state and ends with notes '
-          'on keyboard, touch and screen readers.',
+          'on keyboard, touch, and screen readers.',
           style: text.muted.body,
         ),
         const SizedBox(height: 16),

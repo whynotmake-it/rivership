@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/ask_user_questions.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -6,10 +9,11 @@ import 'package:coil/src/components/ask_user_questions/ask_user_questions.dart'
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilAskUserQuestions` looks. Unset fields come from
-/// [CoilAskUserQuestionsStyle.fallback], derived from the theme's tokens.
-/// Set a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilAskUserQuestions] looks.
+///
+/// Unset fields come from [CoilAskUserQuestionsStyle.fallback], derived from
+/// the theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 class CoilAskUserQuestionsStyle
     extends CoilComponentStyle<CoilAskUserQuestionsStyle> {
   /// Creates a style.
@@ -108,8 +112,9 @@ class CoilAskUserQuestionsStyle
   /// An option's label (color from [label]).
   final TextStyle? labelStyle;
 
-  /// An option's description in the inline layout (color from
-  /// [description]). The stacked layout uses the caption role.
+  /// An option's description in the inline layout (color from [description]).
+  ///
+  /// The stacked layout uses the caption role.
   final TextStyle? descriptionStyle;
 
   /// The number on a key (color from [keyColor] or [keySelectedLabel]).
@@ -157,8 +162,9 @@ class CoilAskUserQuestionsStyle
 
   /// Springs for the questions' animated parts, keyed by
   /// [CoilAskUserQuestionsTrack]s:
-  /// `{CoilAskUserQuestionsTrack.height: const Motion.bouncySpring()}`. A
-  /// `CoilAskUserQuestions`'s own `motions:` win over these; these win over
+  /// `{CoilAskUserQuestionsTrack.height: const Motion.bouncySpring()}`.
+  ///
+  /// A [CoilAskUserQuestions]'s own `motions:` win over these; these win over
   /// the motion tokens. [merge] combines the maps key by key.
   final Map<CoilAskUserQuestionsTrack<Object>, Motion>? motions;
 

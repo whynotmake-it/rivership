@@ -1,3 +1,6 @@
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
@@ -29,9 +32,10 @@ enum CoilPopoverSide {
   right,
 }
 
-/// Shows and hides a [CoilPopover], like [OverlayPortalController] does
-/// for an [OverlayPortal]. Call [show] and [hide] from event handlers, not
-/// during build.
+/// Shows and hides a [CoilPopover], like [OverlayPortalController] does for
+/// an [OverlayPortal].
+///
+/// Call [show] and [hide] from event handlers, not during build.
 class CoilPopoverController {
   /// Creates a controller.
   CoilPopoverController({this.debugLabel});
@@ -41,8 +45,9 @@ class CoilPopoverController {
 
   _CoilPopoverState? _state;
 
-  /// Whether the popover is open. False as soon as [hide] is called, while
-  /// it still springs out.
+  /// Whether the popover is open.
+  ///
+  /// False as soon as [hide] is called, while it still springs out.
   bool get isOpen => _state?._open ?? false;
 
   /// Opens the popover next to the anchor, or at [at], a point in the
@@ -69,8 +74,9 @@ class CoilPopoverController {
   String toString() => 'CoilPopoverController(${debugLabel ?? ''})';
 }
 
-/// Shows [popover] next to [child]: a menu, a select list. [controller]
-/// opens and closes it.
+/// Shows [popover] next to [child]: a menu, a select list.
+///
+/// [controller] opens and closes it.
 ///
 /// The popover lives in the nearest [Overlay] but stays a descendant of
 /// this widget, so it inherits its themes and rebuilds with its owner. It
@@ -91,7 +97,7 @@ class CoilPopoverController {
 /// acknowledge a pick calls [CoilPopoverController.release] first, and the
 /// popover lets go of all of it while it still shows.
 ///
-/// Like `MenuAnchor`, it blocks pointer input only. Screen readers reach
+/// Like [MenuAnchor], it blocks pointer input only. Screen readers reach
 /// its content right after the anchor, and the rest of the page stays
 /// reachable.
 ///
@@ -129,8 +135,9 @@ class CoilPopover extends StatefulWidget {
   /// The anchor.
   final Widget child;
 
-  /// Minimum popover width. Defaults to the anchor's width, or none when it
-  /// opens at a point.
+  /// Minimum popover width.
+  ///
+  /// Defaults to the anchor's width, or none when it opens at a point.
   final double? minWidth;
 
   /// Maximum popover height.
@@ -151,9 +158,11 @@ class CoilPopover extends StatefulWidget {
   /// its first row can line up with the anchor.
   final double crossOffset;
 
-  /// Whether it takes focus when it opens. False leaves focus in the
-  /// anchor, which then drives the popover, like a combobox's field; taps
-  /// on the anchor then count as inside the popover.
+  /// Whether it takes focus when it opens.
+  ///
+  /// False leaves focus in the anchor, which then drives the popover, like
+  /// a combobox's field; taps on the anchor then count as inside the
+  /// popover.
   final bool takeFocus;
 
   /// Motion tokens for the enter and exit, instead of the theme's.
@@ -187,8 +196,10 @@ class _CoilPopoverState extends State<CoilPopover>
   /// What had focus when the popover opened.
   FocusNode? _returnFocus;
 
-  /// Pointers that went down outside while open. Only their up is a tap
-  /// outside: the finger that long-pressed it open lifts outside too.
+  /// Pointers that went down outside while open.
+  ///
+  /// Only their up is a tap outside: the finger that long-pressed it open
+  /// lifts outside too.
   final _downOutside = <int>{};
 
   bool get _reduceMotion =>

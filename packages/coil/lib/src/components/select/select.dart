@@ -14,8 +14,10 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// Pick one value from a list. One API, two presentations, chosen when the
-/// list opens by [CoilAdaptivePopup.presentationOf]:
+/// Single-choice selector with adaptive popover and sheet presentations.
+///
+/// One API, two presentations, chosen when the list opens by
+/// [CoilAdaptivePopup.presentationOf]:
 ///
 /// * a popover anchored under the trigger, with the fluid highlight, arrow
 ///   keys, Home/End, typeahead, Enter/Space to pick, Escape/Tab or an outside
@@ -30,7 +32,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// No icons are bundled: [icon], [indicator], [checkmark] and
 /// [CoilOption.icon] take any widget and are styled through [IconTheme].
 /// The chevron and check default to the theme's [CoilIcons.chevronDown]
-/// and [CoilIcons.check], else coil's drawn ones.
+/// and [CoilIcons.check], else Coil's drawn ones.
 class CoilSelect<T> extends StatelessWidget {
   /// Creates a single-choice select.
   const CoilSelect({
@@ -58,10 +60,14 @@ class CoilSelect<T> extends StatelessWidget {
   /// The picked value, or null for none.
   final T? value;
 
-  /// Called with the picked value. Null disables the select.
+  /// Called with the picked value.
+  ///
+  /// When null, disables the select.
   final ValueChanged<T>? onChanged;
 
-  /// Shown, muted, in the trigger when nothing is picked. Usually a [Text].
+  /// Shown, muted, in the trigger when nothing is picked.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
   /// A leading glyph in the trigger.
@@ -70,17 +76,22 @@ class CoilSelect<T> extends StatelessWidget {
   /// Replaces the trigger's chevron ([CoilIcons.chevronDown]).
   final Widget? indicator;
 
-  /// Replaces the check in the rows ([CoilIcons.check]). It appears in a
-  /// `CoilIconPresence`.
+  /// Replaces the check in the rows ([CoilIcons.check]).
+  ///
+  /// Appears in a [CoilIconPresence].
   final Widget? checkmark;
 
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
 
-  /// Pins the presentation. Null decides per open.
+  /// Pins the presentation.
+  ///
+  /// When null, decides per open.
   final CoilPresentation? presentation;
 
-  /// Pins the trigger's size step. Null follows [CoilAdaptiveScope].
+  /// Pins the trigger's size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// The trigger's focus node.
@@ -96,8 +107,9 @@ class CoilSelect<T> extends StatelessWidget {
   /// [CoilSelectStyle] and the defaults.
   final CoilSelectStyle? style;
 
-  /// Opens and closes the list from code; its `open()` resolves with why
-  /// the list closed.
+  /// Opens and closes the list from code.
+  ///
+  /// [CoilPopupController.open] resolves with why the list closed.
   final CoilPopupController? controller;
 
   @override
@@ -124,11 +136,11 @@ class CoilSelect<T> extends StatelessWidget {
   );
 }
 
-/// Pick any number of values from a list. Rows toggle and the list stays
-/// open; adjacent picked rows merge into one rounded block.
+/// Multi-choice selector with adaptive popover and sheet presentations.
 ///
-/// On a phone, a multi-select always opens as a sheet (the hybrid rule).
-/// Otherwise the same as [CoilSelect].
+/// Rows toggle and the list stays open; adjacent picked rows merge into one
+/// rounded block. On a phone, a multi-select always opens as a sheet (the
+/// hybrid rule). Otherwise the same as [CoilSelect].
 class CoilMultiSelect<T> extends StatelessWidget {
   /// Creates a multi-select.
   const CoilMultiSelect({
@@ -156,10 +168,14 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// The picked values.
   final Set<T> values;
 
-  /// Called with the new set after each toggle. Null disables the select.
+  /// Called with the new set after each toggle.
+  ///
+  /// When null, disables the select.
   final ValueChanged<Set<T>>? onChanged;
 
-  /// Shown, muted, in the trigger when nothing is picked. Usually a [Text].
+  /// Shown, muted, in the trigger when nothing is picked.
+  ///
+  /// Usually a [Text].
   final Widget placeholder;
 
   /// A leading glyph in the trigger.
@@ -168,17 +184,22 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// Replaces the trigger's chevron ([CoilIcons.chevronDown]).
   final Widget? indicator;
 
-  /// Replaces the check in the rows ([CoilIcons.check]). It appears in a
-  /// `CoilIconPresence`.
+  /// Replaces the check in the rows ([CoilIcons.check]).
+  ///
+  /// Appears in a [CoilIconPresence].
   final Widget? checkmark;
 
   /// A heading for the sheet presentation.
   final Widget? sheetTitle;
 
-  /// Pins the presentation. Null decides per open.
+  /// Pins the presentation.
+  ///
+  /// When null, decides per open.
   final CoilPresentation? presentation;
 
-  /// Pins the trigger's size step. Null follows [CoilAdaptiveScope].
+  /// Pins the trigger's size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// The trigger's focus node.
@@ -194,8 +215,9 @@ class CoilMultiSelect<T> extends StatelessWidget {
   /// [CoilSelectStyle] and the defaults.
   final CoilSelectStyle? style;
 
-  /// Opens and closes the list from code; its `open()` resolves with why
-  /// the list closed.
+  /// Opens and closes the list from code.
+  ///
+  /// [CoilPopupController.open] resolves with why the list closed.
   final CoilPopupController? controller;
 
   @override

@@ -1,10 +1,15 @@
+/// @docImport 'package:coil/src/foundation/shape.dart';
+library;
+
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/surface.dart';
 import 'package:flutter/widgets.dart';
 
 /// The raised surface a popover's content sits on: a [CoilSurface] two
-/// levels up with the level-3 shadow. Its corners are concentric with the
-/// rows inside, and it is as wide as its widest row.
+/// levels up with the level-3 shadow.
+///
+/// Its corners are concentric with the rows inside, and it is as wide as
+/// its widest row.
 class CoilPopoverSurface extends StatelessWidget {
   /// Creates a popover surface.
   const CoilPopoverSurface({
@@ -22,7 +27,7 @@ class CoilPopoverSurface extends StatelessWidget {
   final Color? color;
 
   /// The corner radius; when null, concentric with rows at the theme's
-  /// item radius `popupInset` in (`CoilRadii.concentric`).
+  /// item radius `popupInset` in ([CoilRadii.concentric]).
   final double? radius;
 
   /// The narrowest the surface gets.

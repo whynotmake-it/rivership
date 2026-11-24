@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/radio_group.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/radio_group/radio_group.dart';
@@ -9,11 +12,11 @@ import 'package:motor/motor.dart';
 /// One radio, for layouts a [CoilRadioGroup]'s rows don't cover, such as
 /// radio choice cards.
 ///
-/// Put it under a `CoilRadioGroup.custom`, which selects the radio whose
-/// [value] it holds and gives the radios its keyboard model. A tap, Space
+/// Put it under a [CoilRadioGroup.custom], which selects the radio whose
+/// [value] it holds and gives the radios its keyboard model. A tap, Space,
 /// or Enter selects it.
 ///
-/// It works under Flutter's [RadioGroup] too, which `CoilRadioGroup.custom`
+/// It works under Flutter's [RadioGroup] too, which [CoilRadioGroup.custom]
 /// builds on.
 class CoilRadio<T> extends StatefulWidget {
   /// Creates a radio for [value].
@@ -33,7 +36,9 @@ class CoilRadio<T> extends StatefulWidget {
   /// The value this radio selects.
   final T value;
 
-  /// Whether the radio can be selected. A disabled group disables it too.
+  /// Whether the radio can be selected.
+  ///
+  /// A disabled group disables it too.
   final bool enabled;
 
   /// The focus node.
@@ -42,18 +47,25 @@ class CoilRadio<T> extends StatefulWidget {
   /// Whether to take focus when first built.
   final bool autofocus;
 
-  /// Pins the circle to one size step. Null follows the group, then
-  /// [CoilAdaptiveScope].
+  /// Pins the circle to one size step.
+  ///
+  /// When null, follows the group, then [CoilAdaptiveScope].
   final CoilSize? size;
 
-  /// Overrides the theme's motion tokens. Null follows the group.
+  /// Overrides the theme's motion tokens.
+  ///
+  /// When null, follows the group.
   final CoilMotion? motion;
 
-  /// Per-track motions; the `border` and `dot` tracks apply. Null follows
-  /// the group.
+  /// Per-track motions; the [CoilRadioGroupTrack.border] and
+  /// [CoilRadioGroupTrack.dot] tracks apply.
+  ///
+  /// When null, follows the group.
   final Map<CoilRadioGroupTrack<Object>, Motion>? motions;
 
-  /// Overrides for the circle's look. Null follows the group.
+  /// Overrides for the circle's look.
+  ///
+  /// When null, follows the group.
   final CoilRadioGroupStyle? style;
 
   /// A label for assistive technology, when nothing labels the radio.
@@ -169,8 +181,8 @@ class _CoilRadioState<T> extends State<CoilRadio<T>> with RadioClient<T> {
   }
 }
 
-/// What a `CoilRadioGroup.custom` tells the [CoilRadio]s below it: whether
-/// the group is enabled, and the look they share.
+/// Configuration shared by a [CoilRadioGroup.custom] with descendant
+/// [CoilRadio] widgets.
 class CoilRadioScope extends InheritedWidget {
   /// Creates a radio scope.
   const CoilRadioScope({
@@ -184,7 +196,9 @@ class CoilRadioScope extends InheritedWidget {
     this.style,
   });
 
-  /// Whether the group can change. False disables every radio.
+  /// Whether the group can change.
+  ///
+  /// False disables every radio.
   final bool enabled;
 
   /// Where the radios below register, so the group can find them.
@@ -216,7 +230,7 @@ class CoilRadioScope extends InheritedWidget {
       oldWidget.style != style;
 }
 
-/// The [CoilRadio]s under a `CoilRadioGroup.custom`, for the keys Flutter's
+/// The [CoilRadio]s under a [CoilRadioGroup.custom], for the keys Flutter's
 /// [RadioGroup] doesn't handle (Home and End).
 class CoilRadioClients {
   final _clients = <RadioClient<Object?>>{};

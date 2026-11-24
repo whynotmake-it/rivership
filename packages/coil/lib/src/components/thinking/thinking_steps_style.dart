@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/thinking.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/thinking/thinking_steps.dart'
     show CoilThinkingStepsTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilThinkingSteps` looks. Unset fields come from
-/// [CoilThinkingStepsStyle.fallback], which derives them from the theme.
-/// Set a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilThinkingSteps] looks.
+///
+/// Unset fields come from [CoilThinkingStepsStyle.fallback], which derives them
+/// from the theme. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [triggerFill], [label] and [expandedLabel] are resolved with
 /// [WidgetState.hovered], [WidgetState.focused], [WidgetState.pressed] and
@@ -44,9 +48,10 @@ class CoilThinkingStepsStyle
     this.motions,
   });
 
-  /// The defaults from the theme's tokens. Pointer triggers rest at
-  /// `mutedForeground`; touch triggers and [highContrast] ones rest at
-  /// `foreground`.
+  /// The defaults from the theme's tokens.
+  ///
+  /// Pointer triggers rest at [CoilColors.mutedForeground]; touch triggers and
+  /// [highContrast] ones rest at [CoilColors.foreground].
   factory CoilThinkingStepsStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics, {
@@ -113,7 +118,9 @@ class CoilThinkingStepsStyle
   /// The trigger's label and chevron color while expanded.
   final WidgetStateProperty<Color?>? expandedLabel;
 
-  /// The trigger label's style. Its color comes from [label].
+  /// The trigger label's style.
+  ///
+  /// Its color comes from [label].
   final TextStyle? textStyle;
 
   /// A step's title.
@@ -125,10 +132,11 @@ class CoilThinkingStepsStyle
   /// A step's leading glyph or dot.
   final Color? glyphColor;
 
-  /// The connector: the line that runs down from a step's glyph beside
-  /// the rest of the step (its detail, sources and image), joining it to
-  /// the next step. The last step has none, and a one-line step's
-  /// connector is too short to show.
+  /// The connector: the line that runs down from a step's glyph beside the rest
+  /// of the step (its detail, sources and image), joining it to the next step.
+  ///
+  /// The last step has none, and a one-line step's connector is too short to
+  /// show.
   final Color? connectorColor;
 
   /// How thick the connector is.
@@ -149,7 +157,9 @@ class CoilThinkingStepsStyle
   /// The corner radius of the trigger fill, source badges and images.
   final double? radius;
 
-  /// The widest the component grows. A narrower parent still wins.
+  /// The widest the component grows.
+  ///
+  /// A narrower parent still wins.
   final double? maxWidth;
 
   /// The space around the list of steps.
@@ -184,8 +194,9 @@ class CoilThinkingStepsStyle
 
   /// Springs for the component's animated parts, keyed by
   /// [CoilThinkingStepsTrack]s:
-  /// `{CoilThinkingStepsTrack.stepHeight: const Motion.smoothSpring()}`. A
-  /// component's own `motions:` win over these; these win over the motion
+  /// `{CoilThinkingStepsTrack.stepHeight: const Motion.smoothSpring()}`.
+  ///
+  /// A component's own `motions:` win over these; these win over the motion
   /// tokens. [merge] combines the maps key by key.
   final Map<CoilThinkingStepsTrack<Object>, Motion>? motions;
 

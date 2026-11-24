@@ -30,9 +30,9 @@ class CoilSettingsSection<T> {
   /// usually a [Text].
   final Widget label;
 
-  /// The section's name as text, for screen readers and the compact
-  /// select. Null reads the text of a [Text] [label]; give it for any
-  /// other widget.
+  /// The section's name as text, for screen readers and the compact select.
+  ///
+  /// Null reads the text of a [Text] [label]; give it for any other widget.
   final String? semanticLabel;
 
   String get _text => switch (semanticLabel ?? label) {
@@ -98,7 +98,7 @@ Future<void> showCoilSettingsDialog<T>({
 /// The sidebar is a [CoilSidebarScaffold] that doesn't fold. Below 600
 /// wide it hides and a [CoilSelect] at the top of the panel picks the
 /// section instead. Open it with [showCoilSettingsDialog], or from
-/// `Navigator.pages` in a [CoilModalPage], with [onClose] popping it.
+/// [Navigator.pages] in a [CoilModalPage], with [onClose] popping it.
 class CoilSettingsDialog<T> extends StatefulWidget {
   /// Creates a settings dialog.
   const CoilSettingsDialog({
@@ -110,8 +110,9 @@ class CoilSettingsDialog<T> extends StatefulWidget {
     this.closeLabel = 'Close',
   }) : assert(sections.length > 0, 'CoilSettingsDialog needs a section');
 
-  /// The dialog's title, above the sections; usually a [Text]. It names
-  /// the dialog for screen readers.
+  /// The dialog's title, above the sections; usually a [Text].
+  ///
+  /// It names the dialog for screen readers.
   final Widget title;
 
   /// The sections, in order.
@@ -266,7 +267,9 @@ TextStyle _heading(CoilTextTheme text) =>
     text.title.copyWith(fontWeight: text.body.fontWeight);
 
 /// The picked section: its heading and description, then its content, all
-/// scrolling. Compact, the dialog's [title] and a [picker] lead.
+/// scrolling.
+///
+/// Compact, the dialog's [title] and a [picker] lead.
 class _Panel<T> extends StatelessWidget {
   const _Panel({
     required this.section,
@@ -441,8 +444,8 @@ enum _SettingRowSlot { label, control }
 /// natural width up to half the row, and the label filling the rest, both
 /// centered vertically.
 ///
-/// A render object rather than a `LayoutBuilder`, so the row answers
-/// intrinsic sizes (inside an `IntrinsicHeight`, a dialog that sizes to
+/// A render object rather than a [LayoutBuilder], so the row answers
+/// intrinsic sizes (inside an [IntrinsicHeight], a dialog that sizes to
 /// its content).
 class _SettingRowLayout
     extends SlottedMultiChildRenderObjectWidget<_SettingRowSlot, RenderBox> {

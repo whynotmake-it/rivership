@@ -1,12 +1,17 @@
+/// @docImport 'package:coil/input_copy.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/input_copy/input_copy.dart'
     show CoilInputCopyTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilInputCopy` looks. Unset fields come from
-/// [CoilInputCopyStyle.fallback]. Set a style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilInputCopy] looks.
+///
+/// Unset fields come from [CoilInputCopyStyle.fallback]. Set a style app-wide
+/// or for a subtree with [CoilThemeData.withComponentStyle], or per instance
+/// with `style:`.
 ///
 /// [fill] resolves [WidgetState.pressed]. [actionColor] and [mark] resolve
 /// [WidgetState.hovered].
@@ -30,7 +35,7 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
 
   /// The defaults from the theme's tokens.
   ///
-  /// coil bundles no monospace font, so the value uses the body role with
+  /// Coil bundles no monospace font, so the value uses the body role with
   /// tabular figures and a slashed zero. Set [valueStyle] to use your own
   /// mono font.
   factory CoilInputCopyStyle.fallback(
@@ -77,7 +82,9 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
   /// The copied value's text style.
   final TextStyle? valueStyle;
 
-  /// The action's "Copy" text style. Its color comes from [actionColor].
+  /// The action's "Copy" text style.
+  ///
+  /// Its color comes from [actionColor].
   final TextStyle? actionStyle;
 
   /// The action's icon and text color.
@@ -111,9 +118,10 @@ class CoilInputCopyStyle extends CoilComponentStyle<CoilInputCopyStyle> {
   final double? actionGap;
 
   /// Springs for the row's animated parts, keyed by [CoilInputCopyTrack]s:
-  /// `{CoilInputCopyTrack.swap: const Motion.bouncySpring()}`. A row's own
-  /// `motions:` win over these; these win over the motion tokens. [merge]
-  /// combines the maps key by key.
+  /// `{CoilInputCopyTrack.swap: const Motion.bouncySpring()}`.
+  ///
+  /// A row's own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
   final Map<CoilInputCopyTrack<Object>, Motion>? motions;
 
   @override

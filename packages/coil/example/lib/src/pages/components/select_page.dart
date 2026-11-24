@@ -98,7 +98,7 @@ CoilField(
       ),
       CatalogNote(
         'Pointer',
-        'The popover is at most 300 logical pixels tall, and a list of more '
+        'The popover is at most 300 px tall, and a list of more '
             'than 12 options adds a search row. The active row’s fill '
             'glides from one row to the next as you move.',
       ),

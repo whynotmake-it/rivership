@@ -1,3 +1,6 @@
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'package:coil/button.dart';
 import 'package:coil/context_menu.dart';
 import 'package:coil/foundation.dart';
@@ -167,11 +170,12 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
     );
   }
 
-  /// An action's icon-only button. Like an `IconButton`, it is named by
-  /// its icon's `semanticLabel`, which merges into the button. On pointer,
-  /// its label shows in a tooltip; screen readers already hear the icon's
-  /// name, so the tooltip adds none. Touch has no tooltip: the long-press
-  /// menu shows the labels.
+  /// An action's icon-only button.
+  ///
+  /// Like an [IconButton], it is named by its icon's `semanticLabel`, which
+  /// merges into the button. On pointer, its label shows in a tooltip; screen
+  /// readers already hear the icon's name, so the tooltip adds none. Touch has
+  /// no tooltip: the long-press menu shows the labels.
   Widget _actionButton(CoilChatMessageAction action, {required bool tooltip}) {
     final button = CoilButton.icon(
       onPressed: action.onPressed,

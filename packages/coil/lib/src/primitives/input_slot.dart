@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/src/components/button/button.dart';
+/// @docImport 'package:coil/src/components/input/input.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -14,21 +18,24 @@ enum CoilInputSlotPlacement {
   auto,
 
   /// Beside the text, inside the field's padding and centered on the text
-  /// (on the first line of a multi-line field). A slot taller than the
-  /// line makes the field taller.
+  /// (on the first line of a multi-line field).
+  ///
+  /// A slot taller than the line makes the field taller.
   inline,
 
   /// Into the field's padding: centered in the field and as far from its
   /// side as from its top and bottom, so its corners sit concentric with
-  /// the field's. On a multi-line field it sits in the bottom corner. The
-  /// field grows only when the slot and its minimum inset don't fit.
+  /// the field's.
+  ///
+  /// On a multi-line field it sits in the bottom corner. The field grows
+  /// only when the slot and its minimum inset don't fit.
   inset,
 }
 
 /// Tells a control in a text field's slot how to fit the field.
 ///
-/// `CoilInput` puts one around its [CoilInputSlotPlacement.auto] and
-/// [CoilInputSlotPlacement.inset] slots. A `CoilButton` inside defaults to
+/// [CoilInput] puts one around its [CoilInputSlotPlacement.auto] and
+/// [CoilInputSlotPlacement.inset] slots. A [CoilButton] inside defaults to
 /// [size], at most [maxExtent] tall so it fits the field without growing
 /// it, and to [radiusFor] its height, so its corners are concentric with
 /// the field's, and drops its own touch hit padding: the field takes taps
@@ -51,8 +58,9 @@ class CoilInputSlotScope extends InheritedWidget {
   /// The size step a control in the slot defaults to.
   final CoilSize size;
 
-  /// The theme's radii at the field's tier. A family that nests square
-  /// (`sharp`) keeps a control's own radius.
+  /// The theme's radii at the field's tier.
+  ///
+  /// A family that nests square (`sharp`) keeps a control's own radius.
   final CoilRadii radii;
 
   /// The field's corner radius.

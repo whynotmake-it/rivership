@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/thinking.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -19,8 +22,10 @@ typedef ThinkingStepMotions = ({
 /// to open (DESIGN.md §14.4).
 const _stagger = Duration(milliseconds: 80);
 
-/// One step of a `CoilThinkingSteps`. A step that arrives after the first
-/// build ([enter]) opens its height, then fades in.
+/// One step of a [CoilThinkingSteps].
+///
+/// A step that arrives after the first build ([enter]) opens its height, then
+/// fades in.
 ///
 /// Every step but the [last] draws a connector down from its glyph, beside
 /// the rest of the step. It is laid out with the step, so it follows long

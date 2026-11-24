@@ -3,8 +3,10 @@ import 'package:coil/src/components/field/field_group.dart';
 import 'package:coil/src/components/field/field_style.dart';
 import 'package:flutter/widgets.dart';
 
-/// Related fields under one heading (the [legend]), such as an address
-/// block or a group of checkboxes. Screen readers read the legend first.
+/// Related fields under one heading (the [legend]), such as an address block or
+/// a group of checkboxes.
+///
+/// Screen readers read the legend first.
 class CoilFieldSet extends StatelessWidget {
   /// Creates a field set.
   const CoilFieldSet({
@@ -16,7 +18,9 @@ class CoilFieldSet extends StatelessWidget {
     this.style,
   });
 
-  /// The set's heading. Usually a [Text].
+  /// The set's heading.
+  ///
+  /// Usually a [Text].
   final Widget? legend;
 
   /// One sentence under the legend.

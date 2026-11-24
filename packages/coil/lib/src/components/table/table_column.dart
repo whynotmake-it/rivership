@@ -1,7 +1,11 @@
+/// @docImport 'package:coil/foundation.dart';
+/// @docImport 'package:coil/table.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The order a sorted column shows.
+/// Sort ordering for a [CoilTableColumn].
 enum CoilSortDirection {
   /// Smallest first.
   ascending,
@@ -10,7 +14,7 @@ enum CoilSortDirection {
   descending,
 }
 
-/// One column of a `CoilTable`: its header and how to build its cells.
+/// One column of a [CoilTable]: its header and how to build its cells.
 ///
 /// Columns are flexible by default and share the table's width by [flex],
 /// never narrower than [minWidth]. A [width] makes the column fixed. When
@@ -31,8 +35,9 @@ class CoilTableColumn<T> {
     this.sortIndicator,
   });
 
-  /// The header, usually a [Text]. Screen readers read it as the
-  /// column's name.
+  /// The header, usually a [Text].
+  ///
+  /// Screen readers read it as the column's name.
   final Widget label;
 
   /// Names the column for screen readers when [label] can't, such as an
@@ -42,7 +47,9 @@ class CoilTableColumn<T> {
   /// Builds this column's cell for a row.
   final Widget Function(BuildContext context, T row) cellBuilder;
 
-  /// A fixed width, padding included. Null makes the column flexible.
+  /// A fixed width, padding included.
+  ///
+  /// When null, makes the column flexible.
   final double? width;
 
   /// The column's share of the free width, when flexible.
@@ -51,25 +58,31 @@ class CoilTableColumn<T> {
   /// The narrowest a flexible column gets, padding included.
   final double minWidth;
 
-  /// Where the header and the cells sit in the column. Use
-  /// [AlignmentDirectional.centerEnd] for numbers.
+  /// Where the header and the cells sit in the column.
+  ///
+  /// Use [AlignmentDirectional.centerEnd] for numbers.
   final AlignmentGeometry alignment;
 
   /// The order the column is sorted in, or null when it isn't the sort key.
   final CoilSortDirection? sort;
 
-  /// Makes the header pressable, to sort by this column. The table doesn't
-  /// sort: sort `CoilTable.rows` and set [sort].
+  /// Makes the header pressable to sort by this column.
+  ///
+  /// The table doesn't sort automatically: sort [CoilTable.rows] and update
+  /// [sort].
   final VoidCallback? onSort;
 
   /// Replaces the chevron that shows [sort] in the header
-  /// (`CoilIcons.chevronUp` ascending, `CoilIcons.chevronDown`
-  /// descending). It shows only while [sort] is set, colored and sized by
-  /// the header's `IconTheme`.
+  /// ([CoilIcons.chevronUp] ascending, [CoilIcons.chevronDown] descending).
+  ///
+  /// Shown only while [sort] is set, colored and sized by the header's
+  /// [IconTheme].
   final Widget? sortIndicator;
 }
 
-/// The texts a `CoilTable` announces. The defaults are English.
+/// Accessibility labels announced by screen readers for a [CoilTable].
+///
+/// Defaults to English.
 @immutable
 class CoilTableLabels {
   /// Creates the labels.
@@ -94,58 +107,73 @@ class CoilTableLabels {
   int get hashCode => Object.hash(sortedAscendingLabel, sortedDescendingLabel);
 }
 
-/// The animated parts of a `CoilTable`. Use them as keys of
-/// `CoilTable.motions` or `CoilTableStyle.motions`.
+/// The animated parts of a [CoilTable].
+///
+/// Use these as keys of [CoilTable.motions] or [CoilTableStyle.motions].
 final class CoilTableTrack<T extends Object> extends Track<T> {
   CoilTableTrack._(super.converter, {required String super.debugLabel});
 
-  /// The row highlight gliding under a hovering pointer. Default motion:
-  /// `quick`.
+  /// The row highlight gliding under a hovering pointer.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final highlight = CoilTableTrack<Rect>._(
     .rect,
     debugLabel: 'CoilTable.highlight',
   );
 
-  /// The block behind selected rows, as it moves, merges and splits.
-  /// Default motion: `standard`.
+  /// The block behind selected rows, as it moves, merges, and splits.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final selection = CoilTableTrack<Rect>._(
     .rect,
     debugLabel: 'CoilTable.selection',
   );
 
-  /// The keyboard focus ring moving between rows. Default motion: `quick`.
+  /// The keyboard focus ring moving between rows.
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final ring = CoilTableTrack<Rect>._(
     .rect,
     debugLabel: 'CoilTable.ring',
   );
 
-  /// The fill behind a sortable header cell. Default motion: `fade`.
+  /// The fill behind a sortable header cell.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final headerFill = CoilTableTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilTable.headerFill',
   );
 
-  /// The header label color. Default motion: `fade`.
+  /// The header label color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final headerLabel = CoilTableTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilTable.headerLabel',
   );
 
-  /// The fill under a finger pressing a row. Default motion: `fade` in,
-  /// `fadeExit` out; an override applies to both.
+  /// The fill under a finger pressing a row.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out; an
+  /// override applies to both.
   static final rowPress = CoilTableTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilTable.rowPress',
   );
 
-  /// The hairline under a row, hiding where fills touch it. Default motion:
-  /// `fade` in, `fadeExit` out; an override applies to both.
+  /// The hairline under a row, hiding where fills touch it.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out; an
+  /// override applies to both.
   static final rule = CoilTableTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilTable.rule',
   );
 
-  /// The body label color. Default motion: `fade`.
+  /// The body label color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final rowLabel = CoilTableTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilTable.rowLabel',

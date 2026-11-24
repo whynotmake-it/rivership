@@ -17,8 +17,9 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// The animated parts of a [CoilAskUserQuestions], as Motor tracks. Use
-/// them as keys of [CoilAskUserQuestions.motions] or
+/// The animated parts of a [CoilAskUserQuestions], as Motor tracks.
+///
+/// Use them as keys of [CoilAskUserQuestions.motions] or
 /// [CoilAskUserQuestionsStyle.motions].
 final class CoilAskUserQuestionsTrack<T extends Object> extends Track<T> {
   CoilAskUserQuestionsTrack._(
@@ -26,52 +27,67 @@ final class CoilAskUserQuestionsTrack<T extends Object> extends Track<T> {
     required String super.debugLabel,
   });
 
-  /// The card's height between questions. Default motion: `standard`.
+  /// The card's height between questions.
+  ///
+  /// Default motion: [CoilMotion.standard].
   static final height = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.height',
   );
 
-  /// The questions fading in and out. Default motion: `fade`, `fadeExit`
-  /// for the leaving one.
+  /// The questions fading in and out.
+  ///
+  /// Default motion: [CoilMotion.fade], [CoilMotion.fadeExit] for the leaving
+  /// one.
   static final step = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.step',
   );
 
-  /// The merged blocks behind picked rows. Default motion: `standard`.
+  /// The merged blocks behind picked rows.
+  ///
+  /// Default motion: [CoilMotion.standard].
   static final selection = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.selection',
   );
 
-  /// The focus ring travelling between rows. Default motion: `quick`.
+  /// The focus ring travelling between rows.
+  ///
+  /// Default motion: [CoilMotion.quick].
   static final ring = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.ring',
   );
 
-  /// Label weight and key colors. Default motion: `fade`.
+  /// Label weight and key colors.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final label = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.label',
   );
 
-  /// The submit arrow over a key. Default motion: `quick`, `quickExit`
-  /// when it leaves.
+  /// The submit arrow over a key.
+  ///
+  /// Default motion: [CoilMotion.quick], [CoilMotion.quickExit] when it leaves.
   static final hint = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.hint',
   );
 
-  /// The touch press fill. Default motion: `fade`, `fadeExit` on release.
+  /// The touch press fill.
+  ///
+  /// Default motion: [CoilMotion.fade], [CoilMotion.fadeExit] on release.
   static final press = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.press',
   );
 
-  /// The footer buttons appearing and leaving. Default motion: `quick`,
-  /// `quickExit` when they leave.
+  /// The footer buttons appearing and leaving.
+  ///
+  /// Default motion: [CoilMotion.quick], [CoilMotion.quickExit] when they
+  /// leave.
   static final buttons = CoilAskUserQuestionsTrack<double>._(
     .single,
     debugLabel: 'CoilAskUserQuestions.buttons',
@@ -79,7 +95,9 @@ final class CoilAskUserQuestionsTrack<T extends Object> extends Track<T> {
 }
 
 /// The words a [CoilAskUserQuestions] shows, as widgets it styles (usually
-/// [Text]). The defaults are English.
+/// [Text]).
+///
+/// The defaults are English.
 @immutable
 class CoilAskUserQuestionsLabels {
   /// Creates the labels.
@@ -112,7 +130,9 @@ class CoilAskUserQuestionsLabels {
   final Widget empty;
 
   /// Builds the progress line from the question's number (from 1) and the
-  /// count. It's a live region, so each new question is announced.
+  /// count.
+  ///
+  /// It's a live region, so each new question is announced.
   final Widget Function(int number, int count) step;
 
   static Widget _step(int number, int count) =>
@@ -178,7 +198,9 @@ class CoilAskUserQuestions<T> extends StatefulWidget {
   /// The questions, in order.
   final List<CoilQuestion<T>> questions;
 
-  /// The current question and the answers. One is created if null.
+  /// The current question and the answers.
+  ///
+  /// One is created if null.
   final CoilAskUserQuestionsController<T>? controller;
 
   /// Called with every answer, keyed by [CoilQuestion.id], when the last
@@ -195,14 +217,18 @@ class CoilAskUserQuestions<T> extends StatefulWidget {
   /// the number keys work at once.
   final bool autofocus;
 
-  /// Pins the card to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the card to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilAskUserQuestionsTrack]s. They win over
-  /// the style's [CoilAskUserQuestionsStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilAskUserQuestionsTrack]s.
+  ///
+  /// They win over the style's [CoilAskUserQuestionsStyle.motions] and the
+  /// tokens.
   final Map<CoilAskUserQuestionsTrack<Object>, Motion>? motions;
 
   /// Overrides for this card's look.
@@ -700,8 +726,10 @@ class _CoilAskUserQuestionsState<T> extends State<CoilAskUserQuestions<T>> {
 }
 
 /// Switches its child with the blur-fade while its size springs to the new
-/// child's at once. A leaving child keeps its own size (clipped by the
-/// shrinking box along [axis]) and can't be focused, tapped or read.
+/// child's at once.
+///
+/// A leaving child keeps its own size (clipped by the shrinking box along
+/// [axis]) and can't be focused, tapped or read.
 class _Presence extends StatelessWidget {
   const _Presence({
     required this.axis,

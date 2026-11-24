@@ -1,3 +1,6 @@
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
@@ -8,54 +11,66 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// The animated parts of a [CoilButton], as Motor tracks. Use them as keys
-/// of [CoilButton.motions] or [CoilButtonStyle.motions].
+/// The animated parts of a [CoilButton], as Motor tracks.
+///
+/// Use these as keys of [CoilButton.motions] or [CoilButtonStyle.motions].
 final class CoilButtonTrack<T extends Object> extends Track<T> {
   CoilButtonTrack._(super.converter, {required String super.debugLabel});
 
-  /// The surface color. Default motion: `fade`.
+  /// The surface color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final fill = CoilButtonTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilButton.fill',
   );
 
-  /// The label and icon color. Default motion: `fade`.
+  /// The label and icon color.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final label = CoilButtonTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilButton.label',
   );
 
-  /// The 1 px press collapse, 1 (rest) to 0 (pressed). Default motion:
-  /// `quick` while pressing, `standard` on release.
+  /// The 1 px press collapse, from 1 (rest) to 0 (pressed).
+  ///
+  /// Defaults to [CoilMotion.quick] while pressing and [CoilMotion.standard]
+  /// on release.
   static final collapse = CoilButtonTrack<double>._(
     .single,
     debugLabel: 'CoilButton.collapse',
   );
 
-  /// How hovered the button's lighting is, 0 to 1, under a plastic theme
-  /// (`CoilThemeData.plasticity`). Default motion: `fade`.
+  /// How hovered the button's lighting is, from 0 to 1, under a plastic theme
+  /// ([CoilThemeData.plasticity]).
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final light = CoilButtonTrack<double>._(
     .single,
     debugLabel: 'CoilButton.light',
   );
 
-  /// The button's width: a label that changes, a leading or trailing part
-  /// (or the spinner) that comes or goes. Default motion: `standard`
-  /// growing, `standardExit` shrinking; the content fades on `fade` /
-  /// `fadeExit`.
+  /// The button's width when its label, leading/trailing slots, or spinner
+  /// change.
+  ///
+  /// Defaults to [CoilMotion.standard] growing and [CoilMotion.standardExit]
+  /// shrinking; content fades on [CoilMotion.fade] and [CoilMotion.fadeExit].
   static final size = CoilButtonTrack<double>._(
     .single,
     debugLabel: 'CoilButton.size',
   );
 
-  /// The icon weight. Default motion: `fade`.
+  /// The icon weight.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final weight = CoilButtonTrack<double>._(
     .single,
     debugLabel: 'CoilButton.weight',
   );
 }
 
-/// A button.
+/// Interactive button with spring-driven press, hover, and loading feedback.
 ///
 /// [child] is the label. [leading] and [trailing] take any widget and are
 /// styled through [IconTheme]: icon size, the label color, and a weight that
@@ -71,7 +86,7 @@ final class CoilButtonTrack<T extends Object> extends Track<T> {
 /// The button springs to its new width when its own content changes: a new
 /// label, or a leading or trailing part that comes or goes. When the
 /// constraints around it change, it relayouts at once. The animated parts
-/// are [CoilButtonTrack]s; override them with [motions].
+/// are [CoilButtonTrack] values; override them with [motions].
 class CoilButton extends StatefulWidget {
   /// Creates a labeled button.
   const CoilButton({
@@ -97,8 +112,8 @@ class CoilButton extends StatefulWidget {
 
   /// Creates a square, icon-only button.
   ///
-  /// Like an `IconButton`, it needs a name for assistive technology: give
-  /// [semanticLabel], or the icon's own `semanticLabel`
+  /// Like an [IconButton], it needs a name for assistive technology: give
+  /// [semanticLabel], or the icon's own [Icon.semanticLabel]
   /// (`Icon(..., semanticLabel: 'Copy')` or
   /// `CoilIcon(..., semanticLabel: 'Copy')`), which merges into the button.
   /// When both are set, [semanticLabel] wins.
@@ -123,7 +138,9 @@ class CoilButton extends StatefulWidget {
        leading = null,
        trailing = null;
 
-  /// Called on tap, Enter or Space. Null disables the button.
+  /// Called on tap, Enter, or Space.
+  ///
+  /// When null, disables the button.
   final VoidCallback? onPressed;
 
   /// The label.
@@ -141,7 +158,9 @@ class CoilButton extends StatefulWidget {
   /// The visual style.
   final CoilButtonVariant variant;
 
-  /// Pins the button to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the button to one size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Shows a spinner and blocks presses while keeping full strength (a
@@ -165,9 +184,10 @@ class CoilButton extends StatefulWidget {
   /// instance.
   final CoilMotion? motion;
 
-  /// Per-track motions for this instance, keyed by [CoilButtonTrack]s:
-  /// `motions: {.collapse: const .snappySpring()}`. They win over the
-  /// style's [CoilButtonStyle.motions] and the tokens.
+  /// Per-track motions for this instance, keyed by [CoilButtonTrack] values.
+  ///
+  /// For example, `motions: {.collapse: const .snappySpring()}`. These take
+  /// precedence over [CoilButtonStyle.motions] and the theme tokens.
   final Map<CoilButtonTrack<Object>, Motion>? motions;
 
   /// Overrides for this button's look, on top of the theme's
@@ -177,16 +197,17 @@ class CoilButton extends StatefulWidget {
   /// Overrides the label for assistive technology.
   ///
   /// An icon-only button can leave it null and be named by its icon's own
-  /// `semanticLabel` instead. When both are set, this wins.
+  /// [Icon.semanticLabel] instead. When both are set, this wins.
   final String? semanticLabel;
 
   /// What assistive technology announces as the button's value while
   /// [loading] (for example "Loading", in the app's language).
   final String? loadingLabel;
 
-  /// Replaces the built-in spinner shown while [loading]. It is laid out in
-  /// an icon-sized box and inherits the label color through [IconTheme] and
-  /// [DefaultTextStyle].
+  /// Replaces the built-in spinner shown while [loading].
+  ///
+  /// Laid out in an icon-sized box and inherits the label color through
+  /// [IconTheme] and [DefaultTextStyle].
   final Widget? loadingIndicator;
 
   @override
@@ -411,8 +432,9 @@ class _CoilButtonState extends State<CoilButton> {
   }
 
   /// The lighting under a plastic theme, or null when flat or disabled.
-  /// The primary and brand buttons are strong fills (brand lit in its own
-  /// hue); tertiary and ghost are quiet (never lit); the rest are raised.
+  ///
+  /// The primary and brand buttons are strong fills (brand lit in its own hue);
+  /// tertiary and ghost are quiet (never lit); the rest are raised.
   CoilRelief? _relief(
     CoilThemeData theme,
     CoilButtonStyle style, {
@@ -443,7 +465,7 @@ class _CoilButtonState extends State<CoilButton> {
   }
 
   /// The swap between idle content and the spinner: the blur-fade on
-  /// `quick`, out on `quickExit`.
+  /// [CoilMotion.quick], out on [CoilMotion.quickExit].
   Widget _swap(Widget child) => MotionSwitcher(
     motion: _motion.quick,
     exitMotion: _motion.quickExit,
@@ -635,8 +657,9 @@ class _ButtonSurfacePainter extends CustomPainter {
       old.relief != relief;
 }
 
-/// The loading spinner: an arc turning one eased lap per second. It fills
-/// the icon-sized box it is given. Reduced motion stops the turn.
+/// The loading spinner: an arc turning one eased lap per second.
+///
+/// It fills the icon-sized box it is given. Reduced motion stops the turn.
 class _CoilSpinner extends StatelessWidget {
   const _CoilSpinner();
 

@@ -56,8 +56,8 @@ CoilField(
       ),
       CatalogNote(
         'Motion',
-        'The icon swaps to a check, or to a cross if the clipboard refused, '
-            'and a button springs between the widths of “Copy” and “Copied”. '
+        'The icon swaps to a check, or to an X if copying fails, and a '
+            'button springs between the widths of “Copy” and “Copied”. '
             'Copying again just restarts the confirmation.',
       ),
       CatalogNote(
@@ -68,7 +68,7 @@ CoilField(
       ),
       CatalogNote(
         'Pointer',
-        'Hovering tints the value and brings the action to full strength. A '
+        'Hovering tints the value and brings the action to full opacity. A '
             'tooltip can explain the action, but it is never the only '
             'feedback a copy gives.',
       ),

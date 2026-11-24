@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/checkbox_group.dart';
+library;
+
 import 'package:coil/checkbox.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/checkbox_group/checkbox_group.dart'
@@ -5,10 +8,11 @@ import 'package:coil/src/components/checkbox_group/checkbox_group.dart'
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilCheckboxGroup` looks. Unset fields come from
-/// [CoilCheckboxGroupStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with
-/// `CoilThemeData.withComponentStyle`, or per instance with `style:`.
+/// Overrides for how a [CoilCheckboxGroup] looks.
+///
+/// Unset fields come from [CoilCheckboxGroupStyle.fallback], derived from the
+/// theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// [label] is resolved with [WidgetState.selected], [WidgetState.hovered]
 /// and [WidgetState.focused].
@@ -67,9 +71,11 @@ class CoilCheckboxGroupStyle
   final CoilCheckboxStyle? checkbox;
 
   /// Springs for the group's animated parts, keyed by
-  /// [CoilCheckboxGroupTrack]s: `{CoilCheckboxGroupTrack.selection: const
-  /// Motion.bouncySpring()}`. A group's own `motions:` win over these; these
-  /// win over the motion tokens. [merge] combines the maps key by key.
+  /// [CoilCheckboxGroupTrack]s:
+  /// `{CoilCheckboxGroupTrack.selection: const Motion.bouncySpring()}`.
+  ///
+  /// A group's own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
   final Map<CoilCheckboxGroupTrack<Object>, Motion>? motions;
 
   @override

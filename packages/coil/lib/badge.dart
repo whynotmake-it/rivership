@@ -1,4 +1,6 @@
-/// The coil `CoilBadge` component.
+/// The Coil [CoilBadge] component.
+///
+/// @docImport 'src/components/badge/badge.dart';
 library;
 
 export 'src/components/badge/badge.dart';

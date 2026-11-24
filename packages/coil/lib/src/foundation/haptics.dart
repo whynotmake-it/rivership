@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// The moments coil gives haptic feedback for.
+/// The moments Coil gives haptic feedback for.
 enum CoilHapticEvent {
   /// A toggle flips (switch, checkbox) or a segment changes.
   toggle,
@@ -49,13 +49,13 @@ enum CoilHaptic {
 
 /// Which haptic each [CoilHapticEvent] plays; null plays nothing.
 ///
-/// Set it on [CoilThemeData.haptics]. Left null there, coil uses
+/// Set it on [CoilThemeData.haptics]. Left null there, Coil uses
 /// [CoilHaptics.platform], the conventions of the platform it runs on.
 /// [CoilHaptics.none] turns haptics off. Components play them with
 /// [CoilHaptics.play].
 @immutable
 class CoilHaptics with Diagnosticable {
-  /// Creates a mapping. Unset events play nothing.
+  /// Creates a mapping; unset events play nothing.
   const CoilHaptics({
     this.toggle,
     this.pick,
@@ -130,8 +130,9 @@ class CoilHaptics with Diagnosticable {
     CoilHapticEvent.step => step,
   };
 
-  /// The mapping at [context]: the theme's, else the platform's. None on
-  /// the web, which has no haptics API.
+  /// The mapping at [context]: the theme's, else the platform's.
+  ///
+  /// Returns [none] on the web, which has no haptics API.
   // A lookup, like Theme.of.
   // ignore: prefer_constructors_over_static_methods
   static CoilHaptics of(BuildContext context) =>
@@ -149,8 +150,9 @@ class CoilHaptics with Diagnosticable {
         CoilHaptic.longPress => Feedback.forLongPress(context),
       };
 
-  /// A copy with the given events remapped. To silence one, build a new
-  /// mapping without it.
+  /// Returns a copy with the given events remapped.
+  ///
+  /// To silence one, build a new mapping without it.
   CoilHaptics copyWith({
     CoilHaptic? toggle,
     CoilHaptic? pick,

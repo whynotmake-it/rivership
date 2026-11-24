@@ -1,30 +1,41 @@
+/// @docImport 'package:coil/checkbox.dart';
+/// @docImport 'package:coil/field.dart';
+/// @docImport 'package:coil/radio_group.dart';
+/// @docImport 'package:coil/switch.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/src/components/field/choice_card_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilChoiceCard], as Motor tracks. Use them as
-/// keys of [CoilChoiceCard.motions] or [CoilChoiceCardStyle.motions].
+/// The animated parts of a [CoilChoiceCard], as Motor tracks.
+///
+/// Use these as keys of [CoilChoiceCard.motions] or
+/// [CoilChoiceCardStyle.motions].
 final class CoilChoiceCardTrack<T extends Object> extends Track<T> {
   CoilChoiceCardTrack._(super.converter, {required String super.debugLabel});
 
-  /// The hover and press fill. Default motion: `fade` in, `fadeExit` out.
+  /// The hover and press fill.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out.
   static final fill = CoilChoiceCardTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilChoiceCard.fill',
   );
 
-  /// The border, which darkens while selected. Default motion: `fade`.
+  /// The border, which darkens while selected.
+  ///
+  /// Defaults to [CoilMotion.fade].
   static final border = CoilChoiceCardTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilChoiceCard.border',
   );
 }
 
-/// A choice as a bordered card: a [control] (a `CoilCheckbox`,
-/// `CoilSwitch` or `CoilRadio`) at the start, then a [title] and an optional
-/// [description].
+/// A choice as a bordered card: a [control] (a [CoilCheckbox], [CoilSwitch],
+/// or [CoilRadio]) at the start, then a [title] and an optional [description].
 ///
 /// The whole card is the target: a tap anywhere toggles the control. A
 /// hovering pointer fills the card and lights the control as if it were
@@ -33,8 +44,7 @@ final class CoilChoiceCardTrack<T extends Object> extends Track<T> {
 /// darkens.
 ///
 /// Pass the control's value as [selected], and `enabled: false` with a
-/// disabled control, as with a list tile. Stack cards in a
-/// `CoilFieldGroup`.
+/// disabled control, as with a list tile. Stack cards in a [CoilFieldGroup].
 ///
 /// ```dart
 /// CoilChoiceCard(
@@ -59,30 +69,41 @@ class CoilChoiceCard extends StatefulWidget {
     this.style,
   });
 
-  /// The control: a `CoilCheckbox`, a `CoilSwitch` or a `CoilRadio`. Put
-  /// radio cards in a `CoilRadioGroup.custom`.
+  /// The control: a [CoilCheckbox], a [CoilSwitch], or a [CoilRadio].
+  ///
+  /// Put radio cards in a [CoilRadioGroup.custom].
   final Widget control;
 
-  /// Names the choice. Usually a [Text].
+  /// Names the choice.
+  ///
+  /// Usually a [Text].
   final Widget title;
 
   /// One sentence about the choice, under the [title].
   final Widget? description;
 
-  /// Whether the control is on. The border darkens.
+  /// Whether the control is on.
+  ///
+  /// Darkens the border when true.
   final bool selected;
 
-  /// Whether the card responds. Pass false with a disabled control.
+  /// Whether the card responds.
+  ///
+  /// Pass false with a disabled control.
   final bool enabled;
 
-  /// Pins the card to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the card to one size step.
+  ///
+  /// When null, follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Overrides single tracks' motions. They win over the style's
-  /// [CoilChoiceCardStyle.motions] and the tokens.
+  /// Overrides single tracks' motions.
+  ///
+  /// These take precedence over [CoilChoiceCardStyle.motions] and the theme
+  /// tokens.
   final Map<CoilChoiceCardTrack<Object>, Motion>? motions;
 
   /// Overrides for this card's look.

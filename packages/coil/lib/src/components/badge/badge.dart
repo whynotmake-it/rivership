@@ -4,14 +4,16 @@ import 'package:coil/src/components/badge/badge_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a [CoilBadge], as Motor tracks. Use them as keys of
-/// [CoilBadge.motions] or [CoilBadgeStyle.motions].
+/// The animated parts of a [CoilBadge], as Motor tracks.
+///
+/// Use them as keys of [CoilBadge.motions] or [CoilBadgeStyle.motions].
 final class CoilBadgeTrack<T extends Object> extends Track<T> {
   CoilBadgeTrack._(super.converter, {required String super.debugLabel});
 
   /// The badge's width as its label changes (a count going 9 to 10).
-  /// Default motion: `standard`; the label cross-fades on `fade` /
-  /// `fadeExit`.
+  ///
+  /// Default motion: [CoilMotion.standard]; the label cross-fades on
+  /// [CoilMotion.fade] / [CoilMotion.fadeExit].
   static final size = CoilBadgeTrack<double>._(
     .single,
     debugLabel: 'CoilBadge.size',
@@ -24,7 +26,7 @@ final class CoilBadgeTrack<T extends Object> extends Track<T> {
 /// adds a colored dot before it, which assistive technology skips. A badge
 /// has no touch bump and no states: use a button for anything tappable.
 ///
-/// When the label changes (a `Text` with another string, or a child with
+/// When the label changes (a [Text] with another string, or a child with
 /// another key) the label cross-fades and the badge springs to its new
 /// width. A change of the room around it relayouts at once. The animated
 /// part is [CoilBadgeTrack.size].
@@ -54,14 +56,17 @@ class CoilBadge extends StatelessWidget {
   /// The corners: the theme's item radius, or a [CoilBadgeShape.pill].
   final CoilBadgeShape shape;
 
-  /// Pins the badge to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the badge to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens for this badge.
   final CoilMotion? motion;
 
-  /// Per-track motions for this badge, keyed by [CoilBadgeTrack]s. They win
-  /// over the style's [CoilBadgeStyle.motions] and [motion]'s tokens.
+  /// Per-track motions for this badge, keyed by [CoilBadgeTrack]s.
+  ///
+  /// They win over the style's [CoilBadgeStyle.motions] and [motion]'s tokens.
   final Map<CoilBadgeTrack<Object>, Motion>? motions;
 
   /// Overrides for this badge's look, on top of the theme's

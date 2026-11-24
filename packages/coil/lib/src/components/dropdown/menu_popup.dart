@@ -1,6 +1,10 @@
 // MotorInspectionScope is part of motor's experimental inspection API.
 // ignore_for_file: experimental_member_use
 
+/// @docImport 'package:coil/context_menu.dart';
+/// @docImport 'package:coil/dropdown.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
 import 'package:coil/scroll_area.dart';
@@ -8,7 +12,7 @@ import 'package:coil/src/components/dropdown/dropdown_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 
-/// The menu `CoilDropdown` and `CoilContextMenu` open: [entries] in a
+/// The menu [CoilDropdown] and [CoilContextMenu] open: [entries] in a
 /// popover, or on a phone in a sheet when the menu is long and a floating
 /// panel when it has search.
 class CoilMenuPopup extends StatelessWidget {

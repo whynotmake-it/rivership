@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/src/components/chat_message/chat_message_action.dart';
+library;
+
 import 'dart:ui' as ui;
 
 import 'package:coil/src/foundation/icons.dart';
@@ -7,15 +10,15 @@ import 'package:coil/src/primitives/icon_presence.dart';
 import 'package:flutter/widgets.dart';
 
 /// The icon for [role]: the theme's ([CoilThemeData.icons]) when it sets
-/// one, else coil's drawn glyph for it.
+/// one, else Coil's drawn glyph for it.
 ///
 /// Components show their icons through it, after their own slot:
 /// `widget.dismissIcon ?? const CoilIcon(.close)`. Like a slot, it is
 /// styled by the ambient [IconTheme].
 ///
-/// Like Flutter's `Icon`, it is hidden from screen readers unless it has a
+/// Like Flutter's [Icon], it is hidden from screen readers unless it has a
 /// [semanticLabel]. Give it one when the icon is all that names a control,
-/// such as a `CoilChatMessageAction`'s icon-only button.
+/// such as a [CoilChatMessageAction]'s icon-only button.
 class CoilIcon extends StatelessWidget {
   /// Creates the icon for [role].
   const CoilIcon(this.role, {super.key, this.semanticLabel});
@@ -23,14 +26,16 @@ class CoilIcon extends StatelessWidget {
   /// Which icon.
   final CoilIconRole role;
 
-  /// What screen readers announce for the icon, as with `Icon`. It merges
-  /// into the control around it, so an icon-only button is named by it.
+  /// What screen readers announce for the icon, as with [Icon].
+  ///
+  /// It merges into the control around it, so an icon-only button is named
+  /// by it.
   ///
   /// Null leaves the icon out of the semantics tree: a decorative icon, or
   /// one beside a label that already names its control.
   final String? semanticLabel;
 
-  /// The glyph coil draws for [role] when the theme sets no icon.
+  /// The glyph Coil draws for [role] when the theme sets no icon.
   static CoilGlyph glyphFor(CoilIconRole role) => switch (role) {
     CoilIconRole.check => CoilGlyph.check,
     CoilIconRole.dash => CoilGlyph.dash,
@@ -56,9 +61,10 @@ class CoilIcon extends StatelessWidget {
   );
 }
 
-/// The small glyphs coil draws itself (DESIGN.md §11), by shape. Components
-/// show them by [CoilIconRole] through [CoilIcon], so an app's icon set
-/// replaces them.
+/// The small glyphs Coil draws itself (DESIGN.md §11), by shape.
+///
+/// Components show them by [CoilIconRole] through [CoilIcon], so an app's
+/// icon set replaces them.
 enum CoilGlyph {
   /// A tick: checked, copied.
   check,
@@ -96,7 +102,7 @@ enum CoilGlyph {
 
 /// Draws a [CoilGlyph] on the 24-unit grid with a round stroke.
 ///
-/// It sizes, colors and weighs itself like an `Icon`, from the ambient
+/// It sizes, colors and weighs itself like an [Icon], from the ambient
 /// [IconTheme] and scaled with text: the stroke is 1.5 at
 /// [CoilIconWeight.rest] and 2 at [CoilIconWeight.emphasis]. Indicators
 /// (a checkbox tick, a select check, a field alert) draw at emphasis.
@@ -109,8 +115,10 @@ class CoilDrawnGlyph extends StatelessWidget {
     : _followsPresence = false;
 
   /// A glyph that draws itself in and out with its [CoilIconPresence] when
-  /// a component animates it (reading it, so coil applies no fallback),
-  /// and is complete outside one. coil's role icons ([CoilIcon]) are these.
+  /// a component animates it (reading it, so Coil applies no fallback), and
+  /// is complete outside one.
+  ///
+  /// Coil's role icons ([CoilIcon]) are these.
   const CoilDrawnGlyph.presence(this.glyph, {super.key, this.color})
     : progress = 1,
       _followsPresence = true;
@@ -118,8 +126,9 @@ class CoilDrawnGlyph extends StatelessWidget {
   /// Which glyph.
   final CoilGlyph glyph;
 
-  /// How much of the strokes is drawn, 0 to 1. A
-  /// [CoilDrawnGlyph.presence] follows its presence instead.
+  /// How much of the strokes is drawn, 0 to 1.
+  ///
+  /// A [CoilDrawnGlyph.presence] follows its presence instead.
   final double progress;
 
   final bool _followsPresence;

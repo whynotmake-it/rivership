@@ -3,10 +3,12 @@ import 'package:flutter/painting.dart';
 
 /// A [LinearGradient] from [from] to [to] whose color follows [curve]
 /// instead of a straight line, so a fade has no visible edge where it
-/// starts or ends. The ramp runs between the stops [start] and [end], and
-/// [steps] samples of the curve approximate it.
+/// starts or ends.
 ///
-/// Internal to coil; not exported.
+/// The ramp runs between the stops [start] and [end], and [steps] samples
+/// of the curve approximate it.
+///
+/// Internal to Coil; not exported.
 LinearGradient easedGradient({
   required Alignment begin,
   required Alignment end,

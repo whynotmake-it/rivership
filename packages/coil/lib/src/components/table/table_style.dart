@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/table.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/table/table_column.dart'
     show CoilTableTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilTable` looks. Unset fields come from
-/// [CoilTableStyle.fallback], derived from the theme's tokens. Set a style
-/// app-wide or for a subtree with `CoilThemeData.withComponentStyle`, or per
-/// instance with `style:`.
+/// Overrides for how a [CoilTable] looks.
+///
+/// Unset fields come from [CoilTableStyle.fallback], derived from the theme's
+/// tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 ///
 /// By default, pointer rows rest muted and turn foreground when lit or
 /// selected; touch rows and high contrast rest at foreground. A hovering
@@ -37,9 +41,10 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
     this.motions,
   });
 
-  /// The defaults from the theme's tokens. Pointer rows rest muted and turn
-  /// foreground when lit or selected; touch rows and [highContrast] ones
-  /// rest at foreground.
+  /// The defaults from the theme's tokens.
+  ///
+  /// Pointer rows rest muted and turn foreground when lit or selected; touch
+  /// rows and [highContrast] ones rest at foreground.
   factory CoilTableStyle.fallback(
     CoilThemeData theme,
     CoilMetrics metrics, {
@@ -106,8 +111,9 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
   /// The corner radius of the highlight, selection and fills.
   final double? radius;
 
-  /// The size of icons in the header, the sort indicator included. It
-  /// scales with text.
+  /// The size of icons in the header, the sort indicator included.
+  ///
+  /// It scales with text.
   final double? headerIconSize;
 
   /// The gap between a header label and its sort indicator.
@@ -118,8 +124,9 @@ class CoilTableStyle extends CoilComponentStyle<CoilTableStyle> {
   final double? ringInset;
 
   /// Springs for the table's animated parts, keyed by [CoilTableTrack]s:
-  /// `{CoilTableTrack.highlight: const Motion.smoothSpring()}`. A table's
-  /// own `motions:` win over these; these win over the motion tokens.
+  /// `{CoilTableTrack.highlight: const Motion.smoothSpring()}`.
+  ///
+  /// A table's own `motions:` win over these; these win over the motion tokens.
   /// [merge] combines the maps key by key.
   final Map<CoilTableTrack<Object>, Motion>? motions;
 

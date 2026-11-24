@@ -1,11 +1,16 @@
+/// @docImport 'package:coil/queued_stack.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/queued_stack/queued_stack.dart'
     show CoilQueuedStackTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilQueuedStack` looks. Unset fields come from
-/// [CoilQueuedStackStyle.fallback], derived from the theme's tokens.
+/// Overrides for how a [CoilQueuedStack] looks.
+///
+/// Unset fields come from [CoilQueuedStackStyle.fallback], derived from the
+/// theme's tokens.
 class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
   /// Creates a style.
   const CoilQueuedStackStyle({
@@ -39,7 +44,7 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
     );
   }
 
-  /// A card's fill: `accent` mixed into the background.
+  /// A card's fill: [CoilColors.accent] mixed into the background.
   final Color? cardColor;
 
   /// A card's text.
@@ -54,20 +59,24 @@ class CoilQueuedStackStyle extends CoilComponentStyle<CoilQueuedStackStyle> {
   /// A card's corner radius.
   final double? radius;
 
-  /// A card's minimum height. Cards grow with the text scale.
+  /// A card's minimum height.
+  ///
+  /// Cards grow with the text scale.
   final double? cardMinHeight;
 
   /// A card's shadow step.
   final int? shadowLevel;
 
-  /// The width of the gutter on each side of the cards. The start gutter
-  /// holds the queue icon and count.
+  /// The width of the gutter on each side of the cards.
+  ///
+  /// The start gutter holds the queue icon and count.
   final double? gutterWidth;
 
-  /// Springs for the stack's animated parts, keyed by
-  /// [CoilQueuedStackTrack]s: `{CoilQueuedStackTrack.expand: const
-  /// Motion.bouncySpring()}`. A stack's own `motions:` win over these; these
-  /// win over the motion tokens. [merge] combines the maps key by key.
+  /// Springs for the stack's animated parts, keyed by [CoilQueuedStackTrack]s:
+  /// `{CoilQueuedStackTrack.expand: const Motion.bouncySpring()}`.
+  ///
+  /// A stack's own `motions:` win over these; these win over the motion tokens.
+  /// [merge] combines the maps key by key.
   final Map<CoilQueuedStackTrack<Object>, Motion>? motions;
 
   @override

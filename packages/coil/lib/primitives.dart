@@ -1,5 +1,6 @@
-/// coil's primitives: behavior and geometry shared by two or more
-/// components. This is the contract ejected components build on.
+/// Coil's primitives: behavior and geometry shared by two or more components.
+///
+/// This is the contract ejected components build on.
 library;
 
 export 'src/primitives/action_bar.dart';

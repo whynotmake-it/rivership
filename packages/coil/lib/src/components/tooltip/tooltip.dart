@@ -37,21 +37,24 @@ class CoilTooltip extends StatelessWidget {
          'Give a semanticLabel for a message that is not a Text.',
        );
 
-  /// What the bubble shows, usually a [Text]. It's styled as the bubble's
-  /// caption through [DefaultTextStyle] and [IconTheme], and may span
-  /// several lines.
+  /// What the bubble shows, usually a [Text].
+  ///
+  /// It's styled as the bubble's caption through [DefaultTextStyle] and
+  /// [IconTheme], and may span several lines.
   ///
   /// The bubble crossfades to a new message when its key or type changes,
   /// and in a [CoilTooltipGroup] when it moves to another tooltip. Otherwise
   /// it updates in place.
   final Widget message;
 
-  /// What screen readers announce as the tooltip. Defaults to the text of
-  /// [message] when that is a [Text] or [RichText].
+  /// What screen readers announce as the tooltip.
+  ///
+  /// Defaults to the text of [message] when that is a [Text] or [RichText].
   final String? semanticLabel;
 
-  /// A keyboard shortcut drawn after [message], usually a key cap. It
-  /// gets the bubble's inverted colors through [DefaultTextStyle] and
+  /// A keyboard shortcut drawn after [message], usually a key cap.
+  ///
+  /// It gets the bubble's inverted colors through [DefaultTextStyle] and
   /// [IconTheme], 8 px from the message and centered on it.
   ///
   /// Screen readers don't hear it unless [semanticLabel] says it.
@@ -61,6 +64,7 @@ class CoilTooltip extends StatelessWidget {
   final Widget child;
 
   /// The side of [child] the bubble prefers; it flips when there's no room.
+  ///
   /// Inside a [CoilTooltipGroup], the group's side counts instead.
   final CoilTooltipSide side;
 
@@ -80,8 +84,10 @@ class CoilTooltip extends StatelessWidget {
         _ => '',
       };
 
-  /// The message with the shortcut after it. Keyed by the message's key,
-  /// so the bubble crossfades when that changes, as for a bare message.
+  /// The message with the shortcut after it.
+  ///
+  /// Keyed by the message's key, so the bubble crossfades when that changes, as
+  /// for a bare message.
   Widget get _content => switch (shortcut) {
     null => message,
     final shortcut => Row(
@@ -131,7 +137,7 @@ class CoilTooltip extends StatelessWidget {
 
 /// Gives the [CoilTooltip]s in [child] one shared bubble, for a toolbar
 /// of icon buttons: moving along it, the bubble glides to the next button
-/// on the theme's `quick` spring, its size follows, and its content
+/// on the theme's [CoilMotion.quick] spring, its size follows, and its content
 /// crossfades.
 class CoilTooltipGroup extends StatelessWidget {
   /// Creates a tooltip group around [child].
@@ -189,11 +195,12 @@ class _Bubble extends StatelessWidget {
 /// for components that show a tooltip of their own through
 /// [CoilTooltipAnchor.controlled], like a slider's value.
 ///
-/// The fill is the theme's `foreground`, and [child] gets `background`
-/// through [DefaultTextStyle] and [IconTheme]. When [child] switches (a new
-/// key or type), the bubble resizes to it at once on `quick` while the two
-/// crossfade on `fade`; the old one keeps its layout as it fades. A child
-/// that updates in place resizes the bubble on `quick` too.
+/// The fill is the theme's [CoilColors.foreground], and [child] gets
+/// [CoilColors.background] through [DefaultTextStyle] and [IconTheme]. When
+/// [child] switches (a new key or type), the bubble resizes to it at once on
+/// [CoilMotion.quick] while the two crossfade on [CoilMotion.fade]; the old one
+/// keeps its layout as it fades. A child that updates in place resizes the
+/// bubble on [CoilMotion.quick] too.
 ///
 /// It has no enter or exit of its own; wrap it in one, such as
 /// [CoilBlurFade] and [CoilTooltipSlide].

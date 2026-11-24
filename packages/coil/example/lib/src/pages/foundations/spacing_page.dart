@@ -69,13 +69,13 @@ class SpacingPage extends StatelessWidget {
         title: 'The ladder',
         description:
             'Every CoilMetrics value for each tier and size step, with the '
-            'current tier highlighted. Popup rows line up with their triggers '
-            'because controlPaddingX equals popupInset plus itemPaddingX.',
+            'current tier highlighted. Popup rows align cleanly with their '
+            'triggers across every size.',
         child: _Ladder(),
       ),
       DemoSection(
         title: 'Spacing scale',
-        description: 'Every spacing value in coil comes from this one set.',
+        description: 'All spacing in Coil is drawn from this scale.',
         child: _Scale(),
       ),
     ],

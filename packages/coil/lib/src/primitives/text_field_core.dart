@@ -1,3 +1,7 @@
+/// @docImport 'package:coil/src/components/input/input.dart';
+/// @docImport 'package:flutter/material.dart';
+library;
+
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/focus_within.dart';
 import 'package:cupertino_ui/cupertino_ui.dart'
@@ -27,18 +31,18 @@ import 'package:material_ui/material_ui.dart'
 ///
 /// `field` is the editable text with its placeholder. The selection
 /// gestures cover everything returned, so a tap in the padding lands in the
-/// field, as in Flutter's `TextField`.
+/// field, as in Flutter's [TextField].
 typedef CoilTextFieldDecorationBuilder =
     Widget Function(BuildContext context, Widget field);
 
-/// The one text-editing primitive in coil: an [EditableText] with the
+/// The one text-editing primitive in Coil: an [EditableText] with the
 /// platform's gestures, selection handles, magnifier and context menu.
 ///
-/// Components (`CoilInput`, and later the combobox and search fields) draw
+/// Components ([CoilInput], and later the combobox and search fields) draw
 /// their look around it with [decorationBuilder] and never build an
 /// [EditableText] themselves.
 ///
-/// Platform behavior, chosen like Flutter's `TextField`:
+/// Platform behavior, chosen like Flutter's [TextField]:
 ///
 /// * Gestures come from a [TextSelectionGestureDetectorBuilder]: tap to
 ///   place the caret, double-tap / long-press / drag to select, per
@@ -137,14 +141,18 @@ class CoilTextFieldCore extends StatefulWidget {
   final UndoHistoryController? undoController;
 
   /// Shown while the text is empty, in [style] with [placeholderColor].
+  ///
   /// Usually a [Text].
   final Widget? placeholder;
 
-  /// The placeholder's color. Defaults to the theme's
-  /// `colors.mutedForeground`.
+  /// The placeholder's color.
+  ///
+  /// Defaults to the theme's `colors.mutedForeground`.
   final Color? placeholderColor;
 
-  /// The text style. Defaults to the ambient [DefaultTextStyle].
+  /// The text style.
+  ///
+  /// Defaults to the ambient [DefaultTextStyle].
   final TextStyle? style;
 
   /// The strut style of the text.
@@ -153,26 +161,35 @@ class CoilTextFieldCore extends StatefulWidget {
   /// How the text, and the placeholder, align horizontally.
   final TextAlign textAlign;
 
-  /// The caret color. Defaults to the theme's `colors.foreground`.
+  /// The caret color.
+  ///
+  /// Defaults to the theme's `colors.foreground`.
   final Color? cursorColor;
 
   /// The caret width.
   final double cursorWidth;
 
-  /// The caret height. Defaults to the height of the text itself (the
-  /// font's ascent plus descent at this size), not the line box, so a caret
-  /// in a roomy line stays as tall as the letters beside it.
+  /// The caret height.
+  ///
+  /// Defaults to the height of the text itself (the font's ascent plus
+  /// descent at this size), not the line box, so a caret in a roomy line
+  /// stays as tall as the letters beside it.
   final double? cursorHeight;
 
-  /// The caret's corner radius. Defaults to the platform's (rounded on
-  /// Apple platforms).
+  /// The caret's corner radius.
+  ///
+  /// Defaults to the platform's (rounded on Apple platforms).
   final Radius? cursorRadius;
 
-  /// The selection highlight. Defaults to the theme's `colors.brand` at
-  /// 30%. Painted only while the field has focus.
+  /// The selection highlight.
+  ///
+  /// Defaults to the theme's `colors.brand` at 30%. Painted only while the
+  /// field has focus.
   final Color? selectionColor;
 
-  /// The color of the touch selection handles. Defaults to [cursorColor].
+  /// The color of the touch selection handles.
+  ///
+  /// Defaults to [cursorColor].
   final Color? selectionHandleColor;
 
   /// The software keyboard type.
@@ -181,17 +198,22 @@ class CoilTextFieldCore extends StatefulWidget {
   /// The software keyboard's action button.
   final TextInputAction? textInputAction;
 
-  /// The software keyboard's brightness. Defaults to the theme's.
+  /// The software keyboard's brightness.
+  ///
+  /// Defaults to the theme's.
   final Brightness? keyboardAppearance;
 
   /// How the software keyboard capitalizes.
   final TextCapitalization textCapitalization;
 
-  /// Whether the platform autocorrects. Off for obscured fields regardless.
+  /// Whether the platform autocorrects.
+  ///
+  /// Off for obscured fields regardless.
   final bool autocorrect;
 
-  /// Whether the keyboard offers suggestions. Off for obscured fields
-  /// regardless.
+  /// Whether the keyboard offers suggestions.
+  ///
+  /// Off for obscured fields regardless.
   final bool enableSuggestions;
 
   /// The character shown for each obscured character.
@@ -201,7 +223,9 @@ class CoilTextFieldCore extends StatefulWidget {
   /// software keyboard) when the field scrolls itself into view.
   final EdgeInsets scrollPadding;
 
-  /// Scrolls a multi-line field's text. One is created if null.
+  /// Scrolls a multi-line field's text.
+  ///
+  /// One is created if null.
   final ScrollController? scrollController;
 
   /// Input formatters.
@@ -242,53 +266,68 @@ class CoilTextFieldCore extends StatefulWidget {
   final VoidCallback? onEditingComplete;
 
   /// Called when a pointer or a finger taps the field, after the tap places
-  /// the caret, never when focus arrives some other way (Tab). Like
-  /// `TextField.onTap`, the second tap of a double tap doesn't call it.
+  /// the caret, never when focus arrives some other way (Tab).
+  ///
+  /// Like [TextField.onTap], the second tap of a double tap doesn't call
+  /// it.
   final VoidCallback? onTap;
 
-  /// Called when a pointer taps outside the field. Null keeps
-  /// [EditableText]'s default. See `TextField.onTapOutside`.
+  /// Called when a pointer taps outside the field.
+  ///
+  /// Null keeps [EditableText]'s default. See [TextField.onTapOutside].
   final TapRegionCallback? onTapOutside;
 
-  /// The text's direction. Defaults to the ambient [Directionality]. See
-  /// `TextField.textDirection`.
+  /// The text's direction.
+  ///
+  /// Defaults to the ambient [Directionality]. See
+  /// [TextField.textDirection].
   final TextDirection? textDirection;
 
-  /// The most characters the field accepts; null for no limit. See
-  /// `TextField.maxLength`.
+  /// The most characters the field accepts; null for no limit.
+  ///
+  /// See [TextField.maxLength].
   final int? maxLength;
 
-  /// How [maxLength] is enforced. Defaults to the platform's. See
-  /// `TextField.maxLengthEnforcement`.
+  /// How [maxLength] is enforced.
+  ///
+  /// Defaults to the platform's. See [TextField.maxLengthEnforcement].
   final MaxLengthEnforcement? maxLengthEnforcement;
 
-  /// Builds the selection toolbar. Null shows no menu. See
-  /// `TextField.contextMenuBuilder`.
+  /// Builds the selection toolbar.
+  ///
+  /// Null shows no menu. See [TextField.contextMenuBuilder].
   final EditableTextContextMenuBuilder? contextMenuBuilder;
 
-  /// Whether the text can be selected and the toolbar shown. See
-  /// `TextField.enableInteractiveSelection`.
+  /// Whether the text can be selected and the toolbar shown.
+  ///
+  /// See [TextField.enableInteractiveSelection].
   final bool enableInteractiveSelection;
 
-  /// The id the field saves its state under for restoration. See
-  /// `TextField.restorationId`.
+  /// The id the field saves its state under for restoration.
+  ///
+  /// See [TextField.restorationId].
   final String? restorationId;
 
-  /// How spell check runs and shows its results. See
-  /// `TextField.spellCheckConfiguration`.
+  /// How spell check runs and shows its results.
+  ///
+  /// See [TextField.spellCheckConfiguration].
   final SpellCheckConfiguration? spellCheckConfiguration;
 
-  /// Whether the keyboard replaces dashes with typographic ones. See
-  /// `TextField.smartDashesType`.
+  /// Whether the keyboard replaces dashes with typographic ones.
+  ///
+  /// See [TextField.smartDashesType].
   final SmartDashesType? smartDashesType;
 
-  /// Whether the keyboard replaces quotes with typographic ones. See
-  /// `TextField.smartQuotesType`.
+  /// Whether the keyboard replaces quotes with typographic ones.
+  ///
+  /// See [TextField.smartQuotesType].
   final SmartQuotesType? smartQuotesType;
 
   /// Native first: the iOS system edit menu where the field supports it,
-  /// else the platform's Flutter toolbar. On web, [EditableText] never calls
-  /// this while the browser's own menu is enabled.
+  /// else the platform's Flutter toolbar.
+  ///
+  /// On web, [EditableText] never calls this while the browser's own menu
+  /// is enabled.
   static Widget defaultContextMenuBuilder(
     BuildContext context,
     EditableTextState editableTextState,
@@ -307,15 +346,19 @@ class CoilTextFieldCore extends StatefulWidget {
   }
 
   /// Keys mapped to intents, disabled while an IME composition is in
-  /// progress. See the class docs.
+  /// progress.
+  ///
+  /// See the class docs.
   final Map<ShortcutActivator, Intent> shortcuts;
 
-  /// Actions for the intents in [shortcuts], by intent type. An intent
-  /// without one here goes to the nearest ancestor [Actions].
+  /// Actions for the intents in [shortcuts], by intent type.
+  ///
+  /// An intent without one here goes to the nearest ancestor [Actions].
   final Map<Type, Action<Intent>> actions;
 
-  /// Draws the component's chrome around the field. Null shows the field
-  /// alone.
+  /// Draws the component's chrome around the field.
+  ///
+  /// Null shows the field alone.
   final CoilTextFieldDecorationBuilder? decorationBuilder;
 
   @override
@@ -699,9 +742,11 @@ class _CoilTextFieldCoreState extends State<CoilTextFieldCore>
 }
 
 /// The Material and Cupertino toolbars read their button labels from
-/// [MaterialLocalizations] / [CupertinoLocalizations]. A plain [WidgetsApp]
-/// has neither, so English defaults are supplied, around the toolbar only,
-/// for whichever is missing. An app that configures them keeps its own.
+/// [MaterialLocalizations] / [CupertinoLocalizations].
+///
+/// A plain [WidgetsApp] has neither, so English defaults are supplied,
+/// around the toolbar only, for whichever is missing. An app that
+/// configures them keeps its own.
 Widget _withDefaultLocalizations(BuildContext context, Widget child) {
   final missing = <LocalizationsDelegate<Object?>>[
     if (Localizations.of<MaterialLocalizations>(
@@ -729,10 +774,11 @@ Widget _withDefaultLocalizations(BuildContext context, Widget child) {
   );
 }
 
-/// Supplies [value] for every locale. The stock
-/// `DefaultMaterialLocalizations.delegate` only supports `en`, so in an app
-/// with any other locale and no Material localizations it would load
-/// nothing and the toolbar would assert.
+/// Supplies [value] for every locale.
+///
+/// The stock [DefaultMaterialLocalizations.delegate] only supports `en`, so
+/// in an app with any other locale and no Material localizations it would
+/// load nothing and the toolbar would assert.
 class _DefaultLocalizationsDelegate<T> extends LocalizationsDelegate<T> {
   const _DefaultLocalizationsDelegate(this.value);
 
@@ -748,9 +794,10 @@ class _DefaultLocalizationsDelegate<T> extends LocalizationsDelegate<T> {
   bool shouldReload(_DefaultLocalizationsDelegate<T> old) => false;
 }
 
-/// Disables the action for an intent while the controller has an active
-/// IME composition, so [Shortcuts] leaves the key to the IME. Otherwise
-/// forwards to the action [resolve] finds.
+/// Disables the action for an intent while the controller has an active IME
+/// composition, so [Shortcuts] leaves the key to the IME.
+///
+/// Otherwise forwards to the action [resolve] finds.
 class _ComposingAwareAction extends ContextAction<Intent> {
   _ComposingAwareAction({required this.isComposing, required this.resolve});
 
@@ -788,7 +835,7 @@ class _ComposingAwareAction extends ContextAction<Intent> {
   void enabledChanged() => notifyActionListeners();
 }
 
-/// The per-platform caret and handle settings `TextField` uses.
+/// The per-platform caret and handle settings [TextField] uses.
 class _PlatformText {
   const _PlatformText({
     required this.selectionControls,

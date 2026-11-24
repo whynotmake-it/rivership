@@ -3,7 +3,7 @@ import 'dart:ui';
 
 /// Color mixing in Oklab, the way CSS `color-mix(in oklab, ...)` does.
 ///
-/// coil derives state colors by mixing in Oklab (a hovered primary button is
+/// Coil derives state colors by mixing in Oklab (a hovered primary button is
 /// 90 % foreground into the background). Mixing in sRGB gives muddier greys.
 abstract final class CoilColorMix {
   /// Mixes [a] and [b] in Oklab, taking [amountOfA] (0..1) of [a].
@@ -43,8 +43,10 @@ abstract final class CoilColorMix {
 
   /// The APCA lightness contrast (Lc) of [text] on [background], about
   /// -108..106: positive for dark text on a light background, negative for
-  /// light text on a dark one. Compare magnitudes: |Lc| 60 is the floor for
-  /// short labels such as a button's, 75 for body text. Ignores alpha.
+  /// light text on a dark one.
+  ///
+  /// Compare magnitudes: |Lc| 60 is the floor for short labels such as a
+  /// button's, 75 for body text. Ignores alpha.
   ///
   /// APCA (WCAG 3 draft, 0.0.98G) tracks how readable text looks better than
   /// the WCAG 2 ratio on saturated mid-tones: white on a mid blue or orange
@@ -68,7 +70,9 @@ abstract final class CoilColorMix {
 
   /// [color], mixed toward black or white (whichever [against] is further
   /// from) in small Oklab steps until it reaches [minRatio] contrast with
-  /// [against]. Keeps the hue; returns [color] if it already passes.
+  /// [against].
+  ///
+  /// Keeps the hue; returns [color] if it already passes.
   static Color ensureContrast(Color color, Color against, double minRatio) {
     if (contrastRatio(color, against) >= minRatio) return color;
     final towardBlack =
@@ -85,9 +89,10 @@ abstract final class CoilColorMix {
   }
 
   /// Lightens or darkens [color] in Oklch, keeping its hue and chroma,
-  /// until it reaches [minRatio] contrast with [against]. Moves away from
-  /// [against] (darker on a light background). Returns [color] if it already
-  /// passes.
+  /// until it reaches [minRatio] contrast with [against].
+  ///
+  /// Moves away from [against] (darker on a light background). Returns
+  /// [color] if it already passes.
   ///
   /// Unlike [ensureContrast], which mixes toward black or white, this
   /// changes lightness only, so a status color stays as saturated as
@@ -131,7 +136,9 @@ abstract final class CoilColorMix {
   }
 
   /// [color] in Oklch: lightness (0..1), chroma (0 for greys, about 0.37 at
-  /// most in sRGB) and hue in degrees (0..360). Ignores alpha.
+  /// most in sRGB), and hue in degrees (0..360).
+  ///
+  /// Ignores alpha.
   static ({double l, double c, double h}) toOklch(Color color) {
     final [l, a, b] = _toOklab(color);
     final hue = math.atan2(b, a) * 180 / math.pi;

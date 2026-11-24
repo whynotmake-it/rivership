@@ -47,9 +47,10 @@ class TypePage extends StatelessWidget {
         const DemoSection(
           title: 'Optical size',
           description:
-              'Each role sets opsz to its font size, as CSS does on its own. '
-              'Small text opens its spacing up, titles tighten. On the right, '
-              'every size uses the text cut (opsz 14).',
+              'Each role sets optical size (opsz) to match its font size, '
+              'just like CSS. Small text gets wider letter spacing while '
+              'titles tighten up. On the right, every size is pinned to '
+              'standard body proportions (opsz 14).',
           child: _OpticalSize(),
         ),
         const DemoSection(
@@ -91,7 +92,7 @@ class _Roles extends StatelessWidget {
                 style: text.muted.micro,
               ),
               const SizedBox(height: 2),
-              Text('Restraint in motion and color', style: style),
+              Text('Clear, readable type at every size', style: style),
             ],
           ),
       ],
@@ -149,7 +150,7 @@ class _OpticalSize extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: Labeled('Automatic', child: column((s) => s))),
-        Expanded(child: Labeled('Text cut', child: column(textCut))),
+        Expanded(child: Labeled('Fixed (14)', child: column(textCut))),
       ],
     );
   }

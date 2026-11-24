@@ -56,7 +56,9 @@ class CrumbLink extends StatelessWidget {
   /// A glyph before the label.
   final Widget? leading;
 
-  /// Follows the link. Null disables it.
+  /// Follows the link.
+  ///
+  /// Null disables it.
   final VoidCallback? onPressed;
 
   /// The glyph after the label.
@@ -187,8 +189,9 @@ class CrumbPage extends StatelessWidget {
 }
 
 /// The leading glyph, label and separator, at least the crumb height and
-/// centered in it. The label truncates when the trail gives it less than
-/// its width.
+/// centered in it.
+///
+/// The label truncates when the trail gives it less than its width.
 class CrumbContent extends StatelessWidget {
   /// Creates the content.
   const CrumbContent({

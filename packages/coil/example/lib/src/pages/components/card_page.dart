@@ -134,13 +134,13 @@ CoilCardGroup(
         CatalogNote(
           'Touch',
           'On touch the card fills while it is pressed and keeps its dismiss '
-              'button visible, with a 44 hit target.',
+              'button visible, with a 44 px hit target.',
         ),
         CatalogNote(
           'Motion',
-          'Dismissing blur-fades the card while its height collapses on '
-              'standard, and onDismissed only fires once that has finished, '
-              'so that is where you remove the card.',
+          'Dismissing blur-fades the card while its height springs closed, '
+              'and onDismissed only fires once that has finished, so that is '
+              'where you remove the card.',
         ),
         CatalogNote(
           "Do / Don't",

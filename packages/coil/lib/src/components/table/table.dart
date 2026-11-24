@@ -15,8 +15,9 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
-/// A table of [rows] in [columns]. Rows can be selected ([values]) or
-/// opened ([onRowActivated]).
+/// A table of [rows] in [columns].
+///
+/// Rows can be selected ([values]) or opened ([onRowActivated]).
 ///
 /// The table is one tab stop. The arrow keys move the active row, Space
 /// selects it and Enter activates it; Left and Right scroll a wide table.
@@ -50,15 +51,18 @@ class CoilTable<T> extends StatefulWidget {
   /// The columns, in reading order.
   final List<CoilTableColumn<T>> columns;
 
-  /// The rows' data, in order. Each row must be distinct (`==`): the table
-  /// follows rows by value, so the active row and the selection stay on
-  /// their data when the rows are sorted.
+  /// The rows' data, in order.
+  ///
+  /// Each row must be distinct (`==`): the table follows rows by value, so the
+  /// active row and the selection stay on their data when the rows are sorted.
   final List<T> rows;
 
   /// The selected rows.
   final Set<T> values;
 
-  /// Called with the new selection. Null makes rows unselectable.
+  /// Called with the new selection.
+  ///
+  /// Null makes rows unselectable.
   final ValueChanged<Set<T>>? onChanged;
 
   /// Called when a row is opened with Enter (or a tap).
@@ -92,8 +96,9 @@ class CoilTable<T> extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions for this table, keyed by [CoilTableTrack]s. They win
-  /// over the style's [CoilTableStyle.motions] and the tokens.
+  /// Per-track motions for this table, keyed by [CoilTableTrack]s.
+  ///
+  /// They win over the style's [CoilTableStyle.motions] and the tokens.
   final Map<CoilTableTrack<Object>, Motion>? motions;
 
   /// Overrides for this table's look, on top of the theme's
@@ -191,8 +196,10 @@ class _CoilTableState<T> extends State<CoilTable<T>>
         CoilTheme.metricsOf(context, size: widget.size),
       ).merge(CoilTheme.styleOf<CoilScrollAreaStyle>(context));
 
-  /// Whether [command] does something now. Only the table's own node takes
-  /// the keys: inner header buttons handle theirs.
+  /// Whether [command] does something now.
+  ///
+  /// Only the table's own node takes the keys: inner header buttons handle
+  /// theirs.
   bool _canRun(_TableCommand command) {
     if (FocusManager.instance.primaryFocus != _focusNode) return false;
     final count = widget.rows.length;
@@ -230,8 +237,9 @@ class _CoilTableState<T> extends State<CoilTable<T>>
 
   late final _action = _TableAction(this);
 
-  /// The table's keys. Left and Right scroll in screen direction; the
-  /// action flips them for RTL.
+  /// The table's keys.
+  ///
+  /// Left and Right scroll in screen direction; the action flips them for RTL.
   static const _shortcuts = <ShortcutActivator, Intent>{
     SingleActivator(LogicalKeyboardKey.arrowDown): _TableIntent(.down),
     SingleActivator(LogicalKeyboardKey.arrowUp): _TableIntent(.up),
@@ -393,8 +401,9 @@ class _CoilTableState<T> extends State<CoilTable<T>>
   }
 }
 
-/// What a key does in a [CoilTable]. Right and Left are
-/// [scrollForward] and [scrollBack] in LTR, flipped in RTL.
+/// What a key does in a [CoilTable].
+///
+/// Right and Left are [scrollForward] and [scrollBack] in LTR, flipped in RTL.
 enum _TableCommand {
   down,
   up,

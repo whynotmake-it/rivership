@@ -1,3 +1,6 @@
+/// @docImport 'package:motor_widgets/motor_widgets.dart';
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
@@ -22,8 +25,9 @@ typedef CoilTooltipBubbleBuilder =
       Widget content,
     );
 
-/// The side of its trigger a tooltip bubble prefers. It flips to the
-/// opposite side when there's no room.
+/// The side of its trigger a tooltip bubble prefers.
+///
+/// It flips to the opposite side when there's no room.
 enum CoilTooltipSide {
   /// Above the trigger.
   top,
@@ -44,12 +48,14 @@ enum CoilTooltipFollow {
   trigger,
 
   /// The hovering pointer, following it as it moves, for a long trigger
-  /// such as a resize strip. Without a hovering pointer, the trigger's
-  /// center.
+  /// such as a resize strip.
+  ///
+  /// Without a hovering pointer, the trigger's center.
   pointer,
 }
 
 /// The motion of a bubble's presence: in on `quick`, out on `quickExit`.
+///
 /// Under reduced motion an overlay only fades, so it's `fade` and
 /// `fadeExit` there.
 Motion _presenceMotion(
@@ -65,7 +71,9 @@ Motion _presenceMotion(
 }
 
 /// The behavior of a tooltip: when it shows, where, and how it springs in
-/// and out. The look comes from [bubble].
+/// and out.
+///
+/// The look comes from [bubble].
 ///
 /// * Pointer: it opens after [hoverDelay] of hovering, or at once on
 ///   keyboard focus, and closes on leave, blur, Esc or pointer-down. Within
@@ -75,7 +83,7 @@ Motion _presenceMotion(
 ///
 /// The bubble sits [gap] from [child] on its [side], or on the opposite
 /// side when there's no room, lined up as [follow] says. Its enter and
-/// exit are whatever [bubble] builds from the presence; coil's tooltip
+/// exit are whatever [bubble] builds from the presence; Coil's tooltip
 /// blur-fades and slides in with [CoilTooltipSlide]. Under
 /// reduced motion the presence springs on `fade`. It follows [child] every
 /// frame while [child] moves in layout, without rebuilding the bubble.
@@ -135,15 +143,20 @@ class CoilTooltipAnchor extends StatefulWidget {
   /// What the tooltip is for.
   final Widget child;
 
-  /// The side of [child] the bubble prefers. Inside a
-  /// [CoilTooltipAnchorGroup], the group's side counts instead.
+  /// The side of [child] the bubble prefers.
+  ///
+  /// Inside a [CoilTooltipAnchorGroup], the group's side counts instead.
   final CoilTooltipSide side;
 
-  /// What the bubble lines up with along [child]'s edge. Inside a
-  /// [CoilTooltipAnchorGroup], the bubble lines up with the trigger.
+  /// What the bubble lines up with along [child]'s edge.
+  ///
+  /// Inside a [CoilTooltipAnchorGroup], the bubble lines up with the
+  /// trigger.
   final CoilTooltipFollow follow;
 
-  /// Overrides the theme's motion tokens. Unused by a controlled anchor.
+  /// Overrides the theme's motion tokens.
+  ///
+  /// Unused by a controlled anchor.
   final CoilMotion? motion;
 
   /// How long a pointer hovers before the tooltip opens.
@@ -174,7 +187,9 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
   bool _shown = false;
 
   /// The hovering pointer in [CoilTooltipAnchor.child]'s coordinates, for
-  /// [CoilTooltipFollow.pointer]. Only the bubble's placement listens.
+  /// [CoilTooltipFollow.pointer].
+  ///
+  /// Only the bubble's placement listens.
   final _pointer = ValueNotifier<Offset?>(null);
 
   /// The group showing this anchor's tooltip, if any.
@@ -280,8 +295,10 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
     if (CoilInputModality.instance.value == CoilModality.keyboard) _show();
   }
 
-  /// Escape hides a shown tooltip. While it's hidden the key goes on to
-  /// the popup around the trigger, if any.
+  /// Escape hides a shown tooltip.
+  ///
+  /// While it's hidden the key goes on to the popup around the trigger, if
+  /// any.
   late final _dismiss = CoilDefaultAction<CoilDismissIntent>(
     context: context,
     isEnabled: (_) => _shown,
@@ -381,7 +398,7 @@ class _CoilTooltipAnchorState extends State<CoilTooltipAnchor>
 /// [bubble] builds it around the current anchor's
 /// [CoilTooltipAnchor.content]; let its size and content follow changes of
 /// the content. The content it gets is keyed by the anchor and the
-/// content's own key, so a `MotionSwitcher` around it switches when the
+/// content's own key, so a [MotionSwitcher] around it switches when the
 /// bubble moves to another anchor or the content's key changes.
 class CoilTooltipAnchorGroup extends StatefulWidget {
   /// Creates a tooltip group around [child].
@@ -464,8 +481,10 @@ class _CoilTooltipAnchorGroupState extends State<CoilTooltipAnchorGroup>
       ..animateTo(1);
   }
 
-  /// An anchor left the tree: the bubble has nothing to point at. The tree
-  /// is locked while it disposes, so the bubble goes after the frame.
+  /// An anchor left the tree: the bubble has nothing to point at.
+  ///
+  /// The tree is locked while it disposes, so the bubble goes after the
+  /// frame.
   void _forget(_CoilTooltipAnchorState anchor) {
     if (_anchor != anchor) return;
     _anchor = null;
@@ -606,6 +625,7 @@ class _BubblePlacement extends SingleChildRenderObjectWidget {
 
 /// Lays the bubble out at rest on its anchor and paints the glide as a
 /// resample of it (a matrix image filter), as the popover's grow does.
+///
 /// Moved by layout, the text would snap to the pixel grid on every frame.
 /// While the bubble resizes, its centered content stays put.
 class _RenderBubblePlacement extends RenderBox
@@ -773,9 +793,10 @@ class _RenderBubblePlacement extends RenderBox
     return MatrixUtils.transformPoint(transform, local);
   }
 
-  /// Where the bubble goes for [anchor] on the side picked in layout,
-  /// lined up with [pointer] if given, else with the anchor's center. It
-  /// stays inside the overlay's edges and safe area.
+  /// Where the bubble goes for [anchor] on the side picked in layout, lined
+  /// up with [pointer] if given, else with the anchor's center.
+  ///
+  /// It stays inside the overlay's edges and safe area.
   Offset _place(Rect anchor, {Offset? pointer}) {
     final bubble = child!.size;
     const gap = CoilTooltipAnchor.gap;
@@ -842,7 +863,9 @@ class _RenderBubblePlacement extends RenderBox
 
 /// Paints [child] at [origin] moved by [move], as a resample of it drawn at
 /// rest (a matrix image filter): text moves as one image instead of
-/// snapping to the pixel grid each frame. Returns the layer to keep.
+/// snapping to the pixel grid each frame.
+///
+/// Returns the layer to keep.
 ImageFilterLayer _pushTranslation(
   PaintingContext context,
   ContainerLayer? oldLayer,
@@ -868,7 +891,9 @@ ImageFilterLayer _pushTranslation(
 /// A tooltip bubble's slide: [child] is drawn [distance] closer to the
 /// trigger at [presence] 0 and moves out to rest at 1, away from the
 /// trigger of the [CoilTooltipAnchor] whose bubble it's in, on whichever
-/// side the bubble sits. Under reduced motion it doesn't move.
+/// side the bubble sits.
+///
+/// Under reduced motion it doesn't move.
 ///
 /// Like the rest of an enter transition it belongs in the anchor's bubble
 /// builder, around the bubble:

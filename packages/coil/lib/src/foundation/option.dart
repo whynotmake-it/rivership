@@ -19,23 +19,28 @@ class CoilOption<T> {
   /// What picking this choice reports.
   final T value;
 
-  /// What the row shows, usually a [Text]. The row styles it with
-  /// [DefaultTextStyle] and [IconTheme], and screen readers read it.
+  /// What the row shows, usually a [Text].
+  ///
+  /// The row styles it with [DefaultTextStyle] and [IconTheme], and screen
+  /// readers read it.
   final Widget label;
 
   /// A leading glyph, sized and colored by the row through [IconTheme].
   final Widget? icon;
 
   /// The choice as plain text, for what needs a string: typeahead and
-  /// filtering match it, and a select announces it as its value. Without
-  /// it, typeahead and filters skip the choice.
+  /// filtering match it, and a select announces it as its value.
+  ///
+  /// Without it, typeahead and filters skip the choice.
   final String? searchText;
 
   /// Names the choice for screen readers when [label] can't, such as an
   /// icon-only toggle.
   final String? semanticLabel;
 
-  /// Whether the choice can be picked. Disabled rows are skipped by the
-  /// highlight, the arrow keys and typeahead.
+  /// Whether the choice can be picked.
+  ///
+  /// Disabled rows are skipped by the highlight, the arrow keys, and
+  /// typeahead.
   final bool enabled;
 }

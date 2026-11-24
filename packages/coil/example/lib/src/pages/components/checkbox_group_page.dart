@@ -9,7 +9,7 @@ const checkboxGroupEntry = CatalogEntry(
   title: 'CheckboxGroup',
   group: CatalogGroup.groupedControls,
   summary:
-      'A list of checkable rows where neighbouring checked rows merge '
+      'A list of checkable rows where neighboring checked rows merge '
       'into one block.',
   page: CheckboxGroupPage.new,
 );
@@ -75,7 +75,7 @@ CoilCheckboxGroup<String>(
             'group a semanticLabel or wrap it in a field set with a legend.',
       ),
       CatalogNote(
-        'Do / Don’t',
+        "Do / Don't",
         'It suits 2 to 10 related options that can be combined. For '
             'options that exclude each other, use a RadioGroup instead.',
       ),
@@ -99,7 +99,7 @@ CoilCheckboxGroup<String>(
               onChanged: (v) => setState(() => _long = v),
             ),
             DemoControl.toggle(
-              label: 'Wednesday off',
+              label: 'Disable Wednesday',
               value: _unavailable,
               onChanged: (v) => setState(() => _unavailable = v),
             ),

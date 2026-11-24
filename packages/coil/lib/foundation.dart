@@ -1,5 +1,7 @@
-/// coil's foundation: tokens, theme, motion tokens, metrics, input modality
-/// and the adaptive scope. Values and context only; nothing here paints.
+/// Coil's foundation: tokens, theme, motion tokens, metrics, input modality,
+/// and the adaptive scope.
+///
+/// Contains values and context only; nothing here paints.
 library;
 
 export 'package:fixed_ticker/fixed_ticker.dart'

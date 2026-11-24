@@ -1,8 +1,11 @@
+/// @docImport 'package:coil/src/primitives/layer.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-/// Where the targets of a `CoilMotionLayer` are, read at paint time.
+/// Where the targets of a [CoilMotionLayer] are, read at paint time.
 abstract interface class CoilLayerGeometry {
   /// The rect of target [index] in the layer's coordinates, or null if no
   /// such target is laid out.
@@ -14,7 +17,7 @@ abstract interface class CoilLayerGeometry {
   TextDirection get textDirection;
 }
 
-/// Paints a decoration behind or in front of a `CoilMotionLayer`'s child:
+/// Paints a decoration behind or in front of a [CoilMotionLayer]'s child:
 /// a travelling highlight, a selection block, a focus ring.
 ///
 /// Painters notify their listeners when they need a repaint (their Motor
@@ -58,7 +61,7 @@ abstract class CoilLayerPainter extends ChangeNotifier {
 /// with no measuring pass and no rebuild. Put the layer inside a scroll
 /// view's content so it moves with the items.
 ///
-/// Components use `CoilMotionLayer`, which takes immutable layer items;
+/// Components use [CoilMotionLayer], which takes immutable layer items;
 /// this widget takes the painters it owns.
 class CoilPainterLayer extends SingleChildRenderObjectWidget {
   /// Creates a painter layer.
@@ -194,7 +197,7 @@ class RenderCoilMotionLayer extends RenderProxyBox
   }
 }
 
-/// Marks [child] as target [index] of the nearest `CoilMotionLayer`.
+/// Marks [child] as target [index] of the nearest [CoilMotionLayer].
 ///
 /// The render object registers itself with the layer when attached and
 /// asks it to repaint whenever it is laid out, so the layer paints against

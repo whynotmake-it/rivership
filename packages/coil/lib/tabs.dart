@@ -1,4 +1,6 @@
-/// The coil `CoilTabs` component.
+/// The Coil [CoilTabs] component.
+///
+/// @docImport 'src/components/tabs/tabs.dart';
 library;
 
 export 'src/components/tabs/tabs.dart';

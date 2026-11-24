@@ -1,5 +1,9 @@
 // MotorInspectionScope is @experimental; the motor example uses it too.
 // ignore_for_file: experimental_member_use
+
+/// @docImport 'package:coil/card.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:coil/button.dart';
@@ -12,48 +16,55 @@ import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 import 'package:motor_widgets/motor_widgets.dart';
 
-/// The animated parts of a [CoilCard] and a `CoilCardGroup`. Use them as
-/// keys of [CoilCard.motions], `CoilCardGroup.motions` or
+/// The animated parts of a [CoilCard] and a [CoilCardGroup].
+///
+/// Use these as keys of [CoilCard.motions], [CoilCardGroup.motions], or
 /// [CoilCardStyle.motions].
 final class CoilCardTrack<T extends Object> extends Track<T> {
   CoilCardTrack._(super.converter, {required String super.debugLabel});
 
-  /// The hover and press fill over a card with an action. Default motion:
-  /// `fade` in, `fadeExit` out.
+  /// The hover and press fill over a card with an action.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out.
   static final overlay = CoilCardTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilCard.overlay',
   );
 
-  /// The dismiss button's opacity as it shows and hides. Default motion:
-  /// `fade` in, `fadeExit` out.
+  /// The dismiss button's opacity as it shows and hides.
+  ///
+  /// Defaults to [CoilMotion.fade] in and [CoilMotion.fadeExit] out.
   static final dismissReveal = CoilCardTrack<double>._(
     .single,
     debugLabel: 'CoilCard.dismissReveal',
   );
 
-  /// How open a dismissed card's height is, 0 to 1. Default motion:
-  /// `standard`.
+  /// How open a dismissed card's height is, from 0 to 1.
+  ///
+  /// Defaults to [CoilMotion.standard].
   static final dismissHeight = CoilCardTrack<double>._(
     .single,
     debugLabel: 'CoilCard.dismissHeight',
   );
 
-  /// A dismissed card's blur-fade. Default motion: `fadeExit`.
+  /// A dismissed card's blur-fade.
+  ///
+  /// Defaults to [CoilMotion.fadeExit].
   static final dismissFade = CoilCardTrack<double>._(
     .single,
     debugLabel: 'CoilCard.dismissFade',
   );
 
-  /// The highlight gliding between the cards of a `CoilCardGroup`. Default
-  /// motion: `quick`.
+  /// The highlight gliding between the cards of a [CoilCardGroup].
+  ///
+  /// Defaults to [CoilMotion.quick].
   static final highlight = CoilCardTrack<Rect>._(
     .rect,
     debugLabel: 'CoilCardGroup.highlight',
   );
 }
 
-/// A card: a surface with optional media, a title, a description, content
+/// A card: a surface with optional media, a title, a description, content,
 /// and actions.
 ///
 /// With [onPressed], the whole card is one button: one tab stop with an
@@ -65,11 +76,11 @@ final class CoilCardTrack<T extends Object> extends Track<T> {
 /// corner: on hover or focus for pointers, always on touch. Pressing it
 /// plays the exit (a blur-fade while the height collapses) and *then* calls
 /// [onDismissed], as [Dismissible] does. Remove the card from the tree in
-/// that callback. In a `CoilCardStack` (such as a sidebar callout pile) the
+/// that callback. In a [CoilCardStack] (such as a sidebar callout pile) the
 /// card fades in place and the pile closes the gap instead of the height
 /// collapsing.
 ///
-/// Put cards in a `CoilCardGroup` to divide them into one block or lay
+/// Put cards in a [CoilCardGroup] to divide them into one block or lay
 /// them out in a grid with one highlight between them.
 class CoilCard extends StatefulWidget {
   /// Creates a card.
@@ -111,15 +122,18 @@ class CoilCard extends StatefulWidget {
   /// An icon shown in a tinted tile before the header.
   final Widget? icon;
 
-  /// The card's buttons, usually compact ghost [CoilButton]s. They sit under
-  /// the content (or at the trailing edge when inline) and are sized
+  /// The card's buttons, usually compact ghost [CoilButton] widgets.
+  ///
+  /// Placed under the content (or at the trailing edge when inline) and sized
   /// compact.
   final List<Widget> actions;
 
   /// Where the media goes.
   final CoilCardVariant variant;
 
-  /// Makes the whole card a button. Null leaves it static.
+  /// Makes the whole card a button.
+  ///
+  /// When null, leaves it static.
   final VoidCallback? onPressed;
 
   /// Shows a dismiss button; called after the exit animation, when the
@@ -127,13 +141,15 @@ class CoilCard extends StatefulWidget {
   final VoidCallback? onDismissed;
 
   /// Replaces the dismiss button's ✕: the theme's [CoilIcons.close], or
-  /// coil's drawn one.
+  /// Coil's drawn one.
   final Widget? dismissIcon;
 
   /// The dismiss button's name for assistive technology.
   final String dismissLabel;
 
-  /// Names the card's button. Defaults to the text inside it.
+  /// Names the card's button.
+  ///
+  /// Defaults to the text inside it.
   final String? semanticLabel;
 
   /// Pins the card to one size step.
@@ -148,8 +164,9 @@ class CoilCard extends StatefulWidget {
   /// Overrides the theme's motion tokens.
   final CoilMotion? motion;
 
-  /// Per-track motions for this card, keyed by [CoilCardTrack]s. They win
-  /// over the style's [CoilCardStyle.motions] and the tokens.
+  /// Per-track motions for this card, keyed by [CoilCardTrack] values.
+  ///
+  /// These take precedence over [CoilCardStyle.motions] and the theme tokens.
   final Map<CoilCardTrack<Object>, Motion>? motions;
 
   /// Overrides for this card's look, on top of the theme's [CoilCardStyle]
@@ -208,12 +225,13 @@ class _CoilCardState extends State<CoilCard> {
     spatial: spatial,
   );
 
-  /// Where the dismiss button sits and its corner radius, so its hover
-  /// fill is concentric with the card's corner: the radius nested
-  /// [CoilCardStyle.dismissInset] in, or under `pill`, where that's more
-  /// than a round button has, the button moved in until its round end
-  /// shares the corner's center. A family that nests square (`sharp`)
-  /// keeps the button's own radius.
+  /// Where the dismiss button sits and its corner radius, so its hover fill is
+  /// concentric with the card's corner: the radius nested
+  /// [CoilCardStyle.dismissInset] in, or under `pill`, where that's more than a
+  /// round button has, the button moved in until its round end shares the
+  /// corner's center.
+  ///
+  /// A family that nests square (`sharp`) keeps the button's own radius.
   ({double inset, double? radius}) _dismissCorner(
     CoilThemeData theme,
     CoilMetrics metrics,
@@ -429,7 +447,7 @@ class _CoilCardState extends State<CoilCard> {
   }
 }
 
-/// Tells a [CoilCard] which cell of a `CoilCardGroup` it is in.
+/// Tells a [CoilCard] which cell of a [CoilCardGroup] it is in.
 class CardSlot extends InheritedWidget {
   /// Puts [child] in cell [index].
   const CardSlot({required this.index, required super.child, super.key});

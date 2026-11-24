@@ -32,8 +32,10 @@ Widget pickedLabel<T>(
 };
 
 /// The picked options as a screen reader's value: their semantic labels or
-/// search texts, comma-separated. Null when nothing is picked or an option
-/// has neither, so the trigger reads its labels instead.
+/// search texts, comma-separated.
+///
+/// Null when nothing is picked or an option has neither, so the trigger reads
+/// its labels instead.
 String? pickedSemanticValue<T>(List<CoilOption<T>> picked) {
   final texts = [
     for (final option in picked) ?(option.semanticLabel ?? option.searchText),

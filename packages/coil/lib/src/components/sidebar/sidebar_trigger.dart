@@ -1,3 +1,6 @@
+/// @docImport 'package:coil/sidebar.dart';
+library;
+
 import 'package:coil/button.dart';
 import 'package:coil/foundation.dart';
 import 'package:coil/kbd.dart';
@@ -7,9 +10,10 @@ import 'package:coil/tooltip.dart';
 import 'package:flutter/widgets.dart';
 
 /// The ghost icon button that opens and closes the nearest
-/// `CoilSidebarScaffold`'s sidebar, or its drawer on a phone. With [side],
-/// the nearest scaffold whose sidebar sits on that side, so a page between
-/// two nested scaffolds can have a trigger for each.
+/// [CoilSidebarScaffold]'s sidebar, or its drawer on a phone.
+///
+/// With [side], the nearest scaffold whose sidebar sits on that side, so a page
+/// between two nested scaffolds can have a trigger for each.
 ///
 /// Its tooltip names what a press does and the key that does the same.
 /// When the scaffold peeks on hover, resting the pointer on a folded
@@ -36,17 +40,22 @@ class CoilSidebarTrigger extends StatefulWidget {
   /// The tooltip while a press would close it, usually a [Text].
   final Widget closeLabel;
 
-  /// [openLabel] for screen readers. Null reads the text of a [Text].
+  /// [openLabel] for screen readers.
+  ///
+  /// Null reads the text of a [Text].
   final String? openSemanticLabel;
 
-  /// [closeLabel] for screen readers. Null reads the text of a [Text].
+  /// [closeLabel] for screen readers.
+  ///
+  /// Null reads the text of a [Text].
   final String? closeSemanticLabel;
 
   /// Pins the button to one size step.
   final CoilSize? size;
 
-  /// The side of the scaffold this trigger drives. Null drives the
-  /// nearest scaffold.
+  /// The side of the scaffold this trigger drives.
+  ///
+  /// Null drives the nearest scaffold.
   final CoilSidebarSide? side;
 
   @override

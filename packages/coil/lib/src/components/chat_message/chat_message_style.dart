@@ -1,13 +1,17 @@
+/// @docImport 'package:coil/chat_message.dart';
+library;
+
 import 'package:coil/foundation.dart';
 import 'package:coil/src/components/chat_message/chat_message.dart'
     show CoilChatMessageTrack;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// Overrides for how a `CoilChatMessage` looks. Unset fields come from
-/// [CoilChatMessageStyle.fallback], derived from the theme's tokens. Set a
-/// style app-wide or for a subtree with `CoilThemeData.withComponentStyle`,
-/// or per instance with `style:`.
+/// Overrides for how a [CoilChatMessage] looks.
+///
+/// Unset fields come from [CoilChatMessageStyle.fallback], derived from the
+/// theme's tokens. Set a style app-wide or for a subtree with
+/// [CoilThemeData.withComponentStyle], or per instance with `style:`.
 class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
   /// Creates a style.
   const CoilChatMessageStyle({
@@ -53,7 +57,9 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
     );
   }
 
-  /// The user bubble's fill. Assistant messages have no bubble.
+  /// The user bubble's fill.
+  ///
+  /// Assistant messages have no bubble.
   final Color? bubble;
 
   /// The message text.
@@ -62,7 +68,9 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
   /// The time in the meta row.
   final TextStyle? metaStyle;
 
-  /// Space around the text. Assistant messages keep only the vertical part.
+  /// Space around the text.
+  ///
+  /// Assistant messages keep only the vertical part.
   final EdgeInsets? padding;
 
   /// The user bubble's corner radius.
@@ -88,9 +96,11 @@ class CoilChatMessageStyle extends CoilComponentStyle<CoilChatMessageStyle> {
   final double? menuMinWidth;
 
   /// Springs for the message's animated parts, keyed by
-  /// [CoilChatMessageTrack]s: `{CoilChatMessageTrack.height: const
-  /// Motion.bouncySpring()}`. A message's own `motions:` win over these;
-  /// these win over the motion tokens. [merge] combines the maps key by key.
+  /// [CoilChatMessageTrack]s:
+  /// `{CoilChatMessageTrack.height: const Motion.bouncySpring()}`.
+  ///
+  /// A message's own `motions:` win over these; these win over the motion
+  /// tokens. [merge] combines the maps key by key.
   final Map<CoilChatMessageTrack<Object>, Motion>? motions;
 
   @override

@@ -117,18 +117,18 @@ CoilAccordion<String>.single(
       ),
       CatalogNote(
         'Touch',
-        'A trigger fills while it is held, and its label keeps its full '
-            'strength rather than dimming.',
+        'A trigger fills while it is held, and its label stays at full '
+            'opacity rather than dimming.',
       ),
       CatalogNote(
         'Motion',
-        'The chevron turns a quarter turn on the quick spring while the panel '
-            'opens on standard, and the panel text fades in behind it.',
+        'The chevron rotates quickly while the panel springs open and its '
+            'content fades in.',
       ),
       CatalogNote(
         'Accessibility',
         'Each trigger is a button that reports whether it is expanded, and an '
-            'open panel is labelled by its trigger, so give every item a '
+            'open panel is labeled by its trigger, so give every item a '
             'semanticLabel.',
       ),
     ],

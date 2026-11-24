@@ -6,19 +6,24 @@ import 'package:coil/src/components/checkbox/checkbox_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
-/// The animated parts of a checkbox, as Motor tracks. Use them as keys of
-/// [CoilCheckbox.motions] or [CoilCheckboxStyle.motions].
+/// The animated parts of a checkbox, as Motor tracks.
+///
+/// Use them as keys of [CoilCheckbox.motions] or [CoilCheckboxStyle.motions].
 final class CoilCheckboxTrack<T extends Object> extends Track<T> {
   CoilCheckboxTrack._(super.converter, {required String super.debugLabel});
 
-  /// The box outline color. Default motion: `fade`.
+  /// The box outline color.
+  ///
+  /// Default motion: [CoilMotion.fade].
   static final border = CoilCheckboxTrack<Color>._(
     .colorRgb,
     debugLabel: 'CoilCheckbox.border',
   );
 
   /// The tick or dash drawing in and out: its icon presence (a
-  /// `CoilIconPresence`). Default motion: `fade` in, `fadeExit` out; under
+  /// [CoilIconPresence]).
+  ///
+  /// Default motion: [CoilMotion.fade] in, [CoilMotion.fadeExit] out; under
   /// reduced motion it lands at once.
   static final glyph = CoilCheckboxTrack<double>._(
     .single,
@@ -54,11 +59,15 @@ class CoilCheckbox extends StatelessWidget {
     this.glyphBuilder,
   }) : assert(tristate || value != null, 'Only a tristate checkbox is null');
 
-  /// Whether the box is checked. Null (only with [tristate]) shows a dash:
-  /// some, not all, of what this box stands for is on.
+  /// Whether the box is checked.
+  ///
+  /// Null (only with [tristate]) shows a dash: some, not all, of what this box
+  /// stands for is on.
   final bool? value;
 
-  /// Called with the next value. Null disables the checkbox.
+  /// Called with the next value.
+  ///
+  /// Null disables the checkbox.
   final ValueChanged<bool?>? onChanged;
 
   /// Whether a tap cycles through null, and whether [value] may be null.
@@ -67,7 +76,9 @@ class CoilCheckbox extends StatelessWidget {
   /// Marks the box as invalid (a red-tinted border while unchecked).
   final bool invalid;
 
-  /// Pins the box to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the box to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// The focus node.
@@ -82,8 +93,9 @@ class CoilCheckbox extends StatelessWidget {
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCheckboxTrack]s. They win over the
-  /// style's [CoilCheckboxStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilCheckboxTrack]s.
+  ///
+  /// They win over the style's [CoilCheckboxStyle.motions] and the tokens.
   final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
   /// Overrides for this checkbox's look, on top of the theme's
@@ -94,7 +106,7 @@ class CoilCheckbox extends StatelessWidget {
   final String? semanticLabel;
 
   /// Replaces the tick and dash: the theme's [CoilIcons.check] and
-  /// [CoilIcons.dash], or coil's drawn ones.
+  /// [CoilIcons.dash], or Coil's drawn ones.
   final CoilCheckboxGlyphBuilder? glyphBuilder;
 
   bool? get _next => switch (value) {
@@ -165,7 +177,7 @@ class CoilCheckbox extends StatelessWidget {
   }
 }
 
-/// The glyph a [CoilCheckbox] shows.
+/// State glyph drawn inside a [CoilCheckbox] when checked or indeterminate.
 enum CoilCheckboxGlyph {
   /// Checked.
   check,
@@ -174,10 +186,12 @@ enum CoilCheckboxGlyph {
   dash,
 }
 
-/// Draws a checkbox glyph [progress] of the way in (0 hidden, 1 complete),
-/// at [size] in [color]. Replaces the tick and dash, the theme's included.
-/// The tick and dash are icons too ([CoilIcons.check], [CoilIcons.dash]):
-/// an icon that reads its `CoilIconPresence` animates the same way.
+/// Draws a checkbox glyph [progress] of the way in (0 hidden, 1 complete), at
+/// [size] in [color].
+///
+/// Replaces the tick and dash, the theme's included. The tick and dash are
+/// icons too ([CoilIcons.check], [CoilIcons.dash]): an icon that reads its
+/// [CoilIconPresence] animates the same way.
 typedef CoilCheckboxGlyphBuilder =
     Widget Function(
       BuildContext context,
@@ -202,9 +216,9 @@ BorderRadius _radiusOf(BuildContext context, CoilCheckboxStyle style) {
 ///
 /// The box and tick grow with the text scale.
 ///
-/// The tick and dash are [CoilIcons.check] and [CoilIcons.dash] (coil's
-/// drawn ones by default), shown in a `CoilIconPresence` that rises as they
-/// appear: coil's draw themselves in, other icons fade and scale. Changing
+/// The tick and dash are [CoilIcons.check] and [CoilIcons.dash] (Coil's
+/// drawn ones by default), shown in a [CoilIconPresence] that rises as they
+/// appear: Coil's draw themselves in, other icons fade and scale. Changing
 /// between them crosses the two.
 class CoilCheckboxIndicator extends StatelessWidget {
   /// Creates a checkbox indicator.
@@ -225,14 +239,17 @@ class CoilCheckboxIndicator extends StatelessWidget {
   /// The states the border reacts to.
   final Set<WidgetState> states;
 
-  /// Pins the box to one size step. Null follows [CoilAdaptiveScope].
+  /// Pins the box to one size step.
+  ///
+  /// Null follows [CoilAdaptiveScope].
   final CoilSize? size;
 
   /// Overrides the theme's motion tokens for this instance.
   final CoilMotion? motion;
 
-  /// Per-track motions, keyed by [CoilCheckboxTrack]s. They win over the
-  /// style's [CoilCheckboxStyle.motions] and the tokens.
+  /// Per-track motions, keyed by [CoilCheckboxTrack]s.
+  ///
+  /// They win over the style's [CoilCheckboxStyle.motions] and the tokens.
   final Map<CoilCheckboxTrack<Object>, Motion>? motions;
 
   /// Overrides for this indicator's look, on top of the theme's

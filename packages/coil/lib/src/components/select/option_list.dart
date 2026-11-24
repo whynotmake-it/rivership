@@ -61,20 +61,22 @@ class CoilOptionList<T> extends StatefulWidget {
   /// picked row (or the first) with the ring showing.
   final bool keyboardOpened;
 
-  /// Whether the picked row gets a fill (popovers). Sheets mark it with the
-  /// check alone, like native touch lists.
+  /// Whether the picked row gets a fill (popovers).
+  ///
+  /// Sheets mark it with the check alone, like native touch lists.
   final bool selectedFill;
 
   /// Rows rest at full strength instead of muted (touch: the muted to
   /// foreground fade says "the pointer is here", which a finger can't).
   final bool fullEmphasis;
 
-  /// Replaces the check: the theme's [CoilIcons.check], or coil's drawn
-  /// one.
+  /// Replaces the check: the theme's [CoilIcons.check], or Coil's drawn one.
   final Widget? checkmark;
 
-  /// Drives the active row from outside. The owner handles the keys, like a
-  /// combobox's field, so the list takes no focus and no keys.
+  /// Drives the active row from outside.
+  ///
+  /// The owner handles the keys, like a combobox's field, so the list takes no
+  /// focus and no keys.
   final CoilActiveItemController? activeItem;
 
   @override
@@ -170,9 +172,10 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
     );
   }
 
-  /// Picks [index]. A pick by touch leaves nothing lit; the keyboard and
-  /// hovering pointers keep the highlight on the row through the
-  /// acknowledgement.
+  /// Picks [index].
+  ///
+  /// A pick by touch leaves nothing lit; the keyboard and hovering pointers
+  /// keep the highlight on the row through the acknowledgement.
   void _pick(int index, {required bool touch}) {
     if (_done || !_enabled(index)) return;
     setState(() {
@@ -379,9 +382,10 @@ class _CoilOptionListState<T> extends State<CoilOptionList<T>>
   }
 }
 
-/// One row: leading glyph, label, trailing check. Draws no background
-/// except its own press fill on touch; the list's layer paints the
-/// highlight and the selection underneath.
+/// One row: leading glyph, label, trailing check.
+///
+/// Draws no background except its own press fill on touch; the list's layer
+/// paints the highlight and the selection underneath.
 class _OptionRow extends StatefulWidget {
   const _OptionRow({
     required this.index,
@@ -543,11 +547,13 @@ class _OptionRowState extends State<_OptionRow> {
   }
 }
 
-/// The row's check: a fixed, [IconTheme]-sized slot, so a check appearing
-/// never changes the row's width. It comes in on `fade` and leaves on
-/// `fadeExit` in a `CoilIconPresence`: coil's drawn check (and any icon
-/// that reads the presence) draws itself in and out; another [glyph] or
-/// theme check fades and scales.
+/// The row's check: a fixed, [IconTheme]-sized slot, so a check appearing never
+/// changes the row's width.
+///
+/// It comes in on [CoilMotion.fade] and leaves on [CoilMotion.fadeExit] in a
+/// [CoilIconPresence]: Coil's drawn check (and any icon that reads the
+/// presence) draws itself in and out; another [glyph] or theme check fades and
+/// scales.
 class _Check extends StatelessWidget {
   const _Check({required this.checked, this.glyph});
 
@@ -582,8 +588,8 @@ class _MoveIntent extends Intent {
 }
 
 /// Tab: closes the list without picking, the way a native select does.
-/// Not Flutter's `NextFocusIntent`, which means "move focus", not
-/// "dismiss".
+///
+/// Not Flutter's [NextFocusIntent], which means "move focus", not "dismiss".
 class _TabOutIntent extends Intent {
   const _TabOutIntent();
 }

@@ -1,4 +1,7 @@
-/// coil's `CoilThinkingSteps` and `CoilThinkingIndicator`.
+/// Coil's [CoilThinkingSteps] and [CoilThinkingIndicator] components.
+///
+/// @docImport 'src/components/thinking/thinking_indicator.dart';
+/// @docImport 'src/components/thinking/thinking_steps.dart';
 library;
 
 export 'src/components/thinking/thinking_indicator.dart';

@@ -1,5 +1,7 @@
-/// `CoilAskUserQuestions`: a card that asks the user a few questions, one
+/// [CoilAskUserQuestions]: a card that asks the user a few questions, one
 /// at a time.
+///
+/// @docImport 'src/components/ask_user_questions/ask_user_questions.dart';
 library;
 
 export 'src/components/ask_user_questions/ask_user_questions.dart';

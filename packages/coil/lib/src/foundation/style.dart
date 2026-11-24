@@ -1,7 +1,11 @@
+/// @docImport 'package:coil/src/components/button/button_style.dart';
+/// @docImport 'package:coil/src/foundation/theme.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show WidgetState, WidgetStateProperty;
 
-/// The base of every component's style class (`CoilButtonStyle`, …).
+/// The base of every component's style class ([CoilButtonStyle], …).
 ///
 /// A style is a set of nullable overrides. Null means "use the default",
 /// which the component computes from the resolved theme tokens with its
@@ -9,7 +13,7 @@ import 'package:flutter/widgets.dart' show WidgetState, WidgetStateProperty;
 /// didn't set. Styles layer, lowest to highest:
 ///
 /// 1. `fallback(...)`, derived from tokens;
-/// 2. the theme's entry for the style type (`CoilThemeData.components`),
+/// 2. the theme's entry for the style type ([CoilThemeData.components]),
 ///    set app-wide or for a subtree;
 /// 3. the component's own `style:` parameter.
 ///

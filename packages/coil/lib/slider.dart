@@ -1,4 +1,7 @@
-/// The coil `CoilSlider` and `CoilRangeSlider` components.
+/// The Coil [CoilSlider] and [CoilRangeSlider] components.
+///
+/// @docImport 'src/components/slider/range_slider.dart';
+/// @docImport 'src/components/slider/slider.dart';
 library;
 
 export 'src/components/slider/range_slider.dart';

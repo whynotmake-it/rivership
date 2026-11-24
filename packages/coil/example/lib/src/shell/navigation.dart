@@ -39,7 +39,7 @@ Future<void> showCatalogSearch(BuildContext context, StackRouter router) =>
       context: context,
       placeholder: const Text('Search components…'),
       semanticLabel: 'Search components',
-      empty: const Text('No component by that name'),
+      empty: const Text('No matching components'),
       entries: [
         CoilAction(
           label: const Text('Home'),
@@ -156,7 +156,7 @@ class _CatalogNavigationState extends State<CatalogNavigation> {
             label: const Text('Search'),
             leading: const CatalogIcon(Glyph.search),
             // No keys to show on a phone.
-            trailing: touch ? null : CoilKbd(apple ? '⌘K' : 'Ctrl K'),
+            trailing: touch ? null : CoilKbd(apple ? '⌘K' : 'Ctrl+K'),
             onPressed: () =>
                 unawaited(showCatalogSearch(context, widget.router)),
           ),
