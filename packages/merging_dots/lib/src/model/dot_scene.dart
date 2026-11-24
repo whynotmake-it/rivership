@@ -88,25 +88,49 @@ class SceneLayer {
   int get hashCode => Object.hash(opacity, blend, offset, squash, scale);
 }
 
-/// A dot of a [DotScene], on one of its layers.
+/// A dot of a [DotScene], on one of its layers: a circle, or a capsule
+/// when it is stretched.
 @immutable
 class SceneDot {
   /// Creates a dot centered on [x] and [y] with [radius], in canvas units,
   /// on [layer].
-  const SceneDot(this.x, this.y, this.radius, {this.layer = 0});
+  ///
+  /// A [stretch] other than zero makes it a capsule: a stroke of [radius]
+  /// from `(x, y)` to `(x, y) + stretch`. Because circles and capsules are
+  /// the same shape, a dot can stretch into a stroke and back while it
+  /// animates, like eyes turning into a checkmark.
+  const SceneDot(
+    this.x,
+    this.y,
+    this.radius, {
+    this.layer = 0,
+    this.stretch = Offset.zero,
+  });
+
+  /// A capsule from [start] to [end], [radius] thick on each side.
+  SceneDot.capsule(Offset start, Offset end, this.radius, {this.layer = 0})
+    : x = start.dx,
+      y = start.dy,
+      stretch = end - start;
 
   /// Reads a dot written by [toJson].
-  factory SceneDot.fromJson(List<Object?> json) => SceneDot(
-    (json[0]! as num).toDouble(),
-    (json[1]! as num).toDouble(),
-    (json[2]! as num).toDouble(),
-    layer: json.length > 3 ? (json[3]! as num).toDouble() : 0,
-  );
+  factory SceneDot.fromJson(List<Object?> json) {
+    double at(int i) => json.length > i ? (json[i]! as num).toDouble() : 0;
+    return SceneDot(
+      at(0),
+      at(1),
+      at(2),
+      layer: at(3),
+      stretch: Offset(at(4), at(5)),
+    );
+  }
 
-  /// The horizontal position of the dot's center.
+  /// The horizontal position of the dot's center, or of the start of its
+  /// capsule.
   final double x;
 
-  /// The vertical position of the dot's center.
+  /// The vertical position of the dot's center, or of the start of its
+  /// capsule.
   final double y;
 
   /// The dot's radius.
@@ -120,17 +144,39 @@ class SceneDot {
   /// that springs past its new layer doesn't spill into the next one.
   final double layer;
 
-  /// A copy with the given fields replaced.
-  SceneDot copyWith({double? x, double? y, double? radius, double? layer}) =>
-      SceneDot(
-        x ?? this.x,
-        y ?? this.y,
-        radius ?? this.radius,
-        layer: layer ?? this.layer,
-      );
+  /// Where the capsule ends, relative to its start. Zero for a circle.
+  final Offset stretch;
 
-  /// A compact JSON representation: `[x, y, radius, layer]`.
-  List<num> toJson() => [x, y, radius, if (layer != 0) layer];
+  /// The start of the dot.
+  Offset get start => Offset(x, y);
+
+  /// The end of the dot: [start] for a circle.
+  Offset get end => start + stretch;
+
+  /// A copy with the given fields replaced.
+  SceneDot copyWith({
+    double? x,
+    double? y,
+    double? radius,
+    double? layer,
+    Offset? stretch,
+  }) => SceneDot(
+    x ?? this.x,
+    y ?? this.y,
+    radius ?? this.radius,
+    layer: layer ?? this.layer,
+    stretch: stretch ?? this.stretch,
+  );
+
+  /// A compact JSON representation: `[x, y, radius, layer, dx, dy]`,
+  /// without the trailing values that are zero.
+  List<num> toJson() {
+    final values = <num>[x, y, radius, layer, stretch.dx, stretch.dy];
+    while (values.length > 3 && values.last == 0) {
+      values.removeLast();
+    }
+    return values;
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -138,13 +184,15 @@ class SceneDot {
       other.x == x &&
       other.y == y &&
       other.radius == radius &&
-      other.layer == layer;
+      other.layer == layer &&
+      other.stretch == stretch;
 
   @override
-  int get hashCode => Object.hash(x, y, radius, layer);
+  int get hashCode => Object.hash(x, y, radius, layer, stretch);
 
   @override
-  String toString() => 'SceneDot($x, $y, $radius, layer: $layer)';
+  String toString() =>
+      'SceneDot($x, $y, $radius, layer: $layer, stretch: $stretch)';
 }
 
 /// Freely placed dots on stacked layers, like the face of a character: a
@@ -188,8 +236,8 @@ class DotScene implements DotState {
   /// The most dots a scene renders.
   static const int maxDots = 64;
 
-  /// The channels of a scene entry: six for a layer, of which a dot uses
-  /// four.
+  /// The channels of a scene entry: six for a layer, and six for a dot:
+  /// position, radius, layer and stretch.
   static const int stride = 6;
 
   /// The layers, bottom first.
@@ -257,8 +305,8 @@ class DotScene implements DotState {
       out[o + 1] = dot.y;
       out[o + 2] = dot.radius;
       out[o + 3] = dot.layer;
-      out[o + 4] = 0;
-      out[o + 5] = 0;
+      out[o + 4] = dot.stretch.dx;
+      out[o + 5] = dot.stretch.dy;
     }
   }
 

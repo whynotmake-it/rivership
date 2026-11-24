@@ -29,6 +29,8 @@ class _CharacterPlaygroundState extends State<CharacterPlayground>
     'surprised': 'Surprised',
     'thinking': 'Thinking',
     'sleepy': 'Sleepy',
+    'done': 'Done',
+    'error': 'Error',
   };
 
   var _body = BlobBody.round;

@@ -101,6 +101,8 @@ abstract final class BlobCharacter {
   /// - `surprised`: pops up with wide eyes, then idles.
   /// - `thinking`: looks up from side to side.
   /// - `sleepy`: eyes shut, breathing slowly.
+  /// - `done`: the eyes stretch into a checkmark.
+  /// - `error`: the eyes turn into an exclamation mark and it shakes.
   ///
   /// Its eyes invert the body, so they peek out as dots when they look
   /// past its edge.
@@ -191,6 +193,28 @@ abstract final class BlobCharacter {
     }
 
     final idle = face();
+
+    // Strokes drawn with the eyes, around the middle of the face.
+    final middleY = body.eyeY + 4;
+    final check = (
+      SceneDot.capsule(Offset(37, middleY), Offset(45, middleY + 9), 4.5),
+      SceneDot.capsule(Offset(45, middleY + 9), Offset(63, middleY - 9), 4.5),
+    );
+    final exclamation = (
+      SceneDot.capsule(Offset(50, middleY - 15), Offset(50, middleY + 3), 5),
+      SceneDot(50, middleY + 14, 5.5),
+    );
+    // The face with its eyes turned into [strokes].
+    DotScene mark(
+      (SceneDot, SceneDot) strokes, {
+      Offset bodyOffset = Offset.zero,
+    }) {
+      final scene = face(bodyOffset: bodyOffset);
+      return scene
+          .withDot(0, strokes.$1.copyWith(layer: 1))
+          .withDot(2, strokes.$2.copyWith(layer: 1));
+    }
+
     const hop = CupertinoMotion(
       duration: Duration(milliseconds: 380),
       bounce: 0.3,
@@ -298,6 +322,46 @@ abstract final class BlobCharacter {
             DotIdle.breathe(amount: 0.04, period: Duration(milliseconds: 4600)),
             DotIdle.bob(period: Duration(milliseconds: 4600)),
           ],
+        ),
+        'done': CharacterState(
+          DotSequence(
+            [
+              DotKeyframe(
+                mark(check, bodyOffset: const Offset(0, -5)),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 420),
+                  bounce: 0.3,
+                ),
+              ),
+              DotKeyframe(mark(check)),
+            ],
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 380),
+              bounce: 0.35,
+            ),
+            loop: LoopMode.none,
+          ),
+          idles: const [DotIdle.breathe()],
+        ),
+        'error': CharacterState(
+          DotSequence(
+            [
+              DotKeyframe(
+                mark(exclamation),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 360),
+                  bounce: 0.2,
+                ),
+              ),
+              for (final dx in [-5.0, 4.0, -3.0, 2.0, 0.0])
+                DotKeyframe(mark(exclamation, bodyOffset: Offset(dx, 0))),
+            ],
+            motion: const CupertinoMotion(
+              duration: Duration(milliseconds: 110),
+            ),
+            loop: LoopMode.none,
+          ),
+          idles: const [DotIdle.breathe()],
         ),
       },
       transitions: [

@@ -54,6 +54,54 @@ void main() {
     image.dispose();
   });
 
+  testWidgets('a stretched dot draws its whole stroke, round at the ends', (
+    tester,
+  ) async {
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: RepaintBoundary(
+            key: key,
+            child: SizedBox.square(
+              dimension: 100,
+              child: DotSceneView(
+                scene: DotScene(
+                  layers: const [SceneLayer(blend: 0)],
+                  dots: [
+                    SceneDot.capsule(
+                      const Offset(20, 50),
+                      const Offset(80, 30),
+                      6,
+                    ),
+                  ],
+                ),
+                style: const DotSceneStyle(
+                  layers: [DotLayerStyle(color: Color(0xFF000000))],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final boundary =
+        key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+    final image = (await tester.runAsync(boundary.toImage))!;
+    final data = (await tester.runAsync(image.toByteData))!;
+    int alpha(int x, int y) => data.getUint8((y * image.width + x) * 4 + 3);
+
+    expect(alpha(50, 40), 255, reason: 'middle of the stroke');
+    expect(alpha(15, 51), 255, reason: 'round start cap');
+    expect(alpha(84, 29), 255, reason: 'round end cap');
+    expect(alpha(50, 52), 0, reason: 'beside the stroke');
+    expect(alpha(90, 30), 0, reason: 'past the end');
+    image.dispose();
+  });
+
   group('DotCharacterController', () {
     late DotCharacterController controller;
 

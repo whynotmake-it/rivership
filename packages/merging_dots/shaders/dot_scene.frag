@@ -45,9 +45,10 @@ uniform vec4 uColor3;
 uniform vec4 uLook3;
 uniform vec4 uShape3;
 
-// Three texels per dot, as 16 bit fractions of uSpan, or of 4 for the
-// layer: (x high, x low, y high), (y low, radius high, radius low),
-// (layer high, layer low, -).
+// Four texels per dot, as 16 bit fractions of uSpan, of 4 for the layer
+// and of 2 * uSpan around 0.5 for the stretch: (x high, x low, y high),
+// (y low, radius high, radius low), (layer high, layer low, stretch x high),
+// (stretch x low, stretch y high, stretch y low).
 uniform sampler2D uDots;
 
 out vec4 fragColor;
@@ -70,11 +71,13 @@ float unpack(float high, float low) {
   return (high * 255.0 * 256.0 + low * 255.0) / 65535.0;
 }
 
-// Adds a dot of radius r that belongs to a layer by `share` to that layer.
+// Adds a capsule of radius r from `center` to `center + stretch`, which
+// belongs to a layer by `share`, to that layer.
 SmoothUnion addTo(
     SmoothUnion u,
     vec2 p,
     vec2 center,
+    vec2 stretch,
     float r,
     float share,
     vec4 look,
@@ -87,6 +90,11 @@ SmoothUnion addTo(
     return u;
   }
   vec2 delta = p - center - shape.xy;
+  // From the nearest point of the capsule's spine.
+  float length2 = dot(stretch, stretch);
+  if (length2 > 0.0) {
+    delta -= stretch * clamp(dot(delta, stretch) / length2, 0.0, 1.0);
+  }
   vec2 radii = vec2(radius, max(radius * shape.z, 0.01));
   // A cheap distance to an ellipse, exact for circles.
   vec2 g = delta / (radii * radii);
@@ -142,20 +150,23 @@ void main() {
     if (float(n) >= uCount) {
       break;
     }
-    float column = float(n) * 3.0;
+    float column = float(n) * 4.0;
     vec4 a = texture(uDots, dataUv(column));
     vec4 b = texture(uDots, dataUv(column + 1.0));
     vec4 c = texture(uDots, dataUv(column + 2.0));
+    vec4 e = texture(uDots, dataUv(column + 3.0));
     vec2 center = uOrigin + vec2(unpack(a.r, a.g), unpack(a.b, b.r)) * uSpan;
     float r = unpack(b.g, b.b) * uSpan;
+    vec2 stretch =
+        (vec2(unpack(c.b, e.r), unpack(e.g, e.b)) - 0.5) * 2.0 * uSpan;
     // Springs overshoot. Near a layer counts as on it, so a dot that
     // bounces into its new layer doesn't spill into the next one.
     float layer = unpack(c.r, c.g) * 4.0;
     layer = floor(layer) + smoothstep(0.2, 0.8, fract(layer));
-    u0 = addTo(u0, p, center, r, 1.0 - abs(layer), uLook0, uShape0);
-    u1 = addTo(u1, p, center, r, 1.0 - abs(layer - 1.0), uLook1, uShape1);
-    u2 = addTo(u2, p, center, r, 1.0 - abs(layer - 2.0), uLook2, uShape2);
-    u3 = addTo(u3, p, center, r, 1.0 - abs(layer - 3.0), uLook3, uShape3);
+    u0 = addTo(u0, p, center, stretch, r, 1.0 - abs(layer), uLook0, uShape0);
+    u1 = addTo(u1, p, center, stretch, r, 1.0 - abs(layer - 1.0), uLook1, uShape1);
+    u2 = addTo(u2, p, center, stretch, r, 1.0 - abs(layer - 2.0), uLook2, uShape2);
+    u3 = addTo(u3, p, center, stretch, r, 1.0 - abs(layer - 3.0), uLook3, uShape3);
   }
 
   float d0 = smoothUnionDistance(u0, uLook0.y);

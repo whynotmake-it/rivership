@@ -932,16 +932,18 @@ class RenderDotScene extends RenderDots<DotScene> {
       if (r <= 0) continue;
       final x = origin.dx + values[o] * scale;
       final y = origin.dy + values[o + 1] * scale;
-      left = math.min(left, x - r);
-      top = math.min(top, y - r);
-      right = math.max(right, x + r);
-      bottom = math.max(bottom, y + r);
+      final x2 = x + values[o + 4] * scale;
+      final y2 = y + values[o + 5] * scale;
+      left = math.min(left, math.min(x, x2) - r);
+      top = math.min(top, math.min(y, y2) - r);
+      right = math.max(right, math.max(x, x2) + r);
+      bottom = math.max(bottom, math.max(y, y2) + r);
       visible++;
     }
     if (visible == 0) return _upload = null;
 
     final span = math.max<double>(math.max(right - left, bottom - top), 1);
-    final data = Uint8List(visible * 3 * 4);
+    final data = Uint8List(visible * 4 * 4);
     int quantize(double v) => (v * 65535).round().clamp(0, 65535);
     var n = 0;
     for (var i = 0; i < count; i++) {
@@ -954,7 +956,10 @@ class RenderDotScene extends RenderDots<DotScene> {
       final layer = quantize(
         values[o + 3].clamp(0, layers - 1).toDouble() / 4,
       );
-      final p = n * 12;
+      // The stretch spans at most the content, so -span..span fits.
+      final sx = quantize(values[o + 4] * scale / span / 2 + 0.5);
+      final sy = quantize(values[o + 5] * scale / span / 2 + 0.5);
+      final p = n * 16;
       data
         ..[p] = x >> 8
         ..[p + 1] = x & 0xFF
@@ -966,11 +971,15 @@ class RenderDotScene extends RenderDots<DotScene> {
         ..[p + 7] = 255
         ..[p + 8] = layer >> 8
         ..[p + 9] = layer & 0xFF
-        ..[p + 10] = 0
-        ..[p + 11] = 255;
+        ..[p + 10] = sx >> 8
+        ..[p + 11] = 255
+        ..[p + 12] = sx & 0xFF
+        ..[p + 13] = sy >> 8
+        ..[p + 14] = sy & 0xFF
+        ..[p + 15] = 255;
       n++;
     }
-    _dots.upload(data, visible * 3, 1);
+    _dots.upload(data, visible * 4, 1);
     return _upload = (Offset(left, top), span, visible);
   }
 
@@ -1023,7 +1032,7 @@ class RenderDotScene extends RenderDots<DotScene> {
       ..setFloat(1, dataOrigin.dy)
       ..setFloat(2, span)
       ..setFloat(3, count.toDouble())
-      ..setFloat(4, count * 3.0)
+      ..setFloat(4, count * 4.0)
       ..setFloat(5, pixelWidth(canvas))
       ..setFloat(6, _dots.isRendered ? 1 : 0);
     for (var l = 0; l < DotScene.maxLayers; l++) {
@@ -1071,10 +1080,14 @@ class RenderDotScene extends RenderDots<DotScene> {
     for (var i = layers; i < animator.dotCount; i++) {
       final o = i * _sceneStride;
       if (values[o + 2] <= 0 || values[o + 3] >= 0.5) continue;
-      canvas.drawCircle(
-        offset + origin + Offset(values[o], values[o + 1]) * scale,
-        values[o + 2] * scale,
-        paint,
+      final start = offset + origin + Offset(values[o], values[o + 1]) * scale;
+      final end = start + Offset(values[o + 4], values[o + 5]) * scale;
+      canvas.drawLine(
+        start,
+        end,
+        paint
+          ..strokeWidth = values[o + 2] * scale * 2
+          ..strokeCap = StrokeCap.round,
       );
     }
   }
