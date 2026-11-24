@@ -47,6 +47,14 @@ Widget _fadeTransition(
   );
 }
 
+/// The route name of each package's example, by the package's pub name.
+const _exampleRouteNames = {
+  'coil': 'Coil',
+  'motor': 'Motor',
+  'heroine': 'Heroine',
+  'stupid_simple_sheet': 'Stupid Simple Sheet',
+};
+
 NamedRouteDef _exampleRoute({
   required String name,
   required String path,
@@ -66,6 +74,8 @@ void main() async {
   registerFontLicenses();
   // Late, so the examples' home links can navigate with it.
   late final RootStackRouter router;
+  // Each example's logo or wordmark leads back to the landing page.
+  void home() => router.navigate(const NamedRoute('Home'));
   router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
@@ -77,22 +87,28 @@ void main() async {
       _exampleRoute(
         name: 'Heroine',
         path: '/heroine',
-        children: heroineRoutes,
+        children: heroineRoutesFor(onHome: home),
       ),
       NamedRouteDef.shell(
         name: 'Motor',
         path: '/motor',
         type: exampleRouteType,
-        // The gallery's logo leads back to the landing page.
-        children: motorRoutesFor(
-          onHome: () => router.navigate(const NamedRoute('Home')),
-        ),
+        children: motorRoutesFor(onHome: home),
       ),
-      coilCatalogRoute(path: '/coil'),
+      coilCatalogRoute(
+        path: '/coil',
+        onHome: home,
+        // The catalog's mentions of another package open its example.
+        onOpenPackage: (package) {
+          if (_exampleRouteNames[package] case final name?) {
+            router.navigate(NamedRoute(name));
+          }
+        },
+      ),
       _exampleRoute(
         name: 'Stupid Simple Sheet',
         path: '/stupid_simple_sheet',
-        children: stupidSimpleSheetRoutes,
+        children: buildStupidSimpleSheetRoutes(onHome: home),
       ),
     ],
   );
