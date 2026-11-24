@@ -46,10 +46,11 @@ uniform vec4 uColor3;
 uniform vec4 uLook3;
 uniform vec4 uShape3;
 
-// Four texels per dot, as 16 bit fractions of uSpan, of 4 for the layer
-// and of 2 * uSpan around 0.5 for the stretch: (x high, x low, y high),
-// (y low, radius high, radius low), (layer high, layer low, stretch x high),
-// (stretch x low, stretch y high, stretch y low).
+// Five texels per dot, as 16 bit fractions of uSpan, of 4 for the layer
+// and of 2 * uSpan around 0.5 for the stretch and depth: (x high, x low,
+// y high), (y low, radius high, radius low), (layer high, layer low,
+// stretch x high), (stretch x low, stretch y high, stretch y low),
+// (depth high, depth low, -).
 uniform sampler2D uDots;
 
 out vec4 fragColor;
@@ -79,6 +80,7 @@ AngularUnion addTo(
     vec2 p,
     vec2 center,
     vec2 stretch,
+    float depth,
     float r,
     float share,
     vec4 look,
@@ -106,7 +108,7 @@ AngularUnion addTo(
   // The blend is sent as the smoothing of the exponential union; the
   // angular union's radius is the blend itself.
   return angularUnionAdd(
-      u, d, direction, min(radii.x, radii.y), look.y * 2.7725887);
+      u, d, direction, min(radii.x, radii.y), depth, look.y * 2.7725887);
 }
 
 float smin(float a, float b, float k) {
@@ -157,11 +159,13 @@ void main() {
     if (float(n) >= uCount) {
       break;
     }
-    float column = float(n) * 4.0;
+    float column = float(n) * 5.0;
     vec4 a = texture(uDots, dataUv(column));
     vec4 b = texture(uDots, dataUv(column + 1.0));
     vec4 c = texture(uDots, dataUv(column + 2.0));
     vec4 e = texture(uDots, dataUv(column + 3.0));
+    vec4 f = texture(uDots, dataUv(column + 4.0));
+    float depth = (unpack(f.r, f.g) - 0.5) * 2.0 * uSpan;
     vec2 center = uOrigin + vec2(unpack(a.r, a.g), unpack(a.b, b.r)) * uSpan;
     float r = unpack(b.g, b.b) * uSpan;
     vec2 stretch =
@@ -170,10 +174,10 @@ void main() {
     // bounces into its new layer doesn't spill into the next one.
     float layer = unpack(c.r, c.g) * 4.0;
     layer = floor(layer) + smoothstep(0.2, 0.8, fract(layer));
-    u0 = addTo(u0, p, center, stretch, r, 1.0 - abs(layer), uLook0, uShape0);
-    u1 = addTo(u1, p, center, stretch, r, 1.0 - abs(layer - 1.0), uLook1, uShape1);
-    u2 = addTo(u2, p, center, stretch, r, 1.0 - abs(layer - 2.0), uLook2, uShape2);
-    u3 = addTo(u3, p, center, stretch, r, 1.0 - abs(layer - 3.0), uLook3, uShape3);
+    u0 = addTo(u0, p, center, stretch, depth, r, 1.0 - abs(layer), uLook0, uShape0);
+    u1 = addTo(u1, p, center, stretch, depth, r, 1.0 - abs(layer - 1.0), uLook1, uShape1);
+    u2 = addTo(u2, p, center, stretch, depth, r, 1.0 - abs(layer - 2.0), uLook2, uShape2);
+    u3 = addTo(u3, p, center, stretch, depth, r, 1.0 - abs(layer - 3.0), uLook3, uShape3);
   }
 
   float d0 = angularUnionDistance(u0);

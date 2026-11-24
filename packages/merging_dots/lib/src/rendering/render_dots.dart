@@ -905,10 +905,10 @@ class RenderDotScene extends RenderDots<DotScene> {
       math.min(animator.target.layers.length, DotScene.maxLayers);
 
   /// Each dot in local pixels, after turning its layer in 3D: x, y,
-  /// radius, layer, and stretch x and y.
+  /// radius, layer, stretch x and y, and depth.
   Float64List _projected = Float64List(0);
 
-  static const _projectedStride = 6;
+  static const _projectedStride = 7;
 
   /// Turns and projects the animator's dots with the layers in [_layers].
   int _project(double scale, Offset origin) {
@@ -929,7 +929,7 @@ class RenderDotScene extends RenderDots<DotScene> {
       final layer = values[o + 3].clamp(0, layers - 1).toDouble();
       var sx = values[o + 4];
       var sy = values[o + 5];
-      final z = values[o + 6];
+      var z = values[o + 6];
 
       // A dot between two layers turns between their turns.
       final l0 = layer.floor();
@@ -952,12 +952,13 @@ class RenderDotScene extends RenderDots<DotScene> {
           return (x1, y * cp - z1 * sp, y * sp + z1 * cp);
         }
 
-        final (tx, ty, _) = turn(x, y, z);
+        final (tx, ty, tz) = turn(x, y, z);
         final (ex, ey, _) = turn(x + sx, y + sy, z);
         sx = ex - tx;
         sy = ey - ty;
         x = tx;
         y = ty;
+        z = tz;
       }
       out
         ..[p] = origin.dx + (pivot.dx + x) * scale
@@ -965,7 +966,8 @@ class RenderDotScene extends RenderDots<DotScene> {
         ..[p + 2] = r * scale
         ..[p + 3] = layer
         ..[p + 4] = sx * scale
-        ..[p + 5] = sy * scale;
+        ..[p + 5] = sy * scale
+        ..[p + 6] = z * scale;
     }
     return count;
   }
@@ -997,7 +999,7 @@ class RenderDotScene extends RenderDots<DotScene> {
     if (visible == 0) return null;
 
     final span = math.max<double>(math.max(right - left, bottom - top), 1);
-    final data = Uint8List(visible * 4 * 4);
+    final data = Uint8List(visible * 5 * 4);
     int quantize(double v) => (v * 65535).round().clamp(0, 65535);
     var n = 0;
     for (var i = 0; i < count; i++) {
@@ -1011,7 +1013,8 @@ class RenderDotScene extends RenderDots<DotScene> {
       // The stretch spans at most the content, so -span..span fits.
       final sx = quantize(dots[p + 4] / span / 2 + 0.5);
       final sy = quantize(dots[p + 5] / span / 2 + 0.5);
-      final q = n * 16;
+      final depth = quantize(dots[p + 6] / span / 2 + 0.5);
+      final q = n * 20;
       data
         ..[q] = x >> 8
         ..[q + 1] = x & 0xFF
@@ -1028,10 +1031,14 @@ class RenderDotScene extends RenderDots<DotScene> {
         ..[q + 12] = sx & 0xFF
         ..[q + 13] = sy >> 8
         ..[q + 14] = sy & 0xFF
-        ..[q + 15] = 255;
+        ..[q + 15] = 255
+        ..[q + 16] = depth >> 8
+        ..[q + 17] = depth & 0xFF
+        ..[q + 18] = 0
+        ..[q + 19] = 255;
       n++;
     }
-    _dots.upload(data, visible * 4, 1);
+    _dots.upload(data, visible * 5, 1);
     return (Offset(left, top), span, visible);
   }
 
@@ -1084,7 +1091,7 @@ class RenderDotScene extends RenderDots<DotScene> {
       ..setFloat(1, dataOrigin.dy)
       ..setFloat(2, span)
       ..setFloat(3, count.toDouble())
-      ..setFloat(4, count * 4.0)
+      ..setFloat(4, count * 5.0)
       ..setFloat(5, pixelWidth(canvas))
       ..setFloat(6, _dots.isRendered ? 1 : 0);
     for (var l = 0; l < DotScene.maxLayers; l++) {

@@ -70,13 +70,16 @@ class DotCharacterController extends ChangeNotifier
   /// The character this controller runs.
   ///
   /// Setting another one moves the dots to its pose for the current state,
-  /// for example from one body shape to another.
+  /// for example from one body shape to another. A state's animation
+  /// carries on at the frame it is at, if the new one has as many frames.
   DotCharacter get character => _character;
   set character(DotCharacter value) {
     if (value == _character) return;
     _character = value;
     if (!value.states.containsKey(_state)) _state = value.initial;
-    _playState();
+    // A tweaked character keeps playing where it was, so it can be tuned
+    // live.
+    _playState(restart: false);
   }
 
   String _state;
@@ -139,11 +142,11 @@ class DotCharacterController extends ChangeNotifier
     }
   }
 
-  void _playState() {
+  void _playState({bool restart = true}) {
     _inTransition = false;
     final state = _character.state(_state);
     _syncIdles(state.idles);
-    animator.play(state.animation);
+    animator.play(state.animation, restart: restart);
   }
 
   void _onSequenceEnd() {

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:merging_dots/merging_dots.dart';
 
@@ -112,7 +113,13 @@ abstract final class BlobCharacter {
   /// past its edge. When it looks around, it turns its head in 3D: its eyes
   /// are balls on the front of a sphere around its body, so they slide
   /// further than the body and peek out past it.
-  static DotCharacter build({BlobBody body = BlobBody.round, Color? color}) {
+  static DotCharacter build({
+    BlobBody body = BlobBody.round,
+    Color? color,
+    BlobTuning tuning = const BlobTuning(),
+  }) {
+    final t = tuning;
+    final eyes0 = SceneLayer(blend: t.eyeBlend);
     const center = Offset(50, 52);
     // The head is a sphere around the body's dots.
     var left = double.infinity;
@@ -134,7 +141,7 @@ abstract final class BlobCharacter {
       final depth = math.sqrt(
         math.max(headRadius * headRadius - at.distanceSquared, 0),
       );
-      return dot.copyWith(depth: depth);
+      return dot.copyWith(depth: depth * t.eyeDepth);
     }
 
     // Dots 0 and 2 are the outer loading dots and the eyes, dot 1 the
@@ -148,13 +155,13 @@ abstract final class BlobCharacter {
       List<SceneDot>? lids,
       double lidSquash = 1,
       SceneLayer bodyLayer = const SceneLayer(),
-      SceneLayer eyes = const SceneLayer(blend: 2),
+      SceneLayer? eyes,
     }) => DotScene(
       pivot: pivot,
       layers: [
         bodyLayer,
-        eyes,
-        eyes.copyWith(squash: lidSquash),
+        eyes ?? eyes0,
+        (eyes ?? eyes0).copyWith(squash: lidSquash),
       ],
       dots: [
         for (final dot in <SceneDot>[
@@ -173,17 +180,18 @@ abstract final class BlobCharacter {
     );
 
     DotScene face({
-      SceneLayer eyes = const SceneLayer(blend: 2),
+      SceneLayer? eyes,
       double eyeScale = 1,
       Offset bodyOffset = Offset.zero,
       double bodySquash = 1,
       _Lids lids = _Lids.open,
       Offset turn = Offset.zero,
     }) {
-      final r = body.eyeRadius * eyeScale;
+      final base = body.eyeRadius * t.eyeSize;
+      final r = base * eyeScale;
       final y = body.eyeY;
       // Larger eyes move apart, so they don't melt into each other.
-      final gap = body.eyeGap + (r - body.eyeRadius);
+      final gap = body.eyeGap * t.eyeSpacing + (r - base);
       // Open lids rest just outside the eyes, so they slide over them
       // from above or below instead of growing out of their middle.
       SceneDot upper(double x) => lids == _Lids.sleepy
@@ -207,12 +215,15 @@ abstract final class BlobCharacter {
         ],
         lidSquash: lids == _Lids.sleepy ? 0.5 : 1,
         bodyLayer: SceneLayer(
-          blend: body.blend,
+          blend: body.blend * t.bodyBlend,
           offset: bodyOffset,
           squash: bodySquash,
           turn: turn,
         ),
-        eyes: eyes.copyWith(offset: eyes.offset + bodyOffset, turn: turn),
+        eyes: (eyes ?? eyes0).copyWith(
+          offset: (eyes ?? eyes0).offset + bodyOffset,
+          turn: turn,
+        ),
       );
     }
 
@@ -223,7 +234,7 @@ abstract final class BlobCharacter {
         left: dot(0),
         middle: dot(1),
         right: dot(2),
-        bodyLayer: const SceneLayer(blend: 4),
+        bodyLayer: SceneLayer(blend: t.loadingBlend),
       );
     }
 
@@ -234,30 +245,44 @@ abstract final class BlobCharacter {
         left: dot(0),
         middle: dot(1),
         right: dot(2),
-        bodyLayer: const SceneLayer(blend: 9),
+        bodyLayer: SceneLayer(blend: t.pulseBlend),
       );
     }
 
-    // The middle dot swinging over to melt into each side.
-    DotScene gooPose(double middle) => scene(
-      left: const SceneDot(30, 52, 8),
+    // Three dots in a row, with the outer ones moved and grown: the
+    // middle one plunges into a side, which it pushes outward.
+    DotScene gooPose(
+      double middle, {
+      double left = 30,
+      double right = 70,
+      double leftRadius = 8,
+      double rightRadius = 8,
+    }) => scene(
+      left: SceneDot(left, 52, leftRadius),
       middle: SceneDot(middle, 52, 8),
-      right: const SceneDot(70, 52, 8),
-      bodyLayer: const SceneLayer(blend: 14),
+      right: SceneDot(right, 52, rightRadius),
+      bodyLayer: SceneLayer(blend: t.gooBlend),
     );
 
     // Three dots circling a ring tilted toward the viewer: the front ones
-    // dip and grow, the back ones rise and shrink.
+    // dip and grow, the back ones rise and shrink. In 3D, the ring has
+    // depth and the blend fades between dots far apart in it, so they
+    // crease where they pass. Flat, it is laid out as the ellipse it
+    // looks like, and the dots stay softly joined all the way round.
     const orbitSteps = 12;
     DotScene orbitPose(int step) {
       SceneDot dot(int i) {
         final angle = (step / orbitSteps + i / 3) * 2 * math.pi;
-        final depth = math.sin(angle) * 20;
+        final front = math.sin(angle);
+        final size = t.orbitDotSize * (1 + front * 0.2);
+        final x = 50 + math.cos(angle) * t.orbitRadius;
+        if (t.orbit3d) {
+          return SceneDot(x, 52, size, depth: front * t.orbitRadius);
+        }
         return SceneDot(
-          50 + math.cos(angle) * 20,
-          52,
-          7.5 + math.sin(angle) * 1.5,
-          depth: depth,
+          x,
+          52 + front * t.orbitRadius * math.sin(t.orbitTilt),
+          size,
         );
       }
 
@@ -265,7 +290,10 @@ abstract final class BlobCharacter {
         left: dot(0),
         middle: dot(1),
         right: dot(2),
-        bodyLayer: const SceneLayer(blend: 8, turn: Offset(0, -0.55)),
+        bodyLayer: SceneLayer(
+          blend: t.orbitBlend,
+          turn: t.orbit3d ? Offset(0, -t.orbitTilt) : Offset.zero,
+        ),
       );
     }
 
@@ -304,7 +332,7 @@ abstract final class BlobCharacter {
       style: DotSceneStyle(
         layers: [
           DotLayerStyle(color: color),
-          const DotLayerStyle.invert(edgeBlend: 3),
+          DotLayerStyle.invert(edgeBlend: t.eyeEdge),
           DotLayerStyle(color: color, clipped: true),
         ],
       ),
@@ -327,17 +355,52 @@ abstract final class BlobCharacter {
             ),
           ),
         ),
+        // The middle dot plunges into a side, pushing it outward so it
+        // swells, the two recoil, and the side spits it back out toward
+        // the other one.
         'goo': CharacterState(
-          DotSequence(
-            [
-              DotKeyframe(gooPose(36), hold: const Duration(milliseconds: 80)),
-              DotKeyframe(gooPose(64), hold: const Duration(milliseconds: 80)),
+          DotSequence([
+            for (final side in [1.0, -1.0]) ...[
+              // Plunges in, fully.
+              DotKeyframe(
+                gooPose(50 + 20 * side),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 300),
+                ),
+              ),
+              // Carries the side outward, which swells.
+              DotKeyframe(
+                gooPose(
+                  50 + (20 + t.gooPush) * side,
+                  left: side < 0 ? 30 - t.gooPush : 30,
+                  right: side > 0 ? 70 + t.gooPush : 70,
+                  leftRadius: side < 0 ? 8 * t.gooSwell : 8,
+                  rightRadius: side > 0 ? 8 * t.gooSwell : 8,
+                ),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 240),
+                  bounce: 0.3,
+                ),
+              ),
+              // Recoils together.
+              DotKeyframe(
+                gooPose(50 + 19 * side),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 280),
+                  bounce: 0.3,
+                ),
+              ),
+              // Spits it back out.
+              DotKeyframe(
+                gooPose(50),
+                hold: const Duration(milliseconds: 60),
+                motion: const CupertinoMotion(
+                  duration: Duration(milliseconds: 420),
+                  bounce: 0.2,
+                ),
+              ),
             ],
-            motion: const CupertinoMotion(
-              duration: Duration(milliseconds: 620),
-              bounce: 0.2,
-            ),
-          ),
+          ]),
         ),
         'orbit': CharacterState(
           DotSequence([
@@ -351,14 +414,14 @@ abstract final class BlobCharacter {
             duration: Duration(milliseconds: 600),
             bounce: 0.25,
           ),
-          idles: const [
-            DotIdle.breathe(),
-            DotIdle.bob(amount: 1),
-            DotIdle.blink(),
+          idles: [
+            const DotIdle.breathe(),
+            const DotIdle.bob(amount: 1),
+            const DotIdle.blink(),
             DotIdle.lookAround(
-              layers: [1, 2],
-              range: Offset(4, 3),
-              turn: Offset(0.42, 0.3),
+              layers: const [1, 2],
+              range: const Offset(4, 3),
+              turn: t.turn,
             ),
           ],
         ),
@@ -409,11 +472,11 @@ abstract final class BlobCharacter {
           DotSequence(
             [
               DotKeyframe(
-                face(eyes: const SceneLayer(blend: 2, offset: Offset(-7, -8))),
+                face(eyes: eyes0.copyWith(offset: const Offset(-7, -8))),
                 hold: const Duration(milliseconds: 900),
               ),
               DotKeyframe(
-                face(eyes: const SceneLayer(blend: 2, offset: Offset(8, -7))),
+                face(eyes: eyes0.copyWith(offset: const Offset(8, -7))),
                 hold: const Duration(milliseconds: 1100),
               ),
             ],
@@ -542,3 +605,151 @@ abstract final class BlobCharacter {
 
 /// Where the eyelids of [BlobCharacter.build] are.
 enum _Lids { open, happy, sleepy }
+
+/// The look of [BlobCharacter.build], to prototype with.
+@immutable
+class BlobTuning {
+  /// Creates a tuning. The defaults are the blob's look.
+  const BlobTuning({
+    this.bodyBlend = 1,
+    this.eyeSize = 1,
+    this.eyeSpacing = 1,
+    this.eyeBlend = 2,
+    this.eyeEdge = 3,
+    this.eyeDepth = 1,
+    this.turn = const Offset(0.42, 0.3),
+    this.loadingBlend = 4,
+    this.pulseBlend = 9,
+    this.gooBlend = 8,
+    this.gooPush = 7,
+    this.gooSwell = 1.19,
+    this.orbitBlend = 20,
+    this.orbitRadius = 15,
+    this.orbitTilt = 0.55,
+    this.orbitDotSize = 8,
+    this.orbit3d = true,
+  });
+
+  /// Scales how much the body's dots melt together.
+  final double bodyBlend;
+
+  /// Scales the eyes.
+  final double eyeSize;
+
+  /// Scales how far apart the eyes are.
+  final double eyeSpacing;
+
+  /// How much the eyes melt into each other.
+  final double eyeBlend;
+
+  /// How round the corners are where the eyes cross the body's edge.
+  final double eyeEdge;
+
+  /// Scales how far the eyes sit in front of the head, which sets how much
+  /// further than the body they move when it turns.
+  final double eyeDepth;
+
+  /// How far the head turns when looking around, in radians.
+  final Offset turn;
+
+  /// How much the hopping loading dots melt together.
+  final double loadingBlend;
+
+  /// How much the pulsing dots melt together.
+  final double pulseBlend;
+
+  /// How much the goo dots melt together.
+  final double gooBlend;
+
+  /// How far the goo's moving dot pushes the side it plunges into.
+  final double gooPush;
+
+  /// How much the pushed side swells, as a factor of its size.
+  final double gooSwell;
+
+  /// How much the orbiting dots melt together.
+  final double orbitBlend;
+
+  /// The radius of the orbit's ring.
+  final double orbitRadius;
+
+  /// How far the ring tilts toward the viewer, in radians.
+  final double orbitTilt;
+
+  /// How large the orbiting dots are.
+  final double orbitDotSize;
+
+  /// Whether the orbit turns in 3D, where dots far apart in depth crease
+  /// instead of melting, or is laid out flat and stays joined.
+  final bool orbit3d;
+
+  /// A copy with the given fields replaced.
+  BlobTuning copyWith({
+    double? bodyBlend,
+    double? eyeSize,
+    double? eyeSpacing,
+    double? eyeBlend,
+    double? eyeEdge,
+    double? eyeDepth,
+    Offset? turn,
+    double? loadingBlend,
+    double? pulseBlend,
+    double? gooBlend,
+    double? gooPush,
+    double? gooSwell,
+    double? orbitBlend,
+    double? orbitRadius,
+    double? orbitTilt,
+    double? orbitDotSize,
+    bool? orbit3d,
+  }) => BlobTuning(
+    bodyBlend: bodyBlend ?? this.bodyBlend,
+    eyeSize: eyeSize ?? this.eyeSize,
+    eyeSpacing: eyeSpacing ?? this.eyeSpacing,
+    eyeBlend: eyeBlend ?? this.eyeBlend,
+    eyeEdge: eyeEdge ?? this.eyeEdge,
+    eyeDepth: eyeDepth ?? this.eyeDepth,
+    turn: turn ?? this.turn,
+    loadingBlend: loadingBlend ?? this.loadingBlend,
+    pulseBlend: pulseBlend ?? this.pulseBlend,
+    gooBlend: gooBlend ?? this.gooBlend,
+    gooPush: gooPush ?? this.gooPush,
+    gooSwell: gooSwell ?? this.gooSwell,
+    orbitBlend: orbitBlend ?? this.orbitBlend,
+    orbitRadius: orbitRadius ?? this.orbitRadius,
+    orbitTilt: orbitTilt ?? this.orbitTilt,
+    orbitDotSize: orbitDotSize ?? this.orbitDotSize,
+    orbit3d: orbit3d ?? this.orbit3d,
+  );
+
+  /// This tuning as Dart code, to paste as new defaults.
+  String toDart() {
+    String n(double v) => v.toStringAsFixed(2);
+    return 'BlobTuning(\n'
+        '  bodyBlend: ${n(bodyBlend)},\n'
+        '  eyeSize: ${n(eyeSize)},\n'
+        '  eyeSpacing: ${n(eyeSpacing)},\n'
+        '  eyeBlend: ${n(eyeBlend)},\n'
+        '  eyeEdge: ${n(eyeEdge)},\n'
+        '  eyeDepth: ${n(eyeDepth)},\n'
+        '  turn: Offset(${n(turn.dx)}, ${n(turn.dy)}),\n'
+        '  loadingBlend: ${n(loadingBlend)},\n'
+        '  pulseBlend: ${n(pulseBlend)},\n'
+        '  gooBlend: ${n(gooBlend)},\n'
+        '  gooPush: ${n(gooPush)},\n'
+        '  gooSwell: ${n(gooSwell)},\n'
+        '  orbitBlend: ${n(orbitBlend)},\n'
+        '  orbitRadius: ${n(orbitRadius)},\n'
+        '  orbitTilt: ${n(orbitTilt)},\n'
+        '  orbitDotSize: ${n(orbitDotSize)},\n'
+        '  orbit3d: $orbit3d,\n'
+        ')';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is BlobTuning && other.toDart() == toDart();
+
+  @override
+  int get hashCode => toDart().hashCode;
+}

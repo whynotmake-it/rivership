@@ -78,16 +78,22 @@ float smoothUnionDistance(SmoothUnion u, float k) {
 // It is a running polynomial smooth minimum, so unlike SmoothUnion it
 // depends a little on the order shapes are added in. Keep that order
 // stable from frame to frame.
+//
+// Shapes can have a depth. The blend fades as their depths grow apart,
+// gone at twice the radius, so shapes that only overlap on screen, one far
+// behind the other, overlap instead of melting together.
 
 struct AngularUnion {
   float d;
   // The gradient of d, split between the joined shapes like the distance.
   // It shortens at a bridge's saddle, which the anti-aliasing divides by.
   vec2 g;
+  // The depth of the surface, split like the gradient.
+  float z;
 };
 
 AngularUnion angularUnionStart() {
-  return AngularUnion(1e4, vec2(0.0));
+  return AngularUnion(1e4, vec2(0.0), 0.0);
 }
 
 // Adds a shape at distance d with outward `direction`. A shape smaller
@@ -98,16 +104,19 @@ AngularUnion angularUnionAdd(
     float d,
     vec2 direction,
     float radius,
+    float depth,
     float k) {
   if (u.d >= 1e4) {
-    return AngularUnion(d, direction);
+    return AngularUnion(d, direction, depth);
   }
   float blend = k * min(0.5 * length(u.g - direction), 1.0) *
-                clamp(4.0 * radius / max(k, 1e-4), 0.0, 1.0);
+                clamp(4.0 * radius / max(k, 1e-4), 0.0, 1.0) *
+                clamp(1.0 - abs(u.z - depth) / max(2.0 * k, 1e-4), 0.0, 1.0);
   float e = max(blend - abs(u.d - d), 0.0);
   float joined = min(u.d, d) - e * e * 0.25 / max(blend, 1e-4);
   float weight = clamp(0.5 + (d - u.d) / (2.0 * max(blend, 1e-4)), 0.0, 1.0);
-  return AngularUnion(joined, mix(direction, u.g, weight));
+  return AngularUnion(
+      joined, mix(direction, u.g, weight), mix(depth, u.z, weight));
 }
 
 float angularUnionDistance(AngularUnion u) {
