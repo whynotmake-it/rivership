@@ -4,7 +4,7 @@ import 'package:merging_dots/merging_dots.dart';
 /// The body shapes of [BlobCharacter.build].
 enum BlobBody {
   /// One round dot.
-  round([SceneDot(50, 52, 32)], eyeY: 49, eyeGap: 14, eyeRadius: 12, blend: 10),
+  round([SceneDot(50, 52, 32)], eyeY: 49, eyeGap: 14, eyeRadius: 12, blend: 16),
 
   /// Two dots side by side, wide like a pill.
   pill(
@@ -12,7 +12,7 @@ enum BlobBody {
     eyeY: 51,
     eyeGap: 13,
     eyeRadius: 10.5,
-    blend: 12,
+    blend: 19,
   ),
 
   /// A small dot on a large one, like a bean standing up.
@@ -21,7 +21,7 @@ enum BlobBody {
     eyeY: 41,
     eyeGap: 11,
     eyeRadius: 9.5,
-    blend: 14,
+    blend: 22,
   ),
 
   /// Four dots in a square, melted into a soft squircle.
@@ -35,7 +35,7 @@ enum BlobBody {
     eyeY: 47,
     eyeGap: 13,
     eyeRadius: 11,
-    blend: 16,
+    blend: 25,
   ),
 
   /// A dome with a wavy hem.
@@ -50,7 +50,7 @@ enum BlobBody {
     eyeY: 41,
     eyeGap: 11,
     eyeRadius: 10,
-    blend: 10,
+    blend: 16,
   ),
 
   /// Low and soft, like a mochi.
@@ -59,7 +59,7 @@ enum BlobBody {
     eyeY: 54,
     eyeGap: 12,
     eyeRadius: 9,
-    blend: 12,
+    blend: 19,
   );
 
   const BlobBody(

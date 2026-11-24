@@ -67,3 +67,52 @@ float smoothUnionDistance(SmoothUnion u, float k) {
   float slope = length(u.g) / u.s;
   return d / max(slope, 0.5);
 }
+
+// A smooth union whose blend radius follows the angle between the surfaces
+// it joins, as in liquid_glass_renderer: zero where they run alongside
+// each other, like the collinear sides of dots in a row, and the full
+// radius where they face each other across a gap. A plain smooth minimum
+// lifts aligned edges near a join, which makes rows of dots wavy; this
+// keeps them straight while bridges and concave joins still round.
+//
+// It is a running polynomial smooth minimum, so unlike SmoothUnion it
+// depends a little on the order shapes are added in. Keep that order
+// stable from frame to frame.
+
+struct AngularUnion {
+  float d;
+  // The gradient of d, split between the joined shapes like the distance.
+  // It shortens at a bridge's saddle, which the anti-aliasing divides by.
+  vec2 g;
+};
+
+AngularUnion angularUnionStart() {
+  return AngularUnion(1e4, vec2(0.0));
+}
+
+// Adds a shape at distance d with outward `direction`. A shape smaller
+// than a quarter of k blends with less, so a dot shrinking to nothing
+// fades out of its joins instead of popping.
+AngularUnion angularUnionAdd(
+    AngularUnion u,
+    float d,
+    vec2 direction,
+    float radius,
+    float k) {
+  if (u.d >= 1e4) {
+    return AngularUnion(d, direction);
+  }
+  float blend = k * min(0.5 * length(u.g - direction), 1.0) *
+                clamp(4.0 * radius / max(k, 1e-4), 0.0, 1.0);
+  float e = max(blend - abs(u.d - d), 0.0);
+  float joined = min(u.d, d) - e * e * 0.25 / max(blend, 1e-4);
+  float weight = clamp(0.5 + (d - u.d) / (2.0 * max(blend, 1e-4)), 0.0, 1.0);
+  return AngularUnion(joined, mix(direction, u.g, weight));
+}
+
+float angularUnionDistance(AngularUnion u) {
+  if (u.d >= 1e4) {
+    return 1e4;
+  }
+  return u.d / max(length(u.g), 0.5);
+}

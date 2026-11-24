@@ -73,8 +73,8 @@ float unpack(float high, float low) {
 
 // Adds a capsule of radius r from `center` to `center + stretch`, which
 // belongs to a layer by `share`, to that layer.
-SmoothUnion addTo(
-    SmoothUnion u,
+AngularUnion addTo(
+    AngularUnion u,
     vec2 p,
     vec2 center,
     vec2 stretch,
@@ -102,8 +102,10 @@ SmoothUnion addTo(
   float k1 = length(g);
   float d = k1 > 0.0 ? k0 * (k0 - 1.0) / k1 : -min(radii.x, radii.y);
   vec2 direction = k1 > 0.0 ? g / k1 : vec2(0.0);
-  return smoothUnionAdd(
-      u, d, direction, min(radii.x, radii.y), length(delta), 1e6, look.y);
+  // The blend is sent as the smoothing of the exponential union; the
+  // angular union's radius is the blend itself.
+  return angularUnionAdd(
+      u, d, direction, min(radii.x, radii.y), look.y * 2.7725887);
 }
 
 float smin(float a, float b, float k) {
@@ -141,10 +143,10 @@ float coverage(float d, vec4 look) {
 
 void main() {
   vec2 p = FlutterFragCoord().xy;
-  SmoothUnion u0 = smoothUnionStart();
-  SmoothUnion u1 = smoothUnionStart();
-  SmoothUnion u2 = smoothUnionStart();
-  SmoothUnion u3 = smoothUnionStart();
+  AngularUnion u0 = angularUnionStart();
+  AngularUnion u1 = angularUnionStart();
+  AngularUnion u2 = angularUnionStart();
+  AngularUnion u3 = angularUnionStart();
 
   for (int n = 0; n < kMaxDots; n++) {
     if (float(n) >= uCount) {
@@ -169,10 +171,10 @@ void main() {
     u3 = addTo(u3, p, center, stretch, r, 1.0 - abs(layer - 3.0), uLook3, uShape3);
   }
 
-  float d0 = smoothUnionDistance(u0, uLook0.y);
-  float d1 = smoothUnionDistance(u1, uLook1.y);
-  float d2 = smoothUnionDistance(u2, uLook2.y);
-  float d3 = smoothUnionDistance(u3, uLook3.y);
+  float d0 = angularUnionDistance(u0);
+  float d1 = angularUnionDistance(u1);
+  float d2 = angularUnionDistance(u2);
+  float d3 = angularUnionDistance(u3);
 
   d0 = combine(d0, d1, uLook1);
   d0 = combine(d0, d2, uLook2);
