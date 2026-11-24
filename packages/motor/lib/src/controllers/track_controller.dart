@@ -1,3 +1,7 @@
+/// @docImport 'package:flutter/widgets.dart';
+/// @docImport 'package:motor/src/controllers/motion_controller.dart';
+library;
+
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
@@ -61,7 +65,7 @@ extension type const TrackValueReader(
 ///
 /// This is an `Animation<TrackValueReader>`, so [value] is a reader function:
 /// call it with a [Track] to get that track's current value. It works with
-/// `ListenableBuilder` and other `Listenable` infrastructure. To use a single
+/// [ListenableBuilder] and other [Listenable] infrastructure. To use a single
 /// track with [Tween.animate], [Animation.drive], or transition widgets, get
 /// an `Animation<T>` for it from [animationOf].
 ///
@@ -103,10 +107,10 @@ class TrackController extends Animation<TrackValueReader>
   }
 
   /// Controls whether [set] automatically tracks velocity from position
-  /// samples. Explicit velocity on [TrackValue] always works regardless.
+  /// samples.
   ///
-  /// Changing it keeps the velocities estimated so far and starts sampling
-  /// afresh.
+  /// Explicit velocity on [TrackValue] always works regardless. Changing this
+  /// keeps the velocities estimated so far and starts sampling afresh.
   VelocityTracking get velocityTracking => _velocityTracking;
   VelocityTracking _velocityTracking;
 
@@ -893,9 +897,8 @@ class TrackController extends Animation<TrackValueReader>
   /// Stops the ticker and completes every pending future or, if [canceled],
   /// cancels them; the tracks keep their plans.
   ///
-  /// `MotionController` uses this to complete an interrupted animation's
-  /// future when its value is set, and to restart the ticker for each call,
-  /// as in 1.x.
+  /// [MotionController] uses this to complete an interrupted animation's
+  /// future when its value is set, and to restart the ticker for each call.
   @internal
   void stopTicker({required bool canceled}) {
     final ticker = _ticker;

@@ -411,7 +411,7 @@ class _NowPlaying extends StatelessWidget {
               radius: (radius - art.left).clamp(0, art.width / 2),
             ),
           ),
-          // The text keeps its own height, centred on the artwork, which is
+          // The text keeps its own height, centered on the artwork, which is
           // shorter than the text while its spring overshoots.
           Positioned(
             left: art.right + 14,

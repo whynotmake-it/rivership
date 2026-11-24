@@ -36,9 +36,9 @@ abstract interface class MotionFuture implements TickerFuture {
   /// reached its duration, while it may still be settling.
   ///
   /// That doesn't depend on the steps' `until`. A last hold ends after its
-  /// duration and a last `.at` at its time. A motion without a duration, and
-  /// a barrier, end when they settle. It never completes if the animation is
-  /// canceled first.
+  /// duration and a last [TrackStep.at] at its time. A motion without a
+  /// duration, and a barrier, end when they settle. It never completes if the
+  /// animation is canceled first.
   Future<void> get ended;
 }
 
@@ -99,8 +99,9 @@ class _TrackFuture implements MotionFuture {
     _secondary?.complete();
   }
 
-  /// Cancels this future. If its tracks had ended by now, [ended] still
-  /// completes.
+  /// Cancels this future.
+  ///
+  /// If its tracks had ended by now, [ended] still completes.
   void cancel() {
     if (_completed != null) return;
     if (!_hasEnded && _tracksHaveEnded) end();

@@ -244,7 +244,7 @@ class _Island extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'motor 2.0 is here',
+                                  'Motor 2.0 is here',
                                   maxLines: 1,
                                   overflow: .ellipsis,
                                   style: text.body

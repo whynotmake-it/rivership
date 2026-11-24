@@ -1,3 +1,7 @@
+/// @docImport 'package:motor/src/loop_mode.dart';
+/// @docImport 'package:motor/src/track_step.dart';
+library;
+
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart';
 import 'package:motor/src/phase_transition.dart';
@@ -9,7 +13,7 @@ import 'package:motor/src/track_phase_timeline.dart';
 /// Wraps the standard sync-barrier playback with phase-level navigation:
 ///
 /// - [playPhases] plays all phases in order (auto-advancing via sync
-///   barriers and `TrackStep.loop` for looping timelines).
+///   barriers and [TrackStep.loop] for looping timelines).
 /// - [goToPhase] jumps to a specific phase by replaying only that phase's
 ///   animations.
 /// - [currentPhase] reports the phase currently being played or settled.
@@ -18,7 +22,7 @@ import 'package:motor/src/track_phase_timeline.dart';
 /// [PhaseTransitioning] when a new phase begins animating, and [PhaseSettled]
 /// when playback for the active phase comes to rest.
 ///
-/// With `LoopMode.pingPong`, phases are visited in reverse order after the
+/// With [LoopMode.pingPong], phases are visited in reverse order after the
 /// forward pass. Each phase's own steps still play forward.
 class PhaseTrackController<P extends Object> extends TrackController {
   /// Creates a phase track controller.
@@ -35,7 +39,8 @@ class PhaseTrackController<P extends Object> extends TrackController {
   bool _isPlayingPhases = false;
   bool _phaseDirectionForward = true;
 
-  /// Whether the next [goToPhase] applies the timeline's `initialValues`.
+  /// Whether the next [goToPhase] applies the timeline's
+  /// [TrackPhaseTimeline.initialValues].
   bool _initialValuesPending = false;
 
   /// The active phase timeline, if any.
@@ -47,7 +52,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// Sets the timeline without starting playback.
   ///
   /// Use [goToPhase] after this to jump to a specific phase, which applies
-  /// the timeline's `initialValues` first, or [playPhases] to begin
+  /// [TrackPhaseTimeline.initialValues] first, or [playPhases] to begin
   /// auto-advancing through all phases.
   void setTimeline(
     TrackPhaseTimeline<P> timeline, {
@@ -66,7 +71,7 @@ class PhaseTrackController<P extends Object> extends TrackController {
   /// If [atPhase] is provided, playback starts from that phase (skipping
   /// earlier phases). Otherwise, playback starts from the first phase.
   ///
-  /// Every call applies the timeline's `initialValues` first, also when
+  /// Every call applies [TrackPhaseTimeline.initialValues] first, also when
   /// [timeline] equals the one playing, so each throw keeps its velocity.
   ///
   /// Returns a [MotionFuture] for the timeline's tracks (see
@@ -86,8 +91,9 @@ class PhaseTrackController<P extends Object> extends TrackController {
         applyInitialValues: true,
       );
 
-  /// Like [playPhases], but without applying the timeline's
-  /// `initialValues`, to go on auto-advancing from where the tracks are.
+  /// Like [playPhases], but without applying
+  /// [TrackPhaseTimeline.initialValues], to go on auto-advancing from where
+  /// the tracks are.
   @internal
   MotionFuture continuePhases(
     TrackPhaseTimeline<P> timeline, {
@@ -185,8 +191,10 @@ class PhaseTrackController<P extends Object> extends TrackController {
 
   /// Swaps the active timeline for [timeline], an updated version of it, and
   /// unless [restartChanged] is false restarts only the tracks whose remaining
-  /// animations changed. Other tracks keep playing, and the timeline's
-  /// `initialValues` are not applied.
+  /// animations changed.
+  ///
+  /// Other tracks keep playing, and [TrackPhaseTimeline.initialValues] are not
+  /// applied.
   ///
   /// While auto-advancing, a changed track restarts at the current phase and
   /// rejoins the others at the next phase; otherwise it plays the current
@@ -224,7 +232,9 @@ class PhaseTrackController<P extends Object> extends TrackController {
 
   /// Stops all tracks and moves them straight to where they rest at [phase]
   /// in [timeline], without animating, reporting the change and that [phase]
-  /// settled. With [applyInitialValues], the timeline's `initialValues` apply
+  /// settled.
+  ///
+  /// With [applyInitialValues], [TrackPhaseTimeline.initialValues] apply
   /// first, for tracks [phase] gives no resting value.
   @internal
   void jumpToPhase(
@@ -252,14 +262,17 @@ class PhaseTrackController<P extends Object> extends TrackController {
     }
   }
 
-  /// Applies the timeline's `initialValues` and their velocities.
+  /// Applies the timeline's [TrackPhaseTimeline.initialValues] and their
+  /// velocities.
   void _applyInitialValues(TrackPhaseTimeline<P> timeline) {
     if (timeline.initialValues.isEmpty) return;
     internalSet(timeline.initialValues);
   }
 
-  /// Like [TrackController.set]. Once no track is left playing, it also ends
-  /// the automatic advance through the phases, as [stop] does.
+  /// Like [TrackController.set].
+  ///
+  /// Once no track is left playing, this also ends automatic phase
+  /// advancement, as [stop] does.
   @override
   void set(List<TrackValue> values) {
     super.set(values);

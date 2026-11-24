@@ -1,177 +1,64 @@
 # Motor
 
-
 [![Pub Version](https://img.shields.io/pub/v/motor)](https://pub.dev/packages/motor)
 [![Coverage](./coverage.svg)](./test/)
 [![lints by lintervention][lintervention_badge]][lintervention_link]
 [![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=fff)](https://bsky.app/profile/i.madethese.works)
 
-
-A unified motion system that brings together physics-based springs, duration-based curves, and Flutter's animation system under one consistent API.
+A unified motion system for Flutter. Animate with physics-based springs or duration-based curves through the same API.
 
 ![Title animation](./doc/title.gif)
-## Features 🎯
 
-- 🎨 **Unified Motion API** - One consistent interface for springs, curves, and custom motions
-- 💡 **Physics & Duration Based** - Choose between spring physics or traditional duration/curve animations
-- 🍎 **Apple Design System** - Built-in CupertinoMotion presets matching iOS animations
-- 🎨 **Material Design 3** - MaterialSpringMotion tokens following Google's motion guidelines
-- 📱 **Multi-dimensional** - Animate complex types like Offset, Size, and Rect with independent physics per dimension
-- 🎼 **Tracks & Steps** - Choreograph many properties at once, each with its own multi-step motion
-- 🌬️ **Free Motion** - Self-directed physics like friction and decay, with rest-position projection
-- 🔄 **Interactive Widgets** - Spring-driven implicit animations and draggables in the separate [`motor_widgets`](../motor_widgets) package
-- 🎯 **Flutter Integration** - Works seamlessly with existing Flutter animation patterns
-- 🛠️ **Optional DevTools** - Inspect, scrub, slow down, and tune live tracks with the separate `motor_devtools` package
+[Try the interactive gallery in your browser](https://whynotmake-it.github.io/rivership/#/motor).
 
-## Try it out
+## What's in the box
 
-[Open Example](https://whynotmake-it.github.io/rivership/#/motor)
+- **One API for springs and curves:** Switch between spring physics, easing curves, or custom simulations without rewriting widgets or controllers.
+- **Built-in design system presets:** `CupertinoMotion` mirrors SwiftUI's spring presets; `MaterialSpringMotion` implements the Material Design 3 spring tokens.
+- **Multi-dimensional animation:** Animate `Offset`, `Size`, `Rect`, `Color`, angles, or your own types with an independent simulation per dimension.
+- **Tracks & steps:** Choreograph multiple properties on one ticker with steps, keyframes, loops, sync barriers, and named phases.
+- **Free motion:** Run self-directed physics like `FrictionMotion` (decay) and project where they will come to rest.
+- **Companion packages:** Use [`motor_widgets`](../motor_widgets) for spring-driven versions of Flutter's implicit animation widgets and drag-and-drop, and [`motor_devtools`](../motor_devtools) for an optional in-app timeline inspector and spring tuner.
 
-## Installation 💻
+## Installation
 
-Motor is a Flutter package and requires the [Flutter SDK][flutter_install_link].
+Motor requires the [Flutter SDK][flutter_install_link] (Flutter 3.32 / Dart 3.8 or newer).
 
-Code samples in this README use Dart 3.10 dot-shorthands; motor itself needs Flutter 3.32 (Dart 3.8) or newer.
+> **Note:** Code samples below use Dart 3.10 dot-shorthands (such as `.bouncySpring()` or `.to(...)`). On Dart 3.8–3.9, write the full form (`Motion.bouncySpring()`, `TrackStep.to(...)`, and so on).
 
-Add to your `pubspec.yaml`:
+```sh
+flutter pub add 'motor:^2.0.0-dev.0'
+```
+
+Or add it to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
   motor: ^2.0.0-dev.0
 ```
 
-Or install from the command line:
-
-```sh
-flutter pub add 'motor:^2.0.0-dev.0'
-```
-
-For an opt-in in-app timeline and motion tuning panel, also add
-`motor_devtools` and wrap your app with `MotorDevTools`. The separate package
-can be omitted and tree-shaken from apps that do not need it. See the
-[`motor_devtools` README](../motor_devtools/README.md) for debug, feature-flag,
-and production usage.
-
-## Usage 💡
-
-### Choosing an API
+## Quick start
 
 | You want to animate… | Reach for |
-|----------------------|-----------|
-| A single value or property | `MotionBuilder` / `SingleMotionBuilder`, or `MotionController` for imperative control |
-| Multiple properties / choreography | [Tracks & Steps](#tracks--steps-) (`TrackBuilder`, `PhaseTrackBuilder`, `TrackController`) |
-| Legacy sequences (`MotionSequence`) | Deprecated — see [MIGRATION.md](./MIGRATION.md) for moving to Tracks |
+|---|---|
+| A single `double` | `SingleMotionBuilder` |
+| A single multi-dimensional value (`Offset`, `Size`, `Color`, …) | `MotionBuilder` |
+| Several properties together, or multi-step choreography | `TrackBuilder` or `PhaseTrackBuilder` |
+| Imperative control (gestures, custom sequencing) | `MotionController` or `TrackController` |
+| Drop-in replacements for `AnimatedContainer`, `AnimatedSwitcher`, `AnimatedSize`, etc. | [`motor_widgets`](../motor_widgets) |
 
-The single-value APIs are one-track tracks under the hood, so you can also start with tracks right away and add more later without switching APIs.
+Single-value builders and controllers are one-track tracks under the hood, so you can start with `SingleMotionBuilder` and move to tracks later without learning a second animation model.
 
-### Motion
+### Animating a single value
 
-The core of Motor's unified motion system is the `Motion` class. It represents the **type of motion** that will drive your animation, whether physics-based or duration-based.
-
-```dart
-// Duration-based motion (traditional Flutter approach)
-final linear = Motion.linear(Duration(seconds: 1));
-
-final withCurve = Motion.curved(Duration(seconds: 1), Curves.easeInOut);
-
-// Physics-based motion (natural, responsive)
-final spring = CupertinoMotion.bouncy(); // Or `Motion.bouncySpring()`
-final material = MaterialSpringMotion.standardSpatialDefault();
-```
-
-Motor provides several motion types out of the box, with the ability to create
-custom motions by extending `Motion` (target-based) or `FreeMotion`
-(self-directed):
-
-**Target-based motions** (`Motion`) animate from a start value to a target value:
-
-- **`CurvedMotion`** - Traditional duration-based motion with curves. Perfect for predictable, timed animations.
-- **`LinearMotion`** - Like `CurvedMotion` but always linear.
-- **`SpringMotion`** - Physics-based motion using Flutter SDK's `SpringDescription`. Provides natural, responsive animations that feel alive. Defaults to snapping to the end value to ensure precise settling.
-- **`CupertinoMotion`** - Predefined spring configurations matching Apple's design system.
-- **`MaterialSpringMotion`** - Material Design 3 spring motion tokens for expressive animations.
-- **`Motion.instant`** - Reaches its target at once. Use it for reduced motion or to turn an animation off.
-
-**Free motions** (`FreeMotion`) are self-directed: they evolve from a position and velocity with no fixed target:
-
-- **`FrictionMotion`** - Decelerates due to drag, like a scroll view coasting to a stop. Use `finalValue` / `project` to compute where it will come to rest without running the full simulation.
-
-This unified approach means you can easily switch between physics and duration-based animations without changing your widget code.
-
-**Tip:** Motions and their wrappers are immutable value objects, so declare
-them as `const` or `static final` and reuse them. Wrappers such as `scaleTo`
-and `trimmed` compare by value, so creating them in `build` is fine; if the
-underlying simulation doesn't say when it settles, they probe it once per
-move.
-
-### CupertinoMotion
-
-`CupertinoMotion` is a subclass of `SpringMotion` that provides predefined spring configurations matching Apple's design system. These motions are designed to feel natural and familiar to iOS users, as they mirror the spring animations used throughout Apple's platforms.
-
-`CupertinoMotion` offers several predefined constants that correspond to [SwiftUI's animation presets](https://developer.apple.com/documentation/swiftui/animation):
-
-- **`CupertinoMotion()`** - SwiftUI's default spring (`Spring()`, `Animation.spring`): 0.5 s with no bounce, the same as `.smooth()`
-- **`.smooth()`** - A [smooth spring animation](https://developer.apple.com/documentation/swiftui/animation/smooth) with no bounce, ideal for subtle transitions
-- **`.bouncy()`** - A [bouncy spring](https://developer.apple.com/documentation/swiftui/animation/bouncy) with higher bounce, perfect for playful interactions
-- **`.snappy()`** - A [snappy spring](https://developer.apple.com/documentation/swiftui/animation/snappy) with small bounce that feels responsive
-- **`.interactive()`** - An [interactive spring](https://developer.apple.com/documentation/swiftui/animation/interactivespring(duration:extrabounce:blendduration:)) with lower response, designed for user-driven animations
-
-You can also create custom `CupertinoMotion` instances:
-
-```dart
-final customMotion = CupertinoMotion(
-  duration: Duration(milliseconds: 600),
-  bounce: 0.3,
-);
-```
-
-Since `CupertinoMotion` extends `SpringMotion` (which extends `Motion`), you can use it directly wherever a `Motion` is expected.
-
-#### My spring runs longer than its duration
-
-A spring's `duration` is its pace: it gets close to its target around then, and with the presets it settles at about twice its duration. Motor calls the first moment *ended* and the second *settled*; see [Timing: ended and settled](#timing-ended-and-settled).
-
-### MaterialSpringMotion
-
-`MaterialSpringMotion` provides Material Design 3 spring motion tokens for creating expressive and natural animations that follow Google's design guidelines. The tokens are organized into two main categories with three speed variants each:
-
-**Spatial Motion** - For animating position, size, and layout changes:
-- **`.standardSpatialFast()`** - Quick spatial animations (damping: 0.9, stiffness: 1400)
-- **`.standardSpatialDefault()`** - Balanced spatial animations (damping: 0.9, stiffness: 700)
-- **`.standardSpatialSlow()`** - Gentle spatial animations (damping: 0.9, stiffness: 300)
-- **`.expressiveSpatialFast()`** - Dynamic spatial with bounce (damping: 0.6, stiffness: 800)
-- **`.expressiveSpatialDefault()`** - Moderate expressive spatial (damping: 0.8, stiffness: 380)
-- **`.expressiveSpatialSlow()`** - Gentle expressive spatial (damping: 0.8, stiffness: 200)
-
-**Effects Motion** - For animating visual properties like opacity and color:
-- **`.standardEffectsFast()`** - Quick effects animations (damping: 1, stiffness: 3800)
-- **`.standardEffectsDefault()`** - Balanced effects animations (damping: 1, stiffness: 1600)
-- **`.standardEffectsSlow()`** - Gentle effects animations (damping: 1, stiffness: 800)
-- **`.expressiveEffectsFast()`** - Quick expressive effects (damping: 1, stiffness: 3800)
-- **`.expressiveEffectsDefault()`** - Moderate expressive effects (damping: 1, stiffness: 1600)
-- **`.expressiveEffectsSlow()`** - Gentle expressive effects (damping: 1, stiffness: 800)
-
-`MaterialSpringMotion` only exposes the official M3 tokens. For custom spring
-parameters, use `SpringMotion`:
-
-```dart
-final customMaterial = SpringMotion(
-  SpringDescription.withDampingRatio(mass: 1, ratio: 0.8, stiffness: 500),
-);
-```
-
-These motion tokens follow the [Material Design 3 Motion Guidelines](https://m3.material.io/styles/motion/overview/how-it-works#spring-tokens) and are designed to create consistent, expressive animations across Material Design applications.
-
-### Simple Animation
-
-Use `SingleMotionBuilder` for basic, one-dimensional animations:
+Use `SingleMotionBuilder` for a `double`:
 
 ![1D Hover example gif](./doc/1d_hover.gif)
 
 ```dart
 SingleMotionBuilder(
   motion: .bouncySpring(),
-  value: targetValue, // Changes trigger smooth spring animation
+  value: targetSize, // Changing this redirects the spring with its current velocity.
   builder: (context, value, child) {
     return Container(
       width: value,
@@ -182,13 +69,13 @@ SingleMotionBuilder(
 )
 ```
 
-If you want to animate more complex types, such as `Offset`, `Size`, or `Rect`, you can use `MotionBuilder` and pass a so-called `MotionConverter` to it:
+For multi-dimensional types like `Offset`, `Size`, `Rect`, or `Color`, use `MotionBuilder` with a `MotionConverter`:
 
 ![2D Redirection example gif](./doc/2d_redirect.gif)
 
 ```dart
 MotionBuilder(
-  motion: .bouncySpring(),
+  motion: .bouncySpring(), // Or MaterialSpringMotion.expressiveSpatialDefault()
   value: const Offset(100, 100),
   from: Offset.zero,
   converter: .offset,
@@ -206,85 +93,207 @@ MotionBuilder(
 )
 ```
 
-For Material Design applications, you can use MaterialSpringMotion tokens:
+## Motions
+
+A `Motion` describes *how* a value moves, independent of what you're animating.
 
 ```dart
-MotionBuilder(
-  motion: MaterialSpringMotion.expressiveSpatialDefault(),
-  value: const Offset(100, 100),
-  from: Offset.zero,
-  converter: .offset,
-  builder: (context, value, child) {
-    return Transform.translate(
-      offset: value,
-      child: child,
-    );
-  },
-  child: Container(
-    width: 100,
-    height: 100,
-    color: Colors.green,
-  ),
-)
+// Duration-based
+final linear = Motion.linear(const Duration(seconds: 1));
+final curved = Motion.curved(const Duration(seconds: 1), Curves.easeInOut);
+
+// Physics-based
+final spring = CupertinoMotion.bouncy(); // Same as Motion.bouncySpring()
+final material = MaterialSpringMotion.standardSpatialDefault();
 ```
 
-### Tracks & Steps 🎼
+**Target-based motions** (`Motion`) move from a start value to a target value:
 
-Everything above animates a single value. But real UI motion rarely does — a panel might move, resize, recolor, and rotate at once, each with its own timing and feel. Motor handles this with two small primitives: a **`Track`** (one property) and a **`TrackStep`** (one instruction). The rest of this section builds them up one at a time.
+- `SpringMotion` — Physics-based spring backed by Flutter's `SpringDescription`. Snaps to the target when settling by default (`snapToEnd: true`).
+- `CupertinoMotion` — `SpringMotion` subclass with Apple's SwiftUI spring presets.
+- `MaterialSpringMotion` — `SpringMotion` subclass with Material Design 3 spring tokens.
+- `CurvedMotion` — Duration-based animation with any Flutter `Curve`.
+- `LinearMotion` — Duration-based linear animation.
+- `Motion.instant` — Jumps straight to the target. Useful for reduced motion or disabling an animation.
 
-> **Note:** The examples use Dart 3.10+ dot-shorthand syntax. On older SDKs,
-> write the full form (`TrackStep.to(...)`, `CupertinoMotion.smooth()`, and so on).
-> `.to(...)` inside a step list is shorthand for `TrackStep.to(...)`.
+**Free motions** (`FreeMotion`) are self-directed: they evolve from a starting value and velocity with no fixed target:
 
-#### A track is one animated property
+- `FrictionMotion` — Decelerates under drag, like a scroll view coasting to a stop. Call `finalValue` or `project` to calculate where it will rest without stepping through the simulation.
 
-A `Track` bundles a converter (how to break the value into animatable dimensions), an optional `initial` (its resting value before anything plays), and an optional default `motion`. Declare one per property:
+You can also create custom motions by extending `Motion` or `FreeMotion`.
+
+> **Tip:** Motions and their wrappers (`scaleTo`, `trimmed`, etc.) are immutable value objects, so declare them as `const` or `static final` when convenient. Wrappers compare by value, so creating them in `build` is fine; if a simulation doesn't report its settle time, Motor probes it once per move.
+
+### CupertinoMotion
+
+`CupertinoMotion` matches [SwiftUI's spring presets](https://developer.apple.com/documentation/swiftui/animation):
+
+- `CupertinoMotion()` — SwiftUI's default spring (`0.5 s`, no bounce; same as `.smooth()`).
+- `.smooth()` — Smooth spring with no bounce.
+- `.bouncy()` — Playful spring with higher bounce.
+- `.snappy()` — Responsive spring with a small amount of bounce.
+- `.interactive()` — Lower-response spring tuned for gesture-driven motion.
+
+### MaterialSpringMotion
+
+`MaterialSpringMotion` provides the official [Material Design 3 spring tokens](https://m3.material.io/styles/motion/overview/how-it-works#spring-tokens), split into **Spatial** (position, size, layout) and **Effects** (opacity, color) across three speeds:
+
+| Category | Fast | Default | Slow |
+|---|---|---|---|
+| Standard spatial | `.standardSpatialFast()` (0.9, 1400) | `.standardSpatialDefault()` (0.9, 700) | `.standardSpatialSlow()` (0.9, 300) |
+| Expressive spatial | `.expressiveSpatialFast()` (0.6, 800) | `.expressiveSpatialDefault()` (0.8, 380) | `.expressiveSpatialSlow()` (0.8, 200) |
+| Standard effects | `.standardEffectsFast()` (1.0, 3800) | `.standardEffectsDefault()` (1.0, 1600) | `.standardEffectsSlow()` (1.0, 800) |
+| Expressive effects | `.expressiveEffectsFast()` (1.0, 3800) | `.expressiveEffectsDefault()` (1.0, 1600) | `.expressiveEffectsSlow()` (1.0, 800) |
+
+Values in parentheses are `(dampingRatio, stiffness)`.
+
+### Custom springs
+
+Customize a `CupertinoMotion` with `duration` and `bounce`, or pass any Flutter `SpringDescription` to `SpringMotion`:
 
 ```dart
-final offset = Track(.offset, initial: Offset.zero, motion: .smoothSpring());
-final scale  = Track(.single, initial: 0.8);
-final tint   = Track(.colorRgb, initial: Colors.blue, motion: .smoothSpring());
+final customCupertino = CupertinoMotion(
+  duration: const Duration(milliseconds: 500),
+  bounce: 0.2, // -1.0 to 1.0
+);
+
+final customSpring = SpringMotion(
+  SpringDescription.withDampingRatio(
+    mass: 1,
+    ratio: 0.8,
+    stiffness: 500,
+  ),
+);
+```
+
+> **Why does a spring run longer than its `duration`?**
+> A spring's `duration` is its perceptual pace: it gets close to its target around then, while the presets take roughly twice that long to come completely to rest. Motor calls the first moment *ended* and the second *settled*; see [Timing: ended and settled](#timing-ended-and-settled).
+
+## MotionConverter
+
+A `MotionConverter` splits any Dart type into a list of `double`s so Motor can simulate each dimension independently. If you fling a draggable card horizontally while it settles vertically, the horizontal velocity stays on the X axis instead of distorting the Y axis.
+
+Built-in converters:
+
+- `MotionConverter.single` (`double`)
+- `MotionConverter.angle` (`double` in radians, wrapping around `2π`)
+- `MotionConverter.offset` (`Offset`)
+- `MotionConverter.size` (`Size`)
+- `MotionConverter.rect` (`Rect`)
+- `MotionConverter.alignment` (`Alignment`)
+- `MotionConverter.colorRgb` (`Color`)
+
+### Custom converters
+
+Pass `normalize` and `denormalize` to `MotionConverter.custom`, or extend `MotionConverter<T>`:
+
+```dart
+final vector3Converter = MotionConverter<Vector3>.custom(
+  normalize: (v) => [v.x, v.y, v.z],
+  denormalize: (values) => Vector3(values[0], values[1], values[2]),
+);
+```
+
+```dart
+class Vector3MotionConverter extends MotionConverter<Vector3> {
+  const Vector3MotionConverter();
+
+  @override
+  List<double> normalize(Vector3 value) => [value.x, value.y, value.z];
+
+  @override
+  Vector3 denormalize(List<double> values) =>
+      Vector3(values[0], values[1], values[2]);
+}
+```
+
+Don't retain or mutate the lists passed to or returned by a converter: `denormalize` receives a buffer that Motor reuses, and Motor may hold on to the list returned by `normalize`.
+
+### Dimensions
+
+A converter can describe how each dimension behaves via `MotionConverter.dimensions` (default `null`, meaning all dimensions are linear):
+
+- `MotionDimension.linear()` — Unbounded linear axis.
+- `MotionDimension.periodic(period)` — Wraps every `period`, so targets always take the shortest path. `MotionConverter.angle` uses `MotionDimension.periodic(2 * pi)`: animating from `6.1 rad` (~350°) to `0.2 rad` (~11°) moves `0.38 rad` forward instead of `5.9 rad` backward.
+- `MotionDimension.bounded(min, max)` — Clamps only the visible output while letting the underlying spring overshoot and preserve velocity. `ColorRgbMotionConverter` bounds its channels to `[0, 1]`.
+
+```dart
+final converter = MotionConverter<Vector3>.custom(
+  normalize: (v) => [v.x, v.y, v.z],
+  denormalize: (values) => Vector3(values[0], values[1], values[2]),
+  dimensions: const [
+    MotionDimension.periodic(360),
+    MotionDimension.bounded(0, 1),
+    MotionDimension.linear(),
+  ],
+);
+```
+
+If you `implements MotionConverter` rather than extending it, add the `dimensions` getter and return `null`.
+
+### Directionality and `AnimationStatus`
+
+Physics-based multi-dimensional values (`Offset`, `Size`, `Rect`, `Color`, and custom converters) don't have an inherent forward/reverse direction, so they report `forward` while moving, `completed` at rest, and `dismissed` only when settling exactly on their initial value.
+
+`SingleMotionConverter` (`double`) is directional by default: animating `0 → 1` reports `forward` then `completed`, while `1 → 0` reports `reverse` then `dismissed`.
+
+To add directionality to a custom type, use `MotionConverter.customDirectional`, mix in `DirectionalMotionConverter`, or mix in `ComparableMotionConverter` for `Comparable` types:
+
+```dart
+final sizeByArea = MotionConverter<Size>.customDirectional(
+  normalize: (s) => [s.width, s.height],
+  denormalize: (v) => Size(v[0], v[1]),
+  compare: (a, b) => (a.width * a.height).compareTo(b.width * b.height),
+);
+```
+
+## Tracks & Steps
+
+When a UI transition moves, resizes, and recolors a widget at the same time — each with its own timing and motion — Motor models it with two primitives: a **`Track`** (one animated property) and a **`TrackStep`** (one instruction on that track).
+
+### 1. Declare a `Track` per property
+
+A `Track` pairs a converter with an optional `initial` value and an optional default `motion`:
+
+```dart
+final offset  = Track(.offset, initial: Offset.zero, motion: .smoothSpring());
+final scale   = Track(.single, initial: 0.8);
+final tint    = Track(.colorRgb, initial: Colors.blue, motion: .smoothSpring());
 final opacity = Track(.single, initial: 0.0, motion: .smoothSpring());
 ```
 
-The key detail: **a track's identity is the object itself, not its value.** Declare each track once (a `final` field or top-level variable) and reuse that instance. That identity is how controllers keep per-track state and how you read values back later — so don't create tracks inline in `build`. The optional `motion:` is the track's default — any step that omits its own motion falls back to it.
+A track is identified by its object instance, not its fields. Declare each track once (as a `final` field or top-level variable) and reuse it — don't construct tracks inline inside `build`.
 
-`initial` is optional: when a controller first needs a value for a track and none has been set, it uses the controller's `initialValues:` entry if there is one, then the animation's `from:`, then the track's `initial`, and otherwise falls back to a zero value (matching the dimensionality of the animation's first target).
+If `initial` is omitted, a controller looks up the starting value in this order: the controller's `initialValues`, the animation's `from:`, the track's `initial`, and finally a zero value matching the first target's dimensions.
 
-#### Steps describe what a track does
+### 2. Give a track a list of steps
 
-A track is **callable**: call it with an ordered list of steps. A single step is a list of one:
+A `Track` is callable: pass it an ordered list of steps. Even a single move is a one-element list:
 
 ```dart
-scale([.to(1, motion: .bouncySpring())]); // single step
+scale([.to(1, motion: .bouncySpring())]);
 
-offset([                               // multiple steps, run in order
+offset([
   .at(const Duration(milliseconds: 300), const Offset(0, 100)),
   .to(.zero, motion: .bouncySpring()),
 ]);
 ```
 
-The available steps are the verbs of the system:
+Available steps:
 
-- **`.to(value, motion:)`** — animate toward `value` (uses the track's default `motion` if omitted). The next step starts once it has settled; with `until: .ended`, once it has ended, after its motion's `duration`, taking over the current value and velocity while a spring is still settling (see [Timing: ended and settled](#timing-ended-and-settled)).
-- **`.at(time, value, motion:)`** — a keyframe: arrive at `value` exactly at `time` on the track's *absolute* clock (measured from when the track started, restarting each loop cycle, or from the start of its phase in a `TrackPhaseTimeline`). The previous step always plays at its own speed; the `.at` step's own motion adapts to the time left:
-  - With time to spare, the `.at` motion starts as soon as it can and slows down to fill the gap.
-  - With too little time, the previous step is cut short just early enough for the `.at` motion to run at its natural speed and land on `time`.
+- `.to(value, motion:, until:)` — Animate toward `value` (falling back to the track's default `motion`). By default, the next step begins once this step has settled; pass `until: .ended` to hand off after the motion's `duration` while a spring is still settling.
+- `.at(time, value, motion:)` — Keyframe: arrive at `value` at `time` on the track's clock (measured from when the track started, resetting each loop cycle, or from the start of its phase in a `TrackPhaseTimeline`). With time to spare, the `.at` motion starts as soon as the previous step finishes and stretches to land on `time`; with too little time, the previous step is cut short so the `.at` motion can run at its natural speed and arrive on schedule. Times cannot go backward past preceding `.hold`s.
+- `.hold(duration)` — Wait for `duration` at the current value. A preceding spring with `until: .ended` continues settling during the hold.
+- `.free(motion:)` — Hand off to a self-directed `FreeMotion` (such as `FrictionMotion`) from the current value and velocity until it comes to rest.
+- `.sync(token:)` — Wait at a barrier until every other track sharing `token` arrives (see [Sync barriers](#sync-barriers)).
 
-  The two cases meet smoothly, so nudging `time` never makes the motion jump. Times must not go backwards past preceding `.hold`s (asserted).
-- **`.hold(duration)`** — wait for `duration` at the current value. A spring before it with `until: .ended` keeps settling meanwhile.
-- **`.free(motion:)`** — hand off to a self-directed `FreeMotion` (e.g. `FrictionMotion`) from the current value and velocity, until it comes to rest.
-- **`.sync(token:)`** — a barrier (see below).
-
-Every `.to`/`.at` needs a motion: either on the step or as the track's default. A missing motion is an assertion error in debug mode.
-
-For example, a keyframe with time to spare:
+Every `.to` and `.at` step needs a motion, either on the step itself or as the track's default (asserted in debug mode).
 
 ```dart
 offset([
-  // Takes 200 ms, leaving time before the keyframe.
+  // Finishes at 200 ms, leaving 800 ms before the keyframe.
   .to(const Offset(0, 50), motion: .linear(const Duration(milliseconds: 200))),
-  // Its 300 ms curve starts at 200 ms and slows down to land at 1 s.
+  // Starts at 200 ms and slows down to land at 1 s.
   .at(
     const Duration(seconds: 1),
     const Offset(100, 50),
@@ -293,50 +302,18 @@ offset([
 ]);
 ```
 
-#### Timing: ended and settled
+### 3. Read values with the `value` reader
 
-Motor names two moments of a motion:
-
-- **Ended**: the motion's `duration` has passed. That's how long it feels. A spring may still be moving.
-- **Settled**: the motion is at rest, exactly on its target.
-
-A motion never settles before it ends, and a curve does both at once. `Motion.duration` is a fixed property of the motion, the same for every move; `null` means it has no fixed length and ends when it settles. The simulation says when it settles: `SettlingSimulation.settlesAt`, or `simulation.simulateSettleTime()` for any simulation.
-
-**Steps.** By default the next step starts once the previous one has settled, as in Motion, anime.js and Compose. With `until: .ended` it starts once the previous one has ended, and takes over its value and velocity while it is still moving. That's how SwiftUI's `PhaseAnimator` moves between phases. A step takes over a velocity only while the motion before it is still moving: one that starts the moment a curve ends takes over the slope it ended with, and one that starts after time at rest (a hold, a barrier wait) starts still. The timeline never cuts a motion short: a spring keeps settling during a following `.hold` or `.sync`. The one exception is `.at`: to land exactly on time, it may cut the step before it short, and it stops its own spring at its duration. The step after an `.at` takes over the velocity it arrives with; a hold, a barrier or the end of the plan comes to rest.
-
-**Keyframe timing.** An `.at` motion's natural length is its `duration`, or, if it has none, when its move from where the step before leaves off settles. A spring is cut at its duration so that it lands. If the step before started too late to leave room for that length, the motion is compressed, and with no time at all the value arrives instantly. If the step before starts after `time` has passed, it is skipped. A motion that never settles stretches whenever the `.at` step can start before `time`, and otherwise starts when the step before starts.
+Because several tracks can animate together, builders pass a **`value` reader** function instead of a single value. Call it with a track to read that track's current typed value:
 
 ```dart
-opacity([
-  .to(1, motion: .bouncySpring()),                   // the next step waits until settled
-  .to(0, motion: .bouncySpring(), until: .ended), // the next step starts 500 ms later
-  .to(1),
-]);
+final Offset o = value(offset);
+final double s = value(scale);
 ```
 
-**Futures.** Every controller call returns a `MotionFuture`. Awaiting it waits until everything has settled. Its `ended` completes once the duration has passed, whatever `until` says; for a plan, once the last step's motion has reached its duration. `animateTo` has no `until:`, so await `ended` when you don't want to wait for settling:
+### 4. Play tracks together with `TrackBuilder`
 
-```dart
-await controller.animateTo(1).ended; // at 500 ms, still settling
-controller.animateTo(0);             // continues with the current velocity
-```
-
-This is SwiftUI's `.logicallyComplete` (`ended`) versus `.removed` (settled). A retarget or `stop(canceled: true)` cancels the future, as with a `TickerFuture`. A graceful `stop()` does not cancel: `ended` completes right away and the future once the motion has settled, like `AnimationController.stop(canceled: false)`. Everything else waits until settled: `status` turning `completed` or `dismissed`, the ticker stopping, and `PhaseSettled`.
-
-#### Reading values back: the `value` reader
-
-When several tracks animate together, there isn't a single "value" to hand you — there are many. So instead of a value, the builder gives you a **`value` reader**: a function you call *with a track* to get that track's current value, fully typed.
-
-```dart
-final Offset o = value(offset); // returns Offset
-final double s = value(scale);  // returns double
-```
-
-Think of it as a typed lookup keyed by track identity: "given this track, what's its value right now?" This is exactly why tracks need to be stable instances.
-
-#### Play them together: `TrackBuilder`
-
-Now it all comes together. Pass an `animations:` list of track animations; they share one ticker, and the builder rebuilds with the reader:
+`TrackBuilder` runs a list of track animations on a single ticker and rebuilds with the `value` reader:
 
 ```dart
 TrackBuilder(
@@ -363,19 +340,17 @@ TrackBuilder(
 )
 ```
 
-Each track advances independently — different steps, different motions — but on the same clock.
+Set per-track starting values or velocities directly on an animation with `from:` and `withVelocity:` (for example, `offset([.to(target)], from: start, withVelocity: fling)`).
 
-Per-track starting points and velocities live on each animation via `from:` and `withVelocity:` (e.g. `offset([.to(target)], from: start, withVelocity: fling)`).
+### Repeating steps with `.loop`
 
-#### Repeating steps: `.loop`
-
-Wrap any slice of a track's steps in `.loop(...)` to repeat it, with optional `mode:` (`.loop`, `.pingPong`, `.seamless`, `.none`), finite `count:`, or `together:` token to keep sibling loops in lockstep:
+Wrap any slice of steps in `.loop(...)` to repeat it. Optional parameters control the loop `mode:` (`.loop`, `.pingPong`, `.seamless`, `.none`), a finite `count:`, or a `together:` token to keep sibling loops in lockstep:
 
 ```dart
 TrackBuilder(
   animations: [
     bar([
-      .to(0.2), // intro plays once
+      .to(0.2), // Intro plays once.
       .loop([.to(1), .to(0.2)], together: #pulse),
     ]),
     dot([
@@ -386,16 +361,16 @@ TrackBuilder(
 )
 ```
 
-- `LoopMode.loop` (default) replays the steps from the first one in order, continuing smoothly from the current value and velocity.
-- `LoopMode.pingPong` plays forward, then reverses back to the loop's first target, and repeats.
-- `LoopMode.seamless` jumps back to the loop's first target without animating and replays — author the last target to match the first (e.g. `0` and `2π` for a continuous rotation) so the seam is invisible.
+- `LoopMode.loop` (default) replays the steps in order, continuing smoothly from the current value and velocity.
+- `LoopMode.pingPong` plays forward, reverses back to the loop's first target, and repeats.
+- `LoopMode.seamless` jumps back to the loop's first target without animating and replays — match the last target to the first (such as `0` and `2π` for a continuous rotation) so the seam is invisible.
 - `LoopMode.none` plays the steps once and continues.
-- `count:` stops after that many cycles (full round-trips for `.pingPong`) and moves on to any following step.
-- `together:` makes loops sharing the same token wait for each other at the end of every cycle without writing `.sync` steps by hand.
+- `count:` stops after that many cycles (full round-trips for `.pingPong`) and moves on to any following steps.
+- `together:` makes loops sharing the same token wait for each other at the end of every cycle without writing `.sync` steps manually.
 
-#### Stagger: `delay`
+### Staggering with `delay`
 
-`delay` starts an animation later. Give each item in a list a bigger delay to stagger them:
+Pass `delay:` on a track animation to start it later — handy for staggering list items:
 
 ```dart
 TrackBuilder(
@@ -412,18 +387,18 @@ TrackBuilder(
 )
 ```
 
-`.at` times count from after the delay, and the delay applies once, not on every loop cycle. It is not allowed inside a `TrackPhaseTimeline`. If a track is already moving when you redirect it, the running motion keeps playing through the delay and the new animation takes over its value and velocity. Items keep their momentum when the list changes mid-stagger.
+`.at` times are measured from after the delay, and the delay runs once (not on each loop cycle). `delay` is not allowed inside a `TrackPhaseTimeline`. If a track is already moving when you redirect it with a delay, the running motion keeps playing during the delay and the new animation takes over its value and velocity when the delay finishes.
 
-#### Drive tracks from input
+### Driving tracks from state and input
 
-The animations don't have to be fixed: build them from your state. When a rebuild changes a track's animation, only that track redirects, from its current value and velocity. The other tracks keep playing. So one track can follow a finger while another plays keyframes, and keyframes can take over once the input stops:
+You can rebuild `animations:` from widget state. When a rebuild changes one track's animation, only that track redirects from its current value and velocity while the other tracks keep running:
 
 ```dart
 TrackBuilder(
   animations: [
-    // Follows the finger, springs home on release.
+    // Follows the pointer and springs home on release.
     offset([.to(_drag ?? .zero, motion: .interactiveSpring())]),
-    // Keyframes while idle, a direct target while pressed.
+    // Keyframes while idle, direct target while pressed.
     if (_pressed)
       scale([.to(0.9, motion: .snappySpring())])
     else
@@ -439,37 +414,30 @@ TrackBuilder(
 )
 ```
 
-#### Keep tracks aligned: `.sync` barriers
+### Sync barriers
 
-Independent tracks take different amounts of time. When you need them to *meet* before continuing, drop a `.sync(token:)` barrier: a track that reaches it waits until every other track sharing the same `token` reaches its own sync step, then they all continue together from the moment the last one arrived.
+When independent tracks take different amounts of time and need to meet before continuing, add a `.sync(token:)` step. Each track that reaches the barrier waits until every other track sharing `token` arrives, and then they continue together:
 
 ```dart
 offset([.to(a), .sync(token: #beat), .to(b)]);
-size([  .to(x), .sync(token: #beat), .to(y)]); // both wait at #beat
+size([  .to(x), .sync(token: #beat), .to(y)]); // Both wait at #beat.
 ```
 
-No more hand-tuning durations just to line things up. Barriers only
-coordinate tracks playing on the same controller (one `TrackBuilder` or
-`TrackController`). A track that is stopped or redirected before reaching a
-barrier stops participating, so it never holds the others hostage. When
-scrubbing, barriers are resolved exactly as during playback.
+Barriers coordinate tracks on the same controller (one `TrackBuilder` or `TrackController`). If a track is stopped or redirected before reaching a barrier, it leaves the barrier so the remaining tracks don't stall. Scrubbing resolves barriers the same way playback does.
 
-A track reaches the barrier once the step before it has settled. With
-`until: .ended` on that step it arrives once the step has ended, after the
-motion's `duration`; the spring keeps settling while the track waits, and the
-step after the barrier continues from there.
+By default, a track reaches the barrier once the preceding step has settled. With `until: .ended` on that step, it arrives once the motion's `duration` has elapsed; the spring keeps settling while waiting, and the step after the barrier picks up from there.
 
-#### Phases — named states
+### Named phases (`TrackPhaseTimeline` and `PhaseTrackBuilder`)
 
-Most motion is really a set of named states (compact / expanded / focused). `TrackPhaseTimeline` maps each phase to the values its tracks should settle on, and **inserts sync barriers between phases for you** — so every track reaches the next phase together.
+When an animation moves between named states (like compact, expanded, and focused), `TrackPhaseTimeline` maps each phase to its track animations and automatically inserts sync barriers between phases so every track arrives together.
 
-`PhaseTrackBuilder` drives it, either manually via `currentPhase` or automatically via `playing: true`:
+Drive it with `PhaseTrackBuilder`, either manually via `currentPhase` or automatically via `playing: true`:
 
 ```dart
 enum PanelPhase { compact, expanded }
 
 PhaseTrackBuilder<PanelPhase>(
-  currentPhase: _phase, // change this to animate between states
+  currentPhase: _phase,
   timeline: TrackPhaseTimeline({
     .compact:  [panelSize([.to(const Size(172, 128))]), radius([.to(24)])],
     .expanded: [panelSize([.to(const Size(292, 180))]), radius([.to(34)])],
@@ -487,362 +455,108 @@ PhaseTrackBuilder<PanelPhase>(
 )
 ```
 
-Pass `onTransition` to observe `PhaseTransitioning` / `PhaseSettled` events,
-and set `loop` on the `TrackPhaseTimeline` to control what happens after
-the last phase when `playing: true` (`.loop` animates back to the first phase,
-`.seamless` jumps back to it, `.pingPong` walks the phases in reverse).
+- Pass `onTransition` to observe `PhaseTransitioning` and `PhaseSettled` events.
+- Set `loop:` on `TrackPhaseTimeline` to control what happens after the last phase when `playing: true` (`.loop`, `.seamless`, `.pingPong`, or `.none`).
+- To set starting values or velocities when the timeline begins playing, pass `initialValues:` on the timeline (`track.value(v, velocity: dv)` or `track.velocity(dv)`). Individual animations inside a phase cannot set their own `from:` or `withVelocity:` (asserted), since each phase continues from the previous one.
+- To play a `TrackPhaseTimeline`'s phases once in order inside a plain `TrackBuilder` or `TrackController.animate`, use `timeline.flattened`.
 
-A few phase-specific rules:
+### Imperative track control (`TrackController`)
 
-- To set starting values or velocities, use the timeline's
-  `initialValues:` (`track.value(v, velocity: dv)`, or `track.velocity(dv)`
-  to keep the current value). They apply each time the timeline starts
-  playing (every `playPhases`), not when moving between phases. Animations inside a phase list can't set
-  their own `from:` / `withVelocity:` (asserted), since each phase continues
-  from where the previous one left off.
-- A `TrackPhaseTimeline` is played by `PhaseTrackBuilder` /
-  `PhaseTrackController`. Its `flattened` list of `TrackAnimation`s plays the
-  phases once, in order, anywhere `animate` / `TrackBuilder` accepts animations.
-
-#### Imperative control
-
-When you need control outside a builder (gestures, custom sequencing), drop down to `TrackController`. It's an `Animation<TrackValueReader>`, so its `value` is the same reader from above:
+For gesture-driven or imperative choreography, use `TrackController`. It implements `Animation<TrackValueReader>`, so `controller.value` is the same reader passed to `TrackBuilder`:
 
 ```dart
 final controller = TrackController(vsync: this);
 
-controller.animate([scale([.to(1.2)])]); // play or redirect tracks
-controller.set([scale.value(1.0)]);      // jump without animating
-controller.stop(tracks: [scale]);        // settle (springs) or halt these tracks
-controller.pause();                      // freeze without losing the plan
+controller.animate([scale([.to(1.2)])]); // Play or redirect tracks.
+controller.set([scale.value(1.0)]);      // Jump immediately without animating.
+controller.stop(tracks: [scale]);        // Settle springs or halt these tracks.
+controller.pause();                      // Freeze playback without losing the plan.
 controller.scrubTo(const Duration(milliseconds: 240));
-controller.resume();                     // continue smoothly from the scrub
-final s = controller.value(scale);       // read via the reader
+controller.resume();                     // Continue smoothly from the scrub point.
+final s = controller.value(scale);       // Read the current value.
 ```
 
-#### Interop with Flutter animations
+`PhaseTrackController` adds phase navigation (`playPhases(timeline, atPhase:)`, `goToPhase`, `currentPhase`) and is what `PhaseTrackBuilder` uses internally.
 
-The reader isn't an `Animation`, so for widgets that expect one, such as
-transitions, the controller also offers a real `Animation<T>` per track:
+Important controller semantics:
+
+- **Futures:** `play`, `animate`, and `stop` return a `MotionFuture` (a `TickerFuture`) scoped to the tracks started by that call. Awaiting it waits until those tracks settle, even while other tracks keep running; awaiting `.ended` completes once their last steps reach their `duration`. Restarting a track or calling `stop(canceled: true)` cancels both (`orCancel` throws `TickerCanceled`). A graceful `stop()` completes `ended` immediately and the future once the tracks settle. Looping animations never settle, so don't `await` them.
+- **`stop()` vs `stop(canceled: true)`:** `stop()` lets a spring finish settling (during a free step, hold, or barrier, the track's default motion decides); `stop(canceled: true)` halts immediately. In both cases, stopped tracks keep their last direction (`forward` or `reverse`) as their status because stopping interrupts a move rather than completing it.
+- **`pause()`:** Freezes the ticker without changing `status` (`isAnimating` becomes `false` while `status` stays `forward`). Intended for inspection and authoring; prefer `stop` for app logic. Starting another animation resumes paused tracks from where they stopped.
+- **`scrubTo(t)`:** Positions every track on one shared controller timeline that only advances while the controller ticks, so tracks started at different times stay aligned and playback resumes cleanly from `t`.
+- **Status:** The controller's `status` combines every track moved since it was last idle (`reverse` if all moving tracks are heading down, otherwise `forward`; once idle, `dismissed` if all of them are dismissed, otherwise `completed`). For a single track's status, check `animationOf(track).status`.
+- **`onStep`:** Fires for every step a track enters, in order, even when multiple steps happen within a single frame.
+
+### Interop with Flutter animations
+
+Widgets like `FadeTransition` expect an `Animation<T>` rather than a value reader. Ask the controller for a track's `Animation<T>` with `animationOf`:
 
 ```dart
 FadeTransition(opacity: controller.animationOf(opacity), child: card);
 ```
 
-Coming from Flutter's animation APIs, you'll rarely need a `Tween`. Tracks
-cover what tweens and curves do there:
+`animationOf` returns the same instance per track, only listens while it has listeners, notifies only when that track changes, and reports that track's own `AnimationStatus`.
 
-| In Flutter you'd use | In motor |
+Coming from Flutter's built-in animation APIs:
+
+| Flutter | Motor |
 |---|---|
-| `Tween<T>` | a `Track<T>` (its converter handles the type) animated straight to the values you want |
-| `CurvedAnimation`, `Interval` | the step's `motion`, `.hold`, `.at` |
-| `TweenSequence` | a list of steps |
-| One controller driving many tweens | one `TrackController` or `TrackBuilder` with several tracks |
+| `Tween<T>` | `Track<T>` (its converter handles the type) animated directly to target values |
+| `CurvedAnimation`, `Interval` | Step `motion`, `.hold`, `.at` |
+| `TweenSequence` | A list of steps |
+| One controller driving many tweens | One `TrackController` or `TrackBuilder` with several tracks |
 
-A `Tween` still works on `animationOf` if you really want one value to drive
-several properties.
+You can still drive a `Tween` off `animationOf(track)` if you want one scalar value to control several properties.
 
-Looking for `AnimatedContainer`, `AnimatedSwitcher`, `AnimatedSize` or
-`AnimatedPadding`? Their spring-driven versions (`MotionContainer`,
-`MotionSwitcher`, `MotionSize`, `MotionPadding` and more) live in
-[`motor_widgets`](../motor_widgets).
+### Timing: `ended` and `settled`
 
-`animationOf` returns the same instance for a track, listens only while it
-has listeners, notifies only when that track changes, and reports the
-track's own status: `dismissed` until it moves, `forward`/`reverse` while it
-plays, and once settled `dismissed` if its last move went down, otherwise
-`completed`.
+Motor distinguishes two moments in a motion's life:
 
-A few semantics worth knowing:
+- **Ended:** The motion's `duration` has elapsed — how long the move *feels*. A spring may still be moving slightly.
+- **Settled:** The motion is completely at rest on its target.
 
-- `play`, `animate`, and `stop` return a `MotionFuture` (a `TickerFuture`) for
-  the tracks that call started: it completes when they have settled, even if
-  other tracks keep running, and its `ended` completes once their last
-  steps' motions have reached their `duration`. As with `AnimationController`, restarting one of those tracks
-  or stopping it with `canceled: true` cancels both (`orCancel` throws
-  `TickerCanceled`). A graceful `stop()` completes `ended` at once and
-  the future once its tracks have settled. Looping playback
-  never ends or settles, so don't `await` it.
-- `stop()` lets a track whose running step needs to settle (a spring) come
-  to rest; during a free step, hold or barrier, the track's default motion
-  decides. `stop(canceled: true)` halts immediately. Either way, stopped
-  tracks keep the direction they were moving in (`forward` or `reverse`) as
-  their status: a stop interrupts a move rather than completing it. To
-  settle as `completed`, animate to the target instead.
-- `pause()` stops the ticker without changing `status` (so `isAnimating` is
-  `false` while `status` stays `forward`). It is meant for inspection and
-  authoring; for UI logic prefer `stop`. Starting another animation resumes
-  paused tracks from where they stopped.
-- `scrubTo(t)` positions every track on one controller timeline that only
-  advances while the controller ticks, so tracks started at different times
-  stay aligned, and playback continues from `t`.
-- The controller's own `status` combines the tracks moved since it was last
-  idle: `reverse` while every moving track heads down, otherwise `forward`;
-  once none moves, `dismissed` if every one of them is dismissed, otherwise
-  `completed`. For a single track's status, use `animationOf(track).status`.
-- `onStep` fires for every step a track enters, in order, even when several
-  fall within one frame.
+A motion never settles before it ends, and a curve does both at the same time. `Motion.duration` is fixed for a given motion (`null` means it has no fixed length and ends when it settles). The simulation reports when it settles via `SettlingSimulation.settlesAt` or `simulation.simulateSettleTime()`.
 
-`PhaseTrackController` adds phase navigation on top (`playPhases(timeline, atPhase:)`, `goToPhase`, `currentPhase`) — it's what `PhaseTrackBuilder` uses internally.
+**How steps hand off:**
 
-#### Playback inspection
-
-Debug overlays and developer tools can observe a controller without reaching
-into Motor internals. Import the separate inspection library and request an
-immutable snapshot. This library is aimed at tooling (like `motor_devtools`)
-rather than app code. It is marked `@experimental` and may change in minor
-releases:
+- By default, the next step starts once the previous step has **settled**.
+- With `until: .ended`, it starts once the previous step has **ended**, taking over its current value and velocity while a spring is still moving (matching SwiftUI's `PhaseAnimator`).
+- A step inherits velocity only if the preceding motion is still moving: starting right as a curve ends inherits its ending slope, while starting after time at rest (a hold or barrier wait) starts from rest.
+- A spring keeps settling during a following `.hold` or `.sync`.
 
 ```dart
-import 'package:motor/inspection.dart';
-
-final snapshot = controller.inspectPlayback();
-
-for (final playback in snapshot.tracks) {
-  print('${playback.track}: step ${playback.currentStepIndex}');
-  print(playback.stepDurations); // actual timings appear as playback runs
-}
+opacity([
+  .to(1, motion: .bouncySpring()),                 // Next step waits until settled.
+  .to(0, motion: .bouncySpring(), until: .ended),  // Next step starts after 500 ms.
+  .to(1),
+]);
 ```
 
-Each snapshot includes the controller status and timeline position plus, per
-track, the plan's steps, its resolved segments with their loop cycle (and the
-repeat period once a loop repeats), direction, whether it waits at a barrier,
-playhead, and recorded and estimated step durations.
+**How `.at` keyframes handle timing:**
 
-While a tool is attached through `MotorInspectionRegistry`, which discovers
-every controller created from then on, snapshots also list the most recently
-submitted plans with their start values, so the tool can replay one with
-`set` and `animate`, duration estimates match the actual durations, and
-scrubbing back also shows plans a track was redirected away from. Two hooks **do** change playback of that one controller:
-`playbackSpeed` (controller-local slow motion) and `motionOverride` (swap the
-motions of a track's target steps in future playback).
+- An `.at` step's natural length is its motion's `duration` (or its settle time if `duration` is `null`). Springs are cut at their duration so they land on time.
+- If the previous step starts too late to leave room for that length, the `.at` motion compresses to fit; with zero time left, it arrives immediately.
+- If the previous step starts after `time` has already passed, the `.at` step is skipped.
+- The step after an `.at` takes over its arrival velocity; a hold, barrier, or the end of the plan comes to rest.
 
-Give controllers, builders, and tracks a `debugLabel` so tools can show
-readable names, for example `TrackBuilder(debugLabel: 'Checkout card', ...)`.
+**Futures:**
 
-The example gallery uses this API for its live, draggable timeline inspector.
-
-### Sequence Animations (deprecated)
-
-> **⚠️ Deprecated:** The sequence stack — `MotionSequence`, `SequenceMotionBuilder`, and `SequenceMotionController` — is deprecated in Motor 2.0 and will be removed in 3.0. Use the [Tracks & Steps](#tracks--steps-) APIs above instead; see [MIGRATION.md](./MIGRATION.md) for a step-by-step migration guide.
-
-A `MotionSequence` animates a **single value** through ordered phases. This section stays as a reference for existing users; don't build new features on it.
-
-#### Motion Sequences
-
-Motor provides three sequence types:
+`animateTo` doesn't have an `until:` parameter, so await `.ended` when you want to chain the next move before a spring finishes settling:
 
 ```dart
-// 1. State sequences — named phases (enums, strings):
-enum ButtonState { idle, pressed, loading }
-
-final buttonSequence = MotionSequence<ButtonState, Offset>.states({
-  .idle: Offset(0, 0),
-  .pressed: Offset(0, 5),
-  .loading: Offset(10, 0),
-}, motion: .bouncySpring());
-
-// 2. Step sequences — ordered progression by index:
-final colorSequence = MotionSequence.steps<Color>([
-  Colors.red,
-  Colors.yellow,
-  Colors.green,
-], motion: .smoothSpring(), loop: .seamless);
-
-// 3. Spanning sequences — one motion distributed across positioned phases:
-final logoSequence = MotionSequence.spanning({
-  0.0: LogoState(opacity: 0),        // Start (0% of total time)
-  1.0: LogoState(opacity: 1),        // 50% of total time
-  2.0: LogoState(opacity: 1, text: 1), // 100% of total time
-}, motion: .linear(Duration(seconds: 2)));
+await controller.animateTo(1).ended; // After 500 ms, while still settling.
+controller.animateTo(0);             // Redirects with the current velocity.
 ```
 
-Sequences repeat according to their `loop:` — `LoopMode.none` (play once), `.loop` (animate back to start and repeat), `.seamless` (jump back to an identical first phase), or `.pingPong` (forward then backward).
+`status` becoming `completed` or `dismissed`, the ticker stopping, and `PhaseSettled` always wait for **settled**.
 
-#### Sequence Animation Widget
+## Single-value controllers (`MotionController`)
 
-Use `SequenceMotionBuilder` to play sequences. Pass `playing: true` for automatic phase progression (respecting the loop mode), or `playing: false` to animate only when `currentPhase` changes:
-
-```dart
-enum LoadingState { idle, spinning, complete }
-
-SequenceMotionBuilder<LoadingState, double>(
-  sequence: .states({
-    .idle: 0.0,
-    .spinning: 2 * pi,
-    .complete: 2 * pi,
-  }, motion: .smoothSpring()),
-  converter: .single,
-  playing: true, // Auto-progress through phases
-  onTransition: (transition) => print('Now in transition: $transition'),
-  builder: (context, rotation, phase, child) {
-    return Transform.rotate(
-      angle: rotation,
-      child: Icon(phase == .complete ? Icons.check : Icons.refresh),
-    );
-  },
-)
-```
-
-For per-phase motions, use `MotionSequence.statesWithMotions` / `stepsWithMotions`, which pair each value with its own motion.
-
-For imperative control, `SequenceMotionController.playSequence` still works but is deprecated — use `PhaseTrackController` with a `TrackPhaseTimeline` instead (see [Imperative control](#imperative-control) above and [MIGRATION.md](./MIGRATION.md)).
-
-> **Note:** Spring motions snap to their end value by default (`snapToEnd: true`). This may cause visual jumps in sequences whose target values are not continuous; set `snapToEnd: false` on those springs if needed.
-
-### MotionConverter
-
-One of Motor's key advantages is its ability to animate complex types with **independent motion per dimension**. While Flutter's basic animation system typically uses single animations with `Tween`s, Motor's unified motion system can simulate each dimension independently.
-
-This is crucial for natural-feeling animations. For example, when animating a draggable icon, the user might fling it horizontally (high horizontal velocity) while it settles vertically (low vertical velocity). Traditional single-animation approaches would lose this dimensional independence, making the motion feel artificial.
-
-`MotionConverter`s solve this by breaking any type into multiple dimensions, allowing each dimension to follow the same motion pattern but with independent physics simulation.
-
-This works with **any motion type** - whether you're using spring physics or duration-based curves, each dimension animates independently for maximum fidelity.
-
-For often-used Flutter types, these are already implemented:
-
-- `OffsetMotionConverter`
-- `SizeMotionConverter`
-- `RectMotionConverter`
-- `AlignmentMotionConverter`
-- `ColorRgbMotionConverter`
-
-However, you might want your very custom type to be animated as well. For this, you can implement your own `MotionConverter` and pass it to the `MotionBuilder` constructor.
-
-```dart
-class My3DMotionConverter extends MotionConverter<Vector3> {
-  const My3DMotionConverter();
-
-
-  @override
-  List<double> normalize(Vector3 value) => [value.x, value.y, value.z];
-
-  @override
-  Vector3 denormalize(List<double> values) => Vector3(values[0], values[1], values[2]);
-}
-
-Widget build(BuildContext context) {
-  return MotionBuilder(
-    motion: .bouncySpring(),
-    value: Vector3(100, 100, 100),
-    converter: const My3DMotionConverter(),
-    // ...
-  );
-}
-```
-
-Or, just use `MotionConverter.custom` directly and pass the converter functions to its constructor:
-
-```dart
-final converter = MotionConverter<Vector3>.custom(
-  normalize: (value) => [value.x, value.y, value.z],
-  denormalize: (values) => Vector3(values[0], values[1], values[2]),
-);
-```
-
-Don't keep or change the lists a converter gets or returns: `denormalize`
-receives a buffer motor reuses, and motor may keep the list `normalize`
-returns. Read the numbers you need, as both examples do.
-
-#### Dimensions
-
-A converter can declare how each of its dimensions behaves with `MotionConverter.dimensions`. The default is `null`, which means all dimensions are linear.
-
-- `MotionDimension.linear()` is unbounded.
-- `MotionDimension.periodic(period)` repeats every `period`, so targets take the short way round.
-- `MotionDimension.bounded(min, max)` clamps only the value you see. The spring state and the velocity are not clamped.
-
-`MotionConverter.angle` animates angles in radians the short way round. From 6.1 rad (about 350 degrees) to 0.2 rad (about 11 degrees), it moves 0.38 rad forward instead of 5.9 rad back:
-
-```dart
-final controller = MotionController(
-  motion: .smoothSpring(),
-  vsync: this,
-  converter: MotionConverter.angle,
-  initialValue: 6.1,
-);
-controller.animateTo(0.2); // passes through 2 pi
-```
-
-The `ColorRgbMotionConverter` bounds its channels to 0 to 1. A spring can overshoot internally, but the shown color is always valid, and a fast change keeps its velocity.
-
-Declare dimensions on a custom converter with the `dimensions:` parameter of `MotionConverter.custom`, or by overriding the getter. The list must have one entry per normalized value. Motor checks `motionPerDimension` against it in debug mode.
-
-```dart
-final converter = MotionConverter<Vector3>.custom(
-  normalize: (value) => [value.x, value.y, value.z],
-  denormalize: (values) => Vector3(values[0], values[1], values[2]),
-  dimensions: const [
-    MotionDimension.periodic(360),
-    MotionDimension.bounded(0, 1),
-    MotionDimension.linear(),
-  ],
-);
-```
-
-If you `implements MotionConverter` instead of extending it, add the getter and return `null`.
-
-#### Directionality & Status
-
-Standard spring simulations are physics-based and don't inherently have a "direction" (forward vs reverse) in the same way a timeline-based animation does. This is especially true for multi-dimensional types like `Offset` or `Color`.
-
-However, for UI logic (like driving a `RotationTransition` that spins one way on open and another on close), knowing the direction is crucial.
-
-Motor supports this via `DirectionalMotionConverter`.
-
-**Built-in Support:**
-Simple types like `double` (via `SingleMotionConverter`) are **already directional**.
-- Animating `0 -> 1` reports `AnimationStatus.forward`, then
-  `AnimationStatus.completed`.
-- Animating `1 -> 0` reports `AnimationStatus.reverse`, then
-  `AnimationStatus.dismissed`.
-
-Most multi-dimensional values (`Offset`, `Size`, `Rect`, `Color`, and
-custom converters) have no direction, so their status is
-`forward` while animating and `completed` at rest, and `dismissed` only when
-a move settles exactly on the initial value (springs snap to their target by
-default). `reverse`, and `dismissed` after a move down, only apply to
-directional converters: `SingleMotionConverter` or your own
-`DirectionalMotionConverter`.
-
-**Custom Directionality:**
-For custom types or ad-hoc usage, you can define how "direction" is calculated.
-
-1. **Using `MotionConverter.customDirectional`:**
-
-```dart
-final converter = MotionConverter<Size>.customDirectional(
-  normalize: (Size s) => [s.width, s.height],
-  denormalize: (List<double> v) => Size(v[0], v[1]),
-  // Compare area to determine direction
-  compare: (Size a, Size b) => (a.width * a.height).compareTo(b.width * b.height),
-);
-```
-
-2. **Using the Mixin:**
-If you are implementing your own converter class, mix in `DirectionalMotionConverter`. If your type implements `Comparable`, you can simply mix in `ComparableMotionConverter`.
-
-```dart
-class MyComparableConverter extends MotionConverter<MyComparableType> 
-    with ComparableMotionConverter<MyComparableType> {
-  // ... normalize/denormalize ...
-  // compare() is automatically implemented by the mixin
-}
-```
-
-### Dragging
-
-`MotionDraggable`, a `Draggable` whose feedback lands with a spring, lives in
-[`motor_widgets`](../motor_widgets).
-
-### Low-level Motion Control
-
-For maximum control, Motor provides `MotionController` for complex types and `SingleMotionController` for one-dimensional animations. These controllers work with **any motion type** in the unified system.
+If you only need imperative control over one value, use `MotionController<T>` (or `SingleMotionController` for `double`):
 
 ```dart
 final controller = MotionController<Offset>(
-  motion: .bouncySpring(), // or .curved(...), etc.
+  motion: .bouncySpring(),
   vsync: this,
   converter: .offset,
   initialValue: .zero,
@@ -851,101 +565,55 @@ final controller = MotionController<Offset>(
 final single = SingleMotionController(
   motion: .smoothSpring(),
   vsync: this,
-); // starts at 0
+); // Starts at 0.0.
 
 controller.animateTo(const Offset(100, 0));
-controller.play([ // multi-step playback on one value
+controller.play([
   .loop([
     .to(.zero),
-    .to(const Offset(0, 100)), // uses the controller's motion
+    .to(const Offset(0, 100)), // Uses the controller's motion.
     .hold(const Duration(milliseconds: 200)),
     .to(.zero, motion: .smoothSpring()),
   ], mode: .pingPong),
 ]);
 ```
 
-`MotionController` is a thin wrapper around a single-track `TrackController`,
-so everything in [Tracks & Steps](#tracks--steps-) applies to `play` as well.
-Steps without their own motion use the controller's `motion`.
+`MotionController` wraps a single-track `TrackController`, so everything in [Tracks & Steps](#tracks--steps) works with `play`, and steps without a `motion:` fall back to the controller's `motion`.
 
-Motion controllers work similarly to Flutter's `AnimationController` but with key advantages:
-- **Motion-agnostic**: Switch between springs and curves without changing controller code
-- **Velocity preservation**: Maintains velocity when changing targets (crucial for natural motion)
-- **Multi-dimensional**: Each dimension can have independent physics simulation
+### Velocity tracking
 
-#### Velocity Tracking
+Velocity tracking is **enabled by default** so that updating `controller.value` during a gesture or custom input automatically estimates velocity when you later call `animateTo()`.
 
-Velocity tracking is **enabled by default** for smooth motion continuity when manually setting controller values.
-
-**When to use it:** Most useful for interactions that don't provide velocity, like:
-- Sliders (discrete value changes without velocity data)
-- Mouse tracking or custom input
-- Programmatic transitions without velocity information
-
-**When to skip it:** If your gesture already provides velocity (like `DragEndDetails.velocity`), use that directly via `withVelocity` - it's more accurate and has no overhead.
+- **Keep it enabled** for inputs that don't report velocity (sliders, mouse tracking, programmatic scrubbing).
+- **Pass `withVelocity:` directly** when your gesture already gives you velocity (such as `DragEndDetails.velocity.pixelsPerSecond`) — it's more accurate and avoids estimation overhead.
 
 ```dart
-final controller = MotionController(
-  motion: .bouncySpring(),
-  vsync: this,
-  converter: .offset,
-  initialValue: Offset.zero,
-  // Velocity tracking enabled by default
-);
-
-// During interaction, controller tracks velocity automatically
 void onPanUpdate(DragUpdateDetails details) {
   controller.value = details.localPosition;
 }
 
-// When interaction ends, use tracked velocity
 void onPanEnd(DragEndDetails details) {
-  // Best: Use gesture velocity if available
+  // Prefer gesture velocity when available:
   controller.animateTo(
     target,
     withVelocity: details.velocity.pixelsPerSecond,
   );
 
-  // Or: Let tracked velocity provide continuity
-  controller.animateTo(targetPosition);
+  // Or rely on tracked velocity:
+  controller.animateTo(target);
 }
 ```
 
-To disable velocity tracking:
+Pass `velocityTracking: .off()` to disable it.
 
-```dart
-final controller = MotionController(
-  motion: .bouncySpring(),
-  vsync: this,
-  converter: .offset,
-  initialValue: Offset.zero,
-  velocityTracking: .off(),
-);
-```
+### Bounded vs. unbounded controllers
 
-When enabled:
-- Setting `controller.value` automatically tracks velocity
-- `animateTo()` without `withVelocity` uses tracked velocity
-- Access current estimate via `controller.velocity`
-- Automatically resets when animations start
+- `MotionController` is unbounded by default and has no `forward` or `reverse` methods (which don't have a single meaning in multi-dimensional space).
+- `BoundedMotionController` takes a `lowerBound` and `upperBound` and exposes `forward()` and `reverse()` to animate toward them. The exposed `value` is clamped to the bounds while the underlying spring simulation can still overshoot internally.
 
-#### Bounded vs. Unbounded Motion
+## Fixed tick rates
 
-In Flutter, the `AnimationController` can be either bounded or unbounded. `MotionController`s come in both flavors as well, but they differ in key ways:
-
-
-##### `MotionController`:
-- By default, `MotionController`s are unbounded.
-- Unbounded `MotionController`s don't have `forward` or `reverse` methods, since they don't make sense in multi-dimensional space.
-
-##### `BoundedMotionController`:
-- requires you to specify a `lowerBound` and `upperBound` in the constructor.
-- exposes `forward` and `reverse` methods, which internally animate towards the `upperBound` and `lowerBound` respectively.
-- will clamp the animation value to be within the bounds, but they can still overshoot as part of their `Motion` simulation.
-
-### Fixed tick rates
-
-Motor's widgets can tick at a lower, fixed rate using [`fixed_ticker`](https://pub.dev/packages/fixed_ticker). This saves frame work for animations that don't need every display frame, like a background pulse. Pass `tickerRate` to one widget, or wrap a subtree in a `TickerRateScope`:
+Motor's widgets can tick at a lower, fixed frame rate via [`fixed_ticker`](https://pub.dev/packages/fixed_ticker) — useful for background pulses or saving work on 120 Hz displays. Pass `tickerRate:` to a widget, or wrap a subtree in `TickerRateScope`:
 
 ```dart
 TickerRateScope(
@@ -954,60 +622,57 @@ TickerRateScope(
     animations: [
       shimmer([
         .loop([
-          .to(1, motion: .linear(Duration(seconds: 2))),
-          .to(0, motion: .linear(Duration(seconds: 2))),
+          .to(1, motion: .linear(const Duration(seconds: 2))),
+          .to(0, motion: .linear(const Duration(seconds: 2))),
         ]),
       ]),
     ],
-    tickerRate: .fps(10), // overrides the scope
+    tickerRate: .fps(10), // Overrides the scope.
     builder: (context, value, child) => ...,
   ),
 )
 ```
 
-`tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, and `SequenceMotionBuilder`, and on the widgets in [`motor_widgets`](../motor_widgets). `TickerRate.vsync()` opts one widget out of a fixed-rate scope. With neither a rate nor a scope, widgets tick every frame. At a fixed rate, `TickerMode` still mutes them, but its `forceFrames` is ignored.
-
-Controllers use the `TickerProvider` you pass them. For a fixed rate, pass a state that mixes in `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin`:
+- `tickerRate` works on `MotionBuilder`, `VelocityMotionBuilder`, `TrackBuilder`, `PhaseTrackBuilder`, `SequenceMotionBuilder`, and the widgets in [`motor_widgets`](../motor_widgets).
+- Pass `TickerRate.vsync()` to opt one widget out of a fixed-rate scope.
+- For imperative controllers, mix `SingleFixedTickerProviderStateMixin` or `FixedTickerProviderStateMixin` into your `State`:
 
 ```dart
 class _MyState extends State<MyWidget>
     with SingleFixedTickerProviderStateMixin {
   @override
-  TickerRate get tickerRate => .fps(30); // or leave it to TickerRateScope
+  TickerRate get tickerRate => .fps(30); // Or leave it to TickerRateScope.
 
   late final controller = TrackController(vsync: this);
 }
 ```
 
-Playback depends only on time, so a fixed rate shows fewer frames of the same animation. Scrubbing and inspection tools work as usual. In widget tests, use `pumpAndSettleFixedTickers()` from `package:fixed_ticker/testing.dart` instead of `pumpAndSettle()`.
+Playback depends only on elapsed time, so a fixed rate renders fewer frames of the same animation without changing its speed. In widget tests, use `pumpAndSettleFixedTickers()` from `package:fixed_ticker/testing.dart` instead of `pumpAndSettle()`.
 
-## Custom Springs 🔧
+## DevTools and playback inspection
 
-For predefined spring configurations, see the [`CupertinoMotion`](#cupertinomotion) section above.
+Add [`motor_devtools`](../motor_devtools) and wrap your app in `MotorDevTools` for an optional floating bubble that lists every live controller, lets you pause, scrub, slow down, or replay tracks, and includes a live spring tuner. It can be omitted or tree-shaken from release builds.
 
-You can also create completely custom springs:
+To build your own inspection tooling, import the `@experimental` inspection library (`package:motor/inspection.dart`):
 
 ```dart
-// Using CupertinoMotion constructor
-final mySpring = CupertinoMotion(
-  duration: Duration(milliseconds: 500),
-  bounce: 0.2,   // Bounce amount (-1 to 1)
-);
+import 'package:motor/inspection.dart';
 
-// Or using Flutter SDK's SpringDescription directly
-final customSpring = SpringMotion(
-  SpringDescription.withDurationAndBounce(
-    duration: Duration(milliseconds: 500),
-    bounce: 0.2,
-  ),
-);
+final snapshot = controller.inspectPlayback();
+
+for (final playback in snapshot.tracks) {
+  print('${playback.track}: step ${playback.currentStepIndex}');
+  print(playback.stepDurations);
+}
 ```
 
----
+Each snapshot captures the controller's status, timeline position, and per-track steps, resolved segments, loop cycles, barrier waits, playhead, and recorded/estimated durations. Attaching a tool through `MotorInspectionRegistry` also tracks recent plans and enables controller-local `playbackSpeed` and `motionOverride` hooks.
+
+Pass `debugLabel:` to controllers, builders, and tracks (for example `TrackBuilder(debugLabel: 'Checkout card', ...)`) so they show up with readable names.
 
 ## Performance
 
-Motor ÷ `AnimationController` time for the same motion (AOT release; below 1× means motor is cheaper):
+Motor ÷ `AnimationController` time for the same motion (AOT release; below 1× means Motor is faster):
 
 | Scenario | Flutter equivalent | Per frame | Start | Retarget |
 |---|---|---:|---:|---:|
@@ -1017,17 +682,21 @@ Motor ÷ `AnimationController` time for the same motion (AOT release; below 1× 
 | `Rect` spring (4D) | 4 `AnimationController`s | 0.94× | 2.1× | 1.5× |
 | `Rect` curve (4D) | 1 `AnimationController` + `RectTween` | 2.1× | 3.2× | – |
 
-"Per frame" is one frame of animation work plus reading every value once. Absolute costs are small: 250 springs cost about 39 µs per frame, and starting one spring about 1.5 µs. Following a drag with velocity tracking (on by default) costs 1.2× to 1.5× an `AnimationController` plus a `VelocityTracker` per value at 250 values, and about 2× (0.3 µs per frame) for a single value; the fling that hands over the tracked velocity costs 0.7× to 1.4×.
+"Per frame" covers one frame of simulation work plus reading every value once. Absolute numbers are small: 250 springs take about 39 µs per frame, and starting a single spring takes about 1.5 µs. Following a drag with velocity tracking (on by default) costs 1.2×–1.5× an `AnimationController` plus a `VelocityTracker` per value at 250 values, and about 2× (0.3 µs per frame) for a single value; handing off the tracked velocity on fling costs 0.7×–1.4×.
 
-Method: an AOT release build drives frames through the scheduler with no widgets, checks that both sides produce the same values, and reports the median of 7 runs over 5 invocations. Scenarios, memory and how to run them are in [benchmark/README.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/README.md).
+Benchmarks run in an AOT release build driving frames through the scheduler with no widgets, checking that both sides produce matching values and reporting the median of 7 runs over 5 invocations. Full scenarios, memory numbers, and instructions are in [benchmark/README.md](https://github.com/whynotmake-it/rivership/blob/main/packages/motor/benchmark/README.md).
+
+## Migrating from 1.x
+
+`MotionSequence`, `SequenceMotionBuilder`, `SequenceMotionController`, `NoMotion`, and `Motion.unboundedWillSettle` are deprecated in Motor 2.0 and will be removed in 3.0. They continue to work on the 2.0 track engine while you migrate.
+
+See [MIGRATION.md](./MIGRATION.md) for a complete before-and-after guide to moving from sequences to Tracks & Steps.
 
 ## Acknowledgements
 
-Motor's unified motion system builds upon excellent work from the Flutter community:
-
-- Inspiration for this package came from [Luke Pighetti on Twitter](https://x.com/luke_pighetti)
-- Initial spring physics implementation was partially adapted from and heavily inspired by [fluid_animations](https://pub.dev/packages/fluid_animations)
-- CupertinoMotion presets are designed to match [Apple's SwiftUI animation system](https://developer.apple.com/documentation/swiftui/animation)
+- Inspiration for this package came from [Luke Pighetti](https://x.com/luke_pighetti).
+- The initial spring physics implementation was adapted from and inspired by [fluid_animations](https://pub.dev/packages/fluid_animations).
+- `CupertinoMotion` presets match [Apple's SwiftUI animation presets](https://developer.apple.com/documentation/swiftui/animation).
 
 [flutter_install_link]: https://docs.flutter.dev/get-started/install
 [lintervention_link]: https://github.com/whynotmake-it/lintervention

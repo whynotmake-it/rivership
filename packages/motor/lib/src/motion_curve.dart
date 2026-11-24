@@ -1,7 +1,7 @@
 import 'package:flutter/animation.dart';
 import 'package:motor/motor.dart';
 
-/// A Curve that is represented by a [Motion].
+/// A [Curve] that is represented by a [Motion].
 ///
 /// {@template motion_curve}
 ///
@@ -28,7 +28,8 @@ import 'package:motor/motor.dart';
 /// ```
 /// {@endtemplate}
 class MotionCurve extends Curve {
-  /// Creates a [Curve] that represents [motion], assuming a starting [velocity]
+  /// Creates a [Curve] that represents [motion], assuming a starting
+  /// [velocity].
   ///
   /// {@macro motion_curve}
   MotionCurve({

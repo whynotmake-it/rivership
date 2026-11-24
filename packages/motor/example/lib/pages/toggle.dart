@@ -408,7 +408,7 @@ class _Heart extends StatelessWidget {
               ),
           Transform.scale(
             scale: scale,
-            // Lucide has no filled heart: liked is the brand colour.
+            // Lucide has no filled heart: liked is the brand color.
             child: IconTheme(
               data: IconThemeData(
                 color: liked ? colors.brand : colors.mutedForeground,

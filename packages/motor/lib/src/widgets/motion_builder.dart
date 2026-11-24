@@ -4,7 +4,7 @@ import 'package:motor/src/widgets/base_motion_builder.dart';
 
 /// A widget that animates a value using a dynamic motion.
 ///
-/// Let's say for example you want to animate [Alignment]:
+/// For example, to animate an [Alignment]:
 ///
 /// ```dart
 /// Widget build(BuildContext context) {
@@ -78,9 +78,10 @@ class _MotionBuilderState<T extends Object> extends BaseMotionBuilderState<T> {
   }
 }
 
-/// A [MotionBuilder] that animates a single value.
+/// A [MotionBuilder] that animates a single [double] value.
 ///
-/// {@macro motor.MotionBuilder}
+/// Uses [SingleMotionConverter] automatically so no explicit converter is
+/// required.
 class SingleMotionBuilder extends MotionBuilder<double> {
   /// Creates a [SingleMotionBuilder].
   const SingleMotionBuilder({

@@ -239,7 +239,7 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
           code:
               '// Flutter: a new 500 ms curve on every change.\n'
               'AnimatedAlign(\n'
-              '  duration: .new(milliseconds: 500),\n'
+              '  duration: Duration(milliseconds: 500),\n'
               '  curve: Curves.easeInOut,\n'
               '  alignment: ${_end ? '.centerRight' : '.centerLeft'},\n'
               '  child: dot,\n'
@@ -304,9 +304,9 @@ class _ImplicitWidgetsPageState extends State<ImplicitWidgetsPage> {
           code:
               '// Flutter: fades, and the size follows the stack.\n'
               'AnimatedSize(\n'
-              '  duration: .new(milliseconds: 300),\n'
+              '  duration: Duration(milliseconds: 300),\n'
               '  child: AnimatedSwitcher(\n'
-              '    duration: .new(milliseconds: 300),\n'
+              '    duration: Duration(milliseconds: 300),\n'
               '    child: Label(key: ValueKey(status)),\n'
               '  ),\n'
               ')\n'
