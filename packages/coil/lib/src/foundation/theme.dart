@@ -313,8 +313,10 @@ class CoilThemeData with Diagnosticable {
 ///
 /// Optional: without one, components use [CoilThemeData.light] or
 /// [CoilThemeData.dark] by platform brightness. Works under any
-/// `WidgetsApp`; it also sets a [DefaultTextStyle] and
-/// [DefaultSelectionStyle] so plain [Text] in slots matches the system.
+/// `WidgetsApp`; it also sets a [DefaultTextStyle], an [IconTheme] color and
+/// [DefaultSelectionStyle] so plain [Text] and [Icon] in slots match the
+/// system. Without the icon color, a bare `WidgetsApp` draws icons black,
+/// unreadable on a dark surface.
 ///
 /// Resolution, lowest to highest: package defaults,
 /// the platform tier, the root theme, subtree [CoilTheme.override]s, a
@@ -527,7 +529,14 @@ class CoilTheme extends StatelessWidget {
                   ? theme.colors.brand
                   : theme.colors.foreground,
               selectionColor: theme.colors.brand.withValues(alpha: 0.3),
-              child: child,
+              // An override keeps the icon color it inherits, which the
+              // component it sits in (a tooltip bubble, say) may have set.
+              child: data == null
+                  ? child
+                  : IconTheme.merge(
+                      data: IconThemeData(color: theme.colors.foreground),
+                      child: child,
+                    ),
             ),
           );
         },

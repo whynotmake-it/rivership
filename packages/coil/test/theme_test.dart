@@ -76,6 +76,32 @@ void main() {
     expect(style.fontFamily, isNull);
   });
 
+  testWidgets('a plain Icon follows the theme in light and dark', (
+    tester,
+  ) async {
+    late Color? color;
+    Future<void> pump(CoilThemeData theme) => tester.pumpWidget(
+      WidgetsApp(
+        color: const Color(0xFF000000),
+        builder: (context, _) => CoilTheme(
+          data: theme,
+          child: Builder(
+            builder: (context) {
+              color = IconTheme.of(context).color;
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+
+    await pump(CoilThemeData.light);
+    expect(color, CoilThemeData.light.colors.foreground);
+
+    await pump(CoilThemeData.dark);
+    expect(color, CoilThemeData.dark.colors.foreground);
+  });
+
   group('typography', () {
     double? opsz(TextStyle style) =>
         style.fontVariations?.where((axis) => axis.axis == 'opsz').single.value;
