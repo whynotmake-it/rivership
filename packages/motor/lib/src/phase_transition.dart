@@ -43,8 +43,9 @@ final class PhaseSettled<P> extends PhaseTransition<P> {
   String toString() => 'PhaseSettled($phase)';
 }
 
-/// The animation is moving from one phase to the next. It is reported when
-/// the next phase starts.
+/// The animation is moving from one phase to the next.
+///
+/// Reported when the next phase starts.
 @immutable
 final class PhaseTransitioning<P> extends PhaseTransition<P> {
   /// Creates an animating phase transition.

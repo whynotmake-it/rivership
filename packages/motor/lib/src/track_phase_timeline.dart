@@ -1,3 +1,6 @@
+/// @docImport 'package:motor/src/widgets/phase_track_builder.dart';
+library;
+
 import 'package:flutter/foundation.dart' show listEquals, objectRuntimeType;
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/phase_track_controller.dart';
@@ -29,7 +32,7 @@ import 'package:motor/src/track_step.dart';
 /// A [TrackStep.at] in a phase counts from the start of that phase, however
 /// playback got there.
 ///
-/// Play it with a [PhaseTrackController] or `PhaseTrackBuilder`, which
+/// Play it with a [PhaseTrackController] or [PhaseTrackBuilder], which
 /// interpret [loop] and [initialValues]. The flattened single-pass animations
 /// are also available through [flattened].
 ///
@@ -76,9 +79,12 @@ final class TrackPhaseTimeline<P extends Object> {
   final Map<P, List<TrackAnimation>> phaseAnimations;
 
   /// Values (and optionally velocities) the tracks jump to each time this
-  /// timeline starts playing: on every `playPhases`, even with an equal
-  /// timeline, on the first `goToPhase` after `setTimeline`, and when a
-  /// `PhaseTrackBuilder` mounts or restarts.
+  /// timeline starts playing.
+  ///
+  /// Applied on every [PhaseTrackController.playPhases], even with an equal
+  /// timeline, on the first [PhaseTrackController.goToPhase] after
+  /// [PhaseTrackController.setTimeline], and when a [PhaseTrackBuilder]
+  /// mounts or restarts.
   ///
   /// Moving between phases doesn't apply them, so it animates from the
   /// current values rather than snapping back.
@@ -88,7 +94,8 @@ final class TrackPhaseTimeline<P extends Object> {
   /// [TrackAnimation]s with a sync barrier before each phase after the first.
   final List<TrackAnimation> flattened;
 
-  /// How the phase sequence should loop while auto-advancing (`playPhases`):
+  /// How the phase sequence loops while auto-advancing via
+  /// [PhaseTrackController.playPhases].
   ///
   /// - [LoopMode.none] plays all phases once and settles.
   /// - [LoopMode.loop] animates from the last phase back to the first and
@@ -115,8 +122,8 @@ final class TrackPhaseTimeline<P extends Object> {
   /// [fromPhase] (or [initialPhase]), including its [loop] behavior.
   ///
   /// When [forward] is `false` (used during [LoopMode.pingPong] reverse passes
-  /// by `updateTimeline`), playback continues in reverse from [fromPhase]
-  /// before entering the repeating loop.
+  /// by [PhaseTrackController.updateTimeline]), playback continues in reverse
+  /// from [fromPhase] before entering the repeating loop.
   @internal
   List<TrackAnimation> compile({P? fromPhase, bool forward = true}) {
     if (phases.isEmpty) return const [];
@@ -295,8 +302,9 @@ final class TrackPhaseTimeline<P extends Object> {
   }
 
   /// Where each track rests once [phase] has played after the phases before
-  /// it: its last target up to and including [phase]. Tracks without one
-  /// are omitted.
+  /// it: its last target up to and including [phase].
+  ///
+  /// Tracks without one are omitted.
   @internal
   List<TrackValue> restingValuesAt(P phase) {
     final values = <Track, TrackValue>{};
@@ -402,7 +410,7 @@ final class TrackPhaseTimeline<P extends Object> {
 /// The [StepSync.token] of the barrier before [phase].
 ///
 /// It is private to this library, so no token a caller passes to
-/// `TrackStep.sync` can equal it, whatever the phase value is.
+/// [TrackStep.sync] can equal it, whatever the phase value is.
 @immutable
 class _PhaseToken<P extends Object> {
   const _PhaseToken(

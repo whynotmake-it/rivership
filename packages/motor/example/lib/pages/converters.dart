@@ -60,8 +60,8 @@ class _ConvertersPageState extends State<ConvertersPage> {
       chapter: chapterNamed('Converters'),
       lead:
           'A converter splits a value into numbers, and each number gets its '
-          'own spring. Fling the square: x and y settle on their own, so the '
-          'path curves.',
+          'own spring — whether an offset with independent axes, a color with '
+          'bounded channels, or an angle taking the short way around.',
       stageHeight: 400,
       code: _code,
       stage: Stack(

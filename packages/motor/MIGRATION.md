@@ -389,7 +389,7 @@ const interactive = CupertinoMotion(
 
 ### Sequences no longer use `equatable`
 
-motor dropped its `equatable` dependency. `MotionSequence` and its
+Motor dropped its `equatable` dependency. `MotionSequence` and its
 subclasses no longer mix in `EquatableMixin`, so `props` and `stringify` are
 gone and `is EquatableMixin` is false. Sequences still compare by value: the
 same class, phases, values, motions that move the same, and loop mode.
@@ -615,44 +615,21 @@ State queries map as follows:
 
 - **2.0**: `MotionSequence` (and `StateSequence`, `StepSequence`,
   `SpanningSequence`, `ValueWithMotion`), `SequenceMotionController`, and
-  `SequenceMotionBuilder` are `@Deprecated` but fully functional.
-  `Motion.unboundedWillSettle` is `@Deprecated`: motor never reads it, so
-  delete your overrides. `NoMotion` and `Motion.none` are `@Deprecated`:
-  use `Motion.instant` to reach the target at once, or a `.hold(duration)`
-  step to hold the current value.
-- **3.0**: the legacy stack, `unboundedWillSettle` and `NoMotion` are
-  deleted.
+  `SequenceMotionBuilder` are `@Deprecated` but continue to work on the 2.0
+  track engine. `Motion.unboundedWillSettle` is `@Deprecated`: Motor no longer
+  reads it, so you can delete your overrides. `NoMotion` and `Motion.none` are
+  `@Deprecated`: use `Motion.instant` to reach the target at once, or a
+  `.hold(duration)` step to hold the current value.
+- **3.0**: The deprecated sequence APIs, `unboundedWillSettle`, and `NoMotion`
+  will be removed. (`LoopMode` itself is *not* deprecated — it drives track
+  loops and phase timelines too.)
 
-3.0 deletion checklist:
+### Phase playback notes
 
-> Note: the legacy engine copy (`lib/src/controllers/legacy/`) was already
-> removed in 2.0 itself — `SequenceMotionController` now runs on the 2.0
-> track engine. The 3.0 removal covers only the deprecated API symbols and
-> their tests.
-
-- [ ] Delete `lib/src/controllers/sequence_motion_controller.dart` (the
-      deprecated `SequenceMotionController`, a part of
-      `motion_controller.dart`).
-- [ ] Delete `lib/src/motion_sequence.dart` and move its `LoopMode`
-      re-export (`LoopMode` itself is *not* deprecated — it drives track
-      playback too).
-- [ ] Delete `lib/src/widgets/sequence_motion_builder.dart`.
-- [ ] Delete their tests and goldens
-      (`test/motion_sequence_test.dart`,
-      `test/src/controllers/legacy_sequence_semantics_test.dart`,
-      `test/src/widgets/sequence_motion_builder_test.dart`,
-      `test/src/widgets/sequence_motion_builder_golden_test.dart` and its
-      goldens).
-- [ ] Remove the "Sequence Animations (deprecated)" README section.
-- [ ] Delete `MotionBase.unboundedWillSettle`.
-
-### Behavioral notes from the 2.0 parity tests
-
-- For `LoopMode.loop`, the legacy `SequenceMotionController` and the new
-  `PhaseTrackController` visit phases in the same order
-  (`0 → 1 → 2 → 0 → …`); no divergence was found.
-- `LoopMode.pingPong` visits phases in the same order on both stacks
-  (`0 → 1 → 2 → 1 → 0 → 1 → …`); each phase's own steps still play forward.
+- For `LoopMode.loop`, `PhaseTrackController` visits phases in the same order
+  as the legacy `SequenceMotionController` (`0 → 1 → 2 → 0 → …`).
+- For `LoopMode.pingPong`, phases play in reverse order on the way back
+  (`0 → 1 → 2 → 1 → 0 → …`), while each phase's own steps still play forward.
 - Animations inside a `TrackPhaseTimeline` phase can't set their own `from:`
   (asserted). Use the timeline's `initialValues:`
-  (`track.value(v, velocity: dv)`, or `track.velocity(dv)`) instead.
+  (`track.value(v, velocity: dv)` or `track.velocity(dv)`) instead.

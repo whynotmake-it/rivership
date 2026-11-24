@@ -16,7 +16,7 @@ typedef VelocityMotionWidgetBuilder<T> = Widget Function(
 
 /// A widget that animates a value using a dynamic motion.
 ///
-/// Let's say for example you want to animate [Alignment]:
+/// For example, to animate an [Alignment]:
 ///
 /// ```dart
 /// Widget build(BuildContext context) {
@@ -34,10 +34,10 @@ typedef VelocityMotionWidgetBuilder<T> = Widget Function(
 /// ```
 ///
 /// See also:
-/// * [MotionBuilder] for simpler variant of this widget for when you don't need
-///  the velocity of the motion.
+/// * [MotionBuilder] for a simpler variant of this widget when you don't need
+///   the velocity of the motion.
 /// * [SingleVelocityMotionBuilder] for a motion builder that animates a single
-/// value.
+///   value.
 class VelocityMotionBuilder<T extends Object> extends BaseMotionBuilder<T> {
   /// Creates a [VelocityMotionBuilder] with a single [motion].
   const VelocityMotionBuilder({
@@ -101,9 +101,10 @@ class _VelocityMotionBuilderState<T extends Object>
   }
 }
 
-/// A [VelocityMotionBuilder] that animates a single value.
+/// A [VelocityMotionBuilder] that animates a single [double] value.
 ///
-/// {@macro motor.MotionBuilder}
+/// Uses [SingleMotionConverter] automatically so no explicit converter is
+/// required.
 class SingleVelocityMotionBuilder extends VelocityMotionBuilder<double> {
   /// Creates a [SingleVelocityMotionBuilder].
   const SingleVelocityMotionBuilder({

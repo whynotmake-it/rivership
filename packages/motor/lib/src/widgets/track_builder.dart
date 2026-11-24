@@ -1,3 +1,6 @@
+/// @docImport 'package:motor/src/track_step.dart';
+library;
+
 import 'package:fixed_ticker/fixed_ticker.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart';
@@ -17,7 +20,7 @@ typedef TrackWidgetBuilder = Widget Function(
 /// Declaratively plays multiple [TrackAnimation]s on one ticker.
 ///
 /// Each [TrackAnimation] carries its own `from`/`withVelocity`/`delay`, and
-/// loops live inside its steps via `TrackStep.loop`.
+/// loops live inside its steps via [TrackStep.loop].
 class TrackBuilder extends StatefulWidget {
   /// Plays a list of [animations].
   const TrackBuilder({
@@ -100,7 +103,9 @@ class TrackBuilder extends StatefulWidget {
 
   /// {@template motor.debugLabel}
   /// A name for the controller this widget creates, shown by inspection tools
-  /// such as `motor_devtools`. Read once, when the controller is created.
+  /// such as `motor_devtools`.
+  ///
+  /// Read once, when the controller is created.
   /// {@endtemplate}
   final String? debugLabel;
 

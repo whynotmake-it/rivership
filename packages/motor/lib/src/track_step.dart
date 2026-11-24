@@ -15,20 +15,22 @@ import 'package:motor/src/track_phase_timeline.dart';
 /// ```
 ///
 /// Either way the motion plays out: the timeline never cuts it short, unless
-/// a [TrackStep.at] follows. The controller call's `MotionFuture.ended`
+/// a [TrackStep.at] follows. The controller call's [MotionFuture.ended]
 /// completes at the last step's duration either way.
 enum WaitUntil {
-  /// Once the step has settled: at rest and exactly on its target. The next
-  /// step starts right then. A curve settles the moment it ends, so the next
-  /// step takes over the slope it ended with; a spring has come to rest.
-  /// This is the default, as in 1.x, motion.dev, anime.js and Compose.
+  /// Once the step has settled: at rest and exactly on its target.
+  ///
+  /// The next step starts right then. A curve settles the moment it ends, so
+  /// the next step takes over the slope it ended with; a spring has come to
+  /// rest. This is the default, as in motion.dev, anime.js, and Compose.
   settled,
 
   /// Once the step has ended: its motion's duration ([Motion.duration], a
-  /// spring's perceptual duration) has passed. The next step takes over the
-  /// current value and velocity while a spring is still settling, as
-  /// SwiftUI's `PhaseAnimator` moves between phases. A motion without a
-  /// duration still waits to settle.
+  /// spring's perceptual duration) has passed.
+  ///
+  /// The next step takes over the current value and velocity while a spring is
+  /// still settling, as SwiftUI's `PhaseAnimator` moves between phases. A
+  /// motion without a duration still waits to settle.
   ended,
 }
 
@@ -44,7 +46,7 @@ sealed class TrackStep<T extends Object> {
   /// Animates to [value] using a target-based [motion].
   ///
   /// The next step starts once the move has settled
-  /// ([SettlingSimulation.settlesAt]), as in 1.x, motion.dev, anime.js and
+  /// ([SettlingSimulation.settlesAt]), as in motion.dev, anime.js, and
   /// Compose. A curve settles the moment it ends, so the next step takes over
   /// the slope it ended with; after a spring, it starts from rest.
   ///
@@ -67,12 +69,12 @@ sealed class TrackStep<T extends Object> {
     WaitUntil until,
   }) = StepTo<T>;
 
-  /// Runs a self-directed free [motion]. The next step starts once it has
-  /// come to rest.
+  /// Runs a self-directed free [motion].
   ///
-  /// Pass `until: .ended` ([WaitUntil.ended]) to start the next step
-  /// once the motion's [FreeMotion.duration] has passed instead, if it has
-  /// one, taking over its value and velocity, as with [TrackStep.to].
+  /// The next step starts once it has come to rest. Pass `until: .ended`
+  /// ([WaitUntil.ended]) to start the next step once the motion's
+  /// [FreeMotion.duration] has passed instead, if it has one, taking over its
+  /// value and velocity, as with [TrackStep.to].
   const factory TrackStep.free({
     required FreeMotion motion,
     WaitUntil until,
@@ -460,8 +462,9 @@ final class StepLoop<T extends Object> extends TrackStep<T> {
 }
 
 /// The [StepSync] a [TrackPhaseTimeline] inserts before each phase, with
-/// the phase as its token. A [TrackStep.at] after it counts from its
-/// release, the start of the phase.
+/// the phase as its token.
+///
+/// A [TrackStep.at] after it counts from its release, the start of the phase.
 @internal
 final class PhaseBoundary<T extends Object> extends StepSync<T> {
   /// Creates the barrier before the phase [token].
@@ -486,7 +489,7 @@ final class LoopSyncToken {
   /// Creates a wrapped loop-sync token.
   const LoopSyncToken(this.token, {this.turnaround = false});
 
-  /// The user-supplied `together` token.
+  /// The user-supplied [StepLoop.together] token.
   final Object token;
 
   /// Whether this token synchronizes the mid-cycle turnaround of a

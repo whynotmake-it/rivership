@@ -17,9 +17,8 @@ part 'sequence_motion_controller.dart';
 /// A base [MotionController] that can manage a [Motion] of any value that you
 /// can pass a [MotionConverter] for.
 ///
-/// In a lot of ways, this class works like [AnimationController], but a few key
-/// differences have been made to make it generalize easier for different types
-/// of motion.
+/// Works like [AnimationController], with two key differences for physics-based
+/// and multi-dimensional motion:
 ///
 /// 1. [status] follows the direction of the motion, as judged by the
 ///   [converter], and ends in [AnimationStatus.dismissed] after moving down.
@@ -351,7 +350,7 @@ class MotionController<T extends Object> extends Animation<T>
 
   /// Plays [steps] from the current value.
   ///
-  /// A `TrackStep.to` or `TrackStep.at` without its own motion uses this
+  /// A [TrackStep.to] or [TrackStep.at] without its own motion uses this
   /// controller's [motionPerDimension].
   ///
   /// The returned [MotionFuture] ends when the last step's motion has reached

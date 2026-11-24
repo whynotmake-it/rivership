@@ -149,7 +149,7 @@ void main() {
       await tester.tap(find.text('Ping'));
       await _pumpFor(tester, const Duration(milliseconds: 800));
       expect(
-        tester.getSize(find.text('motor 2.0 is here')).width,
+        tester.getSize(find.text('Motor 2.0 is here')).width,
         greaterThan(0),
       );
       await tester.tap(find.text('Ping'));

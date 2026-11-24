@@ -16,7 +16,7 @@ class DevToolsPage extends StatelessWidget {
     return GalleryPage(
       title: 'DevTools',
       lead:
-          'motor_devtools shows every motor animation on a timeline. Scrub '
+          'motor_devtools shows every Motor animation on a timeline. Scrub '
           'it, slow it down, and tune a track\'s motion while the app runs.',
       children: [
         ValueListenableBuilder(

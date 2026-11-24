@@ -87,7 +87,6 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   /// * [MotionConverter]
   /// * [SingleMotionConverter]
   /// * [OffsetMotionConverter]
-  /// * ...
   /// {@endtemplate}
   final MotionConverter<T> converter;
 
@@ -104,7 +103,7 @@ abstract class BaseMotionBuilder<T extends Object> extends StatefulWidget {
   /// {@template motor.simulate}
   /// Whether the motion is active.
   ///
-  /// If false, the [value] will be immediately set to the target value in
+  /// If false, the [value] will be immediately set to the target value in the
   /// builder.
   /// {@endtemplate}
   final bool active;

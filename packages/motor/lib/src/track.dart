@@ -1,3 +1,6 @@
+/// @docImport 'package:motor/src/track_phase_timeline.dart';
+library;
+
 import 'package:flutter/foundation.dart' show listEquals, objectRuntimeType;
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/track_controller.dart'
@@ -23,7 +26,7 @@ base class Track<T extends Object> {
   /// optional: when a controller first needs a value for this track and no
   /// `from` override, prior value, or [initial] is available, the track falls
   /// back to a zero-filled value whose dimensionality matches the first
-  /// concrete target (`TrackStep.to`/`TrackStep.at`) of the animation being
+  /// concrete target ([TrackStep.to]/[TrackStep.at]) of the animation being
   /// played.
   /// {@endtemplate}
   Track(
@@ -157,7 +160,7 @@ base class Track<T extends Object> {
 ///
 /// {@template TrackValue}
 /// Used to jump tracks to a value with [TrackController.set] and as
-/// per-track initial values of a `TrackPhaseTimeline`. A snapshot can also
+/// per-track initial values of a [TrackPhaseTimeline]. A snapshot can also
 /// carry the [velocity] the track has at that value; without one, the
 /// controller estimates it from the values it was set to. A snapshot made
 /// with [Track.velocity] has no [value]: it sets the velocity and keeps the
@@ -239,11 +242,11 @@ final class TrackAnimation<T extends Object> {
   final T? withVelocity;
 
   /// {@template TrackAnimation.delay}
-  /// [delay] starts the animation that long after it is played: its `.at`
-  /// times count from then, and it applies once, not per loop cycle. While
-  /// waiting, a track that is moving keeps its motion (a redirect without
-  /// `from` or `withVelocity` hands the running motion over), and one at rest
-  /// stays put.
+  /// [delay] starts the animation that long after it is played: its
+  /// [TrackStep.at] times count from then, and it applies once, not per loop
+  /// cycle. While waiting, a track that is moving keeps its motion (a redirect
+  /// without `from` or `withVelocity` hands the running motion over), and one
+  /// at rest stays put.
   /// {@endtemplate}
   final Duration delay;
 
@@ -295,7 +298,8 @@ final class TrackAnimation<T extends Object> {
   ///
   /// Resolution order: [from] -> [Track.initial] -> a zero-filled value whose
   /// dimensionality matches this animation's first concrete target
-  /// (`TrackStep.to`/`TrackStep.at`). Throws if none of these can supply a value.
+  /// ([TrackStep.to]/[TrackStep.at]). Throws if none of these can supply a
+  /// value.
   @internal
   T resolveStartValue() {
     if (from case final value?) return value;
@@ -310,7 +314,7 @@ final class TrackAnimation<T extends Object> {
     );
   }
 
-  /// The end value of this animation: its last `TrackStep.to`/`TrackStep.at`
+  /// The end value of this animation: its last [TrackStep.to]/[TrackStep.at]
   /// value, or null when no step carries a value.
   @internal
   TrackValue<T>? get endValue => _lastTargetOf(steps);

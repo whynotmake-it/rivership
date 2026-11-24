@@ -1,3 +1,6 @@
+/// @docImport 'package:motor/src/track_step.dart';
+library;
+
 import 'dart:math' as math;
 
 import 'package:flutter/physics.dart';
@@ -48,8 +51,9 @@ sealed class MotionBase {
   MotionBase scaleTo(Duration duration);
 
   /// The perceived length of this motion, the same for every move, or null
-  /// if it has no fixed length. See [Motion.duration] and
-  /// [FreeMotion.duration].
+  /// if it has no fixed length.
+  ///
+  /// See [Motion.duration] and [FreeMotion.duration].
   Duration? get duration;
 }
 
@@ -63,7 +67,7 @@ sealed class MotionBase {
 /// which is the same for every move. It has *settled* once it is at rest,
 /// exactly on its target, which depends on the move, so its simulation says
 /// when, if it mixes in [SettlingSimulation]; otherwise motor samples
-/// `isDone`.
+/// [Simulation.isDone].
 @immutable
 abstract class Motion extends MotionBase {
   /// Creates a motion with the given [tolerance].
@@ -153,16 +157,16 @@ abstract class Motion extends MotionBase {
   /// [velocity].
   ///
   /// Mix [SettlingSimulation] into it to tell motor when the move has
-  /// settled. Otherwise motor finds that by sampling `isDone`.
+  /// settled. Otherwise motor finds that by sampling [Simulation.isDone].
   ///
   /// {@template motor.pureSimulation}
   /// Unlike Flutter, which only queries a simulation at increasing times,
   /// motor samples it at arbitrary times: ahead, to find when it settles,
-  /// and backwards when scrubbing or looping. So `x`, `dx` and `isDone` must
-  /// be pure functions of time, without side effects. A simulation that
-  /// integrates step by step can still be used if it restarts from its
-  /// initial state whenever it's asked about an earlier time than the last
-  /// one.
+  /// and backwards when scrubbing or looping. So [Simulation.x],
+  /// [Simulation.dx] and [Simulation.isDone] must be pure functions of time,
+  /// without side effects. A simulation that integrates step by step can still
+  /// be used if it restarts from its initial state whenever it's asked about
+  /// an earlier time than the last one.
   /// {@endtemplate}
   Simulation createSimulation({
     double start = 0,
@@ -198,7 +202,7 @@ abstract class Motion extends MotionBase {
 ///
 /// A free motion that never comes to rest, such as constant drift, keeps its
 /// step running until something replaces it: a new animation for the track,
-/// or a following `.at` step.
+/// or a following [TrackStep.at] step.
 @immutable
 abstract class FreeMotion extends MotionBase {
   /// Creates a free motion.
@@ -215,9 +219,9 @@ abstract class FreeMotion extends MotionBase {
   /// Creates a self-directed simulation.
   ///
   /// The move settles at its [SettlingSimulation.settlesAt] if it mixes
-  /// that in; otherwise motor finds when by sampling `isDone`. A free step
-  /// that never comes to rest keeps animating until it is retargeted or
-  /// stopped.
+  /// that in; otherwise motor finds when by sampling [Simulation.isDone]. A
+  /// free step that never comes to rest keeps animating until it is retargeted
+  /// or stopped.
   ///
   /// {@macro motor.pureSimulation}
   Simulation createSimulation({
@@ -229,9 +233,9 @@ abstract class FreeMotion extends MotionBase {
   /// no fixed length, so that it ends when it comes to rest.
   ///
   /// Like [Motion.duration], it is a fixed property of the motion, the same
-  /// for every move. A `TrackStep.free` with `until: WaitUntil.ended` lets
-  /// the next step take over here, from the current value and velocity. Free
-  /// motions such as [FrictionMotion] have no fixed length.
+  /// for every move. A [TrackStep.free] with [WaitUntil.ended] lets the next
+  /// step take over here, from the current value and velocity. Free motions
+  /// such as [FrictionMotion] have no fixed length.
   @override
   Duration? get duration => null;
 
@@ -381,9 +385,11 @@ class LinearMotion extends CurvedMotion {
 
 /// {@template NoMotion}
 /// A motion that holds at the current value for [duration] and never reaches
-/// its target. It ends and settles after [duration], where it started.
+/// its target.
 ///
-/// Deprecated: a `TrackStep.hold` step holds the current value for its
+/// It ends and settles after [duration], where it started.
+///
+/// Deprecated: a [TrackStep.hold] step holds the current value for its
 /// duration.
 /// {@endtemplate}
 @Deprecated(
@@ -458,7 +464,7 @@ abstract class SpringMotion extends Motion {
     bool snapToEnd,
   }) = _DescriptionSpringMotion;
 
-  /// Internal constructor;
+  /// Internal constructor.
   const SpringMotion._({
     this.snapToEnd = true,
   });
@@ -469,8 +475,10 @@ abstract class SpringMotion extends Motion {
   /// how the spring behaves.
   SpringDescription get description;
 
-  /// The perceptual duration of the spring, [SpringDescription.duration]:
-  /// its pace. The spring has ended by then and keeps settling for a while.
+  /// The perceptual duration of the spring, [SpringDescription.duration].
+  ///
+  /// This is the spring's pace: it has ended by then and keeps settling for a
+  /// while.
   @override
   Duration? get duration => description.duration;
 
@@ -488,8 +496,9 @@ abstract class SpringMotion extends Motion {
   @override
   bool get needsSettle => true;
 
-  /// Creates a spring simulation. It settles once position and velocity
-  /// stay within [tolerance] for good.
+  /// Creates a spring simulation.
+  ///
+  /// It settles once position and velocity stay within [tolerance] for good.
   @override
   Simulation createSimulation({
     double start = 0,
@@ -550,7 +559,9 @@ abstract class SpringMotion extends Motion {
   @override
   String toString() => 'Spring(spring: $description)';
 
-  /// Returns a copy. Subclasses add their own parameters.
+  /// Returns a copy of this spring motion.
+  ///
+  /// Subclasses add their own parameters.
   SpringMotion copyWith();
 }
 
@@ -675,9 +686,10 @@ class CupertinoMotion extends SpringMotion {
         );
 
   /// The perceptual duration of the spring motion: its pace, the undamped
-  /// period. The spring gets close to its target around this time, when it
-  /// has ended, and settles later, at its simulation's
-  /// [SettlingSimulation.settlesAt].
+  /// period.
+  ///
+  /// The spring gets close to its target around this time, when it has ended,
+  /// and settles later, at its simulation's [SettlingSimulation.settlesAt].
   @override
   final Duration duration;
 
@@ -709,17 +721,19 @@ class CupertinoMotion extends SpringMotion {
   }
 }
 
-/// Material Design 3 spring motion tokens for expressive design system.
+/// Material Design 3 spring motion tokens.
 ///
-/// This class provides predefined spring motion tokens that follow the
-/// Material Design 3 motion guidelines for creating expressive and natural
-/// animations. The tokens are organized into two categories:
-/// - **Spatial**: For animating position, size, and layout changes
-/// - **Effects**: For animating visual properties like opacity and color
+/// Provides predefined spring motion tokens from the Material Design 3 motion
+/// guidelines, organized into two categories:
 ///
-/// Each category has three speed variants: fast, default, and slow.
+/// - **Spatial**: For animating position, size, and layout changes.
+/// - **Effects**: For animating visual properties like opacity and color.
+///
+/// Each category has standard and expressive variants, in fast, default, and
+/// slow speeds.
 ///
 /// See also:
+///
 /// * [Material Design 3 Motion Guidelines](https://m3.material.io/styles/motion/overview/how-it-works#spring-tokens)
 /// * [SpringMotion] for the base spring motion implementation
 class MaterialSpringMotion extends SpringMotion {
@@ -731,13 +745,11 @@ class MaterialSpringMotion extends SpringMotion {
     super.snapToEnd,
   }) : super._();
 
-  /// Standard spatial motion token - fast variant.
+  /// Standard spatial motion token, fast variant.
   ///
-  /// Used for quick spatial animations like position changes, resizing,
-  /// and layout transitions. This is the fastest of the standard spatial
-  /// motion tokens.
+  /// For quick position, size, and layout transitions.
   ///
-  /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1
+  /// **Damping**: 0.9, **Stiffness**: 1400, **Mass**: 1.
   const MaterialSpringMotion.standardSpatialFast({
     bool snapToEnd = true,
   }) : this._(
@@ -746,12 +758,11 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Standard spatial motion token - default variant.
+  /// Standard spatial motion token, default variant.
   ///
-  /// The recommended spatial motion for most position changes, resizing,
-  /// and layout transitions. Provides a balanced animation speed.
+  /// Recommended for most position, size, and layout transitions.
   ///
-  /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1
+  /// **Damping**: 0.9, **Stiffness**: 700, **Mass**: 1.
   const MaterialSpringMotion.standardSpatialDefault({
     bool snapToEnd = true,
   }) : this._(
@@ -760,12 +771,11 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Standard spatial motion token - slow variant.
+  /// Standard spatial motion token, slow variant.
   ///
-  /// Used for deliberate spatial animations where a slower, more gentle
-  /// motion is desired for position changes, resizing, and layout transitions.
+  /// For deliberate position, size, and layout transitions.
   ///
-  /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1
+  /// **Damping**: 0.9, **Stiffness**: 300, **Mass**: 1.
   const MaterialSpringMotion.standardSpatialSlow({
     bool snapToEnd = true,
   }) : this._(
@@ -774,13 +784,11 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Standard effects motion token - fast variant.
+  /// Standard effects motion token, fast variant.
   ///
-  /// Used for quick visual property animations like opacity, color,
-  /// and other non-spatial effects. This is the fastest of the standard
-  /// effects motion tokens.
+  /// For quick opacity, color, and other non-spatial transitions.
   ///
-  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
+  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1.
   const MaterialSpringMotion.standardEffectsFast({
     bool snapToEnd = true,
   }) : this._(
@@ -789,13 +797,11 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Standard effects motion token - default variant.
+  /// Standard effects motion token, default variant.
   ///
-  /// The recommended effects motion for most visual property animations
-  /// like opacity, color, and other non-spatial effects. Provides a
-  /// balanced animation speed.
+  /// Recommended for most opacity, color, and other non-spatial transitions.
   ///
-  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
+  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1.
   const MaterialSpringMotion.standardEffectsDefault({
     bool snapToEnd = true,
   }) : this._(
@@ -804,13 +810,11 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Standard effects motion token - slow variant.
+  /// Standard effects motion token, slow variant.
   ///
-  /// Used for deliberate visual property animations where a slower,
-  /// more gentle motion is desired for opacity, color, and other
-  /// non-spatial effects.
+  /// For deliberate opacity, color, and other non-spatial transitions.
   ///
-  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
+  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1.
   const MaterialSpringMotion.standardEffectsSlow({
     bool snapToEnd = true,
   }) : this._(
@@ -819,13 +823,12 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Expressive spatial motion token - fast variant.
+  /// Expressive spatial motion token, fast variant.
   ///
-  /// Used for more dynamic and bouncy spatial animations with increased
-  /// expressiveness. Features lower damping for more spring-like behavior
-  /// in position changes, resizing, and layout transitions.
+  /// Lower damping than [MaterialSpringMotion.standardSpatialFast] for
+  /// bouncier quick position, size, and layout transitions.
   ///
-  /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1
+  /// **Damping**: 0.6, **Stiffness**: 800, **Mass**: 1.
   const MaterialSpringMotion.expressiveSpatialFast({
     bool snapToEnd = true,
   }) : this._(
@@ -834,13 +837,12 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Expressive spatial motion token - default variant.
+  /// Expressive spatial motion token, default variant.
   ///
-  /// The recommended expressive spatial motion for creating more dynamic
-  /// and bouncy animations with moderate expressiveness. Features lower
-  /// damping for spring-like behavior in spatial transitions.
+  /// Lower damping than [MaterialSpringMotion.standardSpatialDefault] for
+  /// bouncier position, size, and layout transitions.
   ///
-  /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1
+  /// **Damping**: 0.8, **Stiffness**: 380, **Mass**: 1.
   const MaterialSpringMotion.expressiveSpatialDefault({
     bool snapToEnd = true,
   }) : this._(
@@ -849,13 +851,12 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Expressive spatial motion token - slow variant.
+  /// Expressive spatial motion token, slow variant.
   ///
-  /// Used for slower, more deliberate expressive spatial animations
-  /// with gentle spring-like behavior. Features lower damping for
-  /// increased bounce in position changes and layout transitions.
+  /// Lower damping than [MaterialSpringMotion.standardSpatialSlow] for
+  /// deliberate, bouncier position, size, and layout transitions.
   ///
-  /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1
+  /// **Damping**: 0.8, **Stiffness**: 200, **Mass**: 1.
   const MaterialSpringMotion.expressiveSpatialSlow({
     bool snapToEnd = true,
   }) : this._(
@@ -864,13 +865,12 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Expressive effects motion token - fast variant.
+  /// Expressive effects motion token, fast variant.
   ///
-  /// Used for quick expressive visual property animations. While maintaining
-  /// the same spring characteristics as standard effects, this token is part
-  /// of the expressive motion system for consistent design language.
+  /// For quick opacity, color, and other non-spatial transitions in the
+  /// expressive scheme.
   ///
-  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1
+  /// **Damping**: 1, **Stiffness**: 3800, **Mass**: 1.
   const MaterialSpringMotion.expressiveEffectsFast({
     bool snapToEnd = true,
   }) : this._(
@@ -879,13 +879,12 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Expressive effects motion token - default variant.
+  /// Expressive effects motion token, default variant.
   ///
-  /// The recommended expressive effects motion for visual property animations
-  /// like opacity and color. Part of the expressive motion system while
-  /// maintaining optimal characteristics for non-spatial effects.
+  /// Recommended for opacity, color, and other non-spatial transitions in the
+  /// expressive scheme.
   ///
-  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1
+  /// **Damping**: 1, **Stiffness**: 1600, **Mass**: 1.
   const MaterialSpringMotion.expressiveEffectsDefault({
     bool snapToEnd = true,
   }) : this._(
@@ -894,13 +893,12 @@ class MaterialSpringMotion extends SpringMotion {
           snapToEnd: snapToEnd,
         );
 
-  /// Expressive effects motion token - slow variant.
+  /// Expressive effects motion token, slow variant.
   ///
-  /// Used for slower, more deliberate expressive visual property animations.
-  /// Part of the expressive motion system while maintaining characteristics
-  /// optimized for opacity, color, and other non-spatial effects.
+  /// For deliberate opacity, color, and other non-spatial transitions in the
+  /// expressive scheme.
   ///
-  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1
+  /// **Damping**: 1, **Stiffness**: 800, **Mass**: 1.
   const MaterialSpringMotion.expressiveEffectsSlow({
     bool snapToEnd = true,
   }) : this._(
@@ -957,7 +955,7 @@ class MaterialSpringMotion extends SpringMotion {
 /// - [needsSettle] is [parent]'s.
 ///
 /// [Motion.scaleTo] returns one of these unless the motion overrides it. To
-/// arrive exactly at a time, use `TrackStep.at`.
+/// arrive exactly at a time, use [TrackStep.at].
 ///
 /// ```dart
 /// // This spring ends after 300 ms and settles later.
@@ -1059,8 +1057,8 @@ class FixedDurationMotion extends Motion {
 /// - Velocity scales with time, including the start velocity: friction that
 ///   coasts for 5 s, scaled to 500 ms, starts 10× as fast as the fling
 ///   velocity it was given.
-/// - At [duration] the velocity is 0 and the simulation's `isDone` turns
-///   true.
+/// - At [duration] the velocity is 0 and the simulation's [Simulation.isDone]
+///   turns true.
 /// - A [parent] that never comes to rest, or only after more than two
 ///   minutes, isn't scaled: it plays at its own speed and stops abruptly at
 ///   [duration], which is also where [finalValue] puts it.
@@ -1573,7 +1571,7 @@ class _TrimmedSimulation extends Simulation with SettlingSimulation {
 ///
 /// Motion wrappers are immutable value objects; construct and reuse them,
 /// because parents whose simulations don't report their timing are probed
-/// on each `createSimulation`.
+/// on each [Motion.createSimulation].
 ///
 /// **Important**: Trimming behavior varies by motion type:
 /// * **Deterministic motions** (like [CurvedMotion]): Trimming is exact and

@@ -10,7 +10,8 @@ import 'package:motor/src/controllers/motion_controller.dart'
 /// A function that converts a value of type [T] to a list of double values.
 typedef Normalize<T> = List<double> Function(T value);
 
-/// A function that converts a list of double values back to a value of type [T]
+/// A function that converts a list of double values back to a value of type
+/// [T].
 typedef Denormalize<T> = T Function(List<double> values);
 
 /// A converter that handles normalization and denormalization of values
@@ -126,8 +127,10 @@ final class MotionDimension {
         max = double.infinity;
 
   /// A dimension that repeats every [period], so targets take the short way
-  /// round (350 to 10 degrees moves +20). Values are not wrapped back, so
-  /// `value` may leave `[0, period)`: `MotionDimension.periodic(2 * pi)`.
+  /// round (350 to 10 degrees moves +20).
+  ///
+  /// Values are not wrapped back, so `value` may leave `[0, period)`:
+  /// `MotionDimension.periodic(2 * pi)`.
   const MotionDimension.periodic(double this.period)
       : assert(period > 0, 'period must be positive'),
         min = double.negativeInfinity,

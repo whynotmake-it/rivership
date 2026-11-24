@@ -4,21 +4,25 @@
 /// here is `@experimental`: it may change in minor releases, unlike the core
 /// `package:motor/motor.dart` API.
 ///
-/// Snapshots (`PlaybackSnapshot`, `TrackPlayback`, `PlaybackPlan`) are
-/// read-only. The `TrackControllerInspection` extension additionally exposes
+/// Snapshots ([PlaybackSnapshot], [TrackPlayback], [PlaybackPlan]) are
+/// read-only. The [TrackControllerInspection] extension additionally exposes
 /// two hooks that do change playback of a single controller:
-/// `playbackSpeed` and `motionOverride`.
+/// [TrackControllerInspection.playbackSpeed] and
+/// [TrackControllerInspection.motionOverride].
 ///
 /// While a tool is attached, controllers keep more for
-/// `TrackController.scrubTo`:
+/// [TrackController.scrubTo]:
 ///
 /// - Plans a track has since been redirected away from, so scrubbing back
-///   shows them. They are only for viewing: playback, including `resume`
-///   from such a time, always continues each track's current plan, holding
-///   its start until the timeline reaches it.
+///   shows them. They are only for viewing: playback, including
+///   [TrackController.resume] from such a time, always continues each track's
+///   current plan, holding its start until the timeline reaches it.
 /// - About a thousand steps of a looping plan that cannot repeat exactly,
 ///   such as every looping phase timeline, instead of its two most recent
 ///   cycles.
+///
+/// @docImport 'package:motor/motor.dart';
+/// @docImport 'package:motor/src/inspection/playback_snapshot.dart';
 library motor.inspection;
 
 export 'src/inspection/controller_registry.dart';

@@ -1,3 +1,6 @@
+/// @docImport 'package:motor/src/inspection/inspection_scope.dart';
+library;
+
 import 'package:flutter/animation.dart';
 import 'package:meta/meta.dart';
 import 'package:motor/src/controllers/motion_controller.dart';
@@ -21,7 +24,9 @@ class PlaybackSnapshot {
         tracks = List.unmodifiable(tracks);
 
   /// Where the controller is on its playback timeline, in the time that
-  /// `scrubTo` takes. It only advances while the controller ticks.
+  /// [TrackController.scrubTo] takes.
+  ///
+  /// It only advances while the controller ticks.
   final Duration position;
 
   /// The controller's current animation status.
@@ -30,13 +35,14 @@ class PlaybackSnapshot {
   /// Playback details for every slot that still retains a playback plan.
   final List<TrackPlayback> tracks;
 
-  /// The most recent plans submitted with `animate`, oldest first.
+  /// The most recent plans submitted with [TrackController.animate], oldest
+  /// first.
   ///
   /// Recorded only while an inspection observer is attached, up to 16.
   final List<PlaybackPlan> plans;
 }
 
-/// A plan submitted to a [TrackController] with `animate`.
+/// A plan submitted to a [TrackController] with [TrackController.animate].
 @experimental
 @immutable
 class PlaybackPlan {
@@ -56,7 +62,7 @@ class PlaybackPlan {
 
   /// Each animated track's value when the plan started.
   ///
-  /// Setting these with `TrackController.set` and submitting [animations]
+  /// Setting these with [TrackController.set] and submitting [animations]
   /// again replays the plan.
   final List<TrackValue> startValues;
 }
@@ -104,7 +110,7 @@ class TrackPlayback {
   final bool isWaitingForSync;
 
   /// When the track's current plan started on the controller's playback
-  /// clock, the same timeline used by `TrackController.scrubTo`.
+  /// clock, the same timeline used by [TrackController.scrubTo].
   final Duration startOffset;
 
   /// The latest elapsed position on this track's slot-local axis.
@@ -126,8 +132,9 @@ class TrackPlayback {
   /// `null` for simulations that do not settle within a day.
   final List<Duration?> estimatedStepDurations;
 
-  /// The resolved segments of this plan, oldest first, on the slot-local
-  /// axis. Resolution can run ahead of [playhead].
+  /// The resolved segments of this plan, oldest first, on the slot-local axis.
+  ///
+  /// Resolution can run ahead of [playhead].
   final List<PlaybackSegment> segments;
 
   /// Once a looping plan repeats exactly, the length of one repetition.
@@ -167,8 +174,9 @@ class PlaybackSegment {
   final Duration start;
 
   /// When the segment is over on the timeline: when the next segment starts,
-  /// or for the last one when it settles. `null` while that isn't known
-  /// yet.
+  /// or for the last one when it settles.
+  ///
+  /// Remains `null` while that is not known yet.
   final Duration? end;
 }
 
@@ -193,8 +201,8 @@ extension TrackControllerInspection on TrackController {
   /// Chooses motions that replace the authored ones in future playback.
   ///
   /// Called with each track when a plan starts. A returned motion replaces
-  /// the motion of that track's target steps (`TrackStep.to` and
-  /// `TrackStep.at`); null keeps the authored motions. Plans already playing
+  /// the motion of that track's target steps ([TrackStep.to] and
+  /// [TrackStep.at]); `null` keeps the authored motions. Plans already playing
   /// are not affected.
   Motion? Function(Track<Object> track)? get motionOverride =>
       internalMotionOverride;
@@ -212,8 +220,8 @@ extension TrackControllerInspection on TrackController {
   /// Whether inspection tools show this controller.
   ///
   /// Reads the controller's own setting, else the nearest
-  /// `MotorInspectionScope` of the builder that created it, else true.
-  /// Setting null goes back to the scope. Only kept while a tool is
+  /// [MotorInspectionScope] of the builder that created it, else `true`.
+  /// Setting `null` goes back to the scope. Only kept while a tool is
   /// attached.
   bool get inspectable => MotorInspectionRegistry.inspectableOf(this);
 
@@ -228,9 +236,10 @@ extension TrackControllerInspection on TrackController {
   set inspectionGroup(String? value) =>
       MotorInspectionRegistry.setGroup(this, value);
 
-  /// What created this controller, when motor's builder widgets created it:
-  /// the builder's `Element`. Recorded only in debug builds while an
-  /// inspection observer is attached.
+  /// What created this controller, when Motor's builder widgets created it:
+  /// the builder's `Element`.
+  ///
+  /// Recorded only in debug builds while an inspection observer is attached.
   Object? get debugCreator => MotorInspectionRegistry.creatorOf(this);
 }
 
