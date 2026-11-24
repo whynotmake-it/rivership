@@ -4,13 +4,14 @@ import 'package:coil/coil.dart';
 import 'package:coil_example/src/registry.dart';
 import 'package:coil_example/src/widgets/catalog_page.dart';
 import 'package:coil_example/src/widgets/icons.dart';
+import 'package:coil_example/src/widgets/reference.dart';
 import 'package:flutter/widgets.dart';
 
 const thinkingStepsEntry = CatalogEntry(
   slug: 'thinking-steps',
   title: 'ThinkingSteps',
   group: CatalogGroup.layoutAndDisplay,
-  summary: "An assistant's reasoning, folded into a summary line.",
+  summary: 'The steps an assistant took, folded under a summary line.',
   page: ThinkingStepsPage.new,
 );
 
@@ -49,86 +50,227 @@ class ThinkingStepsPage extends StatefulWidget {
 }
 
 class _ThinkingStepsPageState extends State<ThinkingStepsPage> {
-  var _expanded = false;
-  var _streamExpanded = true;
-  var _streamed = 0;
-  Timer? _stream;
-
-  @override
-  void initState() {
-    super.initState();
-    _replay();
-  }
-
-  @override
-  void dispose() {
-    _stream?.cancel();
-    super.dispose();
-  }
-
-  /// Streams the research steps in again, one every 0.9 s.
-  void _replay() {
-    _stream?.cancel();
-    setState(() {
-      _streamed = 0;
-      _streamExpanded = true;
-    });
-    _stream = Timer.periodic(const Duration(milliseconds: 900), (timer) {
-      setState(() => _streamed++);
-      if (_streamed >= _research.length) timer.cancel();
-    });
-  }
+  var _details = true;
+  var _sources = true;
+  var _icons = true;
+  var _expanded = true;
 
   @override
   Widget build(BuildContext context) => CatalogPage(
     title: 'ThinkingSteps',
-    summary: 'The indicator cycles words while the answer is on its way.',
-    children: [
-      const DemoSection(
-        title: 'Indicator',
-        child: CoilThinkingIndicator(
-          words: [Text('Thinking'), Text('Searching'), Text('Reading')],
-        ),
+    summary:
+        'The steps an assistant took on the way to its answer, folded under a '
+        'summary line, with each new step growing in as it arrives.',
+    hero: const _AgentRun(),
+    usage: '''
+CoilThinkingSteps(
+  label: Text(done ? 'Thought for 4 seconds' : 'Researching'),
+  expanded: expanded,
+  onChanged: (open) => setState(() => expanded = open),
+  steps: [
+    for (final step in streamed)
+      CoilThinkingStep(
+        leading: Icon(step.icon),
+        title: Text(step.title),
+        sources: [for (final site in step.sites) Text(site)],
       ),
+  ],
+)''',
+    notes: const [
+      CatalogNote(
+        'Keyboard',
+        'The trigger is a tab stop, and Enter or Space opens and closes the '
+            'list.',
+      ),
+      CatalogNote(
+        'Motion',
+        'The list opens on standard. A step that arrives later grows in on '
+            'gentle and fades in 80 ms after that, and source badges pop in '
+            'from 0.85 with a blur.',
+      ),
+      CatalogNote(
+        "Do / Don't",
+        'Append steps as they arrive; the ones already there on the first '
+            'build appear at once. A step with only a title draws no '
+            'connector, so it is the details and sources that link the steps '
+            'together.',
+      ),
+      CatalogNote(
+        'Screen readers',
+        'The indicator is a polite live region that announces its word at '
+            'most once every 4 seconds.',
+      ),
+    ],
+    children: [
       DemoSection(
         title: 'Steps',
-        child: CoilThinkingSteps(
-          label: const Text('Thought for 12 seconds'),
-          expanded: _expanded,
-          onChanged: (v) => setState(() => _expanded = v),
-          steps: const [
-            CoilThinkingStep(title: Text('Read the spec')),
-            CoilThinkingStep(
-              title: Text('Compared three options'),
-              detail: Text('Kept the one with the fewest moving parts.'),
+        description:
+            'A connector runs from each glyph down past the details to the '
+            'next step, and a step without a glyph gets a small dot instead.',
+        controls: DemoControls(
+          children: [
+            DemoControl.toggle(
+              label: 'Details',
+              value: _details,
+              onChanged: (v) => setState(() => _details = v),
             ),
-            CoilThinkingStep(title: Text('Wrote the answer')),
+            DemoControl.toggle(
+              label: 'Sources',
+              value: _sources,
+              onChanged: (v) => setState(() => _sources = v),
+            ),
+            DemoControl.toggle(
+              label: 'Glyphs',
+              value: _icons,
+              onChanged: (v) => setState(() => _icons = v),
+            ),
           ],
         ),
+        child: Align(
+          alignment: AlignmentDirectional.topStart,
+          child: CoilThinkingSteps(
+            label: const Text('Thought for 4 seconds'),
+            expanded: _expanded,
+            onChanged: (v) => setState(() => _expanded = v),
+            steps: [
+              for (final step in _research)
+                CoilThinkingStep(
+                  leading: _icons ? step.leading : null,
+                  title: step.title,
+                  detail: _details ? step.detail : null,
+                  sources: _sources ? step.sources : const [],
+                ),
+            ],
+          ),
+        ),
       ),
-      DemoSection(
-        title: 'Streaming',
+      const DemoSection(
+        title: 'Indicator',
         description:
-            'Steps grow in as they arrive. A connector runs from each '
-            "glyph down beside the step's details to the next step.",
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 16,
+            'Shown while the answer is still on its way. The word changes '
+            'every 4 seconds, and the row stays as wide as the longest one.',
+        child: DemoWrap(
+          spacing: 32,
+          crossAxisAlignment: WrapCrossAlignment.start,
           children: [
-            CoilThinkingSteps(
-              label: const Text('Research agent'),
-              expanded: _streamExpanded,
-              onChanged: (v) => setState(() => _streamExpanded = v),
-              steps: _research.take(_streamed).toList(),
+            Labeled(
+              'With a glyph',
+              child: CoilThinkingIndicator(
+                leading: CatalogIcon(Glyph.sparkles),
+                words: [Text('Thinking'), Text('Searching'), Text('Reading')],
+              ),
             ),
-            CoilButton(
-              variant: CoilButtonVariant.secondary,
-              onPressed: _replay,
-              child: const Text('Replay'),
+            Labeled(
+              'Words only',
+              child: CoilThinkingIndicator(
+                words: [Text('Thinking'), Text('Writing')],
+              ),
             ),
           ],
         ),
       ),
     ],
   );
+}
+
+/// An agent run: steps stream in a second apart, the indicator cycles while
+/// it works, and Replay starts it over.
+class _AgentRun extends StatefulWidget {
+  const _AgentRun();
+
+  @override
+  State<_AgentRun> createState() => _AgentRunState();
+}
+
+class _AgentRunState extends State<_AgentRun> {
+  static const _interval = Duration(seconds: 1);
+
+  var _expanded = true;
+  var _streamed = 0;
+  Timer? _timer;
+
+  bool get _done => _streamed >= _research.length;
+
+  @override
+  void initState() {
+    super.initState();
+    _run();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _run() {
+    _timer?.cancel();
+    setState(() {
+      _streamed = 1;
+      _expanded = true;
+    });
+    _timer = Timer.periodic(_interval, (timer) {
+      setState(() => _streamed++);
+      if (_done) timer.cancel();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('Who is Ada Lovelace?', style: text.title),
+            ),
+            CoilButton(
+              variant: CoilButtonVariant.ghost,
+              size: CoilSize.compact,
+              leading: const CatalogIcon(Glyph.rotate),
+              onPressed: _run,
+              child: const Text('Replay'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: CoilThinkingSteps(
+            label: Text(
+              _done ? 'Thought for ${_research.length - 1} seconds' : 'Working',
+            ),
+            expanded: _expanded,
+            onChanged: (v) => setState(() => _expanded = v),
+            steps: _research.take(_streamed).toList(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: EdgeInsetsDirectional.only(
+            start: CoilTheme.metricsOf(context).controlPaddingX,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 24),
+            child: _done
+                ? Text(
+                    'Ada Lovelace wrote the first published program, for the '
+                    'Analytical Engine.',
+                    style: text.body,
+                  )
+                : const CoilThinkingIndicator(
+                    leading: CatalogIcon(Glyph.sparkles),
+                    words: [
+                      Text('Thinking'),
+                      Text('Searching'),
+                      Text('Reading'),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
 }

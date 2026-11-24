@@ -1,120 +1,90 @@
-import 'package:flutter/cupertino.dart';
+import 'package:coil/coil.dart';
+import 'package:flutter/widgets.dart';
 import 'package:heroine/heroine.dart';
-import 'package:heroine_example/main.dart';
-import 'package:pull_down_button/pull_down_button.dart';
+import 'package:heroine_example/src/icons.dart';
 
-class MainSettingsButton extends StatelessWidget {
-  const MainSettingsButton({super.key});
+/// The springs the photo grid and its detail page can fly with.
+enum DemoSpring {
+  bouncy('Bouncy', CupertinoMotion.bouncy()),
+  snappy('Snappy', CupertinoMotion.snappy()),
+  smooth('Smooth', CupertinoMotion.smooth());
 
-  @override
-  Widget build(BuildContext context) {
-    final fadeThroughShuttle = FadeThroughShuttleBuilder(
-      fadeColor: CupertinoColors.extraLightBackgroundGray,
-    );
+  const DemoSpring(this.label, this.motion);
 
-    final chained = ChainedShuttleBuilder(builders: [
-      FlipShuttleBuilder(),
-      fadeThroughShuttle,
-      FadeShuttleBuilder(),
-    ]);
-    return PullDownButton(
-      itemBuilder: (context) => [
-        PullDownMenuTitle(title: Text('Select Spring')),
-        PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.bouncy(),
-          title: 'Bouncy',
-          selected: springNotifier.value == CupertinoMotion.bouncy(),
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.snappy(),
-          title: 'Snappy',
-          selected: springNotifier.value == CupertinoMotion.snappy(),
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.smooth(),
-          title: 'Smooth',
-          selected: springNotifier.value == CupertinoMotion.smooth(),
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => springNotifier.value = CupertinoMotion.interactive(),
-          title: 'Interactive',
-          subtitle: 'Too fast - janky',
-          icon: CupertinoIcons.exclamationmark_triangle,
-          selected: springNotifier.value == CupertinoMotion.interactive(),
-        ),
-        PullDownMenuTitle(title: Text('Flight Shuttle Animation')),
-        PullDownMenuItem.selectable(
-          onTap: () => flightShuttleNotifier.value = const FlipShuttleBuilder(),
-          title: 'Flip',
-          selected: flightShuttleNotifier.value == const FlipShuttleBuilder(),
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => flightShuttleNotifier.value = const FadeShuttleBuilder(),
-          title: 'Fade',
-          selected: flightShuttleNotifier.value == const FadeShuttleBuilder(),
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => flightShuttleNotifier.value = fadeThroughShuttle,
-          title: 'Fade through',
-          selected: flightShuttleNotifier.value == fadeThroughShuttle,
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () => flightShuttleNotifier.value = chained,
-          title: 'Flip + Fade through + Fade',
-          selected: flightShuttleNotifier.value == chained,
-        ),
-        PullDownMenuItem.selectable(
-          onTap: () =>
-              flightShuttleNotifier.value = const SingleShuttleBuilder(),
-          title: 'Standard Flutter Hero',
-          selected: flightShuttleNotifier.value == const SingleShuttleBuilder(),
-        ),
-        PullDownMenuTitle(title: Text('Timing')),
-        PullDownMenuItem.selectable(
-          onTap: () => adjustSpringTimingToRoute.value =
-              !adjustSpringTimingToRoute.value,
-          title: 'Adjust Spring Timing to Route',
-          selected: adjustSpringTimingToRoute.value,
-        ),
-      ],
-      buttonBuilder: (context, showMenu) => CupertinoButton(
-        onPressed: showMenu,
-        padding: EdgeInsets.zero,
-        child: const Icon(CupertinoIcons.settings),
+  final String label;
+  final Motion motion;
+}
+
+/// How a photo changes between its tile and its card.
+enum DemoShuttle {
+  flip('Flip'),
+  fade('Fade'),
+  fadeThrough('Fade through'),
+  flipAndFade('Flip and fade'),
+  destinationOnly('Destination only');
+
+  const DemoShuttle(this.label);
+
+  final String label;
+
+  /// The shuttle builder for this choice. The fade-through color is the
+  /// page's background, so photos dip into the page.
+  HeroineShuttleBuilder build(BuildContext context) {
+    final fadeColor = CoilTheme.of(context).colors.background;
+    return switch (this) {
+      flip => const FlipShuttleBuilder(),
+      fade => const FadeShuttleBuilder(),
+      fadeThrough => FadeThroughShuttleBuilder(fadeColor: fadeColor),
+      flipAndFade => ChainedShuttleBuilder(
+        builders: [
+          const FlipShuttleBuilder(),
+          FadeThroughShuttleBuilder(fadeColor: fadeColor),
+          const FadeShuttleBuilder(),
+        ],
       ),
-    );
+      destinationOnly => const SingleShuttleBuilder(),
+    };
   }
 }
 
-class DetailsPageSettingsButton extends StatelessWidget {
-  const DetailsPageSettingsButton({super.key});
+/// The spring and shuttle the photo grid uses, shared with its detail page.
+final demoSpring = ValueNotifier(DemoSpring.bouncy);
+final demoShuttle = ValueNotifier(DemoShuttle.flip);
+
+/// A ghost settings button that opens the spring and shuttle choices.
+class TransitionSettingsButton extends StatelessWidget {
+  const TransitionSettingsButton({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return PullDownButton(
-      itemBuilder: (context) => [
-        PullDownMenuTitle(title: Text('Aspect Ratio')),
-        PullDownMenuActionsRow.medium(
-          items: [
-            PullDownMenuItem.selectable(
-              icon: CupertinoIcons.square,
-              onTap: () => detailsPageAspectRatio.value = 1.0,
-              title: '1:1',
-              selected: detailsPageAspectRatio.value == 1.0,
-            ),
-            PullDownMenuItem.selectable(
-              icon: CupertinoIcons.rectangle,
-              onTap: () => detailsPageAspectRatio.value = 1.5,
-              title: '1.5:1',
-              selected: detailsPageAspectRatio.value == 1.5,
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([demoSpring, demoShuttle]),
+    builder: (context, _) => CoilDropdown(
+      entries: [
+        const CoilMenuLabel(Text('Spring')),
+        for (final option in DemoSpring.values)
+          CoilAction(
+            label: Text(option.label),
+            mark: CoilActionMark.radio,
+            selected: demoSpring.value == option,
+            onPressed: () => demoSpring.value = option,
+          ),
+        const CoilMenuSeparator(),
+        const CoilMenuLabel(Text('Shuttle')),
+        for (final option in DemoShuttle.values)
+          CoilAction(
+            label: Text(option.label),
+            mark: CoilActionMark.radio,
+            selected: demoShuttle.value == option,
+            onPressed: () => demoShuttle.value = option,
+          ),
       ],
-      buttonBuilder: (context, showMenu) => CupertinoButton(
-        child: const Icon(CupertinoIcons.photo),
-        onPressed: showMenu,
+      builder: (context, menu) => CoilButton.icon(
+        variant: CoilButtonVariant.ghost,
+        selected: menu.isOpen,
+        onPressed: menu.open,
+        icon: const DemoIcon(Glyph.settings),
+        semanticLabel: 'Transition settings',
       ),
-    );
-  }
+    ),
+  );
 }
