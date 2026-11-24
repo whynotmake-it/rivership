@@ -635,8 +635,7 @@ void main() {
         final nextCycle = playback.segmentsView.firstWhere(
           (segment) => segment.stepIndex == 0 && segment.cycle == 1,
         );
-        final fromRest =
-            const Motion.smoothSpring().createSimulation(start: 2, end: 1);
+        final fromRest = const Motion.smoothSpring().createSimulation(start: 2);
         playback.advanceTo(nextCycle.start + 0.05);
         expect(playback.values.single, closeTo(fromRest.x(0.05), 1e-9));
         expect(playback.velocities.single, closeTo(fromRest.dx(0.05), 1e-9));
