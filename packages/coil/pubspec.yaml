@@ -20,6 +20,8 @@ dependencies:
   fixed_ticker: ^0.2.0
   flutter:
     sdk: flutter
+  # Only lib/src/components/markdown/ imports it (import_rules_test).
+  markdown: ^7.3.1
   material_ui: ^1.11.0
   motor: ^2.0.0-dev.0
   motor_widgets: ^0.1.0-dev.0

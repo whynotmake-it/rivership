@@ -31,6 +31,7 @@ export 'input.dart';
 export 'input_copy.dart';
 export 'input_message.dart';
 export 'kbd.dart';
+export 'markdown.dart';
 export 'primitives.dart';
 export 'queued_stack.dart';
 export 'radio_group.dart';

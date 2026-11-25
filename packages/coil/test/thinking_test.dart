@@ -590,4 +590,144 @@ void main() {
     ).style.color;
     expect(color, red);
   });
+
+  group('CoilThinkingSteps step status', () {
+    const running = CoilThinkingStep(
+      title: Text('Searching the library…'),
+      status: CoilThinkingStepStatus.running,
+    );
+    const failed = CoilThinkingStep(
+      title: Text('Could not open the PDF'),
+      status: CoilThinkingStepStatus.error,
+    );
+    const done = CoilThinkingStep(title: Text('Read the docs'));
+
+    Color? dotColor(WidgetTester tester, String title) {
+      final row = find.ancestor(
+        of: find.text(title),
+        matching: find.byType(Row),
+      );
+      final dot = tester.widget<DecoratedBox>(
+        find
+            .descendant(of: row.first, matching: find.byType(DecoratedBox))
+            .first,
+      );
+      return (dot.decoration as ShapeDecoration).color;
+    }
+
+    double dotSize(WidgetTester tester, String title) {
+      final row = find.ancestor(
+        of: find.text(title),
+        matching: find.byType(Row),
+      );
+      return tester
+          .getSize(
+            find
+                .descendant(of: row.first, matching: find.byType(DecoratedBox))
+                .first,
+          )
+          .width;
+    }
+
+    testWidgets('a running step breathes and reads In progress until it '
+        'finishes, then settles', (tester) async {
+      final handle = tester.ensureSemantics();
+      final content = await _pumpLive(
+        tester,
+        const CoilThinkingSteps(
+          label: Text('Thinking'),
+          steps: [done, running],
+          expanded: true,
+          onChanged: _ignore,
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        tester.getSemantics(find.text('Searching the library…')),
+        matchesSemantics(label: 'Searching the library…', value: 'In progress'),
+      );
+      final sizes = <double>{};
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 120));
+        sizes.add(dotSize(tester, 'Searching the library…'));
+      }
+      expect(sizes.length, greaterThan(1), reason: 'the dot breathes');
+      final still = dotSize(tester, 'Read the docs');
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(dotSize(tester, 'Read the docs'), still, reason: 'done holds');
+
+      content.value = const CoilThinkingSteps(
+        label: Text('Thinking'),
+        steps: [
+          done,
+          CoilThinkingStep(title: Text('Searched the library')),
+        ],
+        expanded: true,
+        onChanged: _ignore,
+      );
+      // Settles: nothing keeps animating once every step is done.
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(find.text('Searched the library')),
+        matchesSemantics(label: 'Searched the library'),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('a failed step reads Failed, its dot in the destructive '
+        'color', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _app(const _Steps(steps: [failed], expanded: true)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(find.text('Could not open the PDF')),
+        matchesSemantics(label: 'Could not open the PDF', value: 'Failed'),
+      );
+      expect(
+        dotColor(tester, 'Could not open the PDF'),
+        CoilThemeData.light.colors.destructive,
+      );
+      handle.dispose();
+    });
+
+    testWidgets('a running step breathes at the TickerRateScope rate', (
+      tester,
+    ) async {
+      Future<int> distinctSizes(TickerRate rate) async {
+        await tester.pumpWidget(
+          _app(
+            TickerRateScope(
+              rate: rate,
+              child: const _Steps(steps: [running], expanded: true),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+        final sizes = <double>{};
+        // One second at 60 Hz.
+        for (var i = 0; i < 60; i++) {
+          await tester.pump(const Duration(microseconds: 16667));
+          sizes.add(dotSize(tester, 'Searching the library…'));
+        }
+        await tester.pumpWidget(const SizedBox());
+        return sizes.length;
+      }
+
+      expect(await distinctSizes(const TickerRate.vsync()), greaterThan(30));
+      expect(await distinctSizes(TickerRate.fps(10)), lessThanOrEqualTo(11));
+    });
+
+    testWidgets('reduced motion: a running step holds still', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          const _Steps(steps: [running], expanded: true),
+          reduceMotion: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+  });
 }

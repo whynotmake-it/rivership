@@ -133,7 +133,8 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
                           child: Center(
                             child:
                                 step.leading ??
-                                _Dot(
+                                _StatusDot(
+                                  status: step.status,
                                   color: style.glyphColor!,
                                   size: style.dotSize!,
                                 ),
@@ -146,9 +147,22 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              DefaultTextStyle(
-                                style: style.titleStyle!,
-                                child: step.title,
+                              Semantics(
+                                value: switch (step.status) {
+                                  CoilThinkingStepStatus.done => null,
+                                  CoilThinkingStepStatus.running =>
+                                    'In progress',
+                                  CoilThinkingStepStatus.error => 'Failed',
+                                },
+                                child: DefaultTextStyle(
+                                  style: style.titleStyle!,
+                                  child: CoilShimmer(
+                                    active:
+                                        step.status ==
+                                        CoilThinkingStepStatus.running,
+                                    child: step.title,
+                                  ),
+                                ),
                               ),
                               if (step.detail case final detail?)
                                 Padding(
@@ -307,6 +321,42 @@ class _ConnectorLayout extends MultiChildLayoutDelegate {
 }
 
 /// The dot shown when a step has no leading glyph.
+/// The default glyph, by status: the style's dot when done; a dot in the
+/// foreground color breathing between 55 % and 100 % of [size] × 4⁄3 while
+/// running (still under reduced motion); a destructive dot when failed.
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({
+    required this.status,
+    required this.color,
+    required this.size,
+  });
+
+  final CoilThinkingStepStatus status;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    return switch (status) {
+      CoilThinkingStepStatus.done => _Dot(color: color, size: size),
+      CoilThinkingStepStatus.error => _Dot(
+        color: colors.destructive,
+        size: size,
+      ),
+      CoilThinkingStepStatus.running => CoilPulse(
+        builder: (context, t) => Opacity(
+          opacity: 0.55 + 0.45 * t,
+          child: _Dot(
+            color: colors.foreground,
+            size: size * 4 / 3 * (0.55 + 0.45 * t),
+          ),
+        ),
+      ),
+    };
+  }
+}
+
 class _Dot extends StatelessWidget {
   const _Dot({required this.color, required this.size});
 

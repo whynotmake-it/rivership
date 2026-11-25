@@ -46,11 +46,17 @@ const _packageLayers = {
   'corner_radius_plugin': {'primitives'},
   'material_ui': {'primitives'},
   'cupertino_ui': {'primitives'},
+  'markdown': {'components'},
 };
 
 /// Packages kept behind a few primitive files, so swapping them out
 /// touches few places.
 const _packageFiles = {
+  // Kept to one component, so CoilMarkdown can move to its own package.
+  'markdown': {
+    'src/components/markdown/markdown.dart',
+    'src/components/markdown/markdown_session.dart',
+  },
   'corner_radius_plugin': {'src/primitives/screen_radius.dart'},
   'scroll_drag_detector': {
     'src/primitives/drawer.dart',
@@ -194,6 +200,33 @@ void main() {
                 if (pattern.hasMatch(line)) '${file.path}:${n + 1} uses $name',
     ];
     expect(violations, isEmpty);
+  });
+
+  test('every animation ticks at the TickerRateScope rate', () {
+    // Motor's builders and fixed-ticker mixins honor TickerRateScope (a capped
+    // frame rate); Flutter's own tickers and controllers ignore it.
+    final banned = {
+      'TickerProviderStateMixin': RegExp(
+        r'\b(Single)?TickerProviderStateMixin\b',
+      ),
+      'AnimationController': RegExp(r'\bAnimationController\b'),
+    };
+    final violations = <String>[
+      for (final file in Directory('lib').listSync(recursive: true))
+        if (file is File && file.path.endsWith('.dart'))
+          for (final (n, line) in file.readAsLinesSync().indexed)
+            if (!line.trimLeft().startsWith('//'))
+              for (final MapEntry(key: name, value: pattern) in banned.entries)
+                if (pattern.hasMatch(line)) '${file.path}:${n + 1} uses $name',
+    ];
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'Animate with Motor (TrackBuilder, the motion builders) or, for a '
+          'controller, SingleFixedTickerProviderStateMixin / '
+          'FixedTickerProviderStateMixin.',
+    );
   });
 
   test('no Track carries a baked-in motion in components', () {

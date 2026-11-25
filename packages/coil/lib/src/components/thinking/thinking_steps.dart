@@ -11,6 +11,21 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
 
+/// Where a [CoilThinkingStep] stands.
+enum CoilThinkingStepStatus {
+  /// Finished: a small muted dot.
+  done,
+
+  /// Under way: the dot breathes in the foreground color and a highlight
+  /// sweeps across the title. Write the title in the present tense
+  /// ("Searching the library…"), since reduced motion stills both.
+  running,
+
+  /// Failed: the dot turns [CoilColors.destructive]. Say what failed in the
+  /// title or [CoilThinkingStep.detail]; color alone doesn't.
+  error,
+}
+
 /// A single reasoning step displayed in [CoilThinkingSteps].
 @immutable
 class CoilThinkingStep {
@@ -21,7 +36,15 @@ class CoilThinkingStep {
     this.sources = const [],
     this.image,
     this.leading,
+    this.status = CoilThinkingStepStatus.done,
   });
+
+  /// Whether the step is done, running or failed.
+  ///
+  /// It sets the default dot's look (a [leading] glyph replaces the dot),
+  /// sweeps a highlight across a running step's title, and tells screen
+  /// readers "In progress" or "Failed".
+  final CoilThinkingStepStatus status;
 
   /// What the step did, in one line.
   ///
@@ -43,7 +66,7 @@ class CoilThinkingStep {
 
   /// A glyph before the title, styled by [IconTheme].
   ///
-  /// Shows a small dot when null.
+  /// Shows a small dot when null, which follows [status].
   final Widget? leading;
 }
 

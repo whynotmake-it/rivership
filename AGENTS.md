@@ -20,6 +20,11 @@
 - Error handling: Use assert statements for parameter validation
 - File structure: Organize by feature in `src/` subdirectories
 
+## Animation (Coil)
+- Animate on Motor so a `TickerRateScope` can run every animation at a reduced frame rate. Use `TrackBuilder` or the motion builders; a looping effect such as a shimmer or a pulse is a `TrackBuilder` with a `TrackStep.loop`.
+- When a controller is unavoidable, take its ticker from `SingleFixedTickerProviderStateMixin` / `FixedTickerProviderStateMixin`. Never use Flutter's `TickerProviderStateMixin`, `SingleTickerProviderStateMixin` or a bare `AnimationController`; `import_rules_test.dart` fails on them.
+- Under reduced motion a looping effect rests, so the words must still say the status ("Searching…").
+
 ## Testing
 - Don't add tests unless they cover real behavior, and each one covers a lot of it at once.
 - Don't touch existing tests unless the instructions ask for a change in behavior that a test locks in. Then change only what that behavior change requires.
