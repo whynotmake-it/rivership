@@ -23,7 +23,7 @@ dependencies:
     path: ../../example_design
   flutter:
     sdk: flutter
-  motor: ^1.1.0
+  motor: ^2.0.0-dev.0
   # Only for the monospace font the code blocks are set in.
   motor_example:
     path: ../../motor/example
@@ -33,7 +33,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  snaptest: ^1.0.0-dev.3
+  snaptest: ^1.0.0-dev.7
 
 flutter:
   uses-material-design: false

@@ -1,3 +1,8 @@
+## 1.0.0-dev.4
+
+ - **FEAT**: Add `ExcludeScrollDrag` to opt nested draggable content (such as maps, canvases, or horizontal carousels) out of ancestor `ScrollDragDetector`s on selected axes (#384).
+ - **DOCS**: Refresh README and standardize dartdocs (#370, #422).
+
 ## 1.0.0-dev.3
 
  - **FIX**(scroll_drag_detector): preserve handoff with custom scroll behaviors (#339).

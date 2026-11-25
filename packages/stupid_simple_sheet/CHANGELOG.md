@@ -1,3 +1,10 @@
+## 1.0.0-dev.8
+
+ - **DEPS**: Update `motor` to `^2.0.0-dev.0` and `scroll_drag_detector` to `^1.0.0-dev.4`.
+ - **FIX**: Never snap a sheet closed when complying with an updated snapping configuration (#387).
+ - **FIX**: Make sheets follow the pointer 1:1 when content is shorter than the sheet (#389).
+ - **DOCS**: Rebuild the example on Coil with focused demos and a playground (#386); fix `DismissalMode.shrink` and handoff docs and dartdocs (#420).
+
 ## 1.0.0-dev.7
 
  - **FIX**(scroll_drag_detector): preserve handoff with custom scroll behaviors (#339).

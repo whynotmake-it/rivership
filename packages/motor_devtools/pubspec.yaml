@@ -14,11 +14,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  motor: ^1.1.0
+  motor: ^2.0.0-dev.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   leak_tracker: ^11.0.2
   lintervention: ^0.3.1
-  snaptest: ^1.0.0-dev.3
+  snaptest: ^1.0.0-dev.7

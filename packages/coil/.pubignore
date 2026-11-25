@@ -1,5 +1,12 @@
-# Not part of the package: the catalog's build output and the tests'.
+# Not part of the package: build output, tests, goldens, and tooling.
 build/
 coverage/
+coverage.svg
 test/
 tool/
+example/build/
+example/coverage/
+example/test/
+**/.snaptest/
+**/golden/
+**/goldens/

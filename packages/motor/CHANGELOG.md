@@ -1,4 +1,6 @@
-> Note: This is the Motor 2.0 release. Existing `Motion.*` factories,
+## 2.0.0-dev.0
+
+> Note: This is the first Motor 2.0 pre-release. Existing `Motion.*` factories,
 > `MotionController`, `MotionBuilder`, `MotionSequence`,
 > `SequenceMotionController`, and `SequenceMotionBuilder` stay
 > source-compatible with a few exceptions, though several runtime behaviors

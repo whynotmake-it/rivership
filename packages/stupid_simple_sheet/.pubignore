@@ -21,10 +21,18 @@ migrate_working_dir/
 .dart_tool/
 .packages
 build/
+coverage/
+coverage.svg
 pubspec_overrides.yaml
 
-# Screenshots
+# Tests and goldens
+test/
+example/build/
+example/coverage/
+example/test/
 **/.snaptest/
+**/golden/
+**/goldens/
 
 # Doc assets (gifs are referenced in README via relative paths,
 # but they bloat the pub.dev package archive)

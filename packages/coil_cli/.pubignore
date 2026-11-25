@@ -1,4 +1,8 @@
 # Not part of the package.
 build/
 coverage/
+coverage.svg
 test/
+**/.snaptest/
+**/golden/
+**/goldens/

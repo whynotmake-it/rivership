@@ -1,3 +1,8 @@
+## 1.0.0-dev.0
+
+ - **BREAKING** **DEPS**: Require `motor: ^2.0.0-dev.0` and `heroine: ^1.0.0-dev.0`.
+ - **DOCS**: Refresh README and fix warning callout formatting (#370, #424).
+
 ## 0.4.0+10
 
  - Update a dependency to the latest release.

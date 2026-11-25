@@ -1,3 +1,8 @@
+## 1.0.0-dev.7
+
+ - **BREAKING** **FEAT**: Replace the video pointer painter with a stateful widget overlay (`SnapVideoSettings.overlay` / `SnapPointerOverlay`) for smooth animated pointer indicators in recorded videos (#393).
+ - **DOCS**: Resolve doc/code contradictions, reorganize video pitfalls and limits, and standardize dartdocs (#370, #421).
+
 ## 1.0.0-dev.6
 
  - **PERF**(snaptest): stream raw video frames without PNG spooling (#340).
