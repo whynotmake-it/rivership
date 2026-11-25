@@ -43,6 +43,7 @@ export 'src/primitives/scrollbar.dart';
 export 'src/primitives/selection_blocks.dart'
     hide CoilSelectionPainter, CoilSelectionRun, CoilSelectionRuns;
 export 'src/primitives/sheet.dart';
+export 'src/primitives/shimmer.dart';
 export 'src/primitives/size_switcher.dart';
 export 'src/primitives/surface.dart';
 export 'src/primitives/text_field_core.dart';
