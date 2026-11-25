@@ -342,12 +342,16 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
       (_, final Color color) => CoilScrollEdgeFade.solid(
         axis: widget.axis,
         extent: style.fadeExtent!,
+        startExtent: style.fadeStartExtent,
+        endExtent: style.fadeEndExtent,
         color: color,
         child: child,
       ),
       _ => CoilScrollEdgeFade(
         axis: widget.axis,
         extent: style.fadeExtent!,
+        startExtent: style.fadeStartExtent,
+        endExtent: style.fadeEndExtent,
         child: child,
       ),
     };

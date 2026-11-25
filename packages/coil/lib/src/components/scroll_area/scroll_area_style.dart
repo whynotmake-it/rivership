@@ -25,6 +25,8 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     this.crossAxisMargin,
     this.mainAxisMargin,
     this.fadeExtent,
+    this.fadeStartExtent,
+    this.fadeEndExtent,
     this.fadeColor,
     this.lineStep,
     this.motions,
@@ -76,8 +78,17 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// The gap between the thumb and the viewport's ends.
   final double? mainAxisMargin;
 
-  /// How far the edge fades reach.
+  /// How far the edge fades reach, unless [fadeStartExtent] or
+  /// [fadeEndExtent] says otherwise.
   final double? fadeExtent;
+
+  /// How far the fade where the scroll starts reaches (the top of a
+  /// vertical area). Null uses [fadeExtent].
+  final double? fadeStartExtent;
+
+  /// How far the fade where the scroll ends reaches (the bottom of a
+  /// vertical area). Null uses [fadeExtent].
+  final double? fadeEndExtent;
 
   /// The solid background the edges fade into.
   ///
@@ -124,6 +135,8 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
           crossAxisMargin: other.crossAxisMargin ?? crossAxisMargin,
           mainAxisMargin: other.mainAxisMargin ?? mainAxisMargin,
           fadeExtent: other.fadeExtent ?? fadeExtent,
+          fadeStartExtent: other.fadeStartExtent ?? fadeStartExtent,
+          fadeEndExtent: other.fadeEndExtent ?? fadeEndExtent,
           fadeColor: other.fadeColor ?? fadeColor,
           lineStep: other.lineStep ?? lineStep,
           motions: other.motions == null
@@ -142,6 +155,8 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     crossAxisMargin,
     mainAxisMargin,
     fadeExtent,
+    fadeStartExtent,
+    fadeEndExtent,
     fadeColor,
     lineStep,
     motions,

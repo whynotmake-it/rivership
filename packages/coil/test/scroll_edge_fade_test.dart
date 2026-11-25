@@ -20,6 +20,9 @@ Future<({Color start, Color end})> _edges(
   double length = 1000,
   double? scrollTo,
   bool solid = false,
+  double? startExtent,
+  double? endExtent,
+  double inset = 1,
 }) async {
   final controller = ScrollController();
   addTearDown(controller.dispose);
@@ -51,9 +54,16 @@ Future<({Color start, Color end})> _edges(
                     ? CoilScrollEdgeFade.solid(
                         axis: axis,
                         color: _white,
+                        startExtent: startExtent,
+                        endExtent: endExtent,
                         child: list,
                       )
-                    : CoilScrollEdgeFade(axis: axis, child: list),
+                    : CoilScrollEdgeFade(
+                        axis: axis,
+                        startExtent: startExtent,
+                        endExtent: endExtent,
+                        child: list,
+                      ),
               ),
             ),
           ),
@@ -68,8 +78,11 @@ Future<({Color start, Color end})> _edges(
   }
   final rect = tester.getRect(find.byKey(_probe));
   Offset at(double t) => axis == Axis.vertical
-      ? Offset(rect.center.dx, rect.top + 1 + (rect.height - 2) * t)
-      : Offset(rect.left + 1 + (rect.width - 2) * t, rect.center.dy);
+      ? Offset(rect.center.dx, rect.top + inset + (rect.height - 2 * inset) * t)
+      : Offset(
+          rect.left + inset + (rect.width - 2 * inset) * t,
+          rect.center.dy,
+        );
   return (
     start: await colorAt(tester, find.byKey(_probe), at(0)),
     end: await colorAt(tester, find.byKey(_probe), at(1)),
@@ -127,4 +140,21 @@ void main() {
     expect(_faded(edges.start), isFalse);
     expect(isNear(edges.end, _white), isTrue);
   });
+
+  for (final solid in [false, true]) {
+    testWidgets('each end can fade over its own extent '
+        '(${solid ? 'solid' : 'mask'})', (tester) async {
+      // 12 px in from each edge: inside a 40 px fade, past an 8 px one.
+      final edges = await _edges(
+        tester,
+        scrollTo: 400,
+        solid: solid,
+        startExtent: 8,
+        endExtent: 40,
+        inset: 12,
+      );
+      expect(_faded(edges.start), isFalse);
+      expect(_faded(edges.end), isTrue);
+    });
+  }
 }
