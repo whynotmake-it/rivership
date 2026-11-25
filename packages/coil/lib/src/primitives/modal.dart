@@ -772,7 +772,7 @@ class _FloatingPanel extends StatefulWidget {
 }
 
 class _FloatingPanelState extends State<_FloatingPanel>
-    with SingleTickerProviderStateMixin {
+    with SingleFixedTickerProviderStateMixin {
   /// How far the panel is moved along the dismiss axis, in fractions of its
   /// extent there (so a spring's velocity is in extents per second).
   late final _slide = SingleMotionController(

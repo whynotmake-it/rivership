@@ -202,6 +202,33 @@ void main() {
     expect(violations, isEmpty);
   });
 
+  test('every animation ticks at the TickerRateScope rate', () {
+    // Motor's builders and fixed-ticker mixins honor TickerRateScope (a capped
+    // frame rate); Flutter's own tickers and controllers ignore it.
+    final banned = {
+      'TickerProviderStateMixin': RegExp(
+        r'\b(Single)?TickerProviderStateMixin\b',
+      ),
+      'AnimationController': RegExp(r'\bAnimationController\b'),
+    };
+    final violations = <String>[
+      for (final file in Directory('lib').listSync(recursive: true))
+        if (file is File && file.path.endsWith('.dart'))
+          for (final (n, line) in file.readAsLinesSync().indexed)
+            if (!line.trimLeft().startsWith('//'))
+              for (final MapEntry(key: name, value: pattern) in banned.entries)
+                if (pattern.hasMatch(line)) '${file.path}:${n + 1} uses $name',
+    ];
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'Animate with Motor (TrackBuilder, the motion builders) or, for a '
+          'controller, SingleFixedTickerProviderStateMixin / '
+          'FixedTickerProviderStateMixin.',
+    );
+  });
+
   test('no Track carries a baked-in motion in components', () {
     final violations = <String>[
       for (final file in Directory('lib/src').listSync(recursive: true))

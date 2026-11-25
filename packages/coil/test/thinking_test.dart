@@ -692,6 +692,33 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('a running step breathes at the TickerRateScope rate', (
+      tester,
+    ) async {
+      Future<int> distinctSizes(TickerRate rate) async {
+        await tester.pumpWidget(
+          _app(
+            TickerRateScope(
+              rate: rate,
+              child: const _Steps(steps: [running], expanded: true),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+        final sizes = <double>{};
+        // One second at 60 Hz.
+        for (var i = 0; i < 60; i++) {
+          await tester.pump(const Duration(microseconds: 16667));
+          sizes.add(dotSize(tester, 'Searching the library…'));
+        }
+        await tester.pumpWidget(const SizedBox());
+        return sizes.length;
+      }
+
+      expect(await distinctSizes(const TickerRate.vsync()), greaterThan(30));
+      expect(await distinctSizes(TickerRate.fps(10)), lessThanOrEqualTo(11));
+    });
+
     testWidgets('reduced motion: a running step holds still', (tester) async {
       await tester.pumpWidget(
         _app(
