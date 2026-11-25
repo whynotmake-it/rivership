@@ -16,6 +16,10 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// Anything else needs an entry in [_allowed] with the reason.
 final _allowed = {
+  'components/markdown/markdown.dart CoilMarkdown.data':
+      'markdown source, parsed into widgets rather than shown as it is',
+  'components/markdown/markdown_session.dart CoilMarkdownSegment.source':
+      'the markdown a segment was parsed from, not a label',
   'primitives/text_field_core.dart CoilTextFieldCore.obscuringCharacter':
       'the character that hides obscured text, not a label',
   'components/input/input.dart CoilInput.obscuringCharacter':

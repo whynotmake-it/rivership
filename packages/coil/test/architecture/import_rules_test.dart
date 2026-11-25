@@ -46,11 +46,17 @@ const _packageLayers = {
   'corner_radius_plugin': {'primitives'},
   'material_ui': {'primitives'},
   'cupertino_ui': {'primitives'},
+  'markdown': {'components'},
 };
 
 /// Packages kept behind a few primitive files, so swapping them out
 /// touches few places.
 const _packageFiles = {
+  // Kept to one component, so CoilMarkdown can move to its own package.
+  'markdown': {
+    'src/components/markdown/markdown.dart',
+    'src/components/markdown/markdown_session.dart',
+  },
   'corner_radius_plugin': {'src/primitives/screen_radius.dart'},
   'scroll_drag_detector': {
     'src/primitives/drawer.dart',

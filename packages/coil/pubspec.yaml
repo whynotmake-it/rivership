@@ -18,6 +18,8 @@ dependencies:
   corner_radius_plugin: ^1.0.0
   cupertino_ui: ^1.1.6
   fixed_ticker: ^0.2.0
+  # Only lib/src/components/markdown/ imports it (import_rules_test).
+  markdown: ^7.3.1
   flutter:
     sdk: flutter
   material_ui: ^1.11.0
