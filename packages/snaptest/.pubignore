@@ -17,18 +17,19 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# See https://www.dartlang.org/guides/libraries/private-files
-
 # Files and directories created by pub
 .dart_tool/
 .packages
 build/
+coverage/
+coverage.svg
 pubspec_overrides.yaml
 
-# Test assets
+# Tests and goldens
+test/
 **/.snaptest/
-test/custom_screenshots/
 **/golden/
+**/goldens/
 
-# Doc assets
+# Doc source files
 doc/banner.pxd

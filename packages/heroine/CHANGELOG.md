@@ -1,3 +1,8 @@
+## 1.0.0-dev.0
+
+ - **BREAKING** **DEPS**: Require `motor: ^2.0.0-dev.0`.
+ - **DOCS**: Rebuild the example app on Coil with real photos (#377) and refresh README (#370, #423).
+
 ## 0.7.2+2
 
  - **FIX**(heroine): hide incoming page until the first flight frame (#348).

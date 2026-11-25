@@ -1,1 +1,11 @@
 benchmark/
+build/
+coverage/
+coverage.svg
+test/
+example/build/
+example/coverage/
+example/test/
+**/.snaptest/
+**/golden/
+**/goldens/

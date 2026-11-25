@@ -1,1 +1,7 @@
-test/goldens/
+build/
+coverage/
+coverage.svg
+test/
+**/.snaptest/
+**/golden/
+**/goldens/
