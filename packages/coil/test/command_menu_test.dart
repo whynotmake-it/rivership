@@ -152,6 +152,53 @@ void main() {
     expect(trigger.hasFocus, isTrue);
   });
 
+  testWidgets('a short pick list on a phone can hug its rows and keep the '
+      'keyboard down until the field is tapped', (tester) async {
+    useScreen(tester, TestScreen.phone);
+    await tester.pumpWidget(
+      testApp(
+        tier: CoilTier.touch,
+        home: Builder(
+          builder: (context) => Center(
+            child: CoilButton(
+              onPressed: () => showCoilCommandMenu(
+                context: context,
+                autofocus: false,
+                holdHeight: false,
+                entries: [
+                  for (var i = 0; i < 3; i++)
+                    CoilAction(
+                      label: Text('Chat $i'),
+                      searchText: 'Chat $i',
+                      onPressed: () {},
+                    ),
+                ],
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    final field = find.byType(EditableText);
+    EditableText editable() => tester.widget<EditableText>(field);
+    expect(editable().focusNode.hasFocus, isFalse);
+    // The panel ends near its last row instead of filling the screen.
+    final panel = tester.getRect(find.byType(CoilSheetPanel));
+    expect(panel.height, lessThan(TestScreen.phone.size.height / 2));
+    expect(
+      panel.bottom - tester.getRect(find.text('Chat 2')).bottom,
+      lessThan(panel.height / 2),
+    );
+
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    expect(editable().focusNode.hasFocus, isTrue);
+  });
+
   testWidgets('on a phone a downward swipe closes the menu only from the top '
       'of its list, and otherwise scrolls the list', (tester) async {
     useScreen(tester, TestScreen.phone);
