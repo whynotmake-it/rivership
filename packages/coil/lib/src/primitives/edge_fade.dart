@@ -6,8 +6,9 @@ import 'package:motor/motor.dart';
 /// Fades the edges of [child], a scrollable, where content is scrolled out
 /// of view.
 ///
-/// Each edge fades in as content scrolls away from it, up to [extent], and
-/// the amount springs on the theme's `fade` tokens. It reads only the
+/// Each edge fades in as content scrolls away from it, up to [extent] (or
+/// [startExtent] and [endExtent] for each end on its own), and the amount
+/// springs on the theme's `fade` tokens. It reads only the
 /// notifications [child] sends, so it is right on first layout and when
 /// the content changes size, and it follows the scroll direction: the right
 /// edge in left-to-right, the left in right-to-left, the top of a reversed
@@ -24,6 +25,8 @@ class CoilScrollEdgeFade extends StatefulWidget {
     super.key,
     this.axis = Axis.vertical,
     this.extent = 32,
+    this.startExtent,
+    this.endExtent,
   }) : color = null;
 
   /// Fades the edges by painting gradients from [color] over [child].
@@ -33,6 +36,8 @@ class CoilScrollEdgeFade extends StatefulWidget {
     super.key,
     this.axis = Axis.vertical,
     this.extent = 32,
+    this.startExtent,
+    this.endExtent,
   });
 
   /// The scrollable.
@@ -41,8 +46,23 @@ class CoilScrollEdgeFade extends StatefulWidget {
   /// The scroll axis whose edges fade.
   final Axis axis;
 
-  /// How far each fade reaches.
+  /// How far each fade reaches, unless [startExtent] or [endExtent] says
+  /// otherwise.
   final double extent;
+
+  /// How far the fade where the scroll starts reaches (the top of a
+  /// vertical list, the bottom of a reversed one). Defaults to [extent].
+  final double? startExtent;
+
+  /// How far the fade where the scroll ends reaches (the bottom of a
+  /// vertical list, the top of a reversed one). Defaults to [extent].
+  ///
+  /// A chat whose composer floats over its end, for one, fades its end
+  /// from under the composer to well above it.
+  final double? endExtent;
+
+  double get _startExtent => startExtent ?? extent;
+  double get _endExtent => endExtent ?? extent;
 
   /// The background to fade into, for [CoilScrollEdgeFade.solid].
   final Color? color;
@@ -59,13 +79,10 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
 
   bool _onMetrics(ScrollMetrics metrics, int depth) {
     if (depth != 0 || metrics.axis != widget.axis) return false;
-    final extent = widget.extent;
-    final before = extent <= 0
-        ? 0.0
-        : (metrics.extentBefore / extent).clamp(0.0, 1.0);
-    final after = extent <= 0
-        ? 0.0
-        : (metrics.extentAfter / extent).clamp(0.0, 1.0);
+    double hidden(double extent, double length) =>
+        extent <= 0 ? 0.0 : (length / extent).clamp(0.0, 1.0);
+    final before = hidden(widget._startExtent, metrics.extentBefore);
+    final after = hidden(widget._endExtent, metrics.extentAfter);
     final direction = metrics.axisDirection;
     if (before != _before || after != _after || direction != _direction) {
       setState(() {
@@ -114,8 +131,8 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
         child: child,
         builder: (context, after, child) {
           final edges = _Edges(
-            start: before.clamp(0.0, 1.0) * widget.extent,
-            end: after.clamp(0.0, 1.0) * widget.extent,
+            start: before.clamp(0.0, 1.0) * widget._startExtent,
+            end: after.clamp(0.0, 1.0) * widget._endExtent,
             from: from,
             to: to,
           );
