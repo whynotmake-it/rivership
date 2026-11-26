@@ -19,6 +19,10 @@ import 'package:motor_widgets/motor_widgets.dart';
 /// pass the button's rect as [origin] ([CoilModalRoute.originOf] with the
 /// button's context) and the floating panel shows it came from there.
 ///
+/// [autofocus] puts the cursor in the search field as it opens (the
+/// keyboard comes up on a phone); [holdHeight] keeps a floating panel's
+/// height while the results change ([CoilCommandMenu.holdHeight]).
+///
 /// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
 /// the app's own, mapped in [Shortcuts] near the app's root (or registered
 /// with [ShortcutRegistry] from any screen) and handled by [Actions] below
@@ -80,6 +84,8 @@ Future<void> showCoilCommandMenu({
   Widget? footer = const CoilCommandMenuFooter(),
   CoilMotion? motion,
   Rect? origin,
+  bool autofocus = true,
+  bool holdHeight = true,
 }) => showCoilModal<void>(
   context: context,
   presentation: CoilCommandMenu.presentationOf(context),
@@ -93,6 +99,8 @@ Future<void> showCoilCommandMenu({
     empty: empty,
     footer: footer,
     motion: motion,
+    autofocus: autofocus,
+    holdHeight: holdHeight,
   ),
 );
 
@@ -116,6 +124,8 @@ class CoilCommandMenu extends StatelessWidget {
     this.empty = const Text('No results'),
     this.footer = const CoilCommandMenuFooter(),
     this.motion,
+    this.autofocus = true,
+    this.holdHeight = true,
   });
 
   /// The rows and labels.
@@ -141,6 +151,19 @@ class CoilCommandMenu extends StatelessWidget {
 
   /// Motion tokens for the list, instead of the theme's.
   final CoilMotion? motion;
+
+  /// Whether the search field takes focus as the menu opens, so typing
+  /// filters at once. On a phone that raises the keyboard; pass false for a
+  /// list that's mostly tapped, where the field narrows it on demand.
+  final bool autofocus;
+
+  /// Whether a floating panel fills its room, so it keeps its height and
+  /// the search line stays put while the results change.
+  ///
+  /// False hugs the rows (up to the room) instead: right for a short list
+  /// opened to pick from, where an empty panel below the rows reads as
+  /// unfinished. A centered dialog or a sheet always hugs.
+  final bool holdHeight;
 
   /// How a command menu shows at [context]: a floating panel on the touch tier
   /// in a compact window, centered elsewhere.
@@ -174,8 +197,10 @@ class CoilCommandMenu extends StatelessWidget {
   /// the search line stays put while the results change.
   ///
   /// A sheet keeps hugging its content.
-  static Widget _fillFloating(BuildContext context, Widget child) =>
-      CoilModalRoute.presentationOf(context) == CoilModalPresentation.floating
+  Widget _fillFloating(BuildContext context, Widget child) =>
+      holdHeight &&
+          CoilModalRoute.presentationOf(context) ==
+              CoilModalPresentation.floating
       ? SizedBox(height: double.infinity, child: child)
       : child;
 
@@ -195,6 +220,7 @@ class CoilCommandMenu extends StatelessWidget {
       empty: empty,
       textStyle: theme.typography.resolve(metrics.tier, metrics.size).subtitle,
       minHeight: searchHeight,
+      autofocus: autofocus,
     );
     final scroll = CoilScrollAreaStyle.fallback(
       theme,
@@ -316,10 +342,7 @@ class CoilCommandMenuFooter extends StatelessWidget {
 
   /// Arrows select a row, Enter runs it, Escape closes the menu.
   static const defaultHints = [
-    CoilCommandMenuHint(
-      label: Text('Select'),
-      keys: CoilKbd.keys(['↑', '↓']),
-    ),
+    CoilCommandMenuHint(label: Text('Select'), keys: CoilKbd.keys(['↑', '↓'])),
     CoilCommandMenuHint(label: Text('Run'), keys: CoilKbd.keys(['↵'])),
     CoilCommandMenuHint(label: Text('Close'), keys: CoilKbd.keys(['esc'])),
   ];

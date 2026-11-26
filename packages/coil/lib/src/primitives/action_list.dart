@@ -166,6 +166,7 @@ class CoilMenuSearch {
     this.empty = const Text('No results'),
     this.textStyle,
     this.minHeight,
+    this.autofocus = true,
   });
 
   /// The field's placeholder, usually a [Text].
@@ -186,6 +187,12 @@ class CoilMenuSearch {
   /// How tall the search line is at least, or null for a row's height
   /// (the list's control height).
   final double? minHeight;
+
+  /// Whether the field takes focus as it shows, so typing filters at once.
+  ///
+  /// On a phone that raises the keyboard; pass false where the list is
+  /// mostly tapped and the field is there to narrow it on demand.
+  final bool autofocus;
 }
 
 /// A heading over a group of rows.
@@ -487,10 +494,7 @@ class _CoilActionListState extends State<CoilActionList>
         !_touch &&
         _active.via == CoilModality.pointer &&
         _items[i] is CoilSubmenu) {
-      _subTimer = Timer(
-        const Duration(milliseconds: 100),
-        () => _openSub(i),
-      );
+      _subTimer = Timer(const Duration(milliseconds: 100), () => _openSub(i));
     }
   }
 
@@ -1293,7 +1297,7 @@ class _SearchField extends StatelessWidget {
             heightFactor: 1,
             child: CoilTextFieldCore(
               controller: controller,
-              autofocus: true,
+              autofocus: search.autofocus,
               placeholder: search.placeholder,
               placeholderColor: colors.mutedForeground,
               style:
