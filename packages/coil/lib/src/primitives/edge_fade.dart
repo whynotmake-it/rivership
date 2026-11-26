@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/eased_gradient.dart';
 import 'package:flutter/foundation.dart' show listEquals;
@@ -76,7 +78,8 @@ class CoilScrollEdgeFade extends StatefulWidget {
   /// The default ramp reaches further in as more content is hidden past
   /// the edge, up to the extent. Stops always span the whole extent, so a
   /// stop at a given position stays over the same pixels, and hide more as
-  /// more content is hidden, fully once the extent's worth is.
+  /// more content is hidden: fully once as much is hidden as the stops'
+  /// last rise spans (from their last most-hidden stop to the extent).
   final List<CoilFadeStop>? startStops;
 
   /// The shape of the fade where the scroll ends, from the edge inward;
@@ -107,8 +110,14 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
     if (depth != 0 || metrics.axis != widget.axis) return false;
     double hidden(double extent, double length) =>
         extent <= 0 ? 0.0 : (length / extent).clamp(0.0, 1.0);
-    final before = hidden(widget._startExtent, metrics.extentBefore);
-    final after = hidden(widget._endExtent, metrics.extentAfter);
+    final before = hidden(
+      _rising(widget._startExtent, widget.startStops),
+      metrics.extentBefore,
+    );
+    final after = hidden(
+      _rising(widget._endExtent, widget.endStops),
+      metrics.extentAfter,
+    );
     final direction = metrics.axisDirection;
     if (before != _before || after != _after || direction != _direction) {
       setState(() {
@@ -250,6 +259,16 @@ class CoilFadeStop {
     offsets.addAll(rampStops);
   }
   return (colors, offsets);
+}
+
+/// How much of a fade of [extent] shaped by [stops] content comes back
+/// into view over: from its last most-hidden stop to the extent. The fade
+/// is at full strength once that much content is hidden past the edge.
+double _rising(double extent, List<CoilFadeStop>? stops) {
+  if (stops == null || stops.isEmpty) return extent;
+  final least = stops.map((s) => s.opacity).reduce(math.min);
+  final last = stops.lastIndexWhere((s) => s.opacity == least);
+  return extent * (1 - stops[last].position);
 }
 
 /// One end's fade at [amount] (0 to 1: how much of [extent] is hidden past

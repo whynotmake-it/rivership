@@ -232,8 +232,9 @@ void main() {
       expect(isNear(await at(50), _white), isTrue, reason: 'hidden');
       expect(isNear(await at(150), _red), isTrue, reason: 'past the fade');
 
-      // Half the extent's worth hidden: the same band, half as hidden.
-      controller.jumpTo(controller.position.maxScrollExtent - 50);
+      // Half of what the last rise spans (60 to 100: 40) hidden: the same
+      // band, half as hidden.
+      controller.jumpTo(controller.position.maxScrollExtent - 20);
       await tester.pumpAndSettle();
       final half = await at(50);
       expect(isNear(half, _red) || isNear(half, _white), isFalse);
