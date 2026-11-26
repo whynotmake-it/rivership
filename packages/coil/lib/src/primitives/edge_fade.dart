@@ -72,6 +72,11 @@ class CoilScrollEdgeFade extends StatefulWidget {
 
   /// The shape of the fade where the scroll starts, from the edge inward;
   /// null is [CoilFadeStop.ramp]. See [CoilFadeStop].
+  ///
+  /// The default ramp reaches further in as more content is hidden past
+  /// the edge, up to the extent. Stops always span the whole extent, so a
+  /// stop at a given position stays over the same pixels, and hide more as
+  /// more content is hidden, fully once the extent's worth is.
   final List<CoilFadeStop>? startStops;
 
   /// The shape of the fade where the scroll ends, from the edge inward;
@@ -151,11 +156,13 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
         debugLabel: 'CoilScrollEdgeFade.end',
         child: child,
         builder: (context, after, child) {
+          final head = _shape(before, widget._startExtent, widget.startStops);
+          final tail = _shape(after, widget._endExtent, widget.endStops);
           final edges = _Edges(
-            start: before.clamp(0.0, 1.0) * widget._startExtent,
-            end: after.clamp(0.0, 1.0) * widget._endExtent,
-            startStops: widget.startStops ?? CoilFadeStop.ramp,
-            endStops: widget.endStops ?? CoilFadeStop.ramp,
+            start: head.extent,
+            end: tail.extent,
+            startStops: head.stops,
+            endStops: tail.stops,
             from: from,
             to: to,
           );
@@ -243,6 +250,25 @@ class CoilFadeStop {
     offsets.addAll(rampStops);
   }
   return (colors, offsets);
+}
+
+/// One end's fade at [amount] (0 to 1: how much of [extent] is hidden past
+/// the edge). The ramp grows with it; [stops] keep the whole extent, since
+/// their positions mean something, and hide more as it grows.
+({double extent, List<CoilFadeStop> stops}) _shape(
+  double amount,
+  double extent,
+  List<CoilFadeStop>? stops,
+) {
+  final a = amount.clamp(0.0, 1.0);
+  if (stops == null) return (extent: a * extent, stops: CoilFadeStop.ramp);
+  if (a <= 0) return (extent: 0, stops: CoilFadeStop.ramp);
+  return (
+    extent: extent,
+    stops: [
+      for (final s in stops) CoilFadeStop(s.position, 1 - a * (1 - s.opacity)),
+    ],
+  );
 }
 
 /// How far each edge fades, in pixels, its shape, and which way the scroll

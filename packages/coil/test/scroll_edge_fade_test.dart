@@ -171,7 +171,10 @@ void main() {
         CoilFadeStop(0.6, 0),
         CoilFadeStop(1, 1),
       ];
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
       final list = ListView(
+        controller: controller,
         children: const [
           SizedBox(height: 1000, child: ColoredBox(color: _red)),
         ],
@@ -228,6 +231,12 @@ void main() {
       );
       expect(isNear(await at(50), _white), isTrue, reason: 'hidden');
       expect(isNear(await at(150), _red), isTrue, reason: 'past the fade');
+
+      // Half the extent's worth hidden: the same band, half as hidden.
+      controller.jumpTo(controller.position.maxScrollExtent - 50);
+      await tester.pumpAndSettle();
+      final half = await at(50);
+      expect(isNear(half, _red) || isNear(half, _white), isFalse);
     });
   }
 }
