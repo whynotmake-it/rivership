@@ -21,10 +21,7 @@ import 'package:motor_widgets/motor_widgets.dart';
 ///
 /// [autofocus] puts the cursor in the search field as it opens (the
 /// keyboard comes up on a phone); [holdHeight] keeps a floating panel's
-/// height while the results change ([CoilCommandMenu.holdHeight]);
-/// [presentation] overrides [CoilCommandMenu.presentationOf], such as
-/// [CoilModalPresentation.floating] to open it under the top safe area on
-/// every window.
+/// height while the results change ([CoilCommandMenu.holdHeight]).
 ///
 /// Bind it to ⌘K (Ctrl+K off Apple platforms) the Flutter way: an intent of
 /// the app's own, mapped in [Shortcuts] near the app's root (or registered
@@ -89,10 +86,9 @@ Future<void> showCoilCommandMenu({
   Rect? origin,
   bool autofocus = true,
   bool holdHeight = true,
-  CoilModalPresentation? presentation,
 }) => showCoilModal<void>(
   context: context,
-  presentation: presentation ?? CoilCommandMenu.presentationOf(context),
+  presentation: CoilCommandMenu.presentationOf(context),
   anchor: CoilModalAnchor.top,
   origin: origin,
   motion: motion,
