@@ -368,6 +368,27 @@ void main() {
         expect(implicitView.devicePixelRatio, equals(originalPixelRatio));
       });
 
+      testWidgets('restores a window the test set itself', (tester) async {
+        tester.view
+          ..physicalSize = const Size(390, 844)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        late Size seen;
+        await tester.pumpWidget(
+          Builder(
+            builder: (context) {
+              seen = MediaQuery.sizeOf(context);
+              return const SizedBox();
+            },
+          ),
+        );
+
+        await snap(device: Devices.ios.iPhone16Pro);
+        await tester.pump();
+
+        expect(seen, const Size(390, 844));
+      });
+
       testWidgets('handles null device specially', (tester) async {
         final binding = TestWidgetsFlutterBinding.instance;
         final implicitView = binding.platformDispatcher.implicitView!;

@@ -537,13 +537,23 @@ VoidCallback setTestViewForDevice(
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
   final previousTargetPlatform = debugDefaultTargetPlatformOverride;
+  // Back to what the test had, which may be a size it set itself, not to
+  // the binding's default window.
+  final previousSize = implicitView.physicalSize;
+  final previousPixelRatio = implicitView.devicePixelRatio;
+  final previousPadding = implicitView.padding;
 
   void restore() {
     debugDefaultTargetPlatformOverride = previousTargetPlatform;
     implicitView
-      ..resetPhysicalSize()
-      ..resetPadding()
-      ..resetDevicePixelRatio();
+      ..physicalSize = previousSize
+      ..devicePixelRatio = previousPixelRatio
+      ..padding = FakeViewPadding(
+        left: previousPadding.left,
+        top: previousPadding.top,
+        right: previousPadding.right,
+        bottom: previousPadding.bottom,
+      );
   }
 
   if (device == null) {
