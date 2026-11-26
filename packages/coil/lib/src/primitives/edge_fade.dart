@@ -1,5 +1,6 @@
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/primitives/eased_gradient.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -14,13 +15,9 @@ import 'package:motor/motor.dart';
 /// edge in left-to-right, the left in right-to-left, the top of a reversed
 /// list. Scrollables nested inside [child] don't drive it.
 ///
-/// Where something opaque floats over an end, such as a composer and the
-/// keyboard over a chat's end, or a bar over its start, pass how much it
-/// covers as [startCover] or [endCover]: that fade then runs up to the
-/// cover's edge instead of the viewport's, and what's under the cover is
-/// faded out with it. The scrollable is expected to pad that end by the
-/// cover, so its content can scroll clear of it; the fade's strength then
-/// counts the content hidden past the cover's edge.
+/// Each fade is an eased ramp from hidden at the edge to fully shown at its
+/// extent, unless [startStops] or [endStops] shape it: to keep content
+/// faintly visible under something translucent near the edge, say.
 ///
 /// The default constructor masks [child] with a [ShaderMask], which works
 /// over any background. Use [CoilScrollEdgeFade.solid] when the background
@@ -35,8 +32,8 @@ class CoilScrollEdgeFade extends StatefulWidget {
     this.extent = 32,
     this.startExtent,
     this.endExtent,
-    this.startCover = 0,
-    this.endCover = 0,
+    this.startStops,
+    this.endStops,
   }) : color = null;
 
   /// Fades the edges by painting gradients from [color] over [child].
@@ -48,8 +45,8 @@ class CoilScrollEdgeFade extends StatefulWidget {
     this.extent = 32,
     this.startExtent,
     this.endExtent,
-    this.startCover = 0,
-    this.endCover = 0,
+    this.startStops,
+    this.endStops,
   });
 
   /// The scrollable.
@@ -73,16 +70,17 @@ class CoilScrollEdgeFade extends StatefulWidget {
   /// from under the composer to well above it.
   final double? endExtent;
 
-  /// How much of the start something opaque covers, such as a floating
-  /// bar: the start fades from the cover's edge, and what's under it is
-  /// faded out too. It follows the cover as it moves, with no spring.
-  final double startCover;
+  /// The shape of the fade where the scroll starts, from the edge inward;
+  /// null is [CoilFadeStop.ramp]. See [CoilFadeStop].
+  final List<CoilFadeStop>? startStops;
 
-  /// How much of the end something opaque covers, such as a chat's
-  /// composer and the keyboard: the end fades up to the cover's edge, and
-  /// what's under it is faded out too. It follows the cover as it moves
-  /// (the keyboard sliding in), with no spring.
-  final double endCover;
+  /// The shape of the fade where the scroll ends, from the edge inward;
+  /// null is [CoilFadeStop.ramp]. See [CoilFadeStop].
+  ///
+  /// A chat under a translucent keyboard can keep its content faintly
+  /// visible across the keyboard, hide it under the composer, and ramp to
+  /// clear above it.
+  final List<CoilFadeStop>? endStops;
 
   double get _startExtent => startExtent ?? extent;
   double get _endExtent => endExtent ?? extent;
@@ -156,8 +154,8 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
           final edges = _Edges(
             start: before.clamp(0.0, 1.0) * widget._startExtent,
             end: after.clamp(0.0, 1.0) * widget._endExtent,
-            startCover: widget.startCover,
-            endCover: widget.endCover,
+            startStops: widget.startStops ?? CoilFadeStop.ramp,
+            endStops: widget.endStops ?? CoilFadeStop.ramp,
             from: from,
             to: to,
           );
@@ -180,8 +178,75 @@ class _CoilScrollEdgeFadeState extends State<CoilScrollEdgeFade> {
   }
 }
 
-/// How far each edge fades, in pixels, how much of each a cover hides,
-/// and which way the scroll runs.
+/// A point in an edge fade: how visible the content is at [position]
+/// along the fade, from the edge (0) to the fade's extent (1).
+///
+/// Between two stops the visibility eases from one to the other; two stops
+/// at the same position make a step. Before the first stop and past the
+/// last, the first's and the last's visibility hold. A fade's stops are in
+/// order of position.
+@immutable
+class CoilFadeStop {
+  /// The content is [opacity] visible at [position].
+  const CoilFadeStop(this.position, this.opacity)
+    : assert(position >= 0 && position <= 1, 'position is 0 to 1'),
+      assert(opacity >= 0 && opacity <= 1, 'opacity is 0 to 1');
+
+  /// Where along the fade: 0 at the edge, 1 at the fade's extent.
+  final double position;
+
+  /// How visible the content is there: 0 hidden, 1 untouched.
+  final double opacity;
+
+  /// The default: hidden at the edge, easing to fully shown at the extent.
+  static const ramp = [CoilFadeStop(0, 0), CoilFadeStop(1, 1)];
+
+  @override
+  bool operator ==(Object other) =>
+      other is CoilFadeStop &&
+      other.position == position &&
+      other.opacity == opacity;
+
+  @override
+  int get hashCode => Object.hash(position, opacity);
+}
+
+/// [stops] as gradient colors and stops along a strip, with [visible] as
+/// the color at full visibility (opacity 1) and [hidden] at none: from
+/// [edge] (a fraction of the strip, the edge) to [inner] (the extent).
+(List<Color>, List<double>) _rampOf(
+  List<CoilFadeStop> stops, {
+  required double edge,
+  required double inner,
+  required Color hidden,
+  required Color visible,
+}) {
+  Color at(double opacity) => Color.lerp(hidden, visible, opacity)!;
+  double along(double position) => edge + (inner - edge) * position;
+  final colors = <Color>[];
+  final offsets = <double>[];
+  for (var i = 0; i < stops.length; i++) {
+    final stop = stops[i];
+    if (i == 0) {
+      colors.add(at(stop.opacity));
+      offsets.add(along(stop.position));
+      continue;
+    }
+    final previous = stops[i - 1];
+    final (rampColors, rampStops) = easedRamp(
+      from: at(previous.opacity),
+      to: at(stop.opacity),
+      start: along(previous.position),
+      stop: along(stop.position),
+    );
+    colors.addAll(rampColors);
+    offsets.addAll(rampStops);
+  }
+  return (colors, offsets);
+}
+
+/// How far each edge fades, in pixels, its shape, and which way the scroll
+/// runs.
 @immutable
 class _Edges {
   const _Edges({
@@ -189,64 +254,51 @@ class _Edges {
     required this.end,
     required this.from,
     required this.to,
-    this.startCover = 0,
-    this.endCover = 0,
+    this.startStops = CoilFadeStop.ramp,
+    this.endStops = CoilFadeStop.ramp,
   });
 
   final double start;
   final double end;
-  final double startCover;
-  final double endCover;
+  final List<CoilFadeStop> startStops;
+  final List<CoilFadeStop> endStops;
   final Alignment from;
   final Alignment to;
 
   double _length(Rect bounds) => from.x == to.x ? bounds.height : bounds.width;
 
-  /// Each end's cover and fade in pixels along [length]: the covers as
-  /// they are (up to the whole length), and each fade within half of what
-  /// the covers leave, so the two never overlap.
-  ({
-    ({double cover, double fade}) head,
-    ({double cover, double fade}) tail,
-  })
-  _ends(double length) {
-    final headCover = startCover.clamp(0.0, length);
-    final tailCover = endCover.clamp(0.0, length - headCover);
-    final half = (length - headCover - tailCover) / 2;
-    return (
-      head: (cover: headCover, fade: start.clamp(0.0, half)),
-      tail: (cover: tailCover, fade: end.clamp(0.0, half)),
-    );
-  }
+  /// The fades along [length], each within its half so they never overlap.
+  ({double start, double end}) _within(double length) =>
+      (start: start.clamp(0.0, length / 2), end: end.clamp(0.0, length / 2));
 
-  /// An opaque mask, transparent under the covers, with eased ends from
-  /// each cover's edge.
+  /// An opaque mask with eased transparent ends.
   Shader mask(Rect bounds) {
     const clear = Color(0x00000000);
     const solid = Color(0xFF000000);
     final length = _length(bounds);
-    if (length <= 0 ||
-        (start <= 0 && end <= 0 && startCover <= 0 && endCover <= 0)) {
+    if (length <= 0 || (start <= 0 && end <= 0)) {
       return const LinearGradient(colors: [solid, solid]).createShader(bounds);
     }
-    final (:head, :tail) = _ends(length);
-    final (headColors, headStops) = easedRamp(
-      from: clear,
-      to: solid,
-      start: head.cover / length,
-      stop: (head.cover + head.fade) / length,
+    final fades = _within(length);
+    final (headColors, headStops) = _rampOf(
+      startStops,
+      edge: 0,
+      inner: fades.start / length,
+      hidden: clear,
+      visible: solid,
     );
-    final (tailColors, tailStops) = easedRamp(
-      from: solid,
-      to: clear,
-      start: 1 - (tail.cover + tail.fade) / length,
-      stop: 1 - tail.cover / length,
+    final (tailColors, tailStops) = _rampOf(
+      endStops,
+      edge: 1,
+      inner: 1 - fades.end / length,
+      hidden: clear,
+      visible: solid,
     );
     return LinearGradient(
       begin: from,
       end: to,
-      colors: [clear, ...headColors, ...tailColors, clear],
-      stops: [0, ...headStops, ...tailStops, 1],
+      colors: [...headColors, ...tailColors.reversed],
+      stops: [...headStops, ...tailStops.reversed],
     ).createShader(bounds);
   }
 
@@ -255,13 +307,20 @@ class _Edges {
       other is _Edges &&
       other.start == start &&
       other.end == end &&
-      other.startCover == startCover &&
-      other.endCover == endCover &&
+      listEquals(other.startStops, startStops) &&
+      listEquals(other.endStops, endStops) &&
       other.from == from &&
       other.to == to;
 
   @override
-  int get hashCode => Object.hash(start, end, startCover, endCover, from, to);
+  int get hashCode => Object.hash(
+    start,
+    end,
+    Object.hashAll(startStops),
+    Object.hashAll(endStops),
+    from,
+    to,
+  );
 }
 
 /// Paints eased gradients from an opaque color at each fading edge.
@@ -275,46 +334,53 @@ class _SolidFadePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final vertical = edges.from.x == edges.to.x;
     final length = vertical ? size.height : size.width;
-    if (length <= 0) return;
-    // The strip from [inset] to [inset] + [along] in from the edge at [at].
-    Rect strip(Alignment at, double inset, double along) =>
-        switch ((vertical, at.x + at.y > 0)) {
-          (true, false) => Rect.fromLTWH(0, inset, size.width, along),
-          (true, true) => Rect.fromLTWH(
-            0,
-            size.height - inset - along,
-            size.width,
-            along,
-          ),
-          (false, false) => Rect.fromLTWH(inset, 0, along, size.height),
-          (false, true) => Rect.fromLTWH(
-            size.width - inset - along,
-            0,
-            along,
-            size.height,
-          ),
-        };
-    final ends = edges._ends(length);
-    void edge(({double cover, double fade}) end, Alignment at, Alignment away) {
-      if (end.cover > 0) {
-        canvas.drawRect(strip(at, 0, end.cover), Paint()..color = color);
-      }
-      if (end.fade <= 0) return;
-      final rect = strip(at, end.cover, end.fade);
+    final fades = edges._within(length);
+    void edge(
+      double extent,
+      List<CoilFadeStop> stops,
+      Alignment at,
+      Alignment away,
+    ) {
+      if (extent <= 0 || length <= 0) return;
+      // The strip of [extent] next to the edge at [at].
+      final rect = switch ((vertical, at.x + at.y > 0)) {
+        (true, false) => Rect.fromLTWH(0, 0, size.width, extent),
+        (true, true) => Rect.fromLTWH(
+          0,
+          size.height - extent,
+          size.width,
+          extent,
+        ),
+        (false, false) => Rect.fromLTWH(0, 0, extent, size.height),
+        (false, true) => Rect.fromLTWH(
+          size.width - extent,
+          0,
+          extent,
+          size.height,
+        ),
+      };
+      // The color over the content: opaque where it's hidden.
+      final (colors, offsets) = _rampOf(
+        stops,
+        edge: 0,
+        inner: 1,
+        hidden: color,
+        visible: color.withValues(alpha: 0),
+      );
       canvas.drawRect(
         rect,
         Paint()
-          ..shader = easedGradient(
+          ..shader = LinearGradient(
             begin: at,
             end: away,
-            from: color,
-            to: color.withValues(alpha: 0),
+            colors: colors,
+            stops: offsets,
           ).createShader(rect),
       );
     }
 
-    edge(ends.head, edges.from, edges.to);
-    edge(ends.tail, edges.to, edges.from);
+    edge(fades.start, edges.startStops, edges.from, edges.to);
+    edge(fades.end, edges.endStops, edges.to, edges.from);
   }
 
   @override

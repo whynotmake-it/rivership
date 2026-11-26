@@ -27,6 +27,8 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     this.fadeExtent,
     this.fadeStartExtent,
     this.fadeEndExtent,
+    this.fadeStartStops,
+    this.fadeEndStops,
     this.fadeColor,
     this.lineStep,
     this.motions,
@@ -90,6 +92,14 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
   /// vertical area). Null uses [fadeExtent].
   final double? fadeEndExtent;
 
+  /// The shape of the fade where the scroll starts. Null is
+  /// [CoilFadeStop.ramp]. See [CoilScrollEdgeFade.startStops].
+  final List<CoilFadeStop>? fadeStartStops;
+
+  /// The shape of the fade where the scroll ends. Null is
+  /// [CoilFadeStop.ramp]. See [CoilScrollEdgeFade.endStops].
+  final List<CoilFadeStop>? fadeEndStops;
+
   /// The solid background the edges fade into.
   ///
   /// Set it when the area sits on a known solid color: the fades are painted on
@@ -137,6 +147,8 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
           fadeExtent: other.fadeExtent ?? fadeExtent,
           fadeStartExtent: other.fadeStartExtent ?? fadeStartExtent,
           fadeEndExtent: other.fadeEndExtent ?? fadeEndExtent,
+          fadeStartStops: other.fadeStartStops ?? fadeStartStops,
+          fadeEndStops: other.fadeEndStops ?? fadeEndStops,
           fadeColor: other.fadeColor ?? fadeColor,
           lineStep: other.lineStep ?? lineStep,
           motions: other.motions == null
@@ -157,6 +169,8 @@ class CoilScrollAreaStyle extends CoilComponentStyle<CoilScrollAreaStyle> {
     fadeExtent,
     fadeStartExtent,
     fadeEndExtent,
+    fadeStartStops,
+    fadeEndStops,
     fadeColor,
     lineStep,
     motions,
