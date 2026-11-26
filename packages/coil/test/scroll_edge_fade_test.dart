@@ -157,4 +157,89 @@ void main() {
       expect(_faded(edges.end), isTrue);
     });
   }
+
+  for (final solid in [false, true]) {
+    testWidgets("a covered end fades up to the cover's edge, and follows it "
+        '(${solid ? 'solid' : 'mask'})', (tester) async {
+      // 200 tall; something 40 tall floats over the end, and the list pads
+      // its end by as much, as a chat does under its composer.
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+      Future<void> pump(double cover) => tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: CoilTheme(
+            data: CoilThemeData.light,
+            child: Center(
+              child: RepaintBoundary(
+                key: _probe,
+                child: ColoredBox(
+                  color: _white,
+                  child: SizedBox(
+                    width: 100,
+                    height: 200,
+                    child: () {
+                      final list = ListView(
+                        controller: controller,
+                        padding: EdgeInsets.only(bottom: cover),
+                        children: const [
+                          SizedBox(
+                            height: 1000,
+                            child: ColoredBox(color: _red),
+                          ),
+                        ],
+                      );
+                      return solid
+                          ? CoilScrollEdgeFade.solid(
+                              color: _white,
+                              startExtent: 0,
+                              endExtent: 40,
+                              endCover: cover,
+                              child: list,
+                            )
+                          : CoilScrollEdgeFade(
+                              startExtent: 0,
+                              endExtent: 40,
+                              endCover: cover,
+                              child: list,
+                            );
+                    }(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      Future<bool> fadedAt(double fromBottom) async {
+        final rect = tester.getRect(find.byKey(_probe));
+        return _faded(
+          await colorAt(
+            tester,
+            find.byKey(_probe),
+            Offset(rect.center.dx, rect.bottom - fromBottom),
+          ),
+        );
+      }
+
+      await pump(40);
+      await tester.pumpAndSettle();
+      // More content below: it fades out just above the cover, is hidden
+      // under it, and is untouched well above.
+      expect(await fadedAt(50), isTrue, reason: 'just above the cover');
+      expect(await fadedAt(20), isTrue, reason: 'under the cover');
+      expect(await fadedAt(100), isFalse, reason: 'well above the fade');
+
+      // The cover grows (a keyboard slides up): the fade moves with it.
+      await pump(120);
+      await tester.pumpAndSettle();
+      expect(await fadedAt(130), isTrue, reason: 'just above the new cover');
+      expect(await fadedAt(180), isFalse);
+
+      // Scrolled to the end, the content rests above the cover: no fade.
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(await fadedAt(130), isFalse, reason: 'the end is in view');
+    });
+  }
 }

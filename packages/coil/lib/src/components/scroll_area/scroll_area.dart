@@ -84,6 +84,8 @@ class CoilScrollArea extends StatefulWidget {
     this.controller,
     this.axis = Axis.vertical,
     this.edgeFades = CoilEdgeFades.auto,
+    this.startCover = 0,
+    this.endCover = 0,
     this.scrollbar = CoilScrollbarVisibility.auto,
     this.keyboard = true,
     this.focusNode,
@@ -109,6 +111,16 @@ class CoilScrollArea extends StatefulWidget {
 
   /// Which edges fade.
   final CoilEdgeFades edgeFades;
+
+  /// How much of the start something floating over it covers, such as a
+  /// bar; the start fades from the cover's edge. See
+  /// [CoilScrollEdgeFade.startCover].
+  final double startCover;
+
+  /// How much of the end something floating over it covers, such as a
+  /// composer and the keyboard; the end fades up to the cover's edge. See
+  /// [CoilScrollEdgeFade.endCover].
+  final double endCover;
 
   /// Whether to draw a scrollbar.
   final CoilScrollbarVisibility scrollbar;
@@ -344,6 +356,8 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
         extent: style.fadeExtent!,
         startExtent: style.fadeStartExtent,
         endExtent: style.fadeEndExtent,
+        startCover: widget.startCover,
+        endCover: widget.endCover,
         color: color,
         child: child,
       ),
@@ -352,6 +366,8 @@ class _CoilScrollAreaState extends State<CoilScrollArea> {
         extent: style.fadeExtent!,
         startExtent: style.fadeStartExtent,
         endExtent: style.fadeEndExtent,
+        startCover: widget.startCover,
+        endCover: widget.endCover,
         child: child,
       ),
     };
