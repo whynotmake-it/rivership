@@ -696,7 +696,13 @@ Future<T?> _runInFakeDevice<T>(
   final result = await maybeRunAsync(fn);
 
   restoreView();
-  await binding.setSurfaceSize(previousSurfaceSize);
+  // The view's own size needs no override: setting one would outlive this
+  // capture (and this test) and pin the window to it.
+  final view = binding.platformDispatcher.implicitView!;
+  final viewSize = view.physicalSize / view.devicePixelRatio;
+  await binding.setSurfaceSize(
+    previousSurfaceSize == viewSize ? null : previousSurfaceSize,
+  );
 
   await binding.pump(Duration.zero);
 

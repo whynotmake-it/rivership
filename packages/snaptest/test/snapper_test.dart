@@ -385,8 +385,12 @@ void main() {
 
         await snap(device: Devices.ios.iPhone16Pro);
         await tester.pump();
-
         expect(seen, const Size(390, 844));
+
+        // Nor does the capture pin the window: the test can still resize it.
+        tester.view.physicalSize = const Size(1280, 800);
+        await tester.pump();
+        expect(tester.getSize(find.byType(SizedBox)), const Size(1280, 800));
       });
 
       testWidgets('handles null device specially', (tester) async {
