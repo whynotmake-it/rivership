@@ -368,6 +368,59 @@ void main() {
         expect(implicitView.devicePixelRatio, equals(originalPixelRatio));
       });
 
+      testWidgets('restores a window the test set itself', (tester) async {
+        tester.view
+          ..physicalSize = const Size(390, 844)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        late Size seen;
+        await tester.pumpWidget(
+          Builder(
+            builder: (context) {
+              seen = MediaQuery.sizeOf(context);
+              return const SizedBox();
+            },
+          ),
+        );
+
+        await snap(device: Devices.ios.iPhone16Pro);
+        await tester.pump();
+        expect(seen, const Size(390, 844));
+
+        // Nor does the capture pin the window: the test can still resize it.
+        tester.view.physicalSize = const Size(1280, 800);
+        await tester.pump();
+        expect(tester.getSize(find.byType(SizedBox)), const Size(1280, 800));
+      });
+
+      snapTest(
+        'a device variant test',
+        devices: {Devices.ios.iPhone16Pro},
+        (tester) async {
+          await tester.pumpWidget(const SizedBox());
+          expect(
+            tester.getSize(find.byType(SizedBox)),
+            Devices.ios.iPhone16Pro.screenSize,
+          );
+        },
+      );
+
+      testWidgets('leaves the next test the default window', (tester) async {
+        // Runs after the variant above: nothing of its device is left.
+        await tester.pumpWidget(const SizedBox());
+        final view = tester.view;
+        expect(
+          tester.getSize(find.byType(SizedBox)),
+          view.physicalSize / view.devicePixelRatio,
+        );
+        view
+          ..physicalSize = const Size(1000, 700)
+          ..devicePixelRatio = 1;
+        addTearDown(view.reset);
+        await tester.pump();
+        expect(tester.getSize(find.byType(SizedBox)), const Size(1000, 700));
+      });
+
       testWidgets('handles null device specially', (tester) async {
         final binding = TestWidgetsFlutterBinding.instance;
         final implicitView = binding.platformDispatcher.implicitView!;

@@ -537,13 +537,32 @@ VoidCallback setTestViewForDevice(
   final implicitView =
       TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
   final previousTargetPlatform = debugDefaultTargetPlatformOverride;
+  // Back to what the test had: its own window if it set one, else the
+  // binding's default (reset, so later tests don't inherit an override).
+  final previousSize = implicitView.physicalSize;
+  final previousPixelRatio = implicitView.devicePixelRatio;
+  final previousPadding = implicitView.padding;
 
   void restore() {
     debugDefaultTargetPlatformOverride = previousTargetPlatform;
     implicitView
       ..resetPhysicalSize()
-      ..resetPadding()
-      ..resetDevicePixelRatio();
+      ..resetDevicePixelRatio()
+      ..resetPadding();
+    if (implicitView.physicalSize != previousSize) {
+      implicitView.physicalSize = previousSize;
+    }
+    if (implicitView.devicePixelRatio != previousPixelRatio) {
+      implicitView.devicePixelRatio = previousPixelRatio;
+    }
+    if (!_samePadding(implicitView.padding, previousPadding)) {
+      implicitView.padding = FakeViewPadding(
+        left: previousPadding.left,
+        top: previousPadding.top,
+        right: previousPadding.right,
+        bottom: previousPadding.bottom,
+      );
+    }
   }
 
   if (device == null) {
@@ -654,6 +673,44 @@ Future<void> precacheImages([Finder? from]) async {
   });
 }
 
+bool _samePadding(ui.ViewPadding a, ui.ViewPadding b) =>
+    a.left == b.left &&
+    a.top == b.top &&
+    a.right == b.right &&
+    a.bottom == b.bottom;
+
+/// Sets the test window, view and surface, to [device] in [orientation]
+/// ([setTestViewForDevice], plus the render surface), and returns what puts
+/// the window back as the test had it.
+///
+/// A surface size the test didn't set is cleared rather than pinned, so the
+/// window keeps following the view, in this test and the next.
+Future<Future<void> Function()> useDeviceWindow(
+  DeviceInfo? device,
+  Orientation orientation,
+) async {
+  final binding = TestWidgetsFlutterBinding.instance;
+  final previousSurfaceSize = binding.renderViews.single.size;
+  final restoreView = setTestViewForDevice(device, orientation);
+  if (device != null) {
+    var surfaceSize = device.screenSize;
+    if (device.isLandscape(orientation)) {
+      surfaceSize = surfaceSize.flipped;
+    }
+    await binding.setSurfaceSize(surfaceSize);
+  }
+  return () async {
+    restoreView();
+    // Flutter can't say whether a surface size was set; one equal to the
+    // view's own size is taken as none.
+    final view = binding.platformDispatcher.implicitView!;
+    final viewSize = view.physicalSize / view.devicePixelRatio;
+    await binding.setSurfaceSize(
+      previousSurfaceSize == viewSize ? null : previousSurfaceSize,
+    );
+  };
+}
+
 /// Runs a given function [fn] in a [DeviceInfo] [device].
 ///
 /// Resets the testers view to the previous state after the function has
@@ -673,20 +730,11 @@ Future<T?> _runInFakeDevice<T>(
     return maybeRunAsync(fn);
   }
 
-  final previousSurfaceSize = binding.renderViews.single.size;
-  final restoreView = setTestViewForDevice(device, orientation);
-  if (device != null) {
-    var surfaceSize = device.screenSize;
-    if (device.isLandscape(orientation)) {
-      surfaceSize = surfaceSize.flipped;
-    }
-    await binding.setSurfaceSize(surfaceSize);
-  }
+  final restoreWindow = await useDeviceWindow(device, orientation);
 
   final result = await maybeRunAsync(fn);
 
-  restoreView();
-  await binding.setSurfaceSize(previousSurfaceSize);
+  await restoreWindow();
 
   await binding.pump(Duration.zero);
 

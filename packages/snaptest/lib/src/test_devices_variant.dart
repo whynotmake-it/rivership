@@ -3,6 +3,7 @@ import 'package:device_frame/device_frame.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snaptest/snaptest.dart';
+import 'package:snaptest/src/snap.dart' show useDeviceWindow;
 
 /// Package-internal: the currently active device/orientation from a
 /// [TestDevicesVariant], or `null` when no variant is running.
@@ -10,7 +11,7 @@ import 'package:snaptest/snaptest.dart';
 /// Used by [snap] to resolve the device without requiring explicit parameters.
 (DeviceInfo, Orientation)? activeDeviceVariant;
 
-/// A [TestVariant] that will use [setTestViewForDevice] to set the test view
+/// A [TestVariant] that will use [useDeviceWindow] to set the test window
 /// to each of the given [DeviceInfo] values.
 ///
 /// Landscape orientation is automatically skipped for devices that don't
@@ -38,22 +39,14 @@ class TestDevicesVariant extends ValueVariant<(DeviceInfo, Orientation)> {
   /// support rotation.
   final Set<Orientation> orientations;
 
-  VoidCallback? _restore;
-  Size? _previousSurfaceSize;
+  Future<void> Function()? _restore;
 
   @override
   Future<(DeviceInfo, Orientation)> setUp(
     (DeviceInfo, Orientation) value,
   ) async {
     activeDeviceVariant = value;
-    final binding = TestWidgetsFlutterBinding.instance;
-    _previousSurfaceSize = binding.renderViews.single.size;
-    _restore = setTestViewForDevice(value.$1, value.$2);
-    var surfaceSize = value.$1.screenSize;
-    if (value.$1.isLandscape(value.$2)) {
-      surfaceSize = surfaceSize.flipped;
-    }
-    await binding.setSurfaceSize(surfaceSize);
+    _restore = await useDeviceWindow(value.$1, value.$2);
     return super.setUp(value);
   }
 
@@ -68,10 +61,8 @@ class TestDevicesVariant extends ValueVariant<(DeviceInfo, Orientation)> {
     (DeviceInfo, Orientation) value,
     (DeviceInfo, Orientation) memento,
   ) async {
-    _restore?.call();
-    await TestWidgetsFlutterBinding.instance.setSurfaceSize(
-      _previousSurfaceSize,
-    );
+    await _restore?.call();
+    _restore = null;
     activeDeviceVariant = null;
   }
 }
