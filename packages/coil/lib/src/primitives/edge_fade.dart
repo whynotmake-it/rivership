@@ -312,9 +312,15 @@ class _Edges {
 
   double _length(Rect bounds) => from.x == to.x ? bounds.height : bounds.width;
 
-  /// The fades along [length], each within its half so they never overlap.
-  ({double start, double end}) _within(double length) =>
-      (start: start.clamp(0.0, length / 2), end: end.clamp(0.0, length / 2));
+  /// The fades along [length]: as they are while they fit together, else
+  /// both scaled down until they meet, so they never overlap.
+  ({double start, double end}) _within(double length) {
+    final s = math.max<double>(0, start);
+    final e = math.max<double>(0, end);
+    if (s + e <= length) return (start: s, end: e);
+    final scale = length / (s + e);
+    return (start: s * scale, end: e * scale);
+  }
 
   /// An opaque mask with eased transparent ends.
   Shader mask(Rect bounds) {

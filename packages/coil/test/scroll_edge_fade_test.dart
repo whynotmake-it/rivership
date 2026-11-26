@@ -240,4 +240,49 @@ void main() {
       expect(isNear(half, _red) || isNear(half, _white), isFalse);
     });
   }
+
+  testWidgets('a fade longer than half the viewport keeps its length', (
+    tester,
+  ) async {
+    // 200 tall, the end fading over 150 and the start not at all: 120 px
+    // up from the end is still inside the fade.
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: CoilTheme(
+          data: CoilThemeData.light,
+          child: Center(
+            child: RepaintBoundary(
+              key: _probe,
+              child: ColoredBox(
+                color: _white,
+                child: SizedBox(
+                  width: 100,
+                  height: 200,
+                  child: CoilScrollEdgeFade.solid(
+                    color: _white,
+                    startExtent: 0,
+                    endExtent: 150,
+                    child: ListView(
+                      children: const [
+                        SizedBox(height: 1000, child: ColoredBox(color: _red)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final rect = tester.getRect(find.byKey(_probe));
+    final color = await colorAt(
+      tester,
+      find.byKey(_probe),
+      Offset(rect.center.dx, rect.bottom - 120),
+    );
+    expect(_faded(color), isTrue);
+  });
 }
