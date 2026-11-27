@@ -113,9 +113,9 @@ enum CoilChatMessageEntrance {
 ///   of the available width.
 /// * **Assistant** messages are plain text across the full width.
 ///
-/// The meta row shows on hover or when an action has keyboard focus. It
-/// always shows on the touch tier, because touch can't hover, and while a
-/// screen reader runs. A long press with a finger opens [actions] as a menu.
+/// On pointer, the meta row shows on hover or when an action has keyboard
+/// focus. On touch, inline action buttons stay hidden behind a long-press
+/// menu unless a screen reader runs, while the [time] stays visible.
 ///
 /// Screen readers read each message as one container labeled with the
 /// sender and the time.

@@ -5,11 +5,13 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/thinking/thinking_roll.dart';
 import 'package:coil/src/components/thinking/thinking_step_view.dart';
 import 'package:coil/src/components/thinking/thinking_steps_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// Where a [CoilThinkingStep] stands.
 enum CoilThinkingStepStatus {
@@ -32,12 +34,17 @@ class CoilThinkingStep {
   /// Creates a step.
   const CoilThinkingStep({
     required this.title,
+    this.key,
     this.detail,
     this.sources = const [],
     this.image,
     this.leading,
     this.status = CoilThinkingStepStatus.done,
   });
+
+  /// Optional identity key so inserting, removing, or folding steps preserves
+  /// step state without shifting animations.
+  final Key? key;
 
   /// Whether the step is done, running or failed.
   ///
@@ -175,6 +182,8 @@ class CoilThinkingSteps extends StatefulWidget {
     required this.expanded,
     required this.onChanged,
     super.key,
+    this.active,
+    this.leading,
     this.indicator,
     this.focusNode,
     this.autofocus = false,
@@ -183,6 +192,18 @@ class CoilThinkingSteps extends StatefulWidget {
     this.motions,
     this.style,
   });
+
+  /// Whether work is currently in progress.
+  ///
+  /// When null, defaults to `true` while any step in [steps] has
+  /// [CoilThinkingStepStatus.running]. While active, a highlight sweeps across
+  /// [label].
+  final bool? active;
+
+  /// An optional glyph or animation before [label], styled by [IconTheme].
+  ///
+  /// Animates in and out horizontally as it appears or disappears.
+  final Widget? leading;
 
   /// The trigger's text, for example `Text('Thought for 12s')`.
   ///
@@ -199,7 +220,8 @@ class CoilThinkingSteps extends StatefulWidget {
 
   /// Called with the new expanded state when the trigger is pressed.
   ///
-  /// When null, disables the trigger.
+  /// When null and [steps] is empty, renders a static non-interactive status
+  /// header; otherwise disables the trigger.
   final ValueChanged<bool>? onChanged;
 
   /// Replaces the chevron ([CoilIcons.chevronEnd]).
@@ -235,6 +257,12 @@ class CoilThinkingSteps extends StatefulWidget {
 }
 
 class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
+  static Widget _rollTransition(Widget child, Animation<double> presence) =>
+      ThinkingRoll(presence: presence, rise: true, child: child);
+
+  static Widget _fadeTransition(Widget child, Animation<double> presence) =>
+      ThinkingRoll(presence: presence, rise: false, child: child);
+
   /// Steps at or past this index arrived after the first build.
   ///
   /// It drops when steps are removed, so steps added after a clear (a retry)
@@ -274,7 +302,12 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
       spatial: spatial,
     );
     final onChanged = widget.onChanged;
-    final expanded = widget.expanded;
+    final hasSteps = widget.steps.isNotEmpty;
+    final staticHeader = !hasSteps && onChanged == null;
+    final expanded = !staticHeader && widget.expanded;
+    final isActive =
+        widget.active ??
+        widget.steps.any((s) => s.status == CoilThinkingStepStatus.running);
     final stepMotions = (
       height: motionFor(CoilThinkingStepsTrack.stepHeight, motion.gentle),
       opacity: motionFor(
@@ -294,6 +327,29 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
       ),
     );
 
+    final keyedLabel = switch ((
+      widget.label,
+      CoilSizeSwitcher.contentKeyOf(widget.label),
+    )) {
+      (final label, final name?) => KeyedSubtree(
+        key: ValueKey<Object>(name),
+        child: label,
+      ),
+      (final label, null) => label,
+    };
+    final rollingLabel = ClipRect(
+      child: MotionSizeSwitcher(
+        motion: reduced ? motion.fade : motion.standard,
+        exitMotion: reduced ? motion.fadeExit : motion.standardExit,
+        sizeMotion: motion.standard,
+        alignment: AlignmentDirectional.centerStart,
+        immediateResize: true,
+        debugLabel: 'CoilThinkingSteps.word',
+        transitionBuilder: reduced ? _fadeTransition : _rollTransition,
+        child: keyedLabel,
+      ),
+    );
+
     return MotorInspectionScope(
       group: 'CoilThinkingSteps',
       child: ConstrainedBox(
@@ -303,8 +359,10 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CoilDisclosureTrigger(
-              label: widget.label,
+              label: CoilShimmer(active: isActive, child: rollingLabel),
+              leading: widget.leading,
               indicator: widget.indicator,
+              slotMotion: widget.motion,
               expanded: expanded,
               onPressed: onChanged == null ? null : () => onChanged(!expanded),
               focusNode: widget.focusNode,
@@ -314,17 +372,15 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
               textStyle: style.textStyle!,
               radius: style.radius!,
               minHeight: metrics.controlHeight,
-              padding: EdgeInsets.symmetric(
-                horizontal: metrics.controlPaddingX,
-                vertical: metrics.controlPaddingY(style.textStyle!),
-              ),
+              padding: style.triggerPadding!,
               gap: metrics.gap,
               iconSize: metrics.iconSize,
               minHitTarget: metrics.minHitTarget,
               mainAxisSize: MainAxisSize.min,
+              showIndicator: !staticHeader,
               // Touch triggers rest at full foreground, so a disabled one
-              // fades further.
-              disabledOpacity: metrics.disabledRowOpacity,
+              // fades further. Static status headers stay at full opacity.
+              disabledOpacity: staticHeader ? 1 : metrics.disabledRowOpacity,
               focusRingOffset: style.focusRingOffset,
               chevronMotion: motionFor(
                 CoilThinkingStepsTrack.chevron,
@@ -370,9 +426,10 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
                   children: [
                     for (final (i, step) in widget.steps.indexed)
                       ThinkingStepView(
-                        key: ValueKey(i),
+                        key: step.key ?? ValueKey(i),
                         step: step,
                         enter: i >= _firstNew,
+                        first: i == 0,
                         last: i == widget.steps.length - 1,
                         metrics: metrics,
                         motions: stepMotions,

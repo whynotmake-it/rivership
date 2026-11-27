@@ -85,6 +85,7 @@ class AccordionSection<T> extends StatelessWidget {
       label: item.label,
       leading: item.leading,
       indicator: indicator,
+      slotMotion: motion,
       expanded: open,
       onPressed: onPressed,
       focusNode: focusNode,

@@ -281,29 +281,44 @@ void main() {
         for (var i = 0; i < 3; i++) step(i, detail: Text('Detail $i')),
       ];
 
-      testWidgets('runs beside every step but the last', (tester) async {
+      testWidgets('runs continuously across every step seam', (tester) async {
         await tester.pumpWidget(_app(steps(withDetail)));
         final lines = shown(tester);
-        expect(lines, hasLength(2));
-        for (final (i, line) in lines.indexed) {
+        expect(lines, hasLength(4));
+        for (var i = 0; i < 2; i++) {
+          final bottomSegment = lines[i * 2];
+          final topSegment = lines[i * 2 + 1];
           final glyph = tester.getRect(find.byKey(ValueKey('glyph$i')));
           final detail = tester.getRect(find.text('Detail $i'));
           final next = tester.getRect(find.byKey(ValueKey('glyph${i + 1}')));
-          expect(line.width, 1);
-          expect(line.center.dx, closeTo(glyph.center.dx, 0.01));
-          // Starts just under the glyph, ends with the step's content,
-          // short of the next glyph.
-          expect(line.top, greaterThan(glyph.bottom));
-          expect(line.bottom, closeTo(detail.bottom, 0.01));
-          expect(line.bottom, lessThan(next.top));
+          expect(bottomSegment.width, 1);
+          expect(topSegment.width, 1);
+          expect(bottomSegment.center.dx, closeTo(glyph.center.dx, 0.01));
+          expect(topSegment.center.dx, closeTo(glyph.center.dx, 0.01));
+          expect(bottomSegment.top, greaterThan(glyph.bottom));
+          expect(bottomSegment.bottom, greaterThanOrEqualTo(detail.bottom));
+          expect(topSegment.top, closeTo(bottomSegment.bottom, 0.01));
+          expect(topSegment.bottom, lessThan(next.top));
         }
       });
 
-      testWidgets('a one-line step has none', (tester) async {
+      testWidgets('one-line steps without details also connect continuously', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           _app(steps([for (var i = 0; i < 3; i++) step(i)])),
         );
-        expect(shown(tester), isEmpty);
+        final lines = shown(tester);
+        expect(lines, hasLength(4));
+        for (var i = 0; i < 2; i++) {
+          final bottomSegment = lines[i * 2];
+          final topSegment = lines[i * 2 + 1];
+          final glyph = tester.getRect(find.byKey(ValueKey('glyph$i')));
+          final next = tester.getRect(find.byKey(ValueKey('glyph${i + 1}')));
+          expect(bottomSegment.top, greaterThan(glyph.bottom));
+          expect(topSegment.top, closeTo(bottomSegment.bottom, 0.01));
+          expect(topSegment.bottom, lessThan(next.top));
+        }
       });
 
       testWidgets('follows long titles, narrow widths and text scale 2', (
@@ -329,21 +344,15 @@ void main() {
           ),
         );
         expect(tester.takeException(), isNull);
-        final [line] = shown(tester);
+        final [bottomSegment, topSegment] = shown(tester);
         final glyph = tester.getRect(find.byKey(const ValueKey('glyph0')));
+        final next = tester.getRect(find.byKey(const ValueKey('glyph1')));
         final title = tester.getRect(find.textContaining('A long step').first);
-        expect(line.center.dx, closeTo(glyph.center.dx, 0.01));
-        expect(line.top, greaterThan(glyph.bottom));
-        expect(line.top, lessThan(title.top + title.height / 4));
-        expect(
-          line.bottom,
-          closeTo(
-            tester
-                .getRect(find.text('And a detail that wraps as well').first)
-                .bottom,
-            0.01,
-          ),
-        );
+        expect(bottomSegment.center.dx, closeTo(glyph.center.dx, 0.01));
+        expect(bottomSegment.top, greaterThan(glyph.bottom));
+        expect(bottomSegment.top, lessThan(title.top + title.height / 4));
+        expect(topSegment.top, closeTo(bottomSegment.bottom, 0.01));
+        expect(topSegment.bottom, lessThan(next.top));
       });
 
       testWidgets('rtl: sits under the glyph on the right', (tester) async {
@@ -351,7 +360,7 @@ void main() {
           _app(steps(withDetail), direction: TextDirection.rtl),
         );
         final lines = shown(tester);
-        expect(lines, hasLength(2));
+        expect(lines, hasLength(4));
         final glyph = tester.getRect(find.byKey(const ValueKey('glyph0')));
         final title = tester.getRect(find.text('Step 0'));
         expect(glyph.left, greaterThan(title.right));
@@ -378,7 +387,7 @@ void main() {
         );
         expect(fading().opacity, inExclusiveRange(0, 1));
         await tester.pumpAndSettle();
-        expect(shown(tester), hasLength(1));
+        expect(shown(tester), hasLength(2));
       });
 
       testWidgets('style: width and gap', (tester) async {
@@ -729,5 +738,212 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.binding.hasScheduledFrame, isFalse);
     });
+
+    testWidgets(
+      'header shimmers while any step runs and aligns flush with '
+      'triggerPadding',
+      (tester) async {
+        final content = await _pumpLive(
+          tester,
+          const CoilThinkingSteps(
+            label: Text('Working…'),
+            steps: [running],
+            expanded: true,
+            onChanged: _ignore,
+            style: CoilThinkingStepsStyle(
+              triggerPadding: EdgeInsets.symmetric(vertical: 4),
+              panelPadding: EdgeInsets.zero,
+              stepPadding: EdgeInsets.symmetric(vertical: 4),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(
+          tester
+              .widget<CoilShimmer>(
+                find.ancestor(
+                  of: find.text('Working…'),
+                  matching: find.byType(CoilShimmer),
+                ),
+              )
+              .active,
+          isTrue,
+        );
+        expect(tester.getTopLeft(find.text('Working…')).dx, 0);
+
+        content.value = const CoilThinkingSteps(
+          label: Text('Worked'),
+          steps: [done],
+          expanded: true,
+          onChanged: _ignore,
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<CoilShimmer>(
+                find.ancestor(
+                  of: find.text('Worked'),
+                  matching: find.byType(CoilShimmer),
+                ),
+              )
+              .active,
+          isFalse,
+        );
+
+        content.value = const CoilThinkingSteps(
+          label: Text('Working again…'),
+          steps: [done, running],
+          expanded: true,
+          onChanged: _ignore,
+        );
+        await tester.pump();
+        expect(
+          tester
+              .widget<CoilShimmer>(
+                find.ancestor(
+                  of: find.text('Working again…'),
+                  matching: find.byType(CoilShimmer),
+                ),
+              )
+              .active,
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
+      'empty steps without onChanged renders static header then expands',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        final content = await _pumpLive(
+          tester,
+          const CoilThinkingSteps(
+            label: Text('Thinking…'),
+            steps: [],
+            expanded: false,
+            onChanged: null,
+            active: true,
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Thinking…'), findsOneWidget);
+        expect(find.byType(CoilIcon), findsNothing);
+        final staticNode = tester.getSemantics(
+          find.byType(CoilDisclosureTrigger),
+        );
+        expect(
+          staticNode,
+          isSemantics(
+            label: 'Thinking…',
+            isButton: false,
+            hasEnabledState: false,
+          ),
+        );
+        final opacity = tester.widget<Opacity>(
+          find
+              .ancestor(
+                of: find.text('Thinking…'),
+                matching: find.byType(Opacity),
+              )
+              .last,
+        );
+        expect(opacity.opacity, 1);
+        expect(
+          tester
+              .widget<CoilShimmer>(
+                find.ancestor(
+                  of: find.text('Thinking…'),
+                  matching: find.byType(CoilShimmer),
+                ),
+              )
+              .active,
+          isTrue,
+        );
+
+        content.value = const CoilThinkingSteps(
+          label: Text('Read log…'),
+          steps: [done, running],
+          expanded: true,
+          onChanged: _ignore,
+        );
+        await tester.pump();
+        expect(find.byType(CoilIcon), findsOneWidget);
+        semantics.dispose();
+      },
+    );
+
+    testWidgets(
+      'header rolls vertically on label change and animates leading slot',
+      (tester) async {
+        final content = await _pumpLive(
+          tester,
+          const CoilThinkingSteps(
+            label: Text('Thinking…'),
+            steps: [],
+            expanded: false,
+            onChanged: null,
+            active: true,
+          ),
+        );
+        await tester.pump();
+        final baseWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+
+        // Label change mounts both old and new words inside ThinkingRoll.
+        content.value = const CoilThinkingSteps(
+          label: Text('Reading docs…'),
+          steps: [done, running],
+          expanded: false,
+          onChanged: _ignore,
+          active: true,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(find.text('Thinking…'), findsOneWidget);
+        expect(find.text('Reading docs…'), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('Thinking…'), findsNothing);
+
+        // Leading widget opens and closes its slot smoothly like CoilButton.
+        final withoutLeadingWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+        content.value = const CoilThinkingSteps(
+          label: Text('Reading docs…'),
+          leading: TestIcon(TestGlyph.search),
+          steps: [done, running],
+          expanded: false,
+          onChanged: _ignore,
+          active: true,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        final growingWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+        await tester.pump(const Duration(milliseconds: 600));
+        final withLeadingWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+        expect(growingWidth, greaterThan(withoutLeadingWidth));
+        expect(growingWidth, lessThanOrEqualTo(withLeadingWidth));
+        expect(withLeadingWidth, greaterThan(baseWidth));
+
+        content.value = const CoilThinkingSteps(
+          label: Text('Reading docs…'),
+          steps: [done, running],
+          expanded: false,
+          onChanged: _ignore,
+          active: true,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(
+          find.descendant(
+            of: find.byType(CoilDisclosureTrigger),
+            matching: find.byType(TestIcon),
+          ),
+          findsNothing,
+        );
+      },
+    );
   });
 }

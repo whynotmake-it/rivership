@@ -217,13 +217,53 @@ void main() {
       expect(_metaOpacity(tester), 1);
     });
 
-    testWidgets('touch: always shows', (tester) async {
-      final calls = _Calls();
-      await tester.pumpWidget(_app(message(calls), tier: CoilTier.touch));
-      expect(_metaOpacity(tester), 1);
-      await tester.tap(find.byType(CoilButton).last);
-      expect(calls.retried, [1]);
-    });
+    testWidgets(
+      'touch: hides inline actions behind long-press menu while keeping time',
+      (tester) async {
+        final calls = _Calls();
+        await tester.pumpWidget(_app(message(calls), tier: CoilTier.touch));
+        final timeOpacity = tester
+            .widget<Opacity>(
+              find
+                  .ancestor(
+                    of: find.text('10:42'),
+                    matching: find.byType(Opacity),
+                  )
+                  .first,
+            )
+            .opacity;
+        expect(timeOpacity, 1);
+        expect(find.text('10:42'), findsOneWidget);
+        expect(find.byType(CoilButton), findsNothing);
+
+        await tester.longPress(find.text('Hello'));
+        await tester.pumpAndSettle();
+        expect(find.text('Copy'), findsOneWidget);
+        await tester.tap(find.text('Retry'));
+        await tester.pumpAndSettle();
+        expect(calls.retried, [1]);
+
+        // Attachment-only messages still expose the long-press menu on touch.
+        final attachmentCalls = _Calls();
+        await tester.pumpWidget(
+          _app(
+            CoilChatMessage(
+              sender: CoilChatSender.user,
+              entrance: .none,
+              attachments: [_thumb()],
+              actions: _actions(attachmentCalls),
+            ),
+            tier: CoilTier.touch,
+          ),
+        );
+        expect(find.byType(CoilButton), findsNothing);
+        await tester.longPress(find.byType(ColoredBox).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Copy'));
+        await tester.pumpAndSettle();
+        expect(attachmentCalls.copied, [1]);
+      },
+    );
 
     testWidgets('shows while a screen reader runs', (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
@@ -233,6 +273,10 @@ void main() {
       );
       await tester.pumpWidget(_app(message(_Calls())));
       expect(_metaOpacity(tester), 1);
+
+      await tester.pumpWidget(_app(message(_Calls()), tier: CoilTier.touch));
+      expect(_metaOpacity(tester), 1);
+      expect(find.byType(CoilButton), findsNWidgets(2));
     });
   });
 

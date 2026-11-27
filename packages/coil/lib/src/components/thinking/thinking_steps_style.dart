@@ -21,6 +21,7 @@ class CoilThinkingStepsStyle
   /// Creates a style.
   const CoilThinkingStepsStyle({
     this.triggerFill,
+    this.triggerPadding,
     this.label,
     this.expandedLabel,
     this.textStyle,
@@ -72,6 +73,10 @@ class CoilThinkingStepsStyle
         WidgetState.pressed: c.active,
         WidgetState.any: c.hover.withValues(alpha: 0),
       }),
+      triggerPadding: EdgeInsets.symmetric(
+        horizontal: padX,
+        vertical: metrics.controlPaddingY(text.body),
+      ),
       label: WidgetStateProperty.fromMap({
         WidgetState.hovered | WidgetState.focused: c.foreground,
         WidgetState.any: rest,
@@ -112,6 +117,9 @@ class CoilThinkingStepsStyle
   /// The trigger's fill: hover on pointer, press on touch.
   final WidgetStateProperty<Color?>? triggerFill;
 
+  /// The space around the trigger's label and chevron.
+  final EdgeInsetsGeometry? triggerPadding;
+
   /// The trigger's label and chevron color while collapsed.
   final WidgetStateProperty<Color?>? label;
 
@@ -132,17 +140,14 @@ class CoilThinkingStepsStyle
   /// A step's leading glyph or dot.
   final Color? glyphColor;
 
-  /// The connector: the line that runs down from a step's glyph beside the rest
-  /// of the step (its detail, sources and image), joining it to the next step.
-  ///
-  /// The last step has none, and a one-line step's connector is too short to
-  /// show.
+  /// The connector: the rail running vertically between consecutive steps'
+  /// glyphs.
   final Color? connectorColor;
 
   /// How thick the connector is.
   final double? connectorWidth;
 
-  /// The space between a step's glyph and the top of its connector.
+  /// The space between a step's glyph and its connector.
   final double? connectorGap;
 
   /// The fill of a source badge.
@@ -208,6 +213,7 @@ class CoilThinkingStepsStyle
             triggerFill,
             other.triggerFill,
           ),
+          triggerPadding: other.triggerPadding ?? triggerPadding,
           label: CoilComponentStyle.mergeStates(label, other.label),
           expandedLabel: CoilComponentStyle.mergeStates(
             expandedLabel,
@@ -246,6 +252,7 @@ class CoilThinkingStepsStyle
   @override
   List<Object?> get props => [
     triggerFill,
+    triggerPadding,
     label,
     expandedLabel,
     textStyle,
