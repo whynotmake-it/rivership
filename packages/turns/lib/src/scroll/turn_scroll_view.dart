@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:turns/src/scroll/turn_child_delegate.dart';
 import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_engine.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
@@ -826,6 +827,23 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return -1;
   }
 
+  /// What one unbuilt item adds to its list's extent, from every item
+  /// measured so far: its mean height, the spacing after it, and its share
+  /// of section headers. See [TurnChildDelegate].
+  double _slotExtent() {
+    var slot = meanExtent + widget.itemSpacing;
+    if (widget._isSectioned && extents.isNotEmpty) {
+      final headerShare = math.min(
+        1,
+        _sectionHeaderExtents.length / extents.length,
+      );
+      slot +=
+          headerShare *
+          (_meanSectionHeaderExtent + widget.sectionHeaderSpacing);
+    }
+    return slot;
+  }
+
   double _estimatedExtentOf(int index) =>
       extents[widget.itemId(index)] ?? meanExtent;
 
@@ -1506,7 +1524,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         key: ValueKey(('TurnScrollView.above', _listGeneration)),
         padding: horizontal,
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
+          delegate: TurnChildDelegate(
+            slotExtent: _slotExtent,
             (context, reverseIndex) {
               final index = centerIndex - 1 - reverseIndex;
               return _buildObservedItem(
@@ -1526,7 +1545,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         padding: horizontal,
         sliver: SliverList(
           key: _belowListKey,
-          delegate: SliverChildBuilderDelegate(
+          delegate: TurnChildDelegate(
+            slotExtent: _slotExtent,
             (context, localIndex) {
               final index = centerIndex + localIndex;
               final isLastBeforePin =
@@ -1583,7 +1603,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
             padding: horizontal,
             sliver: SliverList(
               key: _afterListKey,
-              delegate: SliverChildBuilderDelegate(
+              delegate: TurnChildDelegate(
+                slotExtent: _slotExtent,
                 (context, localIndex) {
                   final index = pinnedIndex + 1 + localIndex;
                   return _buildObservedItem(

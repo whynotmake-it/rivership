@@ -1,5 +1,6 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:turns/src/scroll/turn_child_delegate.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
 
 /// Drop-in indexed sliver list for `CustomTurnScrollView` that automatically
@@ -100,9 +101,11 @@ class _SliverTurnListState extends State<SliverTurnList>
   Widget build(BuildContext context) {
     final spacing = widget.itemSpacing;
     final count = widget.itemCount;
+    final mean = TurnScrollScope.maybeOf(context)?.meanItemExtent;
     return SliverList(
       key: _listKey,
-      delegate: SliverChildBuilderDelegate(
+      delegate: TurnChildDelegate(
+        slotExtent: () => (mean?.call() ?? 72) + spacing,
         (context, index) {
           final id = widget.itemId(index);
           Widget child = TurnScrollItem(

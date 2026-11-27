@@ -44,6 +44,7 @@ class TurnScrollScope extends InheritedWidget {
     required super.child,
     this.onListAttach,
     this.onListDetach,
+    this.meanItemExtent,
     super.key,
   });
 
@@ -72,6 +73,10 @@ class TurnScrollScope extends InheritedWidget {
   /// Optional callback unregistering an indexed `SliverTurnList`.
   final void Function(TurnListRegistration list)? onListDetach;
 
+  /// The mean extent of every item measured so far, for estimating items
+  /// not yet built (stable while scrolling, unlike the built window's).
+  final double Function()? meanItemExtent;
+
   /// Returns the nearest [TurnScrollScope], if any.
   static TurnScrollScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<TurnScrollScope>();
@@ -85,7 +90,8 @@ class TurnScrollScope extends InheritedWidget {
       onTurnStageAttach != oldWidget.onTurnStageAttach ||
       onTurnStageDetach != oldWidget.onTurnStageDetach ||
       onListAttach != oldWidget.onListAttach ||
-      onListDetach != oldWidget.onListDetach;
+      onListDetach != oldWidget.onListDetach ||
+      meanItemExtent != oldWidget.meanItemExtent;
 }
 
 /// Marks an item inside any sliver of a `TurnScrollView` or
