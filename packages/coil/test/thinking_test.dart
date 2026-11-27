@@ -810,5 +810,52 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'empty steps without onChanged renders static header then expands',
+      (tester) async {
+        final content = await _pumpLive(
+          tester,
+          const CoilThinkingSteps(
+            label: Text('Thinking…'),
+            steps: [],
+            expanded: false,
+            onChanged: null,
+            active: true,
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Thinking…'), findsOneWidget);
+        expect(find.byType(CoilIcon), findsNothing);
+        final opacity = tester.widget<Opacity>(
+          find.ancestor(
+            of: find.text('Thinking…'),
+            matching: find.byType(Opacity),
+          ),
+        );
+        expect(opacity.opacity, 1);
+        expect(
+          tester
+              .widget<CoilShimmer>(
+                find.ancestor(
+                  of: find.text('Thinking…'),
+                  matching: find.byType(CoilShimmer),
+                ),
+              )
+              .active,
+          isTrue,
+        );
+
+        content.value = const CoilThinkingSteps(
+          label: Text('Read log…'),
+          steps: [done, running],
+          expanded: true,
+          onChanged: _ignore,
+        );
+        await tester.pump();
+        expect(find.byType(CoilIcon), findsOneWidget);
+      },
+    );
   });
 }

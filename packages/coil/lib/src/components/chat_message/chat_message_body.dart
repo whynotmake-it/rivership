@@ -74,10 +74,14 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
   Widget build(BuildContext context) {
     final style = widget.style;
     final gap = style.gap!;
-    final hasMeta = widget.time != null || widget.actions.isNotEmpty;
-    // Touch can't hover, and a screen reader can't act on hidden buttons.
     final touch = widget.metrics.tier == CoilTier.touch;
-    final alwaysMeta = touch || MediaQuery.accessibleNavigationOf(context);
+    final accessible = MediaQuery.accessibleNavigationOf(context);
+    // On touch, actions live in the long-press menu unless a screen reader
+    // is running; pointer reveals them on hover/focus.
+    final showInlineActions = !touch || accessible;
+    final hasMeta =
+        widget.time != null || (showInlineActions && widget.actions.isNotEmpty);
+    final alwaysMeta = touch || accessible;
 
     Widget? body;
     if (widget.child case final child?) {
@@ -141,10 +145,12 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
                     _focusWithin ||
                     _states.value.contains(WidgetState.hovered),
                 time: widget.time,
-                actions: [
-                  for (final action in widget.actions)
-                    _actionButton(action, tooltip: !touch),
-                ],
+                actions: showInlineActions
+                    ? [
+                        for (final action in widget.actions)
+                          _actionButton(action, tooltip: !touch),
+                      ]
+                    : const [],
                 showMotion: widget.metaIn,
                 hideMotion: widget.metaOut,
                 style: style,

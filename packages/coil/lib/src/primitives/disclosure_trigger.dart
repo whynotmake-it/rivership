@@ -52,6 +52,7 @@ class CoilDisclosureTrigger extends StatelessWidget {
     this.disabledOpacity = 1,
     this.focusRingOffset,
     this.mainAxisSize = MainAxisSize.max,
+    this.showIndicator = true,
     this.controlsNodes,
   });
 
@@ -139,6 +140,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// Whether the row fills the width or hugs its content.
   final MainAxisSize mainAxisSize;
 
+  /// Whether to render the chevron / [indicator].
+  final bool showIndicator;
+
   /// The semantics identifiers of the region the trigger opens.
   final Set<String>? controlsNodes;
 
@@ -148,9 +152,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
     final rtl = Directionality.of(context) == TextDirection.rtl;
     return Semantics(
       container: true,
-      button: true,
+      button: showIndicator || onPressed != null,
       enabled: onPressed != null,
-      expanded: expanded,
+      expanded: showIndicator ? expanded : null,
       controlsNodes: controlsNodes,
       child: CoilInteraction(
         onPressed: onPressed,
@@ -211,18 +215,22 @@ class CoilDisclosureTrigger extends StatelessWidget {
                             child: label,
                           ),
                         ),
-                        SingleMotionBuilder(
-                          value: expanded ? (rtl ? -0.25 : 0.25) : 0,
-                          motion: chevronMotion,
-                          debugLabel: 'CoilDisclosureTrigger.chevron',
-                          builder: (context, turns, child) => Transform.rotate(
-                            angle: turns * 2 * math.pi,
-                            child: child,
+                        if (showIndicator)
+                          SingleMotionBuilder(
+                            value: expanded ? (rtl ? -0.25 : 0.25) : 0,
+                            motion: chevronMotion,
+                            debugLabel: 'CoilDisclosureTrigger.chevron',
+                            builder: (context, turns, child) =>
+                                Transform.rotate(
+                                  angle: turns * 2 * math.pi,
+                                  child: child,
+                                ),
+                            child:
+                                indicator ??
+                                const CoilIcon(
+                                  CoilIconRole.chevronEnd,
+                                ),
                           ),
-                          child:
-                              indicator ??
-                              const CoilIcon(CoilIconRole.chevronEnd),
-                        ),
                       ],
                     ),
                   ),

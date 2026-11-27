@@ -287,7 +287,9 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
       spatial: spatial,
     );
     final onChanged = widget.onChanged;
-    final expanded = widget.expanded;
+    final hasSteps = widget.steps.isNotEmpty;
+    final staticHeader = !hasSteps && onChanged == null;
+    final expanded = !staticHeader && widget.expanded;
     final isActive =
         widget.active ??
         widget.steps.any((s) => s.status == CoilThinkingStepStatus.running);
@@ -335,9 +337,10 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
               iconSize: metrics.iconSize,
               minHitTarget: metrics.minHitTarget,
               mainAxisSize: MainAxisSize.min,
+              showIndicator: !staticHeader,
               // Touch triggers rest at full foreground, so a disabled one
-              // fades further.
-              disabledOpacity: metrics.disabledRowOpacity,
+              // fades further. Static status headers stay at full opacity.
+              disabledOpacity: staticHeader ? 1 : metrics.disabledRowOpacity,
               focusRingOffset: style.focusRingOffset,
               chevronMotion: motionFor(
                 CoilThinkingStepsTrack.chevron,
