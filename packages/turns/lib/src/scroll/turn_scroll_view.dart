@@ -171,19 +171,21 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// `MediaQuery.viewInsetsOf(context).bottom`.
   final EdgeInsetsGeometry? padding;
 
-  /// Whether to size the automatic top clearance spacer sliver to
-  /// `safe.top + padding.top`.
+  /// Whether to add `MediaQuery.paddingOf(context).top` on top of
+  /// `padding.top`.
   ///
-  /// Setting `false` collapses the top spacer to `0` while still exposing top
-  /// clearance through [TurnScrollScope]; wrap in `MediaQuery.removePadding`
-  /// when an outer scaffold already consumed safe-area insets.
+  /// Set `false` when an outer scaffold or header already consumed the top
+  /// safe-area inset. Explicit `padding.top` is always preserved and kept in
+  /// sync between the top spacer, [TurnScrollScope.topClearance], and sticky
+  /// section headers.
   final bool applyTopPadding;
 
-  /// Whether to size the automatic bottom clearance spacer sliver to
-  /// `max(safe.bottom, viewInsets.bottom) + padding.bottom`.
+  /// Whether to add `max(MediaQuery.paddingOf(context).bottom,
+  /// MediaQuery.viewInsetsOf(context).bottom)` on top of `padding.bottom`.
   ///
-  /// Setting `false` omits the trailing bottom spacer while still factoring
-  /// bottom clearance into [TurnScrollScope] and alignment math.
+  /// Set `false` when an outer widget already accounts for bottom safe area or
+  /// keyboard insets. Explicit `padding.bottom` (such as a floating composer's
+  /// measured height) is always preserved.
   final bool applyBottomPadding;
 
   /// Vertical spacing between consecutive items.
@@ -312,9 +314,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return h + widget.sectionHeaderSpacing;
   }
 
-  double get _topSpacer => widget.applyTopPadding ? effectiveTop : 0;
+  double get _topSpacer => effectiveTop;
 
-  double get _bottomSpacer => widget.applyBottomPadding ? effectiveBottom : 0;
+  double get _bottomSpacer => effectiveBottom;
 
   bool get _hasStickyHeaders =>
       widget._isSectioned && widget.stickySectionHeaders;
@@ -1361,7 +1363,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 
   @override
   Widget build(BuildContext context) {
-    resolveClearances(context);
+    resolveClearances(
+      context,
+      applyTopPadding: widget.applyTopPadding,
+      applyBottomPadding: widget.applyBottomPadding,
+    );
     final (slivers, center) = _buildSlivers();
 
     Widget scrollView = CustomScrollView(

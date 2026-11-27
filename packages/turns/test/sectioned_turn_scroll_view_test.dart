@@ -230,4 +230,65 @@ void main() {
       expect(find.byType(Visibility), findsNothing);
     },
   );
+
+  testWidgets(
+    'applyTopPadding: false and applyBottomPadding: false omit MediaQuery '
+    'safe-area insets while preserving explicit padding and syncing the '
+    'sticky header position',
+    (tester) async {
+      const viewport = Size(390, 800);
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = viewport;
+      addTearDown(tester.view.reset);
+
+      final controller = TurnScrollController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: const MediaQueryData(
+              size: viewport,
+              padding: EdgeInsets.only(top: 59, bottom: 34),
+            ),
+            child: TurnScrollView<String>.sectioned(
+              controller: controller,
+              itemCount: 30,
+              itemId: (i) => 'm$i',
+              sectionId: (i) => i < 15 ? 'Yesterday' : 'Today',
+              applyTopPadding: false,
+              applyBottomPadding: false,
+              padding: const EdgeInsets.only(bottom: 100),
+              itemSpacing: 16,
+              sectionHeaderBuilder: (context, section) => SizedBox(
+                key: ValueKey('pill:$section'),
+                height: 32,
+                child: Text(section),
+              ),
+              itemBuilder: (context, i) => SizedBox(
+                key: ValueKey('msg:m$i'),
+                height: 80,
+                child: Text('m$i'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Sticky header pins at y == 0 (NOT 59 from MediaQuery.padding.top).
+      final todayPills = find.byKey(const ValueKey('pill:Today'));
+      expect(todayPills, findsAtLeastNWidgets(1));
+      expect(tester.getTopLeft(todayPills.last).dy, closeTo(0, 1));
+
+      // Last item sits cleanly 100px above viewport bottom (800 - 100 = 700),
+      // preserving explicit padding.bottom without adding MediaQuery 34px.
+      expect(
+        tester.getBottomLeft(find.byKey(const ValueKey('msg:m29'))).dy,
+        closeTo(700, 1.5),
+      );
+    },
+  );
 }

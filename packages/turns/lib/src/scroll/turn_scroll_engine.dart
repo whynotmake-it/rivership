@@ -234,15 +234,26 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Resolves [effectiveTop], [effectiveBottom], [effectiveLeft], and
   /// [effectiveRight] from [MediaQuery] and [widgetPadding].
-  void resolveClearances(BuildContext context) {
+  ///
+  /// When [applyTopPadding] is `false`, `MediaQuery.paddingOf(context).top` is
+  /// omitted while explicit `padding.top` is preserved. When
+  /// [applyBottomPadding] is `false`, `MediaQuery.paddingOf(context).bottom`
+  /// and `MediaQuery.viewInsetsOf(context).bottom` are omitted while explicit
+  /// `padding.bottom` is preserved.
+  void resolveClearances(
+    BuildContext context, {
+    bool applyTopPadding = true,
+    bool applyBottomPadding = true,
+  }) {
     final safe = MediaQuery.paddingOf(context);
     final insets = MediaQuery.viewInsetsOf(context);
     final contentPadding =
         widgetPadding?.resolve(Directionality.of(context)) ?? EdgeInsets.zero;
 
-    effectiveTop = safe.top + contentPadding.top;
+    effectiveTop = (applyTopPadding ? safe.top : 0) + contentPadding.top;
     effectiveBottom =
-        math.max(safe.bottom, insets.bottom) + contentPadding.bottom;
+        (applyBottomPadding ? math.max(safe.bottom, insets.bottom) : 0) +
+        contentPadding.bottom;
     effectiveLeft = safe.left + contentPadding.left;
     effectiveRight = safe.right + contentPadding.right;
   }

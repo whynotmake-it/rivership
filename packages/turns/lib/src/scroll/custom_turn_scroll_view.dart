@@ -62,22 +62,18 @@ class CustomTurnScrollView extends StatefulWidget {
   /// `MediaQuery.viewInsetsOf(context).bottom`.
   final EdgeInsetsGeometry? padding;
 
-  /// Whether to insert an automatic top clearance sliver
-  /// (`safe.top + padding.top`). Set `false` when placing a
-  /// `SliverAppBar(pinned: true)` as the first sliver.
+  /// Whether to include `MediaQuery.paddingOf(context).top` and insert an
+  /// automatic top clearance spacer sliver above [slivers].
   ///
-  /// Note that `padding.top` and `MediaQuery.padding.top` still contribute to
-  /// [TurnScrollScope.topClearance]; wrap in `MediaQuery.removePadding` when
-  /// an outer scaffold already consumed safe-area insets.
+  /// Set `false` when placing a `SliverAppBar(pinned: true)` as the first
+  /// sliver or when an outer header already consumed the top safe-area inset.
   final bool applyTopPadding;
 
-  /// Whether to insert an automatic bottom clearance sliver
-  /// (`max(safe.bottom, viewInsets.bottom) + padding.bottom`).
+  /// Whether to include `max(MediaQuery.paddingOf(context).bottom,
+  /// MediaQuery.viewInsetsOf(context).bottom)` in the bottom clearance.
   ///
-  /// Setting `false` omits the trailing spacer sliver while still factoring
-  /// `padding.bottom` into [TurnScrollScope.bottomClearance] and alignment
-  /// math (pass `EdgeInsets.only(bottom: 0)` when a docked composer sits
-  /// outside the scroll view).
+  /// Explicit `padding.bottom` is always preserved in both
+  /// [TurnScrollScope.bottomClearance] and the trailing clearance spacer.
   final bool applyBottomPadding;
 
   /// Whether a fresh scroll view opens scrolled to the bottom (when [pinnedId]
@@ -499,13 +495,17 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
 
   @override
   Widget build(BuildContext context) {
-    resolveClearances(context);
+    resolveClearances(
+      context,
+      applyTopPadding: widget.applyTopPadding,
+      applyBottomPadding: widget.applyBottomPadding,
+    );
 
     final slivers = <Widget>[
       if (widget.applyTopPadding && effectiveTop > 0)
         SliverToBoxAdapter(child: SizedBox(height: effectiveTop)),
       ...widget.slivers,
-      if (widget.applyBottomPadding && effectiveBottom > 0)
+      if (effectiveBottom > 0)
         SliverToBoxAdapter(child: SizedBox(height: effectiveBottom)),
     ];
 
