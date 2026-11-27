@@ -1,11 +1,13 @@
 /// @docImport 'package:coil/markdown.dart';
 library;
 
-import 'package:coil/src/components/markdown/markdown_complete.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:turns/markdown.dart' as turns;
+
+export 'package:turns/markdown.dart' show completeMarkdown, markdownBoundary;
 
 /// Parses markdown source into `package:markdown` nodes.
-typedef CoilMarkdownParser = List<md.Node> Function(String source);
+typedef CoilMarkdownParser = turns.MarkdownParser;
 
 /// GitHub-flavored markdown, as [CoilMarkdown] parses it by default: text
 /// is not HTML-escaped, since it is shown, not put in a page.
@@ -13,214 +15,19 @@ List<md.Node> coilParseMarkdown(
   String source, {
   Iterable<md.InlineSyntax> inlineSyntaxes = const [],
   Iterable<md.BlockSyntax> blockSyntaxes = const [],
-}) => md.Document(
-  extensionSet: md.ExtensionSet.gitHubFlavored,
+}) => turns.parseMarkdown(
+  source,
   inlineSyntaxes: inlineSyntaxes,
   blockSyntaxes: blockSyntaxes,
-  encodeHtml: false,
-).parse(source);
+);
 
 /// A run of source parsed on its own: one or more top-level blocks.
-final class CoilMarkdownSegment {
-  /// Creates a segment.
-  const CoilMarkdownSegment({
-    required this.id,
-    required this.source,
-    required this.nodes,
-  });
-
-  /// Stable while the segment exists: the pending segment keeps its id when
-  /// its first part becomes stable.
-  final int id;
-
-  /// The markdown it was parsed from.
-  final String source;
-
-  /// Its top-level nodes.
-  final List<md.Node> nodes;
-}
+typedef CoilMarkdownSegment = turns.MarkdownSegment;
 
 /// What [CoilMarkdownSession.update] found: blocks that can no longer
 /// change, and the tail that can.
-final class CoilMarkdownDocument {
-  /// Creates a document.
-  const CoilMarkdownDocument({
-    required this.stable,
-    required this.pending,
-    required this.reset,
-  });
-
-  /// Segments that later text can't change, oldest first. The same
-  /// instances come back from later updates, so their output can be cached
-  /// by identity.
-  final List<CoilMarkdownSegment> stable;
-
-  /// The tail, parsed again on every update; null when the source ends on
-  /// a boundary.
-  final CoilMarkdownSegment? pending;
-
-  /// Whether the stable segments were dropped and parsed again (an edit,
-  /// or link definitions that can change earlier text).
-  final bool reset;
-}
+typedef CoilMarkdownDocument = turns.MarkdownDocument;
 
 /// Parses a growing markdown string, such as a streaming reply, and reuses
 /// what can no longer change.
-///
-/// Only the tail is parsed again on each [update]. A blank line at the top
-/// level, outside code fences and HTML blocks, and followed by a line that
-/// starts a new block, ends everything before it: lists, quotes and tables
-/// can still change until such a boundary closes them. This follows the
-/// session model of Pierre's Words renderer.
-///
-/// Link reference and footnote definitions can change earlier text, so a
-/// source with any is always parsed whole. Text that no longer extends the
-/// last source (an edit, a new message) starts over.
-///
-/// While [update] is told the text is still streaming, the pending tail is
-/// repaired first with [completeMarkdown], so half-written emphasis and
-/// code show styled.
-class CoilMarkdownSession {
-  /// Creates a session that parses with [parse].
-  CoilMarkdownSession({CoilMarkdownParser? parse})
-    : _parse = parse ?? coilParseMarkdown;
-
-  final CoilMarkdownParser _parse;
-  final _stable = <CoilMarkdownSegment>[];
-  var _stableLength = 0;
-  var _source = '';
-  var _nextId = 0;
-
-  static final _definition = RegExp(r'^ {0,3}\[[^\]\n]+\]:', multiLine: true);
-
-  /// Parses [source], reusing the stable segments of the last update.
-  CoilMarkdownDocument update(String source, {bool streaming = false}) {
-    var reset = false;
-    final definitions = _definition.hasMatch(source);
-    if (definitions ||
-        !source.startsWith(_source.substring(0, _stableLength))) {
-      reset = _stable.isNotEmpty;
-      _stable.clear();
-      _stableLength = 0;
-    }
-    _source = source;
-    if (!definitions) {
-      var from = _stableLength;
-      while (true) {
-        final cut = markdownBoundary(source, from);
-        if (cut == null) break;
-        _stable.add(
-          CoilMarkdownSegment(
-            id: _nextId++,
-            source: source.substring(from, cut),
-            nodes: _parse(source.substring(from, cut)),
-          ),
-        );
-        from = cut;
-      }
-      _stableLength = from;
-    }
-    final tail = source.substring(_stableLength);
-    final pending = tail.trim().isEmpty
-        ? null
-        : CoilMarkdownSegment(
-            id: _nextId,
-            source: tail,
-            nodes: _parse(streaming ? completeMarkdown(tail) : tail),
-          );
-    return CoilMarkdownDocument(
-      stable: List.unmodifiable(_stable),
-      pending: pending,
-      reset: reset,
-    );
-  }
-}
-
-final _listMarker = RegExp(r'^(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)');
-final _fence = RegExp('^ {0,3}(`{3,}|~{3,})');
-
-/// HTML blocks that may hold blank lines, and what ends each.
-final _htmlOpeners = <RegExp, String>{
-  RegExp('^ {0,3}<!--'): '-->',
-  RegExp(r'^ {0,3}<pre\b', caseSensitive: false): '</pre>',
-  RegExp(r'^ {0,3}<script\b', caseSensitive: false): '</script>',
-  RegExp(r'^ {0,3}<style\b', caseSensitive: false): '</style>',
-  RegExp(r'^ {0,3}<textarea\b', caseSensitive: false): '</textarea>',
-};
-
-/// The offset after the first safe boundary in [source] at or after [from]:
-/// the start of a top-level block that nothing before it can change. Null
-/// when there is none yet.
-///
-/// A boundary is a run of blank lines outside a code fence or an HTML block
-/// that may hold blank lines, followed by a complete line at column 0 that
-/// can't continue the block before it: after a list, not another item.
-int? markdownBoundary(String source, int from) {
-  String? fence;
-  String? htmlCloser;
-  var blockStarted = false;
-  var inList = false;
-  var blankSeen = false;
-  var offset = from;
-  while (offset < source.length) {
-    final newline = source.indexOf('\n', offset);
-    if (newline < 0) {
-      // The last line may still be growing. It can already start a new
-      // block if its first character rules out continuing the one before:
-      // anything at column 0 after a blank, except what could still turn
-      // into the next item of a list.
-      final line = source.substring(offset);
-      if (fence == null &&
-          htmlCloser == null &&
-          blankSeen &&
-          line.isNotEmpty &&
-          !line.startsWith(' ') &&
-          !line.startsWith('\t') &&
-          !(inList && RegExp(r'^[-*+\d]').hasMatch(line))) {
-        return offset;
-      }
-      return null;
-    }
-    final start = offset;
-    final line = source.substring(start, newline);
-    offset = newline + 1;
-    if (fence != null) {
-      final close = _fence.firstMatch(line);
-      if (close != null &&
-          close[1]![0] == fence[0] &&
-          close[1]!.length >= fence.length &&
-          line.trim() == close[1]) {
-        fence = null;
-      }
-      continue;
-    }
-    if (htmlCloser != null) {
-      if (line.contains(htmlCloser)) htmlCloser = null;
-      continue;
-    }
-    if (line.trim().isEmpty) {
-      if (blockStarted) blankSeen = true;
-      continue;
-    }
-    final column0 = !line.startsWith(' ') && !line.startsWith('\t');
-    final listItem = column0 && _listMarker.hasMatch(line);
-    if (blankSeen && column0 && !(inList && listItem)) {
-      return start;
-    }
-    if (!blockStarted) inList = listItem;
-    blankSeen = false;
-    blockStarted = true;
-    if (_fence.firstMatch(line) case final open?) {
-      fence = open[1];
-    } else {
-      for (final MapEntry(key: opener, value: closer) in _htmlOpeners.entries) {
-        if (opener.hasMatch(line)) {
-          // Closed on its own line: nothing stays open.
-          if (!line.contains(closer)) htmlCloser = closer;
-          break;
-        }
-      }
-    }
-  }
-  return null;
-}
+typedef CoilMarkdownSession = turns.MarkdownSession;
