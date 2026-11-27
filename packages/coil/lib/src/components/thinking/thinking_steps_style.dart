@@ -147,7 +147,7 @@ class CoilThinkingStepsStyle
   /// How thick the connector is.
   final double? connectorWidth;
 
-  /// The space between a step's glyph and the top of its connector.
+  /// The space between a step's glyph and its connector.
   final double? connectorGap;
 
   /// The fill of a source badge.

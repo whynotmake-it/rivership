@@ -814,6 +814,7 @@ void main() {
     testWidgets(
       'empty steps without onChanged renders static header then expands',
       (tester) async {
+        final semantics = tester.ensureSemantics();
         final content = await _pumpLive(
           tester,
           const CoilThinkingSteps(
@@ -828,6 +829,17 @@ void main() {
 
         expect(find.text('Thinking…'), findsOneWidget);
         expect(find.byType(CoilIcon), findsNothing);
+        final staticNode = tester.getSemantics(
+          find.byType(CoilDisclosureTrigger),
+        );
+        expect(
+          staticNode,
+          isSemantics(
+            label: 'Thinking…',
+            isButton: false,
+            hasEnabledState: false,
+          ),
+        );
         final opacity = tester.widget<Opacity>(
           find
               .ancestor(
@@ -857,6 +869,7 @@ void main() {
         );
         await tester.pump();
         expect(find.byType(CoilIcon), findsOneWidget);
+        semantics.dispose();
       },
     );
 

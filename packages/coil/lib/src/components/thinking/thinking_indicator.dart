@@ -67,6 +67,12 @@ class CoilThinkingIndicator extends StatefulWidget {
 }
 
 class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
+  static Widget _rollTransition(Widget child, Animation<double> presence) =>
+      ThinkingRoll(presence: presence, rise: true, child: child);
+
+  static Widget _fadeTransition(Widget child, Animation<double> presence) =>
+      ThinkingRoll(presence: presence, rise: false, child: child);
+
   Timer? _timer;
 
   /// The shown word's position in [CoilThinkingIndicator.words], or -1
@@ -161,11 +167,7 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
               motion: reduced ? motion.fade : motion.standard,
               exitMotion: reduced ? motion.fadeExit : motion.standardExit,
               debugLabel: 'CoilThinkingIndicator.word',
-              transitionBuilder: (child, presence) => ThinkingRoll(
-                presence: presence,
-                rise: !reduced,
-                child: child,
-              ),
+              transitionBuilder: reduced ? _fadeTransition : _rollTransition,
               layoutBuilder: (current, previous) => Stack(
                 alignment: AlignmentDirectional.centerStart,
                 children: [...previous, ?current],

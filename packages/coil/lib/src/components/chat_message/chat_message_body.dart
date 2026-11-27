@@ -106,6 +106,42 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
       );
     }
 
+    final attachments = widget.attachments.isNotEmpty
+        ? Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            alignment: widget.user ? WrapAlignment.end : WrapAlignment.start,
+            children: widget.attachments,
+          )
+        : null;
+    var content = switch ((attachments, body)) {
+      (final attachments?, final body?) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: widget.user
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        spacing: gap,
+        children: [attachments, body],
+      ),
+      (final attachments?, null) => attachments,
+      (null, final body?) => body,
+      (null, null) => null,
+    };
+    if (content != null && widget.actions.isNotEmpty) {
+      content = CoilContextMenu(
+        style: CoilDropdownStyle(width: style.menuMinWidth),
+        entries: [
+          for (final action in widget.actions)
+            CoilAction(
+              label: action.label,
+              leading: action.icon,
+              onPressed: action.onPressed,
+            ),
+        ],
+        child: content,
+      );
+    }
+
     final column = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: widget.user
@@ -113,28 +149,7 @@ class _ChatMessageBodyState extends State<ChatMessageBody> {
           : CrossAxisAlignment.start,
       spacing: gap,
       children: [
-        if (widget.attachments.isNotEmpty)
-          Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            alignment: widget.user ? WrapAlignment.end : WrapAlignment.start,
-            children: widget.attachments,
-          ),
-        if (body != null && widget.actions.isNotEmpty)
-          CoilContextMenu(
-            style: CoilDropdownStyle(width: style.menuMinWidth),
-            entries: [
-              for (final action in widget.actions)
-                CoilAction(
-                  label: action.label,
-                  leading: action.icon,
-                  onPressed: action.onPressed,
-                ),
-            ],
-            child: body,
-          )
-        else if (body != null)
-          body,
+        if (content != null) content,
         if (hasMeta)
           ListenableBuilder(
             listenable: _states,

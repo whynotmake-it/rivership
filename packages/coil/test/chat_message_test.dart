@@ -242,6 +242,26 @@ void main() {
         await tester.tap(find.text('Retry'));
         await tester.pumpAndSettle();
         expect(calls.retried, [1]);
+
+        // Attachment-only messages still expose the long-press menu on touch.
+        final attachmentCalls = _Calls();
+        await tester.pumpWidget(
+          _app(
+            CoilChatMessage(
+              sender: CoilChatSender.user,
+              entrance: .none,
+              attachments: [_thumb()],
+              actions: _actions(attachmentCalls),
+            ),
+            tier: CoilTier.touch,
+          ),
+        );
+        expect(find.byType(CoilButton), findsNothing);
+        await tester.longPress(find.byType(ColoredBox).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Copy'));
+        await tester.pumpAndSettle();
+        expect(attachmentCalls.copied, [1]);
       },
     );
 
@@ -253,6 +273,10 @@ void main() {
       );
       await tester.pumpWidget(_app(message(_Calls())));
       expect(_metaOpacity(tester), 1);
+
+      await tester.pumpWidget(_app(message(_Calls()), tier: CoilTier.touch));
+      expect(_metaOpacity(tester), 1);
+      expect(find.byType(CoilButton), findsNWidgets(2));
     });
   });
 

@@ -156,10 +156,11 @@ class CoilDisclosureTrigger extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
     final rtl = Directionality.of(context) == TextDirection.rtl;
+    final isButton = showIndicator || onPressed != null;
     return Semantics(
       container: true,
-      button: showIndicator || onPressed != null,
-      enabled: onPressed != null,
+      button: isButton,
+      enabled: isButton ? onPressed != null : null,
       expanded: showIndicator ? expanded : null,
       controlsNodes: controlsNodes,
       child: CoilInteraction(

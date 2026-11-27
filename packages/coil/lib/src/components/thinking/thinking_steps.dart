@@ -220,7 +220,8 @@ class CoilThinkingSteps extends StatefulWidget {
 
   /// Called with the new expanded state when the trigger is pressed.
   ///
-  /// When null, disables the trigger.
+  /// When null and [steps] is empty, renders a static non-interactive status
+  /// header; otherwise disables the trigger.
   final ValueChanged<bool>? onChanged;
 
   /// Replaces the chevron ([CoilIcons.chevronEnd]).
@@ -256,6 +257,12 @@ class CoilThinkingSteps extends StatefulWidget {
 }
 
 class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
+  static Widget _rollTransition(Widget child, Animation<double> presence) =>
+      ThinkingRoll(presence: presence, rise: true, child: child);
+
+  static Widget _fadeTransition(Widget child, Animation<double> presence) =>
+      ThinkingRoll(presence: presence, rise: false, child: child);
+
   /// Steps at or past this index arrived after the first build.
   ///
   /// It drops when steps are removed, so steps added after a clear (a retry)
@@ -330,19 +337,17 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
       ),
       (final label, null) => label,
     };
-    final rollingLabel = MotionSizeSwitcher(
-      motion: reduced ? motion.fade : motion.standard,
-      exitMotion: reduced ? motion.fadeExit : motion.standardExit,
-      sizeMotion: motion.standard,
-      alignment: AlignmentDirectional.centerStart,
-      immediateResize: true,
-      debugLabel: 'CoilThinkingSteps.word',
-      transitionBuilder: (child, presence) => ThinkingRoll(
-        presence: presence,
-        rise: !reduced,
-        child: child,
+    final rollingLabel = ClipRect(
+      child: MotionSizeSwitcher(
+        motion: reduced ? motion.fade : motion.standard,
+        exitMotion: reduced ? motion.fadeExit : motion.standardExit,
+        sizeMotion: motion.standard,
+        alignment: AlignmentDirectional.centerStart,
+        immediateResize: true,
+        debugLabel: 'CoilThinkingSteps.word',
+        transitionBuilder: reduced ? _fadeTransition : _rollTransition,
+        child: keyedLabel,
       ),
-      child: keyedLabel,
     );
 
     return MotorInspectionScope(
