@@ -59,16 +59,12 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.applyBottomPadding = true,
     this.itemSpacing = 24,
     this.jumpThreshold = 160,
-    this.maxAnchorFraction = 0.5,
-    this.pinMotion,
+    this.anchorConfig = TurnAnchorConfig.standard,
+    this.autoScrollMotion,
     this.physics,
     this.scrollCacheExtent,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
-       assert(
-         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
-         'maxAnchorFraction must be in (0.0, 1.0]',
-       ),
        sectionId = null,
        sectionHeaderBuilder = null,
        stickySectionHeaders = false,
@@ -110,8 +106,8 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.applyBottomPadding = true,
     this.itemSpacing = 24,
     this.jumpThreshold = 160,
-    this.maxAnchorFraction = 0.5,
-    this.pinMotion,
+    this.anchorConfig = TurnAnchorConfig.standard,
+    this.autoScrollMotion,
     this.physics,
     this.scrollCacheExtent,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
@@ -119,10 +115,6 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
        assert(
          sectionHeaderSpacing >= 0,
          'sectionHeaderSpacing must be non-negative',
-       ),
-       assert(
-         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
-         'maxAnchorFraction must be in (0.0, 1.0]',
        );
 
   /// Total number of items in chronological order (oldest first).
@@ -221,16 +213,20 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// becomes `true`.
   final double jumpThreshold;
 
-  /// Maximum fraction of the usable viewport height that a pinned anchor item
-  /// may occupy before scrolling up to preserve room below it for the reply.
+  /// Controls where a pinned anchor rests within the usable viewport and how
+  /// much trailing space is preserved below tall anchors.
   ///
-  /// Forwarded to the internal [SliverTurnStage]. Defaults to `0.5`.
-  final double maxAnchorFraction;
+  /// Forwarded to the internal [SliverTurnStage]. Defaults to
+  /// [TurnAnchorConfig.standard].
+  final TurnAnchorConfig anchorConfig;
 
-  /// Motor spring used for pin animations, `jumpToBottom`, and `scrollTo`.
-  /// Under `MediaQuery.disableAnimationsOf(context)`, all transitions jump
-  /// instantaneously.
-  final Motion? pinMotion;
+  /// Motor spring used for automatic and programmatic scroll flights
+  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  ///
+  /// This controls only automatic scroll animations and never affects user drag
+  /// [physics]. Under `MediaQuery.disableAnimationsOf(context)`, all
+  /// transitions jump instantaneously.
+  final Motion? autoScrollMotion;
 
   /// Optional custom scroll physics.
   final ScrollPhysics? physics;
@@ -313,6 +309,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   /// move across `_centerIndex`) so visible items stay frozen to 0.0px.
   double _pendingCenterShift = 0;
 
+  /// Last measured total scroll extent of [TurnScrollView.leadingSlivers],
+  /// used as a fallback if reverse-side leading slivers have not been laid out
+  /// yet when computing center shifts or split-0 coordinate estimates.
+  double _lastLeadingExtent = 0;
+
   /// One-shot synchronous pixel offset applied on recenter
   /// (`scrollTo(animate: false)`).
   double? _pendingInstantOffset;
@@ -328,7 +329,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   double get widgetJumpThreshold => widget.jumpThreshold;
 
   @override
-  Motion? get widgetPinMotion => widget.pinMotion;
+  Motion? get widgetAutoScrollMotion => widget.autoScrollMotion;
+
+  @override
+  TurnAnchorConfig get effectiveAnchorConfig =>
+      activeTurnStage?.anchorConfig ?? widget.anchorConfig;
 
   @override
   EdgeInsetsGeometry? get widgetPadding => widget.padding;
@@ -813,6 +818,70 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     if (_hasStickyHeaders) _scheduleStickySync();
   }
 
+  /// Returns the rendered total scroll extent of `widget.leadingSlivers`
+  /// between `_topKey` and the `above` sliver, falling back to the last
+  /// measured value when slivers are not yet attached/laid out.
+  double _leadingSliversExtent() {
+    if (widget.leadingSlivers.isEmpty) {
+      _lastLeadingExtent = 0;
+      return 0;
+    }
+    final topSliver = _topKey.currentContext?.findRenderObject();
+    final belowSliver = _belowKey.currentContext?.findRenderObject();
+    if (topSliver is RenderSliver &&
+        belowSliver is RenderSliver &&
+        topSliver.attached &&
+        belowSliver.attached) {
+      final parent = belowSliver.parent;
+      if (parent is RenderViewport && identical(topSliver.parent, parent)) {
+        final aboveSliver = parent.childBefore(belowSliver);
+        var extent = 0.0;
+        var allLaidOut = true;
+        var current = parent.childAfter(topSliver);
+        while (current != null && !identical(current, aboveSliver)) {
+          final geom = current.geometry;
+          if (geom == null) {
+            allLaidOut = false;
+            break;
+          }
+          extent += geom.scrollExtent;
+          current = parent.childAfter(current);
+        }
+        if (allLaidOut) {
+          _lastLeadingExtent = extent;
+          return extent;
+        }
+      }
+    }
+    return _lastLeadingExtent;
+  }
+
+  /// Reads `_belowKey`'s exact pre-switch scroll offset from `RenderViewport`
+  /// (`topSpacer + sum(leadingSlivers.scrollExtent)`) before flipping
+  /// `Viewport.center` from `_topKey` to `_belowKey`.
+  double _preSwitchBelowOffset(double fallbackTopSpacer) {
+    final belowSliver = _belowKey.currentContext?.findRenderObject();
+    if (belowSliver is RenderSliver &&
+        belowSliver.attached &&
+        belowSliver.geometry != null) {
+      final parent = belowSliver.parent;
+      if (parent is RenderViewport) {
+        final offset = parent.scrollOffsetOf(belowSliver, 0);
+        if (offset.isFinite) {
+          final topSliver = _topKey.currentContext?.findRenderObject();
+          final topExtent =
+              (topSliver is RenderSliver
+                  ? topSliver.geometry?.scrollExtent
+                  : null) ??
+              fallbackTopSpacer;
+          _lastLeadingExtent = math.max(0, offset - topExtent);
+          return offset;
+        }
+      }
+    }
+    return fallbackTopSpacer + _leadingSliversExtent();
+  }
+
   double _estimatedOffsetFor(
     int index, {
     required double alignment,
@@ -824,7 +893,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   }) {
     final split = centerIndex ?? _centerIndex;
     final spacing = widget.itemSpacing;
-    var coord = split == 0 ? _topSpacer : 0.0;
+    var coord = split == 0 ? _topSpacer + _leadingSliversExtent() : 0.0;
     if (index >= split) {
       for (var i = split; i < index; i++) {
         coord += _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
@@ -984,7 +1053,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       return h + widget.sectionHeaderSpacing;
     }
 
-    var total = centerIndex == 0 ? _topSpacer : 0.0;
+    var total = centerIndex == 0 ? _topSpacer + _leadingSliversExtent() : 0.0;
     for (var i = centerIndex; i < belowPrePinEnd; i++) {
       final h = extents[widget.itemId(i)];
       final sh = sectionExtra(i);
@@ -1013,7 +1082,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       final minTurn = RenderSliverTurnStage.computeMinExtent(
         usableExtent: usable,
         anchorExtent: anchorH,
-        maxAnchorFraction: widget.maxAnchorFraction,
+        anchorConfig: widget.anchorConfig,
       );
       total += math.max(minTurn, actualTurn);
     }
@@ -1023,7 +1092,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   }
 
   @override
-  Future<bool> jumpToBottom({required bool animate}) async {
+  Future<bool> jumpToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
     if (widget.itemCount == 0) return false;
@@ -1032,6 +1101,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final epoch = navEpoch;
 
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
+    final flightMotion = motion ?? resolvedMotion;
 
     if (!shouldAnimate) {
       if (_hasExactBottomExtent()) {
@@ -1072,7 +1142,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     }
 
     final arrived = await pos.animateToTarget(
-      motion: resolvedMotion,
+      motion: flightMotion,
       vsync: this,
       resolveTarget: () {
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
@@ -1093,6 +1163,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     Object itemId, {
     required double alignment,
     required bool animate,
+    Motion? motion,
   }) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
@@ -1103,6 +1174,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final epoch = navEpoch;
 
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
+    final flightMotion = motion ?? resolvedMotion;
     final clampedAlignment = alignment.clamp(0.0, 1.0);
 
     double? exact(Object id) => exactOffsetFor(
@@ -1171,7 +1243,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     }
 
     final arrived = await pos.animateToTarget(
-      motion: resolvedMotion,
+      motion: flightMotion,
       vsync: this,
       resolveTarget: () {
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
@@ -1268,9 +1340,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final bottomSpacer = _bottomSpacer;
     final hasAbove = aboveCount > 0;
     if (!_builtWithAbove && hasAbove) {
-      _pendingCenterShift -= topSpacer;
+      _pendingCenterShift -= _preSwitchBelowOffset(topSpacer);
     } else if (_builtWithAbove && !hasAbove) {
-      _pendingCenterShift += topSpacer;
+      _pendingCenterShift += topSpacer + _leadingSliversExtent();
     }
     _builtWithAbove = hasAbove;
 
@@ -1350,7 +1422,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 
       if (pinnedIndex >= 0)
         SliverTurnStage(
-          maxAnchorFraction: widget.maxAnchorFraction,
+          anchorConfig: widget.anchorConfig,
           anchorSliver: SliverPadding(
             padding: horizontal,
             sliver: SliverToBoxAdapter(

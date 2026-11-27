@@ -63,7 +63,7 @@ void main() {
               padding: const EdgeInsets.fromLTRB(16, 40, 16, 80),
               itemSpacing: 20,
               sectionHeaderSpacing: 12,
-              pinMotion: const Motion.instant(),
+              autoScrollMotion: const Motion.instant(),
               sectionHeaderBuilder: (context, DateTime day, bool isPinned) =>
                   SizedBox(
                     key: ValueKey(

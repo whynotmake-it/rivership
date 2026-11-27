@@ -11,12 +11,20 @@ import 'package:motor/motor.dart';
 abstract interface class TurnScrollDelegate {
   /// Scrolls to where the bottom was when called.
   ///
+  /// When [motion] is non-null, it overrides the scroll view's
+  /// `autoScrollMotion` for this flight (while still respecting reduced motion
+  /// via `MediaQuery.disableAnimationsOf`).
+  ///
   /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
   /// or unable to scroll (e.g. empty list or detached position).
-  Future<bool> jumpToBottom({required bool animate});
+  Future<bool> jumpToBottom({required bool animate, Motion? motion});
 
   /// Scrolls to the item identified by [itemId].
+  ///
+  /// When [motion] is non-null, it overrides the scroll view's
+  /// `autoScrollMotion` for this flight (while still respecting reduced motion
+  /// via `MediaQuery.disableAnimationsOf`).
   ///
   /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
@@ -25,6 +33,7 @@ abstract interface class TurnScrollDelegate {
     Object itemId, {
     required double alignment,
     required bool animate,
+    Motion? motion,
   });
 
   /// Called immediately whenever the user initiates any scroll gesture
@@ -148,13 +157,17 @@ class TurnScrollController extends ScrollController {
   /// unmeasured items as they lay out and freezes as soon as the last item
   /// lays out, so newly streaming tokens never cause jittery chasing.
   ///
+  /// Pass [motion] to override the scroll view's `autoScrollMotion` for this
+  /// flight. Under `MediaQuery.disableAnimationsOf(context)`, the transition
+  /// always jumps instantaneously.
+  ///
   /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// the list is empty / unattached.
-  Future<bool> jumpToBottom({bool animate = true}) async {
+  Future<bool> jumpToBottom({bool animate = true, Motion? motion}) async {
     final delegate = _delegate;
     if (delegate == null) return false;
-    return delegate.jumpToBottom(animate: animate);
+    return delegate.jumpToBottom(animate: animate, motion: motion);
   }
 
   /// Scrolls to the item identified by [itemId], even if it is currently
@@ -164,6 +177,10 @@ class TurnScrollController extends ScrollController {
   /// `padding.top` + safe area and any pinned/sticky header); `1.0` aligns its
   /// bottom to the usable bottom edge; `0.5` centers it.
   ///
+  /// Pass [motion] to override the scroll view's `autoScrollMotion` for this
+  /// flight. Under `MediaQuery.disableAnimationsOf(context)`, the transition
+  /// always jumps instantaneously.
+  ///
   /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// [itemId] was not found.
@@ -171,10 +188,16 @@ class TurnScrollController extends ScrollController {
     Object itemId, {
     double alignment = 0,
     bool animate = true,
+    Motion? motion,
   }) async {
     final delegate = _delegate;
     if (delegate == null) return false;
-    return delegate.scrollTo(itemId, alignment: alignment, animate: animate);
+    return delegate.scrollTo(
+      itemId,
+      alignment: alignment,
+      animate: animate,
+      motion: motion,
+    );
   }
 
   /// Cancels any active pin or programmatic scroll animation immediately.
@@ -543,6 +566,22 @@ class TargetTrackingScrollActivity extends ScrollActivity {
     if (!status.isAnimating) {
       var arrived = false;
       if (_position.hasContentDimensions) {
+        // Apply the settled controller value before checking whether the live
+        // target moved (Motor fires status listeners before value listeners on
+        // completion, so a linear/curved motion's final step would otherwise
+        // look > 1px short and spuriously restart).
+        final minAllowed = math.min(
+          _position.minScrollExtent,
+          _position.pixels,
+        );
+        final maxAllowed = math.max(
+          _position.maxScrollExtent,
+          _position.pixels,
+        );
+        final settled = _controller.value.clamp(minAllowed, maxAllowed);
+        if ((settled - _position.pixels).abs() > 0.01) {
+          delegate.setPixels(settled);
+        }
         final raw = resolveTarget();
         if (raw != null) {
           final clamped = raw.clamp(

@@ -164,8 +164,9 @@ final doc = session.update(streamedText, streaming: true);
 - `package:turns/turns.dart` — full public API (scroll + markdown).
 - `package:turns/scroll.dart` — `TurnScrollView`, `TurnScrollView.sectioned`,
   `TurnSectionHeaderBuilder`, `CustomTurnScrollView`, `SliverTurnList`,
-  `SliverTurnStage`, `TurnScrollController`, `TurnScrollNotification`,
-  `TurnScrollScope`, `TurnScrollItem`.
+  `SliverTurnStage`, `TurnAnchorConfig`, `TurnScrollController`,
+  `TurnScrollNotification`, `TurnScrollScope`, `TurnScrollItem`,
+  `defaultTurnAutoScrollMotion`.
 - `package:turns/markdown.dart` — `MarkdownSession`, `MarkdownDocument`,
   `MarkdownSegment`, `parseMarkdown`, `completeMarkdown`, `markdownBoundary`,
   and pure-Dart LaTeX math inline syntaxes (`latexMathSyntaxes`,

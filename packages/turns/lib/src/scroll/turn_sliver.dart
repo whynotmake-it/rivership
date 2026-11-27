@@ -120,20 +120,100 @@ class TurnScrollItem extends StatelessWidget {
   }
 }
 
+/// Configures how [SliverTurnStage] positions a pinned anchor item within the
+/// usable viewport and how much trailing room it reserves below the anchor.
+///
+/// Let `V` be the usable viewport height
+/// (`viewportMainAxisExtent - topClearance - bottomClearance`) and `H_u` be the
+/// anchor item's height:
+/// - `base = V * (1.0 - alignment)` places the anchor's top edge at
+///   `topClearance + V * alignment`.
+/// - When [minTrailingFraction] is non-null, the reserved stage extent is
+///   `max(base, H_u + V * minTrailingFraction)`, so a tall anchor scrolls
+///   upward as needed to leave at least `V * minTrailingFraction` clear below
+///   its bottom edge for the reply.
+/// - When [minTrailingFraction] is `null`, the reserved extent is always
+///   `base` so the anchor rests at [alignment] regardless of height.
+@immutable
+final class TurnAnchorConfig {
+  /// Creates a turn anchor configuration.
+  const TurnAnchorConfig({
+    this.alignment = 0,
+    this.minTrailingFraction,
+  }) : assert(
+         alignment >= 0.0 && alignment <= 1.0,
+         'alignment must be in [0.0, 1.0]',
+       ),
+       assert(
+         minTrailingFraction == null ||
+             (minTrailingFraction >= 0.0 && minTrailingFraction <= 1.0),
+         'minTrailingFraction must be null or in [0.0, 1.0]',
+       );
+
+  /// Standard chat pinning: aligns short anchors to top clearance (`0.0`) and
+  /// scrolls tall anchors upward so at least 50% of the usable viewport
+  /// remains clear below the anchor for the reply.
+  static const standard = TurnAnchorConfig(minTrailingFraction: 0.5);
+
+  /// Pins every anchor flush to top clearance (`0.0`) regardless of its
+  /// height, with no minimum trailing floor.
+  static const top = TurnAnchorConfig();
+
+  static const _keep = Object();
+
+  /// Target resting alignment of the anchor's top edge inside the usable
+  /// viewport (`0.0` = top clearance, `0.5` = middle, `1.0` = bottom).
+  final double alignment;
+
+  /// Optional minimum fraction of the usable viewport height kept clear below
+  /// the anchor's bottom edge (`[0.0, 1.0]`).
+  ///
+  /// When `null`, no trailing floor is enforced and the anchor always rests at
+  /// [alignment].
+  final double? minTrailingFraction;
+
+  /// Returns a copy of this configuration with the given fields replaced.
+  ///
+  /// Pass `minTrailingFraction: null` to explicitly clear the trailing floor.
+  TurnAnchorConfig copyWith({
+    double? alignment,
+    Object? minTrailingFraction = _keep,
+  }) => TurnAnchorConfig(
+    alignment: alignment ?? this.alignment,
+    minTrailingFraction: identical(minTrailingFraction, _keep)
+        ? this.minTrailingFraction
+        : minTrailingFraction as double?,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TurnAnchorConfig &&
+          other.alignment == alignment &&
+          other.minTrailingFraction == minTrailingFraction;
+
+  @override
+  int get hashCode => Object.hash(alignment, minTrailingFraction);
+
+  @override
+  String toString() =>
+      'TurnAnchorConfig(alignment: $alignment, '
+      'minTrailingFraction: $minTrailingFraction)';
+}
+
 /// A sliver that lays out the active turn's anchor item, the items following
 /// it, and an optional trailing sliver (such as a status row) in a single
 /// layout pass, while reserving enough trailing scroll extent to pin the anchor
 /// item cleanly inside the usable viewport.
 ///
 /// Let `V = viewportMainAxisExtent - topClearance - bottomClearance` and let
-/// `H_u` be the anchor item's height (`anchor.geometry.scrollExtent`):
-/// - Short anchor (`H_u <= V * maxAnchorFraction`): reserves `minExtent = V`,
-///   so scrolling to `maxScrollExtent` places the anchor's top at
-///   `topClearance`.
-/// - Tall anchor (`H_u > V * maxAnchorFraction`): reserves
-///   `minExtent = H_u + V * (1.0 - maxAnchorFraction)`, so scrolling to
-///   `maxScrollExtent` leaves `1.0 - maxAnchorFraction` of `V` below the
-///   anchor's bottom.
+/// `H_u` be the anchor item's height (`anchor.geometry.scrollExtent`). The
+/// reserved minimum extent is computed by
+/// [RenderSliverTurnStage.computeMinExtent] from [anchorConfig]:
+/// - `base = V * (1.0 - anchorConfig.alignment)`
+/// - If `anchorConfig.minTrailingFraction` is `null`: `minExtent = base`.
+/// - Otherwise:
+///   `minExtent = max(base, H_u + V * anchorConfig.minTrailingFraction)`.
 ///
 /// The reported `scrollExtent` is `max(minExtent, actualContentExtent)`, so
 /// `maxScrollExtent` stays completely constant while the reply grows inside
@@ -150,30 +230,25 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
     required Widget afterSliver,
     this.topClearance,
     this.bottomClearance,
-    this.maxAnchorFraction = 0.5,
+    this.anchorConfig = TurnAnchorConfig.standard,
     Widget? tailSliver,
     super.key,
-  }) : assert(
-         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
-         'maxAnchorFraction must be in (0.0, 1.0]',
-       ),
-       super(children: [anchorSliver, afterSliver, ?tailSliver]);
+  }) : super(children: [anchorSliver, afterSliver, ?tailSliver]);
 
   /// Viewport top clearance (safe area + content top padding) where a pinned
-  /// short anchor item should rest. Defaults to [TurnScrollScope.topClearance].
+  /// anchor at `alignment: 0.0` rests. Defaults to
+  /// [TurnScrollScope.topClearance].
   final double? topClearance;
 
   /// Viewport bottom clearance (safe area / keyboard + content bottom padding).
   /// Defaults to [TurnScrollScope.bottomClearance].
   final double? bottomClearance;
 
-  /// Maximum fraction of the usable viewport height that a pinned anchor item
-  /// may occupy before scrolling up to preserve room below it for the reply.
+  /// Controls where the pinned anchor rests within the usable viewport and how
+  /// much trailing space is preserved below tall anchors.
   ///
-  /// Defaults to `0.5` (tall prompts scroll up so the bottom 50% remains clear
-  /// for the response). Set to `1.0` to keep tall anchors pinned at the top
-  /// edge regardless of height.
-  final double maxAnchorFraction;
+  /// Defaults to [TurnAnchorConfig.standard].
+  final TurnAnchorConfig anchorConfig;
 
   @override
   RenderSliverTurnStage createRenderObject(BuildContext context) {
@@ -181,7 +256,7 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
     return RenderSliverTurnStage(
       topClearance: topClearance ?? scope?.topClearance ?? 0,
       bottomClearance: bottomClearance ?? scope?.bottomClearance ?? 0,
-      maxAnchorFraction: maxAnchorFraction,
+      anchorConfig: anchorConfig,
       onAttach: scope?.onTurnStageAttach,
       onDetach: scope?.onTurnStageDetach,
     );
@@ -196,7 +271,7 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
     renderObject
       ..topClearance = topClearance ?? scope?.topClearance ?? 0
       ..bottomClearance = bottomClearance ?? scope?.bottomClearance ?? 0
-      ..maxAnchorFraction = maxAnchorFraction
+      ..anchorConfig = anchorConfig
       ..onAttach = scope?.onTurnStageAttach
       ..onDetach = scope?.onTurnStageDetach;
   }
@@ -216,31 +291,25 @@ class RenderSliverTurnStage extends RenderSliver
   RenderSliverTurnStage({
     required double topClearance,
     required double bottomClearance,
-    double maxAnchorFraction = 0.5,
+    TurnAnchorConfig anchorConfig = TurnAnchorConfig.standard,
     this.onAttach,
     this.onDetach,
-  }) : assert(
-         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
-         'maxAnchorFraction must be in (0.0, 1.0]',
-       ),
-       _topClearance = topClearance,
+  }) : _topClearance = topClearance,
        _bottomClearance = bottomClearance,
-       _maxAnchorFraction = maxAnchorFraction;
+       _anchorConfig = anchorConfig;
 
   /// Computes the minimum reserved scroll extent for a turn stage given
-  /// [usableExtent], [anchorExtent], and [maxAnchorFraction].
+  /// [usableExtent], [anchorExtent], and [anchorConfig].
   static double computeMinExtent({
     required double usableExtent,
     required double anchorExtent,
-    double maxAnchorFraction = 0.5,
+    TurnAnchorConfig anchorConfig = TurnAnchorConfig.standard,
   }) {
-    assert(
-      maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
-      'maxAnchorFraction must be in (0.0, 1.0]',
-    );
-    return anchorExtent <= usableExtent * maxAnchorFraction
-        ? usableExtent
-        : anchorExtent + usableExtent * (1.0 - maxAnchorFraction);
+    final base = usableExtent * (1.0 - anchorConfig.alignment);
+    final minTrailing = anchorConfig.minTrailingFraction;
+    return minTrailing == null
+        ? base
+        : math.max(base, anchorExtent + usableExtent * minTrailing);
   }
 
   /// Called when this stage attaches to the pipeline.
@@ -271,19 +340,14 @@ class RenderSliverTurnStage extends RenderSliver
     markNeedsLayout();
   }
 
-  double _maxAnchorFraction;
+  TurnAnchorConfig _anchorConfig;
 
-  /// Maximum fraction of the usable viewport height reserved for the anchor
-  /// before scrolling it up to keep room below it.
-  double get maxAnchorFraction => _maxAnchorFraction;
+  /// Anchor positioning and trailing-room configuration for this turn stage.
+  TurnAnchorConfig get anchorConfig => _anchorConfig;
 
-  set maxAnchorFraction(double value) {
-    assert(
-      value > 0.0 && value <= 1.0,
-      'maxAnchorFraction must be in (0.0, 1.0]',
-    );
-    if (_maxAnchorFraction == value) return;
-    _maxAnchorFraction = value;
+  set anchorConfig(TurnAnchorConfig value) {
+    if (_anchorConfig == value) return;
+    _anchorConfig = value;
     markNeedsLayout();
   }
 
@@ -421,7 +485,7 @@ class RenderSliverTurnStage extends RenderSliver
     _minExtent = computeMinExtent(
       usableExtent: usable,
       anchorExtent: anchorExtent,
-      maxAnchorFraction: _maxAnchorFraction,
+      anchorConfig: _anchorConfig,
     );
     final totalScrollExtent = math.max(_minExtent, _actualContentExtent);
 

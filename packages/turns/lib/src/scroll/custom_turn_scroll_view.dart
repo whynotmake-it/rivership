@@ -31,7 +31,7 @@ class CustomTurnScrollView extends StatefulWidget {
     this.applyBottomPadding = true,
     this.initialAtBottom = true,
     this.jumpThreshold = 160,
-    this.pinMotion,
+    this.autoScrollMotion,
     this.physics,
     this.scrollCacheExtent,
   });
@@ -84,10 +84,13 @@ class CustomTurnScrollView extends StatefulWidget {
   /// becomes `true`.
   final double jumpThreshold;
 
-  /// Motor spring used for pin animations, `jumpToBottom`, and `scrollTo`.
-  /// Under `MediaQuery.disableAnimationsOf(context)`, all transitions jump
-  /// instantaneously.
-  final Motion? pinMotion;
+  /// Motor spring used for automatic and programmatic scroll flights
+  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  ///
+  /// This controls only automatic scroll animations and never affects user drag
+  /// [physics]. Under `MediaQuery.disableAnimationsOf(context)`, all
+  /// transitions jump instantaneously.
+  final Motion? autoScrollMotion;
 
   /// Optional custom scroll physics.
   final ScrollPhysics? physics;
@@ -119,7 +122,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   double get widgetJumpThreshold => widget.jumpThreshold;
 
   @override
-  Motion? get widgetPinMotion => widget.pinMotion;
+  Motion? get widgetAutoScrollMotion => widget.autoScrollMotion;
 
   @override
   EdgeInsetsGeometry? get widgetPadding => widget.padding;
@@ -248,10 +251,9 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
             (lastChild.parentData! as SliverMultiBoxAdaptorParentData)
                 .layoutOffset ??
             0;
-        final lastExtent =
-            sliver.constraints.axis == Axis.vertical
-                ? lastChild.size.height
-                : lastChild.size.width;
+        final lastExtent = sliver.constraints.axis == Axis.vertical
+            ? lastChild.size.height
+            : lastChild.size.width;
         var offset = lastLayoutOffset + lastExtent;
         for (var i = lastIndex + 1; i < targetIndex; i++) {
           offset += estItemExtent(i) + spacing;
@@ -318,13 +320,14 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   }
 
   @override
-  Future<bool> jumpToBottom({required bool animate}) async {
+  Future<bool> jumpToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
 
     onUserScroll();
     final epoch = navEpoch;
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
+    final flightMotion = motion ?? resolvedMotion;
 
     if (!shouldAnimate) {
       for (var pass = 0; pass < _maxConvergencePasses; pass++) {
@@ -356,7 +359,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
 
     for (var pass = 0; pass < _maxConvergencePasses; pass++) {
       final arrived = await pos.animateToTarget(
-        motion: resolvedMotion,
+        motion: flightMotion,
         vsync: this,
         resolveTarget: () {
           if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
@@ -394,6 +397,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     Object itemId, {
     required double alignment,
     required bool animate,
+    Motion? motion,
   }) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
@@ -401,6 +405,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     onUserScroll();
     final epoch = navEpoch;
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
+    final flightMotion = motion ?? resolvedMotion;
     final clampedAlignment = alignment.clamp(0.0, 1.0);
 
     double? exact() => exactOffsetFor(
@@ -459,7 +464,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
 
     for (var pass = 0; pass < _maxConvergencePasses; pass++) {
       final arrived = await pos.animateToTarget(
-        motion: resolvedMotion,
+        motion: flightMotion,
         vsync: this,
         resolveTarget: () {
           if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {

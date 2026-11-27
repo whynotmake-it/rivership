@@ -33,8 +33,13 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   /// Distance threshold for `isAwayFromBottom`.
   double get widgetJumpThreshold;
 
-  /// Optional custom Motor spring motion.
-  Motion? get widgetPinMotion;
+  /// Optional custom Motor spring motion for automatic/programmatic scroll
+  /// flights (`pinnedId`, `scrollTo`, `jumpToBottom`).
+  Motion? get widgetAutoScrollMotion;
+
+  /// Effective [TurnAnchorConfig] used when computing [pinTargetOffset].
+  TurnAnchorConfig get effectiveAnchorConfig =>
+      activeTurnStage?.anchorConfig ?? TurnAnchorConfig.standard;
 
   /// Optional content padding.
   EdgeInsetsGeometry? get widgetPadding;
@@ -103,8 +108,10 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     return pos is TurnScrollPosition ? pos : null;
   }
 
-  /// Resolved Motor motion for pinning and programmatic scroll transitions.
-  Motion get resolvedMotion => widgetPinMotion ?? defaultTurnPinMotion;
+  /// Resolved Motor motion for automatic/programmatic scroll flights
+  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  Motion get resolvedMotion =>
+      widgetAutoScrollMotion ?? defaultTurnAutoScrollMotion;
 
   /// Mean measured item extent across all observed items.
   double get meanExtent {
@@ -289,10 +296,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   void schedulePinScroll() {
     final epoch = ++pinEpoch;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted ||
-          epoch != pinEpoch ||
-          !pinnedActive ||
-          !pendingPinScroll) {
+      if (!mounted || epoch != pinEpoch || !pinnedActive || !pendingPinScroll) {
         return;
       }
       _runPinScroll();
@@ -347,10 +351,9 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
           while (prev != null) {
             obstruction += prev.geometry?.maxScrollObstructionExtent ?? 0;
             final prevData = prev.parentData;
-            prev =
-                prevData is ContainerParentDataMixin<RenderSliver>
-                    ? prevData.previousSibling
-                    : null;
+            prev = prevData is ContainerParentDataMixin<RenderSliver>
+                ? prevData.previousSibling
+                : null;
           }
         }
       }
@@ -387,7 +390,12 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
       pos.viewportDimension - topInset - effectiveBottom,
     );
     final hU = box.size.height;
-    final anchorFromTop = hU <= usable * 0.5 ? 0.0 : hU - usable * 0.5;
+    final minExtent = RenderSliverTurnStage.computeMinExtent(
+      usableExtent: usable,
+      anchorExtent: hU,
+      anchorConfig: effectiveAnchorConfig,
+    );
+    final anchorFromTop = minExtent - usable;
     final itemTop = viewport.getOffsetToReveal(box, 0).offset;
     return (itemTop + anchorFromTop - (topInset - obstruction)).clamp(
       pos.minScrollExtent,
