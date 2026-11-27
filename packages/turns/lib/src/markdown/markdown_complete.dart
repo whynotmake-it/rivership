@@ -1,4 +1,4 @@
-/// @docImport 'package:coil/markdown.dart';
+/// @docImport 'package:turns/markdown.dart';
 library;
 
 /// [source] with its unfinished inline syntax completed, for text that is

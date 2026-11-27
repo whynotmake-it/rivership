@@ -25,6 +25,8 @@ dependencies:
     path: ../../packages/motor/example
   stupid_simple_sheet_example:
     path: ../../packages/stupid_simple_sheet/example
+  turns_example:
+    path: ../../packages/turns/example
 
 
   rivership: ^1.0.0-dev.0

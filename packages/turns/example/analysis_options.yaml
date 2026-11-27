@@ -1,0 +1,8 @@
+include: package:lintervention/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - build/**
+linter:
+  rules:
+    public_member_api_docs: false

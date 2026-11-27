@@ -1,0 +1,35 @@
+name: turns_example
+description: "Interactive example gallery for turns, built with coil."
+publish_to: none
+version: 0.1.0+1
+resolution: workspace
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.32.0"
+
+dependencies:
+  auto_route: ^10.0.1
+  coil:
+    path: ../../coil
+  fixed_ticker:
+    path: ../../fixed_ticker
+  flutter:
+    sdk: flutter
+  lucide_icons_flutter: 4.0.1
+  motor:
+    path: ../../motor
+  motor_widgets:
+    path: ../../motor_widgets
+  turns:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lintervention: ^0.3.1
+  snaptest:
+    path: ../../snaptest
+
+flutter:
+  uses-material-design: false
