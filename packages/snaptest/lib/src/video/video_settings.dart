@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 import 'package:snaptest/src/constants.dart';
 import 'package:snaptest/src/video/video_frame.dart';
 
@@ -56,6 +57,25 @@ sealed class VideoEncoding {
   /// better; sane range 0-63, default 32).
   const factory VideoEncoding.vp9({int crf}) = _Vp9Encoding;
 
+  /// An animated GIF that loops forever (FFmpeg's `gif` encoder).
+  ///
+  /// Good for READMEs, pull requests and chat, which show GIFs inline where
+  /// they don't play videos. Each frame gets its own palette of up to
+  /// [maxColors] colors (2-256, default 256), so frames still stream to
+  /// FFmpeg as they are captured. Only the pixels that change between frames
+  /// are stored, which keeps UI recordings small. Lower
+  /// [SnapVideoSettings.frameRate] (e.g. 25) for smaller files.
+  ///
+  /// GIF frame delays count in hundredths of a second, and browsers slow
+  /// down frames shorter than 2/100 s. So frame rates above 50 fps are
+  /// resampled down to 50 fps, and the GIF still plays at the recorded speed.
+  ///
+  /// GIF transparency is all or nothing per pixel, so semi-transparent edges
+  /// get hard edges. [supportsAlpha] is therefore `false` and the background
+  /// defaults to opaque white. To get a transparent GIF anyway, set
+  /// [SnapVideoSettings.backgroundColor] to a transparent color.
+  const factory VideoEncoding.gif({int maxColors}) = _GifEncoding;
+
   /// The file extension for the encoded container, including the dot.
   String get fileExtension;
 
@@ -71,6 +91,14 @@ sealed class VideoEncoding {
   /// when `false`, transparency renders as black unless a
   /// [SnapVideoSettings.backgroundColor] is composited first.
   bool get supportsAlpha;
+
+  /// The output arguments for frames that arrive at [frameRate] fps.
+  ///
+  /// Defaults to [ffmpegCodecArguments]; profiles that have to resample
+  /// their input frame rate override this.
+  @internal
+  List<String> ffmpegOutputArguments({required int frameRate}) =>
+      ffmpegCodecArguments;
 }
 
 class _H264Encoding extends VideoEncoding {
@@ -138,6 +166,58 @@ class _Vp9Encoding extends VideoEncoding {
     '0',
     '-f',
     'webm',
+  ];
+}
+
+class _GifEncoding extends VideoEncoding {
+  const _GifEncoding({this.maxColors = 256})
+    : assert(
+        maxColors >= 2 && maxColors <= 256,
+        'maxColors must be between 2 and 256',
+      ),
+      super._();
+
+  /// The fastest frame rate that GIF delays represent exactly and that
+  /// browsers play at full speed.
+  static const _maxFrameRate = 50;
+
+  /// Colors per frame palette (2-256).
+  final int maxColors;
+
+  @override
+  String get fileExtension => '.gif';
+
+  @override
+  String get ffmpegEncoderName => 'gif';
+
+  @override
+  bool get supportsAlpha => false;
+
+  @override
+  List<String> get ffmpegCodecArguments => _arguments(null);
+
+  @override
+  List<String> ffmpegOutputArguments({required int frameRate}) =>
+      _arguments(frameRate > _maxFrameRate ? _maxFrameRate : null);
+
+  List<String> _arguments(int? resampleTo) => [
+    '-vf',
+    [
+      if (resampleTo != null) 'fps=$resampleTo,',
+      // A palette per frame (stats_mode=single, new=1) lets FFmpeg encode
+      // each frame as it arrives instead of buffering the whole recording
+      // to build one global palette.
+      'split[frames][stats];',
+      '[stats]palettegen=stats_mode=single:max_colors=$maxColors:',
+      'reserve_transparent=1[palette];',
+      '[frames][palette]paletteuse=new=1',
+    ].join(),
+    '-c:v',
+    'gif',
+    '-loop',
+    '0',
+    '-f',
+    'gif',
   ];
 }
 
