@@ -4,7 +4,9 @@
 import 'dart:async';
 
 import 'package:coil/foundation.dart';
+import 'package:coil/primitives.dart';
 import 'package:coil/src/components/thinking/thinking_indicator_style.dart';
+import 'package:coil/src/components/thinking/thinking_roll.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor_widgets/motor_widgets.dart';
@@ -159,8 +161,11 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
               motion: reduced ? motion.fade : motion.standard,
               exitMotion: reduced ? motion.fadeExit : motion.standardExit,
               debugLabel: 'CoilThinkingIndicator.word',
-              transitionBuilder: (child, presence) =>
-                  _Roll(presence: presence, rise: !reduced, child: child),
+              transitionBuilder: (child, presence) => ThinkingRoll(
+                presence: presence,
+                rise: !reduced,
+                child: child,
+              ),
               layoutBuilder: (current, previous) => Stack(
                 alignment: AlignmentDirectional.centerStart,
                 children: [...previous, ?current],
@@ -190,19 +195,26 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
           overflow: TextOverflow.ellipsis,
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            spacing: metrics.gap,
             children: [
-              if (widget.leading case final leading?)
-                ExcludeSemantics(
-                  child: IconTheme(
-                    data: IconThemeData(
-                      size: style.glyphSize,
-                      color: style.glyphColor,
-                      applyTextScaling: true,
-                    ),
-                    child: leading,
-                  ),
-                ),
+              CoilPresentSlot(
+                axis: Axis.horizontal,
+                gap: metrics.gap,
+                gapSide: CoilPresentSlotGap.after,
+                motion: widget.motion,
+                debugLabel: 'CoilThinkingIndicator.leading',
+                child: widget.leading == null
+                    ? null
+                    : ExcludeSemantics(
+                        child: IconTheme(
+                          data: IconThemeData(
+                            size: style.glyphSize,
+                            color: style.glyphColor,
+                            applyTextScaling: true,
+                          ),
+                          child: widget.leading!,
+                        ),
+                      ),
+              ),
               Flexible(child: words),
             ],
           ),
@@ -210,45 +222,4 @@ class _CoilThinkingIndicatorState extends State<CoilThinkingIndicator> {
       ),
     );
   }
-}
-
-/// Fades a word with its presence and, when [rise] is on, moves it up: an
-/// entering word rises from 80 % of its height below, a leaving one rises
-/// 80 % above.
-class _Roll extends StatelessWidget {
-  const _Roll({
-    required this.presence,
-    required this.rise,
-    required this.child,
-  });
-
-  final Animation<double> presence;
-  final bool rise;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: presence,
-    child: child,
-    builder: (context, child) {
-      final p = presence.value;
-      final leaving = presence.status == AnimationStatus.reverse;
-      return ExcludeSemantics(
-        excluding: leaving,
-        child: FractionalTranslation(
-          translation: Offset(
-            0,
-            rise ? (1 - p) * 0.8 * (leaving ? -1 : 1) : 0,
-          ),
-          // An entering word names the live region from its first frame,
-          // while it's still transparent.
-          child: Opacity(
-            opacity: p.clamp(0, 1),
-            alwaysIncludeSemantics: true,
-            child: child,
-          ),
-        ),
-      );
-    },
-  );
 }

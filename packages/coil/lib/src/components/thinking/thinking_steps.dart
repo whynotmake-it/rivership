@@ -5,11 +5,13 @@ import 'dart:math' as math;
 
 import 'package:coil/foundation.dart';
 import 'package:coil/primitives.dart';
+import 'package:coil/src/components/thinking/thinking_roll.dart';
 import 'package:coil/src/components/thinking/thinking_step_view.dart';
 import 'package:coil/src/components/thinking/thinking_steps_style.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/inspection.dart';
 import 'package:motor/motor.dart';
+import 'package:motor_widgets/motor_widgets.dart';
 
 /// Where a [CoilThinkingStep] stands.
 enum CoilThinkingStepStatus {
@@ -181,6 +183,7 @@ class CoilThinkingSteps extends StatefulWidget {
     required this.onChanged,
     super.key,
     this.active,
+    this.leading,
     this.indicator,
     this.focusNode,
     this.autofocus = false,
@@ -196,6 +199,11 @@ class CoilThinkingSteps extends StatefulWidget {
   /// [CoilThinkingStepStatus.running]. While active, a highlight sweeps across
   /// [label].
   final bool? active;
+
+  /// An optional glyph or animation before [label], styled by [IconTheme].
+  ///
+  /// Animates in and out horizontally as it appears or disappears.
+  final Widget? leading;
 
   /// The trigger's text, for example `Text('Thought for 12s')`.
   ///
@@ -312,6 +320,31 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
       ),
     );
 
+    final keyedLabel = switch ((
+      widget.label,
+      CoilSizeSwitcher.contentKeyOf(widget.label),
+    )) {
+      (final label, final name?) => KeyedSubtree(
+        key: ValueKey<Object>(name),
+        child: label,
+      ),
+      (final label, null) => label,
+    };
+    final rollingLabel = MotionSizeSwitcher(
+      motion: reduced ? motion.fade : motion.standard,
+      exitMotion: reduced ? motion.fadeExit : motion.standardExit,
+      sizeMotion: motion.standard,
+      alignment: AlignmentDirectional.centerStart,
+      immediateResize: true,
+      debugLabel: 'CoilThinkingSteps.word',
+      transitionBuilder: (child, presence) => ThinkingRoll(
+        presence: presence,
+        rise: !reduced,
+        child: child,
+      ),
+      child: keyedLabel,
+    );
+
     return MotorInspectionScope(
       group: 'CoilThinkingSteps',
       child: ConstrainedBox(
@@ -321,8 +354,10 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CoilDisclosureTrigger(
-              label: CoilShimmer(active: isActive, child: widget.label),
+              label: CoilShimmer(active: isActive, child: rollingLabel),
+              leading: widget.leading,
               indicator: widget.indicator,
+              slotMotion: widget.motion,
               expanded: expanded,
               onPressed: onChanged == null ? null : () => onChanged(!expanded),
               focusNode: widget.focusNode,

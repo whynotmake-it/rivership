@@ -829,10 +829,12 @@ void main() {
         expect(find.text('Thinking…'), findsOneWidget);
         expect(find.byType(CoilIcon), findsNothing);
         final opacity = tester.widget<Opacity>(
-          find.ancestor(
-            of: find.text('Thinking…'),
-            matching: find.byType(Opacity),
-          ),
+          find
+              .ancestor(
+                of: find.text('Thinking…'),
+                matching: find.byType(Opacity),
+              )
+              .last,
         );
         expect(opacity.opacity, 1);
         expect(
@@ -855,6 +857,79 @@ void main() {
         );
         await tester.pump();
         expect(find.byType(CoilIcon), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'header rolls vertically on label change and animates leading slot',
+      (tester) async {
+        final content = await _pumpLive(
+          tester,
+          const CoilThinkingSteps(
+            label: Text('Thinking…'),
+            steps: [],
+            expanded: false,
+            onChanged: null,
+            active: true,
+          ),
+        );
+        await tester.pump();
+        final baseWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+
+        // Label change mounts both old and new words inside ThinkingRoll.
+        content.value = const CoilThinkingSteps(
+          label: Text('Reading docs…'),
+          steps: [done, running],
+          expanded: false,
+          onChanged: _ignore,
+          active: true,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(find.text('Thinking…'), findsOneWidget);
+        expect(find.text('Reading docs…'), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('Thinking…'), findsNothing);
+
+        // Leading widget opens and closes its slot smoothly like CoilButton.
+        final withoutLeadingWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+        content.value = const CoilThinkingSteps(
+          label: Text('Reading docs…'),
+          leading: TestIcon(TestGlyph.search),
+          steps: [done, running],
+          expanded: false,
+          onChanged: _ignore,
+          active: true,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        final growingWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+        await tester.pump(const Duration(milliseconds: 600));
+        final withLeadingWidth =
+            tester.getSize(find.byType(CoilDisclosureTrigger)).width;
+        expect(growingWidth, greaterThan(withoutLeadingWidth));
+        expect(growingWidth, lessThanOrEqualTo(withLeadingWidth));
+        expect(withLeadingWidth, greaterThan(baseWidth));
+
+        content.value = const CoilThinkingSteps(
+          label: Text('Reading docs…'),
+          steps: [done, running],
+          expanded: false,
+          onChanged: _ignore,
+          active: true,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(
+          find.descendant(
+            of: find.byType(CoilDisclosureTrigger),
+            matching: find.byType(TestIcon),
+          ),
+          findsNothing,
+        );
       },
     );
   });

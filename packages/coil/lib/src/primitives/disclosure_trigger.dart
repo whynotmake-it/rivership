@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:coil/src/foundation/icons.dart';
+import 'package:coil/src/foundation/motion.dart';
 import 'package:coil/src/foundation/theme.dart';
 import 'package:coil/src/foundation/typography.dart';
 import 'package:coil/src/primitives/drawn_glyph.dart';
 import 'package:coil/src/primitives/focus_ring.dart';
 import 'package:coil/src/primitives/interaction.dart';
+import 'package:coil/src/primitives/present_slot.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
@@ -53,6 +55,7 @@ class CoilDisclosureTrigger extends StatelessWidget {
     this.focusRingOffset,
     this.mainAxisSize = MainAxisSize.max,
     this.showIndicator = true,
+    this.slotMotion,
     this.controlsNodes,
   });
 
@@ -143,6 +146,9 @@ class CoilDisclosureTrigger extends StatelessWidget {
   /// Whether to render the chevron / [indicator].
   final bool showIndicator;
 
+  /// Motion tokens driving the [leading] and indicator presence slots.
+  final CoilMotion? slotMotion;
+
   /// The semantics identifiers of the region the trigger opens.
   final Set<String>? controlsNodes;
 
@@ -201,9 +207,15 @@ class CoilDisclosureTrigger extends StatelessWidget {
                     ),
                     child: Row(
                       mainAxisSize: mainAxisSize,
-                      spacing: gap,
                       children: [
-                        ?leading,
+                        CoilPresentSlot(
+                          axis: Axis.horizontal,
+                          gap: gap,
+                          gapSide: CoilPresentSlotGap.after,
+                          motion: slotMotion,
+                          debugLabel: 'CoilDisclosureTrigger.leading',
+                          child: leading,
+                        ),
                         Flexible(
                           fit: mainAxisSize == MainAxisSize.max
                               ? FlexFit.tight
@@ -215,22 +227,29 @@ class CoilDisclosureTrigger extends StatelessWidget {
                             child: label,
                           ),
                         ),
-                        if (showIndicator)
-                          SingleMotionBuilder(
-                            value: expanded ? (rtl ? -0.25 : 0.25) : 0,
-                            motion: chevronMotion,
-                            debugLabel: 'CoilDisclosureTrigger.chevron',
-                            builder: (context, turns, child) =>
-                                Transform.rotate(
-                                  angle: turns * 2 * math.pi,
-                                  child: child,
-                                ),
-                            child:
-                                indicator ??
-                                const CoilIcon(
-                                  CoilIconRole.chevronEnd,
-                                ),
-                          ),
+                        CoilPresentSlot(
+                          axis: Axis.horizontal,
+                          gap: gap,
+                          motion: slotMotion,
+                          debugLabel: 'CoilDisclosureTrigger.indicator',
+                          child: showIndicator
+                              ? SingleMotionBuilder(
+                                  value: expanded ? (rtl ? -0.25 : 0.25) : 0,
+                                  motion: chevronMotion,
+                                  debugLabel: 'CoilDisclosureTrigger.chevron',
+                                  builder: (context, turns, child) =>
+                                      Transform.rotate(
+                                        angle: turns * 2 * math.pi,
+                                        child: child,
+                                      ),
+                                  child:
+                                      indicator ??
+                                      const CoilIcon(
+                                        CoilIconRole.chevronEnd,
+                                      ),
+                                )
+                              : null,
+                        ),
                       ],
                     ),
                   ),
