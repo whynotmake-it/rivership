@@ -32,12 +32,17 @@ class CoilThinkingStep {
   /// Creates a step.
   const CoilThinkingStep({
     required this.title,
+    this.key,
     this.detail,
     this.sources = const [],
     this.image,
     this.leading,
     this.status = CoilThinkingStepStatus.done,
   });
+
+  /// Optional identity key so inserting, removing, or folding steps preserves
+  /// step state without shifting animations.
+  final Key? key;
 
   /// Whether the step is done, running or failed.
   ///
@@ -175,6 +180,7 @@ class CoilThinkingSteps extends StatefulWidget {
     required this.expanded,
     required this.onChanged,
     super.key,
+    this.active,
     this.indicator,
     this.focusNode,
     this.autofocus = false,
@@ -183,6 +189,13 @@ class CoilThinkingSteps extends StatefulWidget {
     this.motions,
     this.style,
   });
+
+  /// Whether work is currently in progress.
+  ///
+  /// When null, defaults to `true` while any step in [steps] has
+  /// [CoilThinkingStepStatus.running]. While active, a highlight sweeps across
+  /// [label].
+  final bool? active;
 
   /// The trigger's text, for example `Text('Thought for 12s')`.
   ///
@@ -275,6 +288,9 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
     );
     final onChanged = widget.onChanged;
     final expanded = widget.expanded;
+    final isActive =
+        widget.active ??
+        widget.steps.any((s) => s.status == CoilThinkingStepStatus.running);
     final stepMotions = (
       height: motionFor(CoilThinkingStepsTrack.stepHeight, motion.gentle),
       opacity: motionFor(
@@ -303,7 +319,7 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CoilDisclosureTrigger(
-              label: widget.label,
+              label: CoilShimmer(active: isActive, child: widget.label),
               indicator: widget.indicator,
               expanded: expanded,
               onPressed: onChanged == null ? null : () => onChanged(!expanded),
@@ -314,10 +330,7 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
               textStyle: style.textStyle!,
               radius: style.radius!,
               minHeight: metrics.controlHeight,
-              padding: EdgeInsets.symmetric(
-                horizontal: metrics.controlPaddingX,
-                vertical: metrics.controlPaddingY(style.textStyle!),
-              ),
+              padding: style.triggerPadding!,
               gap: metrics.gap,
               iconSize: metrics.iconSize,
               minHitTarget: metrics.minHitTarget,
@@ -370,9 +383,10 @@ class _CoilThinkingStepsState extends State<CoilThinkingSteps> {
                   children: [
                     for (final (i, step) in widget.steps.indexed)
                       ThinkingStepView(
-                        key: ValueKey(i),
+                        key: step.key ?? ValueKey(i),
                         step: step,
                         enter: i >= _firstNew,
+                        first: i == 0,
                         last: i == widget.steps.length - 1,
                         metrics: metrics,
                         motions: stepMotions,

@@ -36,6 +36,7 @@ class ThinkingStepView extends StatefulWidget {
   const ThinkingStepView({
     required this.step,
     required this.enter,
+    required this.first,
     required this.last,
     required this.metrics,
     required this.motions,
@@ -49,7 +50,11 @@ class ThinkingStepView extends StatefulWidget {
   /// Whether the step arrived after the first build, so it animates in.
   final bool enter;
 
-  /// Whether this is the last step, which has no connector.
+  /// Whether this is the first step, which has no incoming connector from
+  /// above.
+  final bool first;
+
+  /// Whether this is the last step, which has no outgoing connector below.
   final bool last;
 
   /// The component's metrics.
@@ -81,6 +86,8 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
     // step's.
     final ambientIcons = IconTheme.of(context);
 
+    final pad = style.stepPadding!.resolve(Directionality.of(context));
+
     return CoilCollapsible(
       expanded: true,
       appear: widget.enter,
@@ -89,7 +96,7 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
       opacityDelay: _stagger,
       debugLabel: 'CoilThinkingSteps.step',
       child: Padding(
-        padding: style.stepPadding!,
+        padding: EdgeInsets.only(left: pad.left, right: pad.right),
         child: IconTheme(
           data: IconThemeData(
             size: widget.metrics.iconSize,
@@ -103,6 +110,8 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
               // connector knows where the glyph ends. Glyphs grow with
               // text, so the square does too.
               final glyphExtent = CoilIconSize.of(context);
+              final glyphHeight =
+                  step.leading == null ? style.dotSize! : glyphExtent;
               return Stack(
                 children: [
                   PositionedDirectional(
@@ -111,108 +120,114 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
                     bottom: 0,
                     width: glyphExtent,
                     child: _Connector(
-                      visible: !widget.last,
+                      showTop: !widget.first,
+                      showBottom: !widget.last,
                       motion: widget.motions.connector,
                       lineStyle: style.titleStyle!,
                       glyphExtent: glyphExtent,
+                      glyphHeight: glyphHeight,
+                      topPadding: pad.top,
                       gap: style.connectorGap!,
                       thickness: style.connectorWidth!,
                       color: style.connectorColor!,
                     ),
                   ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: widget.metrics.gap,
-                    children: [
-                      // As tall as the title's first line, so the glyph centers
-                      // on it.
-                      CoilLineBox(
-                        style: style.titleStyle!,
-                        child: SizedBox.square(
-                          dimension: glyphExtent,
-                          child: Center(
-                            child:
-                                step.leading ??
-                                _StatusDot(
-                                  status: step.status,
-                                  color: style.glyphColor!,
-                                  size: style.dotSize!,
-                                ),
+                  Padding(
+                    padding: EdgeInsets.only(top: pad.top, bottom: pad.bottom),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: widget.metrics.gap,
+                      children: [
+                        // As tall as the title's first line, so the glyph
+                        // centers on it.
+                        CoilLineBox(
+                          style: style.titleStyle!,
+                          child: SizedBox.square(
+                            dimension: glyphExtent,
+                            child: Center(
+                              child:
+                                  step.leading ??
+                                  _StatusDot(
+                                    status: step.status,
+                                    color: style.glyphColor!,
+                                    size: style.dotSize!,
+                                  ),
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: IconTheme(
-                          data: ambientIcons,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Semantics(
-                                value: switch (step.status) {
-                                  CoilThinkingStepStatus.done => null,
-                                  CoilThinkingStepStatus.running =>
-                                    'In progress',
-                                  CoilThinkingStepStatus.error => 'Failed',
-                                },
-                                child: DefaultTextStyle(
-                                  style: style.titleStyle!,
-                                  child: CoilShimmer(
-                                    active:
-                                        step.status ==
-                                        CoilThinkingStepStatus.running,
-                                    child: step.title,
-                                  ),
-                                ),
-                              ),
-                              if (step.detail case final detail?)
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    top: style.detailGap!,
-                                  ),
+                        Expanded(
+                          child: IconTheme(
+                            data: ambientIcons,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Semantics(
+                                  value: switch (step.status) {
+                                    CoilThinkingStepStatus.done => null,
+                                    CoilThinkingStepStatus.running =>
+                                      'In progress',
+                                    CoilThinkingStepStatus.error => 'Failed',
+                                  },
                                   child: DefaultTextStyle(
-                                    style: style.detailStyle!,
-                                    child: detail,
-                                  ),
-                                ),
-                              if (step.sources.isNotEmpty)
-                                Padding(
-                                  padding: EdgeInsets.only(top: sectionGap),
-                                  child: Wrap(
-                                    spacing: sourceGap,
-                                    runSpacing: sourceGap,
-                                    children: [
-                                      for (final (i, source)
-                                          in step.sources.indexed)
-                                        _SourceBadge(
-                                          key: ValueKey(i),
-                                          enter: i >= _firstNewSource,
-                                          motion: widget.motions.sourcePop,
-                                          style: style,
-                                          child: source,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              if (step.image case final image?)
-                                Padding(
-                                  padding: EdgeInsets.only(top: sectionGap),
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth: style.imageMaxWidth!,
+                                    style: style.titleStyle!,
+                                    child: CoilShimmer(
+                                      active:
+                                          step.status ==
+                                          CoilThinkingStepStatus.running,
+                                      child: step.title,
                                     ),
-                                    child: ClipRSuperellipse(
-                                      borderRadius: BorderRadius.circular(
-                                        style.radius!,
+                                  ),
+                                ),
+                                if (step.detail case final detail?)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      top: style.detailGap!,
+                                    ),
+                                    child: DefaultTextStyle(
+                                      style: style.detailStyle!,
+                                      child: detail,
+                                    ),
+                                  ),
+                                if (step.sources.isNotEmpty)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: sectionGap),
+                                    child: Wrap(
+                                      spacing: sourceGap,
+                                      runSpacing: sourceGap,
+                                      children: [
+                                        for (final (i, source)
+                                            in step.sources.indexed)
+                                          _SourceBadge(
+                                            key: ValueKey(i),
+                                            enter: i >= _firstNewSource,
+                                            motion: widget.motions.sourcePop,
+                                            style: style,
+                                            child: source,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                if (step.image case final image?)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: sectionGap),
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: style.imageMaxWidth!,
                                       ),
-                                      child: image,
+                                      child: ClipRSuperellipse(
+                                        borderRadius: BorderRadius.circular(
+                                          style.radius!,
+                                        ),
+                                        child: image,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               );
@@ -224,73 +239,94 @@ class _ThinkingStepViewState extends State<ThinkingStepView> {
   }
 }
 
-/// The line under a step's glyph, filling the glyph column from just below
-/// the glyph to the bottom of the step's content.
-///
-/// The glyph's place comes from layout: an invisible copy of the glyph's
-/// line box sits where the real one does, and the line starts [gap] below
-/// the glyph's box centered in it. A step with nothing under its first line
-/// leaves the line no room, so it doesn't show.
+/// The vertical rail around a step's glyph: an outgoing segment below when
+/// [showBottom] and an incoming segment above when [showTop], so consecutive
+/// steps stay joined across [CoilThinkingStepsStyle.stepPadding] even on
+/// one-line steps without subtitles.
 class _Connector extends StatelessWidget {
   const _Connector({
-    required this.visible,
+    required this.showTop,
+    required this.showBottom,
     required this.motion,
     required this.lineStyle,
     required this.glyphExtent,
+    required this.glyphHeight,
+    required this.topPadding,
     required this.gap,
     required this.thickness,
     required this.color,
   });
 
-  final bool visible;
+  final bool showTop;
+  final bool showBottom;
   final Motion motion;
   final TextStyle lineStyle;
   final double glyphExtent;
+  final double glyphHeight;
+  final double topPadding;
   final double gap;
   final double thickness;
   final Color color;
 
   @override
-  Widget build(BuildContext context) => SingleMotionBuilder(
-    value: visible ? 1 : 0,
-    motion: motion,
-    debugLabel: 'CoilThinkingSteps.connector',
-    builder: (context, presence, child) => presence <= 0
-        ? const SizedBox.shrink()
-        : Opacity(opacity: presence.clamp(0.0, 1.0), child: child),
-    child: CustomMultiChildLayout(
-      delegate: _ConnectorLayout(
-        glyphExtent: glyphExtent,
-        gap: gap,
-        thickness: thickness,
-      ),
-      children: [
-        LayoutId(
-          id: _ConnectorPart.lineBox,
-          child: CoilLineBox(
-            style: lineStyle,
-            child: SizedBox.square(dimension: glyphExtent),
-          ),
+  Widget build(BuildContext context) => CustomMultiChildLayout(
+    delegate: _ConnectorLayout(
+      glyphExtent: glyphExtent,
+      glyphHeight: glyphHeight,
+      topPadding: topPadding,
+      gap: gap,
+      thickness: thickness,
+    ),
+    children: [
+      LayoutId(
+        id: _ConnectorPart.lineBox,
+        child: CoilLineBox(
+          style: lineStyle,
+          child: SizedBox.square(dimension: glyphExtent),
         ),
-        LayoutId(
-          id: _ConnectorPart.line,
+      ),
+      LayoutId(
+        id: _ConnectorPart.topLine,
+        child: SingleMotionBuilder(
+          value: showTop ? 1 : 0,
+          motion: motion,
+          debugLabel: 'CoilThinkingSteps.connectorTop',
+          builder: (context, presence, child) => presence <= 0
+              ? const SizedBox.shrink()
+              : Opacity(opacity: presence.clamp(0.0, 1.0), child: child),
           child: ColoredBox(color: color),
         ),
-      ],
-    ),
+      ),
+      LayoutId(
+        id: _ConnectorPart.bottomLine,
+        child: SingleMotionBuilder(
+          value: showBottom ? 1 : 0,
+          motion: motion,
+          debugLabel: 'CoilThinkingSteps.connector',
+          builder: (context, presence, child) => presence <= 0
+              ? const SizedBox.shrink()
+              : Opacity(opacity: presence.clamp(0.0, 1.0), child: child),
+          child: ColoredBox(color: color),
+        ),
+      ),
+    ],
   );
 }
 
-enum _ConnectorPart { lineBox, line }
+enum _ConnectorPart { lineBox, topLine, bottomLine }
 
 class _ConnectorLayout extends MultiChildLayoutDelegate {
   _ConnectorLayout({
     required this.glyphExtent,
+    required this.glyphHeight,
+    required this.topPadding,
     required this.gap,
     required this.thickness,
   });
 
   final double glyphExtent;
+  final double glyphHeight;
+  final double topPadding;
   final double gap;
   final double thickness;
 
@@ -300,22 +336,34 @@ class _ConnectorLayout extends MultiChildLayoutDelegate {
       _ConnectorPart.lineBox,
       BoxConstraints(maxWidth: size.width),
     );
-    positionChild(_ConnectorPart.lineBox, Offset.zero);
-    final top = (lineBox.height + glyphExtent) / 2 + gap;
-    final length = math.max(0, size.height - top).toDouble();
+    positionChild(_ConnectorPart.lineBox, Offset(0, topPadding));
+    final centerX = (size.width - thickness) / 2;
+
+    final topEnd = math.max(
+      0,
+      topPadding + (lineBox.height - glyphHeight) / 2 - gap,
+    ).toDouble();
     layoutChild(
-      _ConnectorPart.line,
-      BoxConstraints.tight(Size(thickness, length)),
+      _ConnectorPart.topLine,
+      BoxConstraints.tight(Size(thickness, topEnd)),
     );
-    positionChild(
-      _ConnectorPart.line,
-      Offset((size.width - thickness) / 2, top),
+    positionChild(_ConnectorPart.topLine, Offset(centerX, 0));
+
+    final bottomStart =
+        topPadding + (lineBox.height + glyphHeight) / 2 + gap;
+    final bottomLength = math.max(0, size.height - bottomStart).toDouble();
+    layoutChild(
+      _ConnectorPart.bottomLine,
+      BoxConstraints.tight(Size(thickness, bottomLength)),
     );
+    positionChild(_ConnectorPart.bottomLine, Offset(centerX, bottomStart));
   }
 
   @override
   bool shouldRelayout(_ConnectorLayout oldDelegate) =>
       glyphExtent != oldDelegate.glyphExtent ||
+      glyphHeight != oldDelegate.glyphHeight ||
+      topPadding != oldDelegate.topPadding ||
       gap != oldDelegate.gap ||
       thickness != oldDelegate.thickness;
 }
