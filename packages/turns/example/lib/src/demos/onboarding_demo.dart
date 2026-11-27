@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
+import 'package:turns_example/src/shell/turns_action_strip.dart';
 
 /// Canonical showcase for [CustomTurnScrollView] on a bounded sliver-rich
 /// onboarding flow (~10–25 messages).
@@ -164,7 +165,7 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
   int _nextTurnNumber = 4;
   double _composerHeight = 132;
 
-  static const _collapsedHeaderHeight = 58.0;
+  static const _collapsedHeaderHeight = 72.0;
   static const _expandedHeaderHeight = 176.0;
   static const _headerBreathingGap = 12.0;
 
@@ -441,32 +442,21 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Padding(
+                            TurnsActionStrip(
                               padding: EdgeInsets.fromLTRB(
                                 horizontal,
                                 2,
                                 horizontal,
                                 8,
                               ),
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    for (
-                                      var i = 0;
-                                      i < _quickReplies.length;
-                                      i++
-                                    ) ...[
-                                      if (i > 0) const SizedBox(width: 8),
-                                      _QuickReplyButton(
-                                        chip: _quickReplies[i],
-                                        onPressed: () =>
-                                            _handleQuickReply(_quickReplies[i]),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
+                              spacing: 8,
+                              children: [
+                                for (final chip in _quickReplies)
+                                  _QuickReplyButton(
+                                    chip: chip,
+                                    onPressed: () => _handleQuickReply(chip),
+                                  ),
+                              ],
                             ),
                             Padding(
                               padding: EdgeInsets.fromLTRB(
@@ -572,7 +562,10 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
             crossAxisCount: 2,
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            mainAxisExtent: isNarrow ? 118 : 104,
+            // Padding and icon row are fixed; the title and a subtitle that
+            // may wrap on narrow cards grow with the text scale.
+            mainAxisExtent:
+                56 + MediaQuery.textScalerOf(context).scale(isNarrow ? 72 : 56),
           ),
           delegate: SliverChildBuilderDelegate((context, index) {
             final goal = _goals[index];
@@ -588,7 +581,10 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
       SliverPadding(
         padding: EdgeInsets.fromLTRB(horizontal, 12, horizontal, 20),
         sliver: SliverToBoxAdapter(
-          child: Row(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 6,
             children: [
               CoilButton(
                 key: const Key('onboarding.continue'),
@@ -599,16 +595,13 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
                     : _continueWithSelection,
                 child: const Text('Continue with selection'),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _selectedGoalIds.isEmpty
-                      ? 'Pick at least one card to continue'
-                      : 'Appends your selection and pins it in SliverTurnStage',
-                  style: text.muted.caption,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Text(
+                _selectedGoalIds.isEmpty
+                    ? 'Pick at least one card to continue'
+                    : 'Appends your selection and pins it in SliverTurnStage',
+                style: text.muted.caption,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -622,9 +615,13 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
               Expanded(
                 child: Row(
                   children: [
-                    Text(
-                      'Guided setup thread',
-                      style: text.caption.copyWith(fontWeight: text.emphasis),
+                    Flexible(
+                      child: Text(
+                        'Guided setup thread',
+                        style: text.caption.copyWith(fontWeight: text.emphasis),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -804,7 +801,7 @@ class _OnboardingHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final range = math.max<double>(1, maxExtent - minExtent);
     final t = (shrinkOffset / range).clamp(0.0, 1.0);
-    final expandedOpacity = (1 - t * 1.75).clamp(0.0, 1.0);
+    final expandedOpacity = (1 - t * 2).clamp(0.0, 1.0);
     final compactOpacity = ((t - 0.35) / 0.65).clamp(0.0, 1.0);
 
     final heroTopColor = Color.lerp(colors.brandWash, colors.surfaces[1], t)!;
@@ -822,10 +819,13 @@ class _OnboardingHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
             end: Alignment.bottomRight,
             colors: [heroTopColor, heroBottomColor],
           ),
+          // The border token is already translucent; scale it, never replace
+          // its alpha, or it turns into a solid black (or white) rule.
           border: Border(
             bottom: BorderSide(
               color: colors.border.withValues(
-                alpha: overlapsContent || t > 0.05 ? 1 : 0.7,
+                alpha:
+                    colors.border.a * (overlapsContent || t > 0.05 ? 1 : 0.6),
               ),
             ),
           ),
@@ -834,11 +834,13 @@ class _OnboardingHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
           fit: StackFit.expand,
           children: [
             // Expanded hero card body — smoothly fades and translates upward
-            // as the header collapses into the 58px pinned top bar.
+            // as the header collapses into the 72px pinned top bar.
+            // Expanded title and subtitle sit just above the progress track
+            // and fade as the header collapses toward the compact bar.
             Positioned(
               left: horizontal,
               right: horizontal,
-              top: 56 - t * 24,
+              bottom: 26,
               child: IgnorePointer(
                 ignoring: expandedOpacity <= 0.05,
                 child: Opacity(
@@ -858,27 +860,33 @@ class _OnboardingHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
                         'Bounded sliver chat — collapsing hero, grid, and '
                         'turn stage',
                         style: text.muted.body,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 14),
-                      _StepProgressTrack(
-                        currentStep: currentStep,
-                        totalSteps: 4,
-                        colors: colors,
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-            // Persistent 58px top bar hosting the compact title, step pill,
-            // and "Jump to step 1" chip.
+            // The step track stays on the header's bottom edge at every
+            // extent, so a half-collapsed header never reads as empty.
+            Positioned(
+              left: horizontal,
+              right: horizontal,
+              bottom: 12,
+              child: _StepProgressTrack(
+                currentStep: currentStep,
+                totalSteps: 4,
+                colors: colors,
+              ),
+            ),
+            // Persistent 72px top bar hosting the compact title, step pill,
+            // and "Step 1" chip.
             Positioned(
               left: horizontal,
               right: horizontal,
               top: 0,
-              height: minExtent,
+              height: minExtent - 18,
               child: Row(
                 children: [
                   Expanded(
@@ -906,14 +914,18 @@ class _OnboardingHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
                           ),
                           const SizedBox(width: 8),
                         ],
-                        CoilBadge(
-                          variant: CoilBadgeVariant.dot,
-                          color: CoilBadgeColor.brand,
-                          shape: CoilBadgeShape.pill,
-                          size: CoilSize.compact,
-                          child: Text(
-                            'Step $currentStep of 4',
-                            style: text.micro.tabular,
+                        Flexible(
+                          child: CoilBadge(
+                            variant: CoilBadgeVariant.dot,
+                            color: CoilBadgeColor.brand,
+                            shape: CoilBadgeShape.pill,
+                            size: CoilSize.compact,
+                            child: Text(
+                              'Step $currentStep of 4',
+                              style: text.micro.tabular,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ],
@@ -926,7 +938,7 @@ class _OnboardingHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
                     size: CoilSize.compact,
                     leading: const Icon(LucideIcons.cornerLeftUp, size: 13),
                     onPressed: onJumpStepOne,
-                    child: const Text('Jump to step 1'),
+                    child: const Text('Step 1'),
                   ),
                 ],
               ),
@@ -1025,7 +1037,7 @@ class _GoalOptionCard extends StatelessWidget {
           final hovered = states.contains(WidgetState.hovered);
           final pressed = states.contains(WidgetState.pressed);
           final fill = selected
-              ? colors.selected
+              ? Color.lerp(colors.surfaces[1], colors.brandWash, 0.55)!
               : pressed
               ? colors.active
               : hovered
@@ -1214,7 +1226,7 @@ List<_OnboardingMessage> _buildInitialMessages() => const [
     text: '''
 Welcome! This entire onboarding flow runs inside a single **`CustomTurnScrollView`**:
 
-- **Collapsing hero header** (`SliverPersistentHeader(pinned: true)`) shrinks cleanly from `176px` to `58px`.
+- **Collapsing hero header** (`SliverPersistentHeader(pinned: true)`) shrinks cleanly from `176px` to `72px`.
 - **Interactive goal picker** (`SliverGrid`) sits right above this `SliverTurnList` without nested scrollables.
 - **Turn stage pinning** (`SliverTurnStage`) activates as soon as you continue or send a message below.''',
   ),
@@ -1248,7 +1260,7 @@ Great pick! Here is your recommended `turns` starting point:
 
 $bullets
 
-Notice how your message just pinned neatly below the `58px` collapsed header via **`SliverTurnStage`** while this reply streamed in — and tapping **Jump to step 1** in the pinned header springs straight back to message #1 with exact header clearance.''';
+Notice how your message just pinned neatly below the `72px` collapsed header via **`SliverTurnStage`** while this reply streamed in — and tapping **Step 1** in the pinned header springs straight back to message #1 with exact header clearance.''';
 }
 
 const _stageSnippetReply = '''
@@ -1307,6 +1319,6 @@ String _buildCustomReply(String prompt) =>
     '''
 Got it — regarding *"$prompt"*:
 
-Because this screen uses **`CustomTurnScrollView`**, your prompt was promoted into **`SliverTurnStage`** right below the `58px` collapsed hero bar, keeping the `SliverGrid` and earlier turns intact above.
+Because this screen uses **`CustomTurnScrollView`**, your prompt was promoted into **`SliverTurnStage`** right below the `72px` collapsed hero bar, keeping the `SliverGrid` and earlier turns intact above.
 
-Try tapping **Jump to step 1** in the top bar or scrolling up to watch the hero header expand smoothly back to `176px`.''';
+Try tapping **Step 1** in the top bar or scrolling up to watch the hero header expand smoothly back to `176px`.''';

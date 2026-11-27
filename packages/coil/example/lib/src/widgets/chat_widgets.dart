@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:coil/coil.dart';
+import 'package:coil_example/src/shell/catalog_shell.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -85,6 +86,47 @@ class ChatStreamingCaret extends StatelessWidget {
         ),
         child: const SizedBox(width: 6, height: 14),
       ),
+    );
+  }
+}
+
+/// A quiet line under a chat demo naming `package:turns`, which does the
+/// transcript's scrolling, with a link to its example when the catalog runs
+/// inside the aggregate app that can open it.
+class ChatTurnsCredit extends StatelessWidget {
+  const ChatTurnsCredit({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = CoilTheme.textOf(context);
+    final open = CatalogHome.openPackageOf(context, 'turns');
+    final caption = Text.rich(
+      TextSpan(
+        children: [
+          const TextSpan(text: 'Pinned turns and jump to latest come from '),
+          TextSpan(
+            text: 'package:turns',
+            style: TextStyle(fontWeight: text.emphasis),
+          ),
+          const TextSpan(text: ', built for chat UIs.'),
+        ],
+      ),
+      style: text.muted.caption,
+    );
+    if (open == null) return caption;
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
+      children: [
+        caption,
+        CoilButton(
+          variant: CoilButtonVariant.ghost,
+          size: CoilSize.compact,
+          trailing: const CatalogIcon(Glyph.arrowUpRight),
+          onPressed: open,
+          child: const Text('Open the turns example'),
+        ),
+      ],
     );
   }
 }

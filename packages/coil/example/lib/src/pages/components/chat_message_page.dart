@@ -271,9 +271,8 @@ class _ChatItem {
   );
 }
 
-/// A live [TurnScrollView] transcript: copy or retry any assistant answer,
-/// trigger quick prompts, or type a follow-up that pins at top clearance while
-/// streaming markdown tokens in.
+/// A live [TurnScrollView] transcript: copy or retry any assistant answer, or
+/// type a follow-up that pins at top clearance while the reply streams in.
 class _Conversation extends StatefulWidget {
   const _Conversation();
 
@@ -460,7 +459,48 @@ class _ConversationState extends State<_Conversation> {
     );
   }
 
-  void _sendPrompt(String prompt, {String? cannedReply}) {
+  /// A reply that fits what was typed, so the demo answers like a chat
+  /// instead of from buttons.
+  static String _replyFor(String prompt) {
+    final words = [
+      for (final m in RegExp('[a-z;]+').allMatches(prompt.toLowerCase())) m[0]!,
+    ];
+    // Stems match word starts, so "pin" finds "pinning" but not "spin".
+    bool mentions(List<String> stems) =>
+        stems.any((stem) => words.any((w) => w.startsWith(stem)));
+    if (mentions(['motion', 'spring', 'animat', 'entrance', 'pin', 'scroll'])) {
+      return _motionWalkthroughReply;
+    }
+    if (mentions([
+      'recap',
+      'summar',
+      'tl;dr',
+      'tldr',
+      'short',
+      'paragraph',
+      'brief',
+    ])) {
+      return 'The review converged on **tighter exit springs**, a **single '
+          'shared row height** for menus and selects, and **bottom sheets on '
+          'phones** so touch forms stay easy to reach.';
+    }
+    if (mentions(['review', 'decision', 'change', 'design'])) {
+      return _reviewReplies[1];
+    }
+    if (words.length <= 3 && mentions(['hi', 'hello', 'hey', 'thank'])) {
+      return 'Happy to help. Ask me to **recap the review**, or how '
+          '**message motion** and **turn pinning** work together.';
+    }
+    final quoted = prompt.replaceAll('"', "'");
+    return 'Here is a quick take on **"$quoted"**:\n\n'
+        '- Your message is pinned near the top while this reply streams '
+        'in below it.\n'
+        '- Scroll up mid-reply and the view stays where you put it; '
+        '**Jump to latest** brings you back.\n'
+        '- Hover or long-press a finished reply to copy or retry it.';
+  }
+
+  void _sendPrompt(String prompt) {
     final trimmed = prompt.trim();
     if (trimmed.isEmpty) return;
     if (_isStreaming) _stopStreaming();
@@ -485,15 +525,7 @@ class _ConversationState extends State<_Conversation> {
       ),
     ];
 
-    final reply =
-        cannedReply ??
-        'Got it — here is a quick take on '
-            '**"${trimmed.replaceAll('"', "'")}"**:\n\n'
-            '- Your message pinned at top clearance with '
-            '`TurnAnchorConfig.standard`.\n'
-            '- Scroll upward mid-stream and the viewport will stay put, '
-            'revealing the **Jump to latest** button.\n'
-            '- Hover or long-press any settled reply to copy or retry it.';
+    final reply = _replyFor(trimmed);
 
     _markFresh(userId);
     _markFresh(assistantId);
@@ -690,45 +722,11 @@ class _ConversationState extends State<_Conversation> {
     final touch = CoilTheme.tierOf(context) == CoilTier.touch;
     final motion = CoilTheme.motionOf(context);
     return SizedBox(
-      height: touch ? 460 : 420,
+      height: touch ? 480 : 440,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 10,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: Row(
-              spacing: 6,
-              children: [
-                CoilButton(
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const CatalogIcon(Glyph.sparkles),
-                  onPressed: () => _sendPrompt(
-                    'Explain how message springs and TurnScrollView work '
-                    'together',
-                    cannedReply: _motionWalkthroughReply,
-                  ),
-                  child: const Text('Motion & pinning'),
-                ),
-                CoilButton(
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const CatalogIcon(Glyph.refresh),
-                  onPressed: () => _sendPrompt(
-                    'Recap the review decisions in one paragraph',
-                    cannedReply:
-                        'The review converged on **tighter exit springs**, '
-                        'a **single shared row height** for menus and selects, '
-                        'and **bottom sheets on phones** so touch forms stay '
-                        'easy to reach.',
-                  ),
-                  child: const Text('One-paragraph recap'),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: Stack(
               children: [
@@ -766,10 +764,11 @@ class _ConversationState extends State<_Conversation> {
             status: _isStreaming
                 ? CoilMessageStatus.streaming
                 : CoilMessageStatus.idle,
-            placeholder: const Text('Ask a follow-up…'),
+            placeholder: const Text('Ask about the review, motion or pinning…'),
             onSend: _sendPrompt,
             onStop: _stopStreaming,
           ),
+          const ChatTurnsCredit(),
         ],
       ),
     );

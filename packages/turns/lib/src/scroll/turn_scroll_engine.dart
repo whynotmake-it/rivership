@@ -123,14 +123,23 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   Motion get resolvedMotion =>
       widgetAutoScrollMotion ?? defaultTurnAutoScrollMotion;
 
+  /// Running sum of [extents] values, kept in step by [onItemLayout] and
+  /// [clearExtents] so [meanExtent] stays O(1) on long timelines.
+  double _extentSum = 0;
+
   /// Mean measured item extent across all observed items.
+  ///
+  /// O(1): offset estimates call this once per unmeasured item, so a linear
+  /// scan here would turn a 3,000-item jump estimate quadratic.
   double get meanExtent {
     if (extents.isEmpty) return 72;
-    var sum = 0.0;
-    for (final v in extents.values) {
-      sum += v;
-    }
-    return sum / extents.length;
+    return _extentSum / extents.length;
+  }
+
+  /// Forgets all measured item extents.
+  void clearExtents() {
+    extents.clear();
+    _extentSum = 0;
   }
 
   void _setPinnedActive({required bool active}) {
@@ -311,6 +320,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Callback passed to [TurnScrollScope.onItemLayout].
   void onItemLayout(Object id, double extent, RenderBox box) {
+    _extentSum += extent - (extents[id] ?? 0);
     extents[id] = extent;
     mountedBoxes[id] = box;
   }
@@ -523,7 +533,13 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     }
 
     final pos = turnPosition;
-    if (pendingPinScroll || (pos != null && pos.isTrackingTarget)) {
+    // A view resting on its top edge (opened at the top, or scrolled all the
+    // way up) keeps its top when the bottom inset changes: shifting would
+    // scroll the reader away from what they are looking at.
+    final atTop =
+        nextPixels <= minScrollExtent + 0.5 &&
+        maxScrollExtent > minScrollExtent;
+    if (atTop || pendingPinScroll || (pos != null && pos.isTrackingTarget)) {
       return shifted
           ? nextPixels.clamp(minScrollExtent, maxScrollExtent)
           : null;

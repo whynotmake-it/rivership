@@ -4,16 +4,23 @@ import 'dart:math' as math;
 import 'package:coil/coil.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
+import 'package:turns_example/src/shell/turns_action_strip.dart';
 
-/// iMessage-style messaging demo exercising [TurnScrollView.sectioned] with
-/// `stickySectionHeaders: false` (centered inline timestamp headers),
-/// Coil blue palette override, `0.0px`-shift prepend pagination with preserved
-/// tapback toggle state, offscreen inline-reply `scrollTo` with Motor
-/// highlight, and a working [CoilInputMessage] composer with delayed replies.
+/// iMessage-style 1:1 thread over two years of history (about 1,900
+/// messages), built on [TurnScrollView.sectioned] with
+/// `stickySectionHeaders: false` for centered inline timestamps.
+///
+/// Its own angle among the demos is search: "Find in conversation" pages in
+/// the whole archive (a `0.0px`-shift prepend) and steps through matches with
+/// [TurnScrollController.scrollTo], however many months apart they are.
+/// Older pages also load as you scroll up, inline reply previews jump to the
+/// quoted message, tapbacks keep their state across prepends, and the peer's
+/// typing indicator lives in `tailSliver`.
 class IMessageDemo extends StatefulWidget {
   /// Creates the iMessage demo.
   const IMessageDemo({super.key});
@@ -52,15 +59,28 @@ class _IMessage {
 
 class _IMessageDemoState extends State<IMessageDemo> {
   static const _referencedMessageId = 'im-m-05';
-  static const _maxOlderPages = 2;
+
+  /// Searches worth trying, each with matches spread across the archive.
+  static const _searchSuggestions = ['dinner', 'Portra', 'Tahoe', 'birthday'];
 
   final _controller = TurnScrollController();
   final _composerController = TextEditingController();
   final _composerFocus = FocusNode();
   final _highlightNotifier = ValueNotifier<({String id, int nonce})?>(null);
+  final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
 
   late List<_IMessage> _messages;
+
+  /// Pages of older history, newest first, prepended as you scroll up.
+  late final List<List<_IMessage>> _olderPages;
   int _olderPagesLoaded = 0;
+
+  var _searchOpen = false;
+
+  /// Ids of messages matching the search, newest first.
+  var _matches = const <String>[];
+  var _matchIndex = 0;
   int _nextOutgoingNumber = 1;
   int _highlightNonce = 0;
   bool _loadingOlder = false;
@@ -71,12 +91,17 @@ class _IMessageDemoState extends State<IMessageDemo> {
   Timer? _olderLoadTimer;
   Timer? _replyTimer;
 
-  bool get _hasMoreOlder => _olderPagesLoaded < _maxOlderPages;
+  bool get _hasMoreOlder => _olderPagesLoaded < _olderPages.length;
 
   @override
   void initState() {
     super.initState();
     _messages = _buildInitialMessages();
+    _olderPages = [
+      _buildOlderPage(1),
+      _buildOlderPage(2),
+      ..._buildArchivePages(),
+    ];
   }
 
   @override
@@ -88,6 +113,8 @@ class _IMessageDemoState extends State<IMessageDemo> {
     _composerController.dispose();
     _composerFocus.dispose();
     _highlightNotifier.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -120,16 +147,76 @@ class _IMessageDemoState extends State<IMessageDemo> {
 
   void _prependNextPage() {
     if (!_hasMoreOlder) return;
-    final page = _olderPagesLoaded + 1;
-    final older = _buildOlderPage(page);
+    final older = _olderPages[_olderPagesLoaded];
     setState(() {
       _messages = [...older, ..._messages];
-      _olderPagesLoaded = page;
+      _olderPagesLoaded++;
       _loadingOlder = false;
     });
   }
 
-  Future<void> _jumpToReferencedMessage(String targetId) async {
+  /// Opens "Find in conversation", paging in the whole archive at once: the
+  /// prepend shifts nothing on screen, and every message becomes searchable.
+  void _openSearch() {
+    _olderLoadTimer?.cancel();
+    setState(() {
+      if (_hasMoreOlder) {
+        _messages = [
+          for (final page in _olderPages.sublist(_olderPagesLoaded).reversed)
+            ...page,
+          ..._messages,
+        ];
+        _olderPagesLoaded = _olderPages.length;
+      }
+      _loadingOlder = false;
+      _searchOpen = true;
+    });
+    _searchFocus.requestFocus();
+  }
+
+  void _closeSearch() {
+    _searchController.clear();
+    _searchFocus.unfocus();
+    setState(() {
+      _searchOpen = false;
+      _matches = const [];
+      _matchIndex = 0;
+    });
+  }
+
+  void _search(String query) {
+    final needle = query.trim().toLowerCase();
+    final matches = needle.isEmpty
+        ? const <String>[]
+        : [
+            for (var i = _messages.length - 1; i >= 0; i--)
+              if (_messages[i].text.toLowerCase().contains(needle))
+                _messages[i].id,
+          ];
+    setState(() {
+      _matches = matches;
+      _matchIndex = 0;
+    });
+    if (matches.isNotEmpty) unawaited(_jumpToMessage(matches.first));
+  }
+
+  void _searchFor(String query) {
+    _searchController
+      ..text = query
+      ..selection = TextSelection.collapsed(offset: query.length);
+    _search(query);
+  }
+
+  /// Steps to the next older (+1) or newer (-1) match.
+  void _stepMatch(int delta) {
+    if (_matches.isEmpty) return;
+    final next = (_matchIndex + delta).clamp(0, _matches.length - 1);
+    if (next == _matchIndex) return;
+    setState(() => _matchIndex = next);
+    unawaited(_jumpToMessage(_matches[next]));
+  }
+
+  Future<void> _jumpToMessage(String targetId) async {
     final arrived = await _controller.scrollTo(targetId, alignment: 0.35);
     if (!mounted || !arrived) return;
     final nonce = ++_highlightNonce;
@@ -209,7 +296,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
   Widget _buildScaffold(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
-    final remainingPages = _maxOlderPages - _olderPagesLoaded;
+    final remainingPages = _olderPages.length - _olderPagesLoaded;
     final lastOutgoingIndex = _messages.lastIndexWhere((m) => m.fromMe);
 
     return ColoredBox(
@@ -217,14 +304,22 @@ class _IMessageDemoState extends State<IMessageDemo> {
       child: Column(
         children: [
           _IMessageHeader(
-            remainingOlderPages: remainingPages,
-            loadingOlder: _loadingOlder,
-            onLoadOlder: _hasMoreOlder
-                ? () => _loadOlder(immediate: true)
-                : null,
-            onJumpReferenced: () =>
-                unawaited(_jumpToReferencedMessage(_referencedMessageId)),
+            searchOpen: _searchOpen,
+            onSearch: _searchOpen ? _closeSearch : _openSearch,
           ),
+          if (_searchOpen)
+            _FindBar(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              matchCount: _matches.length,
+              matchIndex: _matchIndex,
+              suggestions: _searchSuggestions,
+              onChanged: _search,
+              onSuggestion: _searchFor,
+              onOlder: () => _stepMatch(1),
+              onNewer: () => _stepMatch(-1),
+              onDone: _closeSearch,
+            ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -325,7 +420,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
                               onTapReplyPreview: message.replyToId == null
                                   ? null
                                   : () => unawaited(
-                                      _jumpToReferencedMessage(
+                                      _jumpToMessage(
                                         message.replyToId!,
                                       ),
                                     ),
@@ -406,18 +501,141 @@ class _IMessageDemoState extends State<IMessageDemo> {
   }
 }
 
+/// iOS-style conversation header: back chevron, the contact centered under
+/// their avatar, and "Find in conversation".
 class _IMessageHeader extends StatelessWidget {
-  const _IMessageHeader({
-    required this.remainingOlderPages,
-    required this.loadingOlder,
-    required this.onLoadOlder,
-    required this.onJumpReferenced,
+  const _IMessageHeader({required this.searchOpen, required this.onSearch});
+
+  final bool searchOpen;
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaces[1],
+        border: searchOpen
+            ? null
+            : Border(bottom: BorderSide(color: colors.border)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 72,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ExcludeSemantics(
+                  child: Icon(
+                    LucideIcons.chevronLeft,
+                    size: 26,
+                    color: colors.brandInk,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DecoratedBox(
+                    decoration: ShapeDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          colors.mutedForeground.withValues(alpha: 0.55),
+                          colors.mutedForeground.withValues(alpha: 0.8),
+                        ],
+                      ),
+                      shape: const CircleBorder(),
+                    ),
+                    child: SizedBox.square(
+                      dimension: 40,
+                      child: Center(
+                        child: Text(
+                          'MK',
+                          style: text.body.copyWith(
+                            color: colors.background,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Maya Kapoor',
+                        style: text.micro.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Icon(
+                        LucideIcons.chevronRight,
+                        size: 12,
+                        color: colors.mutedForeground,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 72,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: CoilButton.icon(
+                  key: const Key('imessage.search'),
+                  variant: CoilButtonVariant.ghost,
+                  semanticLabel: searchOpen
+                      ? 'Close search'
+                      : 'Find in conversation',
+                  icon: Icon(LucideIcons.search, color: colors.brandInk),
+                  onPressed: onSearch,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Find in conversation": a search field, the match position, and steps to
+/// older and newer matches. With an empty query it offers a few searches.
+class _FindBar extends StatelessWidget {
+  const _FindBar({
+    required this.controller,
+    required this.focusNode,
+    required this.matchCount,
+    required this.matchIndex,
+    required this.suggestions,
+    required this.onChanged,
+    required this.onSuggestion,
+    required this.onOlder,
+    required this.onNewer,
+    required this.onDone,
   });
 
-  final int remainingOlderPages;
-  final bool loadingOlder;
-  final VoidCallback? onLoadOlder;
-  final VoidCallback onJumpReferenced;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final int matchCount;
+  final int matchIndex;
+  final List<String> suggestions;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSuggestion;
+  final VoidCallback onOlder;
+  final VoidCallback onNewer;
+  final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -428,88 +646,91 @@ class _IMessageHeader extends StatelessWidget {
         color: colors.surfaces[1],
         border: Border(bottom: BorderSide(color: colors.border)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                DecoratedBox(
-                  decoration: ShapeDecoration(
-                    color: colors.brandFill,
-                    shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(18),
+      child: ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          final hasQuery = controller.text.trim().isNotEmpty;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CoilInput(
+                        key: const Key('imessage.search_field'),
+                        controller: controller,
+                        focusNode: focusNode,
+                        size: CoilSize.compact,
+                        placeholder: const Text('Find in conversation'),
+                        leading: const Icon(LucideIcons.search),
+                        textInputAction: TextInputAction.search,
+                        onChanged: onChanged,
+                        onSubmitted: (_) => onOlder(),
+                      ),
                     ),
-                  ),
-                  child: SizedBox.square(
-                    dimension: 34,
-                    child: Center(
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 64,
                       child: Text(
-                        'MK',
-                        style: text.caption.copyWith(
-                          color: colors.onBrandFill,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        !hasQuery
+                            ? ''
+                            : matchCount == 0
+                            ? 'No results'
+                            : '${matchIndex + 1} of $matchCount',
+                        textAlign: TextAlign.center,
+                        style: text.muted.micro.tabular,
+                        maxLines: 1,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Maya Kapoor',
-                        style: text.subtitle.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    CoilButton.icon(
+                      key: const Key('imessage.search_older'),
+                      variant: CoilButtonVariant.ghost,
+                      size: CoilSize.compact,
+                      semanticLabel: 'Older match',
+                      icon: const Icon(LucideIcons.chevronUp),
+                      onPressed: matchIndex < matchCount - 1 ? onOlder : null,
+                    ),
+                    CoilButton.icon(
+                      key: const Key('imessage.search_newer'),
+                      variant: CoilButtonVariant.ghost,
+                      size: CoilSize.compact,
+                      semanticLabel: 'Newer match',
+                      icon: const Icon(LucideIcons.chevronDown),
+                      onPressed: matchIndex > 0 ? onNewer : null,
+                    ),
+                    CoilButton(
+                      variant: CoilButtonVariant.ghost,
+                      size: CoilSize.compact,
+                      onPressed: onDone,
+                      child: Text(
+                        'Done',
+                        style: TextStyle(color: colors.brandInk),
                       ),
-                      Text(
-                        'Inline timestamps · stickySectionHeaders: false',
-                        style: text.muted.micro,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (!hasQuery)
+                TurnsActionStrip(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  children: [
+                    Text('Try', style: text.muted.micro),
+                    for (final suggestion in suggestions)
+                      CoilButton(
+                        variant: CoilButtonVariant.secondary,
+                        size: CoilSize.compact,
+                        style: const CoilButtonStyle(radius: 999),
+                        onPressed: () => onSuggestion(suggestion),
+                        child: Text(suggestion),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                CoilButton(
-                  key: const Key('imessage.load_older'),
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  loading: loadingOlder,
-                  leading: const Icon(LucideIcons.history, size: 14),
-                  onPressed: onLoadOlder,
-                  child: Text(
-                    remainingOlderPages > 0
-                        ? 'Load older ($remainingOlderPages)'
-                        : 'All loaded',
-                  ),
-                ),
-                CoilButton(
-                  variant: CoilButtonVariant.tertiary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.cornerUpLeft, size: 14),
-                  onPressed: onJumpReferenced,
-                  child: const Text('Find dinner pin'),
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -668,7 +889,7 @@ class _IMessageBubbleItemState extends State<_IMessageBubbleItem> {
                 : const Radius.circular(6),
           );
 
-    return ValueListenableBuilder<({String id, int nonce})?>(
+    final highlightable = ValueListenableBuilder<({String id, int nonce})?>(
       valueListenable: widget.highlightNotifier,
       builder: (context, highlighted, child) {
         final isHighlighted = highlighted?.id == msg.id;
@@ -701,115 +922,116 @@ class _IMessageBubbleItemState extends State<_IMessageBubbleItem> {
           },
         );
       },
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: widget.prevSameSender || widget.isSectionFirst ? 0 : 7,
-        ),
-        child: Align(
-          alignment: msg.fromMe ? Alignment.centerRight : Alignment.centerLeft,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: widget.maxBubbleWidth),
-            child: Column(
-              crossAxisAlignment: msg.fromMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: widget.maxBubbleWidth),
+        child: Column(
+          crossAxisAlignment: msg.fromMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (msg.replyToPreview != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: _ReplyPreviewChip(
+                  key: widget.replyPreviewKey,
+                  author: msg.replyToAuthor ?? 'Maya',
+                  preview: msg.replyToPreview!,
+                  alignEnd: msg.fromMe,
+                  onPressed: widget.onTapReplyPreview,
+                ),
+              ),
+            Stack(
+              clipBehavior: Clip.none,
               children: [
-                if (msg.replyToPreview != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
-                    child: _ReplyPreviewChip(
-                      key: widget.replyPreviewKey,
-                      author: msg.replyToAuthor ?? 'Maya',
-                      preview: msg.replyToPreview!,
-                      alignEnd: msg.fromMe,
-                      onPressed: widget.onTapReplyPreview,
-                    ),
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: _tapbacks.isNotEmpty ? 8 : 0,
                   ),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(
-                        top: _tapbacks.isNotEmpty ? 8 : 0,
-                      ),
-                      child: Semantics(
-                        button: true,
-                        hint: 'Tap to toggle heart reaction',
-                        child: CoilInteraction(
-                          onPressed: _toggleQuickHeart,
-                          builder: (context, states, child) {
-                            final pressed = states.contains(
-                              WidgetState.pressed,
-                            );
-                            final focused = states.contains(
-                              WidgetState.focused,
-                            );
-                            return CoilFocusRing(
-                              visible: focused,
-                              borderRadius: borderRadius,
-                              child: SingleMotionBuilder(
-                                value: pressed ? 0.98 : 1,
-                                motion: motion.quick,
-                                debugLabel: 'IMessageBubble.press.${msg.id}',
-                                child: child,
-                                builder: (context, scale, child) =>
-                                    Transform.scale(scale: scale, child: child),
-                              ),
-                            );
-                          },
-                          child: DecoratedBox(
-                            decoration: ShapeDecoration(
-                              color: bubbleFill,
-                              shape: RoundedSuperellipseBorder(
-                                borderRadius: borderRadius,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 13,
-                                vertical: 7.5,
-                              ),
-                              child: Text(
-                                msg.text,
-                                style: text.body.copyWith(
-                                  fontSize: 15,
-                                  height: 1.3,
-                                  color: bubbleTextColor,
-                                ),
-                              ),
+                  child: Semantics(
+                    button: true,
+                    hint: 'Tap to toggle heart reaction',
+                    child: CoilInteraction(
+                      onPressed: _toggleQuickHeart,
+                      builder: (context, states, child) {
+                        final pressed = states.contains(
+                          WidgetState.pressed,
+                        );
+                        final focused = states.contains(
+                          WidgetState.focused,
+                        );
+                        return CoilFocusRing(
+                          visible: focused,
+                          borderRadius: borderRadius,
+                          child: SingleMotionBuilder(
+                            value: pressed ? 0.98 : 1,
+                            motion: motion.quick,
+                            debugLabel: 'IMessageBubble.press.${msg.id}',
+                            child: child,
+                            builder: (context, scale, child) =>
+                                Transform.scale(scale: scale, child: child),
+                          ),
+                        );
+                      },
+                      child: DecoratedBox(
+                        decoration: ShapeDecoration(
+                          color: bubbleFill,
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: borderRadius,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 13,
+                            vertical: 7.5,
+                          ),
+                          child: Text(
+                            msg.text,
+                            style: text.body.copyWith(
+                              fontSize: 15,
+                              height: 1.3,
+                              color: bubbleTextColor,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    if (_tapbacks.isNotEmpty)
-                      Positioned(
-                        top: -1,
-                        right: msg.fromMe ? null : -4,
-                        left: msg.fromMe ? -4 : null,
-                        child: _TapbackCluster(
-                          tapbacks: _tapbacks,
-                          userLoved: _userLoved,
-                          onToggle: _toggleTapback,
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-                if (widget.showDeliveryStatus && msg.statusLabel != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3, right: 4),
-                    child: Text(
-                      msg.statusLabel!,
-                      style: text.muted.micro.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                if (_tapbacks.isNotEmpty)
+                  Positioned(
+                    top: -1,
+                    right: msg.fromMe ? null : -4,
+                    left: msg.fromMe ? -4 : null,
+                    child: _TapbackCluster(
+                      tapbacks: _tapbacks,
+                      userLoved: _userLoved,
+                      onToggle: _toggleTapback,
                     ),
                   ),
               ],
             ),
-          ),
+            if (widget.showDeliveryStatus && msg.statusLabel != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 3, right: 4),
+                child: Text(
+                  msg.statusLabel!,
+                  style: text.muted.micro.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
         ),
+      ),
+    );
+    return Padding(
+      padding: EdgeInsets.only(
+        top: widget.prevSameSender || widget.isSectionFirst ? 0 : 7,
+      ),
+      child: Align(
+        alignment: msg.fromMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: highlightable,
       ),
     );
   }
@@ -1166,7 +1388,8 @@ class _RenderIMessageHeightObserver extends RenderProxyBox {
     'Nov',
     'Dec',
   ];
-  return ('${months[dt.month - 1]} ${dt.day},', time);
+  final year = dt.year == 2026 ? '' : ' ${dt.year}';
+  return ('${months[dt.month - 1]} ${dt.day}$year,', time);
 }
 
 String _pickPeerReply(String sent, int seq) {
@@ -1358,7 +1581,9 @@ List<_IMessage> _buildInitialMessages() {
       fromMe: false,
       section: todayAfternoon,
       sentLabel: '2:19 PM',
-      text: 'Tap any bubble to toggle a tapback — survives Load older!',
+      text:
+          'Tap any bubble for a tapback. It sticks even after older '
+          'messages page in.',
     ),
     _IMessage(
       id: 'im-m-22',
@@ -1452,5 +1677,108 @@ List<_IMessage> _buildOlderPage(int page) {
       text: 'Sold. Putting it on the calendar now.',
       initialTapbacks: const {_TapbackKind.heart},
     ),
+  ];
+}
+
+/// Conversations that recur through the archive, so searches land on matches
+/// months apart. Each line is `(fromMe, text)`.
+const _archiveTopics = <List<(bool, String)>>[
+  [
+    (false, 'Dinner Thursday? I found a ramen place on Valencia.'),
+    (true, 'Yes. Is it the one with the line around the block?'),
+    (false, 'That one. I will put our name down at 7.'),
+    (true, 'Perfect, dinner is on me this time.'),
+  ],
+  [
+    (true, 'Picked up two rolls of Portra 400 for the weekend.'),
+    (false, 'Bring the 35mm! The light at the beach is unreal lately.'),
+    (true, 'Already charged. Developing the last roll tomorrow.'),
+    (false, 'Send me the scans when they are back.'),
+  ],
+  [
+    (false, 'Tahoe trip is a go, Sam booked the cabin.'),
+    (true, 'Finally. Same cabin as last winter?'),
+    (false, 'Same one, with the wood stove. Chains in the trunk this time.'),
+    (true, 'I will grab snacks and the playlist.'),
+    (false, 'Leaving at 6 to beat the traffic up to Tahoe.'),
+  ],
+  [
+    (true, 'What do we get Priya for her birthday?'),
+    (false, 'She keeps talking about that ceramics class.'),
+    (true, 'Love it. Birthday gift sorted, I will book two spots.'),
+    (false, 'Card is on me. Bakery cake on the day?'),
+  ],
+  [
+    (false, 'Made a new playlist for the drive, mostly 70s stuff.'),
+    (true, 'If there is no Fleetwood Mac I am getting out of the car.'),
+    (false, 'Three songs. I am not a monster.'),
+  ],
+  [
+    (true, 'My plants are thriving since I moved them to the window.'),
+    (false, 'Even the fiddle leaf? That thing hated you.'),
+    (true, 'It has forgiven me. New leaf this week.'),
+  ],
+  [
+    (false, 'Long week. Can we do something low key tonight?'),
+    (true, 'Pizza and a movie at mine? I will pick something short.'),
+    (false, 'You always say that and pick a three hour epic.'),
+    (true, 'Ninety minutes, promise.'),
+  ],
+  [
+    (true, 'Concert tickets went on sale, got us two for October.'),
+    (false, 'You are the best. Floor or seats?'),
+    (true, 'Seats, our knees are not what they were.'),
+  ],
+  [
+    (false, 'Hiking Saturday? Thinking Mount Tam if it is clear.'),
+    (true, 'In. Dinner after at the place in Mill Valley?'),
+    (false, 'Obviously. Meet at 8 at yours.'),
+  ],
+  [
+    (true, 'Saw an elk right off the trail at Tomales Point.'),
+    (false, 'No way. Photo or it did not happen.'),
+    (true, 'Shot it on the Portra roll, you will have to wait.'),
+  ],
+];
+
+/// About two years of history (Jan 2024 to early May 2026) for the find bar,
+/// in pages of about 300 messages, newest page first.
+List<List<_IMessage>> _buildArchivePages() {
+  final random = math.Random(14);
+  final messages = <_IMessage>[];
+  var day = DateTime(2024, 1, 8);
+  final end = DateTime(2026, 5, 5);
+  var n = 0;
+  while (day.isBefore(end)) {
+    final topic = _archiveTopics[random.nextInt(_archiveTopics.length)];
+    final start = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      8 + random.nextInt(13),
+      random.nextInt(60),
+    );
+    for (var i = 0; i < topic.length; i++) {
+      final (fromMe, text) = topic[i];
+      final sent = start.add(Duration(minutes: i * (1 + random.nextInt(3))));
+      messages.add(
+        _IMessage(
+          id: 'im-ar-${n++}',
+          fromMe: fromMe,
+          section: start,
+          sentLabel: _formatTimestampParts(sent).$2,
+          text: text,
+          initialTapbacks: random.nextInt(9) == 0
+              ? {_TapbackKind.values[random.nextInt(4)]}
+              : const {},
+        ),
+      );
+    }
+    day = day.add(Duration(days: 1 + random.nextInt(2)));
+  }
+  const pageSize = 300;
+  return [
+    for (var endIndex = messages.length; endIndex > 0; endIndex -= pageSize)
+      messages.sublist(math.max(0, endIndex - pageSize), endIndex),
   ];
 }

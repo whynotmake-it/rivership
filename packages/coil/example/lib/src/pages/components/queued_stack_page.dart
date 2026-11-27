@@ -256,7 +256,9 @@ class _ChatState extends State<_Chat> {
       _StepItem(
         id: 'contrast',
         title: 'Checking muted label contrast ratios',
-        detail: 'Paused — tap Resume reply to stream through the queue.',
+        detail:
+            'Send a message and it joins the queue; the reply then '
+            'streams on and works through it.',
         status: CoilThinkingStepStatus.done,
       ),
     ];
@@ -286,7 +288,7 @@ class _ChatState extends State<_Chat> {
         id: 'q-a-2',
         sender: CoilChatSender.assistant,
         time: '14:12',
-        thinkingLabel: 'Paused — resume to stream',
+        thinkingLabel: 'Thinking…',
         thinkingSteps: initialSteps,
         text: 'Starting with the **overview screen**…',
       ),
@@ -333,6 +335,7 @@ class _ChatState extends State<_Chat> {
       _queue = [..._queue, _queuedMessage(trimmed, _files)];
       _files = [];
     });
+    _resumePaused();
   }
 
   String _replyFor(String prompt, List<DemoFile> files) {
@@ -425,50 +428,29 @@ class _ChatState extends State<_Chat> {
     _resumeActiveTurn();
   }
 
-  void _togglePause() {
-    if (!_replying) {
-      setState(_seed);
-      return;
-    }
-    if (_paused) {
-      final activeId = _activeAssistantId;
-      setState(() {
-        _paused = false;
-        if (activeId == 'q-a-2') {
-          _pinnedId = 'q-u-2';
-        }
-        if (activeId != null) {
-          _updateMessage(
-            activeId,
-            (m) => m.copyWith(
-              streaming: true,
-              thinkingLabel: _revealedSteps < _activeSteps.length
-                  ? 'Thinking…'
-                  : 'Thought for 1.1s',
-            ),
-          );
-        }
-      });
-      _resumeActiveTurn();
-    } else {
-      _thinkingTimer?.cancel();
-      _thinkingTimer = null;
-      _streamTimer?.cancel();
-      _streamTimer = null;
-      final activeId = _activeAssistantId;
-      setState(() {
-        _paused = true;
-        if (activeId != null) {
-          _updateMessage(
-            activeId,
-            (m) => m.copyWith(
-              streaming: false,
-              thinkingLabel: 'Paused',
-            ),
-          );
-        }
-      });
-    }
+  /// Picks the paused opening reply back up, as if the assistant had only
+  /// been waiting for the next message.
+  void _resumePaused() {
+    if (!_replying || !_paused) return;
+    final activeId = _activeAssistantId;
+    setState(() {
+      _paused = false;
+      if (activeId == 'q-a-2') {
+        _pinnedId = 'q-u-2';
+      }
+      if (activeId != null) {
+        _updateMessage(
+          activeId,
+          (m) => m.copyWith(
+            streaming: true,
+            thinkingLabel: _revealedSteps < _activeSteps.length
+                ? 'Thinking…'
+                : 'Thought for 1.1s',
+          ),
+        );
+      }
+    });
+    _resumeActiveTurn();
   }
 
   void _resumeActiveTurn() {
@@ -684,45 +666,8 @@ class _ChatState extends State<_Chat> {
     final motion = CoilTheme.motionOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 12,
+      spacing: 10,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            CoilButton(
-              variant: CoilButtonVariant.secondary,
-              size: CoilSize.compact,
-              leading: CatalogIcon(
-                !_replying
-                    ? Glyph.rotate
-                    : _paused
-                    ? Glyph.play
-                    : Glyph.pause,
-              ),
-              onPressed: _togglePause,
-              child: Text(
-                !_replying
-                    ? 'Start over'
-                    : _paused
-                    ? 'Resume reply'
-                    : 'Pause reply',
-              ),
-            ),
-            if (!_replying && _queue.isNotEmpty)
-              CoilButton(
-                variant: CoilButtonVariant.ghost,
-                size: CoilSize.compact,
-                trailing: const CatalogIcon(Glyph.arrowRight),
-                onPressed: _drainNextQueued,
-                child: Text(
-                  _queue.length == 1
-                      ? 'Send 1 queued'
-                      : 'Send ${_queue.length} queued',
-                ),
-              ),
-          ],
-        ),
         SizedBox(
           height: touch ? 460 : 420,
           child: Column(
@@ -830,6 +775,7 @@ class _ChatState extends State<_Chat> {
             ],
           ),
         ),
+        const ChatTurnsCredit(),
       ],
     );
   }

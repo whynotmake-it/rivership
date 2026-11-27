@@ -72,13 +72,14 @@ class _TurnsEnvironmentState extends State<TurnsEnvironment> {
 
     final brightnessOverride = widget.brightnessOverride;
     if (context.findAncestorWidgetOfExactType<CoilTheme>() != null) {
-      if (brightnessOverride == null) return result;
+      // Always the same wrapper, so toggling the override doesn't remount the
+      // gallery (and its router) below.
       return CoilTheme.override(
-        transform: (parent) => parent.copyWith(
-          colors: brightnessOverride == Brightness.dark
-              ? CoilColors.dark
-              : CoilColors.light,
-        ),
+        transform: (parent) => switch (brightnessOverride) {
+          null => parent,
+          Brightness.dark => parent.copyWith(colors: CoilColors.dark),
+          Brightness.light => parent.copyWith(colors: CoilColors.light),
+        },
         child: result,
       );
     }

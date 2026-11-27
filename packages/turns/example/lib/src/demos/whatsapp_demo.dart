@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
+import 'package:turns_example/src/shell/turns_action_strip.dart';
 
 /// Interactive WhatsApp-style group chat demo showcasing
 /// `TurnScrollView<DateTime>.sectioned` with sticky push-up date pills,
@@ -399,13 +400,13 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
         color: colors.surfaces[1],
         border: Border(bottom: BorderSide(color: colors.border)),
       ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 10),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 0),
+            child: Row(
               children: [
                 DecoratedBox(
                   decoration: ShapeDecoration(
@@ -439,15 +440,6 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          CoilBadge(
-                            color: CoilBadgeColor.brand,
-                            shape: CoilBadgeShape.pill,
-                            size: CoilSize.compact,
-                            child: Text(
-                              '${_formatCount(_messages.length)} msgs',
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 1),
@@ -463,57 +455,54 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                spacing: 8,
-                children: [
-                  CoilButton(
-                    key: const Key('whatsapp.load_older'),
-                    size: CoilSize.compact,
-                    variant: CoilButtonVariant.secondary,
-                    leading: const Icon(LucideIcons.history, size: 14),
-                    onPressed: pagesLeft > 0 ? _prependNextPage : null,
-                    child: Text(
-                      pagesLeft > 0
-                          ? 'Load older ($pagesLeft)'
-                          : 'All history loaded',
-                    ),
-                  ),
-                  CoilButton(
-                    key: const Key('whatsapp.open_deeplink'),
-                    size: CoilSize.compact,
-                    variant: _deepLinkActive
-                        ? CoilButtonVariant.brand
-                        : CoilButtonVariant.secondary,
-                    leading: Icon(
-                      _deepLinkActive
-                          ? LucideIcons.arrowDownToLine
-                          : LucideIcons.link2,
-                      size: 14,
-                    ),
-                    onPressed: _toggleDeepLink,
-                    child: Text(
-                      _deepLinkActive ? 'Back to latest' : 'Deep link · #642',
-                    ),
-                  ),
-                  CoilButton(
-                    key: const Key('whatsapp.simulate_incoming'),
-                    size: CoilSize.compact,
-                    variant: CoilButtonVariant.secondary,
-                    leading: const Icon(
-                      LucideIcons.messageSquarePlus,
-                      size: 14,
-                    ),
-                    onPressed: _simulateIncoming,
-                    child: const Text('Simulate incoming'),
-                  ),
-                ],
+          ),
+          TurnsActionStrip(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            spacing: 8,
+            children: [
+              CoilButton(
+                key: const Key('whatsapp.load_older'),
+                size: CoilSize.compact,
+                variant: CoilButtonVariant.secondary,
+                leading: const Icon(LucideIcons.history, size: 14),
+                onPressed: pagesLeft > 0 ? _prependNextPage : null,
+                child: Text(
+                  pagesLeft > 0
+                      ? 'Load older ($pagesLeft)'
+                      : 'All history loaded',
+                ),
               ),
-            ),
-          ],
-        ),
+              CoilButton(
+                key: const Key('whatsapp.open_deeplink'),
+                size: CoilSize.compact,
+                variant: _deepLinkActive
+                    ? CoilButtonVariant.brand
+                    : CoilButtonVariant.secondary,
+                leading: Icon(
+                  _deepLinkActive
+                      ? LucideIcons.arrowDownToLine
+                      : LucideIcons.link2,
+                  size: 14,
+                ),
+                onPressed: _toggleDeepLink,
+                child: Text(
+                  _deepLinkActive ? 'Back to latest' : 'Deep link · #642',
+                ),
+              ),
+              CoilButton(
+                key: const Key('whatsapp.simulate_incoming'),
+                size: CoilSize.compact,
+                variant: CoilButtonVariant.secondary,
+                leading: const Icon(
+                  LucideIcons.messageSquarePlus,
+                  size: 14,
+                ),
+                onPressed: _simulateIncoming,
+                child: const Text('Simulate incoming'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

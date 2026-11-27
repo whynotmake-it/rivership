@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
+import 'package:turns_example/src/shell/turns_action_strip.dart';
 
 /// Flagship AI assistant demo exercising [TurnScrollView] with `pinnedId`
 /// ([SliverTurnStage] active-turn reservation), [CoilThinkingSteps],
@@ -443,16 +444,6 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
       color: colors.background,
       child: Column(
         children: [
-          _AiHeaderBar(
-            isStreaming: _isStreaming,
-            pinActive: _controller.isPinActive,
-            stableBlocks: _stableBlockCount,
-            hasPendingBlock: _hasPendingBlock,
-            remainingOlderPages: remainingPages,
-            onQuickShort: _sendQuickShort,
-            onQuickLong: _sendQuickLong,
-            onLoadOlder: remainingPages > 0 ? _loadOlderTurns : null,
-          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -499,6 +490,19 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                             _buildMessageItem(context, _messages[index]),
                       ),
                     ),
+                    if (constraints.maxWidth >= 600)
+                      Positioned(
+                        top: 10,
+                        right: 12,
+                        child: IgnorePointer(
+                          child: _StageBadge(
+                            isStreaming: _isStreaming,
+                            pinActive: _controller.isPinActive,
+                            stableBlocks: _stableBlockCount,
+                            hasPendingBlock: _hasPendingBlock,
+                          ),
+                        ),
+                      ),
                     Positioned(
                       left: 0,
                       right: 0,
@@ -539,6 +543,15 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                             ),
                             ColoredBox(
                               color: colors.background,
+                              child: _Suggestions(
+                                visible: !_isStreaming,
+                                horizontal: horizontal,
+                                onShort: _sendQuickShort,
+                                onLong: _sendQuickLong,
+                              ),
+                            ),
+                            ColoredBox(
+                              color: colors.background,
                               child: Padding(
                                 padding: EdgeInsets.fromLTRB(
                                   horizontal,
@@ -550,7 +563,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                                   controller: _composerController,
                                   focusNode: _composerFocus,
                                   placeholder: Text(
-                                    'Ask a follow-up — pins your turn at top…',
+                                    'Ask anything, your turn pins to the top',
                                     style: text.muted.field,
                                   ),
                                   status: _isStreaming
@@ -659,117 +672,105 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
   }
 }
 
-class _AiHeaderBar extends StatelessWidget {
-  const _AiHeaderBar({
+/// Live state of the [MarkdownSession] behind the streaming reply: how many
+/// blocks are frozen, and whether the prompt's stage is pinned.
+class _StageBadge extends StatelessWidget {
+  const _StageBadge({
     required this.isStreaming,
     required this.pinActive,
     required this.stableBlocks,
     required this.hasPendingBlock,
-    required this.remainingOlderPages,
-    required this.onQuickShort,
-    required this.onQuickLong,
-    required this.onLoadOlder,
   });
 
   final bool isStreaming;
   final ValueListenable<bool> pinActive;
   final int stableBlocks;
   final bool hasPendingBlock;
-  final int remainingOlderPages;
-  final VoidCallback onQuickShort;
-  final VoidCallback onQuickLong;
-  final VoidCallback? onLoadOlder;
 
   @override
   Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: pinActive,
+      builder: (context, isPinned, _) {
+        final label = isStreaming
+            ? 'Streaming · $stableBlocks stable'
+                  '${hasPendingBlock ? ' + tail' : ''}'
+            : isPinned
+            ? 'Stage pinned · $stableBlocks blocks'
+            : 'MarkdownSession · $stableBlocks blocks';
+        return CoilBadge(
+          variant: CoilBadgeVariant.dot,
+          color: isStreaming
+              ? CoilBadgeColor.emerald
+              : isPinned
+              ? CoilBadgeColor.brand
+              : CoilBadgeColor.gray,
+          shape: CoilBadgeShape.pill,
+          size: CoilSize.compact,
+          child: Text(label, style: text.micro.tabular),
+        );
+      },
+    );
+  }
+}
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surfaces[1],
-        border: Border(bottom: BorderSide(color: colors.border)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(LucideIcons.sparkles, size: 16, color: colors.brandInk),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'AI Assistant',
-                    style: text.subtitle.copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ValueListenableBuilder<bool>(
-                  valueListenable: pinActive,
-                  builder: (context, isPinned, _) {
-                    final stageLabel = isStreaming
-                        ? 'Streaming · $stableBlocks stable'
-                              '${hasPendingBlock ? ' + tail' : ''}'
-                        : isPinned
-                        ? 'Stage pinned · $stableBlocks blocks'
-                        : 'MarkdownSession · $stableBlocks blocks';
-                    return CoilBadge(
-                      variant: CoilBadgeVariant.dot,
-                      color: isStreaming
-                          ? CoilBadgeColor.emerald
-                          : isPinned
-                          ? CoilBadgeColor.brand
-                          : CoilBadgeColor.gray,
-                      shape: CoilBadgeShape.pill,
-                      size: CoilSize.compact,
-                      child: Text(stageLabel, style: text.micro.tabular),
-                    );
-                  },
-                ),
-              ],
+/// Prompts to try, above the composer while nothing is streaming.
+class _Suggestions extends StatelessWidget {
+  const _Suggestions({
+    required this.visible,
+    required this.horizontal,
+    required this.onShort,
+    required this.onLong,
+  });
+
+  final bool visible;
+  final double horizontal;
+  final VoidCallback onShort;
+  final VoidCallback onLong;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CoilTheme.motionOf(context);
+    return SingleMotionBuilder(
+      value: visible ? 1 : 0,
+      motion: visible ? motion.standard : motion.fadeExit,
+      builder: (context, t, child) {
+        final clamped = t.clamp(0.0, 1.0);
+        if (clamped <= 0.01) return const SizedBox(width: double.infinity);
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            heightFactor: clamped,
+            child: Opacity(
+              opacity: clamped,
+              child: IgnorePointer(ignoring: !visible, child: child),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                CoilButton(
-                  key: const Key('ai.quick_short'),
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.zap, size: 14),
-                  onPressed: onQuickShort,
-                  child: const Text('Quick short reply'),
-                ),
-                CoilButton(
-                  key: const Key('ai.quick_long'),
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.fileCode2, size: 14),
-                  onPressed: onQuickLong,
-                  child: const Text('Deep-dive GFM stream'),
-                ),
-                CoilButton(
-                  key: const Key('ai.load_older'),
-                  variant: CoilButtonVariant.tertiary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.history, size: 14),
-                  onPressed: onLoadOlder,
-                  child: Text(
-                    remainingOlderPages > 0
-                        ? 'Load older ($remainingOlderPages left)'
-                        : 'History complete',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        );
+      },
+      child: TurnsActionStrip(
+        padding: EdgeInsets.fromLTRB(horizontal, 2, horizontal, 4),
+        children: [
+          CoilButton(
+            key: const Key('ai.quick_short'),
+            variant: CoilButtonVariant.secondary,
+            size: CoilSize.compact,
+            style: const CoilButtonStyle(radius: 999),
+            leading: const Icon(LucideIcons.zap, size: 14),
+            onPressed: onShort,
+            child: const Text('How does pinning avoid jumps?'),
+          ),
+          CoilButton(
+            key: const Key('ai.quick_long'),
+            variant: CoilButtonVariant.secondary,
+            size: CoilSize.compact,
+            style: const CoilButtonStyle(radius: 999),
+            leading: const Icon(LucideIcons.fileCode2, size: 14),
+            onPressed: onLong,
+            child: const Text('Walk me through the architecture'),
+          ),
+        ],
       ),
     );
   }
@@ -978,7 +979,7 @@ Two separate layout invariants break in a plain `ListView`:
     role: _Role.assistant,
     time: '10:12 AM',
     text: '''
-Try tapping **Quick short reply**, **Deep-dive GFM stream**, or typing in the composer below:
+Pick a suggestion above the composer, or type your own question:
 
 - Your new prompt becomes `pinnedId`, so `SliverTurnStage` wraps it as the anchor sliver and reserves a full viewport stage beneath it.
 - Motor springs the prompt cleanly to top clearance (`defaultTurnAutoScrollMotion`), leaving room for `CoilThinkingSteps` and the streaming reply — and any touch drag or wheel scroll disengages auto-pinning immediately.''',

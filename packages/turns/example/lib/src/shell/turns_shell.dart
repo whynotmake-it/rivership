@@ -145,8 +145,9 @@ const turnsDemos = <TurnsDemoEntry>[
     title: 'iMessage',
     primitive: 'TurnScrollView.sectioned (inline)',
     description:
-        'Inline timestamp headers, tapback reactions, 0px-shift prepend '
-        'pagination, and Motor spring jump highlights.',
+        'Find in conversation across two years of history: pages in the '
+        'whole archive with a 0px-shift prepend, then steps through matches '
+        'months apart with scrollTo. Inline timestamps and a typing tail.',
     glyph: TurnsGlyph.messageCircle,
   ),
   TurnsDemoEntry(

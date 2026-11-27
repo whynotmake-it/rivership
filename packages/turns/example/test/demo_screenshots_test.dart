@@ -255,10 +255,21 @@ void main() {
       );
       await _pumpFrames(tester, const Duration(milliseconds: 600));
 
-      expect(find.byKey(const Key('imessage.load_older')), findsOneWidget);
+      expect(find.byKey(const Key('imessage.search')), findsOneWidget);
       expect(find.byKey(const Key('imessage.jump_ref')), findsOneWidget);
 
       await snap(name: 'imessage_iphone');
+
+      // Find in conversation: pages in the whole archive and lands on the
+      // newest match, months back.
+      await tester.tap(find.byKey(const Key('imessage.search')));
+      await _pumpFrames(tester, const Duration(milliseconds: 400));
+      await tester.tap(find.text('Tahoe'));
+      await _pumpFrames(tester, const Duration(milliseconds: 1200));
+      await tester.tap(find.byKey(const Key('imessage.search_older')));
+      await _pumpFrames(tester, const Duration(milliseconds: 1200));
+
+      await snap(name: 'imessage_search_iphone');
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

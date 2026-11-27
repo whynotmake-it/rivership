@@ -36,6 +36,7 @@ Flutter AI chat transcripts, streaming timelines, and messaging feeds.
 
 - **Bidirectional `Viewport(center:)` timelines (`TurnScrollView`)**:
   - **O(1) open** at the bottom or at any `initialItemId` without laying out earlier items.
+  - **Viewport-sized jumps**: `scrollTo` and `scrollToBottom` across thousands of items recenter next to the target and lay out only what lands on screen. Animated flights longer than three viewports do the same, then glide the last viewport. (Picking the target costs an O(distance) sum over cached extents: plain arithmetic, no layout.)
   - **`0.0px`-shift prepend pagination** with preserved child widget `State`.
   - **Single-pass `SliverTurnStage` turn pinning**: pass `pinnedId` to reserve a viewport stage for the active prompt so `maxScrollExtent` stays flat while tokens stream.
   - **Zero-fight user control**: any drag, wheel, or trackpad gesture disengages auto-pinning immediately.
