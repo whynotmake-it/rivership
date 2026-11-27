@@ -975,7 +975,7 @@ Two separate layout invariants break in a plain `ListView`:
 Try tapping **Quick short reply**, **Deep-dive GFM stream**, or typing in the composer below:
 
 - Your new prompt becomes `pinnedId`, so `SliverTurnStage` wraps it as the anchor sliver and reserves a full viewport stage beneath it.
-- Motor springs the prompt cleanly to top clearance (`defaultTurnPinMotion`), leaving room for `CoilThinkingSteps` and the streaming reply — and any touch drag or wheel scroll disengages auto-pinning immediately.''',
+- Motor springs the prompt cleanly to top clearance (`defaultTurnAutoScrollMotion`), leaving room for `CoilThinkingSteps` and the streaming reply — and any touch drag or wheel scroll disengages auto-pinning immediately.''',
   ),
 ];
 

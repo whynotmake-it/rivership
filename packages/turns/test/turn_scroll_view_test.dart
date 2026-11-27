@@ -40,9 +40,11 @@ _pumpView(
   Size viewportSize = const Size(390, 800),
   double itemSpacing = 20,
   double jumpThreshold = 160,
-  Motion? pinMotion,
+  Motion? autoScrollMotion,
   Object? initialItemId,
   double initialAlignment = 0,
+  bool initialAtBottom = true,
+  List<Widget> leadingSlivers = const [],
   Widget Function(BuildContext context, _TestItem item)? customItemBuilder,
   Widget? customTailSliver,
 }) async {
@@ -81,10 +83,13 @@ _pumpView(
                 pinnedId: s.pinnedId,
                 initialItemId: initialItemId,
                 initialAlignment: initialAlignment,
+                initialAtBottom: initialAtBottom,
+                leadingSlivers: leadingSlivers,
                 padding: s.padding,
                 itemSpacing: itemSpacing,
                 jumpThreshold: jumpThreshold,
-                pinMotion: pinMotion ?? const CupertinoMotion.smooth(),
+                autoScrollMotion:
+                    autoScrollMotion ?? const CupertinoMotion.smooth(),
                 tailSliver:
                     customTailSliver ??
                     (s.tailHeight > 0
@@ -553,7 +558,7 @@ void main() {
                 itemCount: items.length,
                 itemId: (i) => items[i].id,
                 itemSpacing: 20,
-                pinMotion: const CupertinoMotion.smooth(),
+                autoScrollMotion: const CupertinoMotion.smooth(),
                 itemBuilder: (context, i) => SizedBox(
                   key: ValueKey('box:${items[i].id}'),
                   height: items[i].height,
@@ -589,9 +594,93 @@ void main() {
   );
 
   testWidgets(
-    'maxAnchorFraction controls how tall pinned anchors settle relative to '
-    'topClearance',
+    'leadingSlivers prepend freezes visible items to < 0.5px on both first '
+    '(hasAbove false -> true) and subsequent prepends',
     (tester) async {
+      // Short initial list (6 < 12) with a 120px leading sliver.
+      final items = [for (var i = 0; i < 6; i++) _TestItem('curr$i', 140)];
+      final (:controller, :state) = await _pumpView(
+        tester,
+        _HarnessState(items: items),
+        initialAtBottom: false,
+        leadingSlivers: const [
+          SliverToBoxAdapter(
+            child: SizedBox(key: ValueKey('leading-banner'), height: 120),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll partway down so curr1/curr2 sit comfortably inside the viewport.
+      controller.jumpTo(150);
+      await tester.pump();
+      final curr2TopBefore1 = _itemTopInViewport(tester, 'curr2');
+
+      // Page 1 prepend: flips hasAbove false -> true (Viewport.center switches
+      // from _topKey to _belowKey, moving leadingSlivers above center).
+      _update(state, (s) {
+        s.items = [
+          for (var i = 0; i < 10; i++) _TestItem('p1_$i', 90 + (i % 3) * 20),
+          ...s.items,
+        ];
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        (_itemTopInViewport(tester, 'curr2') - curr2TopBefore1).abs(),
+        lessThan(0.5),
+      );
+
+      // Page 2 prepend: hasAbove stays true -> true.
+      final curr2TopBefore2 = _itemTopInViewport(tester, 'curr2');
+      _update(state, (s) {
+        s.items = [
+          for (var i = 0; i < 10; i++) _TestItem('p2_$i', 100),
+          ...s.items,
+        ];
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        (_itemTopInViewport(tester, 'curr2') - curr2TopBefore2).abs(),
+        lessThan(0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'TurnAnchorConfig controls pinned anchor alignment, trailing floor, and '
+    'value equality',
+    (tester) async {
+      // Value equality, hashCode, copyWith (including clearing nullable field),
+      // and toString. Use non-const instances so field equality (not just
+      // identical()) is exercised.
+      final standardCopy = TurnAnchorConfig(
+        minTrailingFraction: double.parse('0.5'),
+      );
+      final topCopy = TurnAnchorConfig(alignment: double.parse('0'));
+      expect(TurnAnchorConfig.standard, equals(standardCopy));
+      expect(TurnAnchorConfig.standard.hashCode, equals(standardCopy.hashCode));
+      expect(TurnAnchorConfig.top, equals(topCopy));
+      expect(TurnAnchorConfig.top.hashCode, equals(topCopy.hashCode));
+      expect(TurnAnchorConfig.standard, isNot(equals(TurnAnchorConfig.top)));
+      expect(
+        TurnAnchorConfig.standard.copyWith(alignment: 0.25),
+        equals(
+          const TurnAnchorConfig(alignment: 0.25, minTrailingFraction: 0.5),
+        ),
+      );
+      expect(
+        TurnAnchorConfig.standard.copyWith(minTrailingFraction: null),
+        equals(TurnAnchorConfig.top),
+      );
+      expect(
+        const TurnAnchorConfig(alignment: 0.4).toString(),
+        contains('alignment: 0.4'),
+      );
+
       const viewport = Size(390, 800);
       tester.view
         ..devicePixelRatio = 1
@@ -599,51 +688,191 @@ void main() {
       addTearDown(tester.view.reset);
 
       // Usable viewport = 800 - 60 (top) - 140 (bottom) = 600.
-      // Tall anchor height = 480 (> 50% of 600, <= 100% of 600).
-      final items = [
-        for (var i = 0; i < 8; i++) _TestItem('h$i', 90),
-        _TestItem('tall-anchor', 480),
-        _TestItem('reply', 60),
-      ];
       final controller = TurnScrollController();
       addTearDown(controller.dispose);
 
-      Widget buildView({required double maxAnchorFraction}) => Directionality(
-        textDirection: TextDirection.ltr,
-        child: MediaQuery(
-          data: const MediaQueryData(size: viewport),
-          child: TurnScrollView(
-            controller: controller,
-            itemCount: items.length,
-            itemId: (i) => items[i].id,
-            pinnedId: 'tall-anchor',
-            maxAnchorFraction: maxAnchorFraction,
-            padding: const EdgeInsets.only(top: 60, bottom: 140),
-            itemSpacing: 16,
-            pinMotion: const Motion.instant(),
-            itemBuilder: (context, i) => SizedBox(
-              key: ValueKey('box:${items[i].id}'),
-              height: items[i].height,
-              child: Text(items[i].id),
+      Widget buildView({
+        required double anchorHeight,
+        required TurnAnchorConfig anchorConfig,
+      }) {
+        final items = [
+          for (var i = 0; i < 8; i++) _TestItem('h$i', 90),
+          _TestItem('anchor', anchorHeight),
+          _TestItem('reply', 40),
+        ];
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: const MediaQueryData(size: viewport),
+            child: TurnScrollView(
+              controller: controller,
+              itemCount: items.length,
+              itemId: (i) => items[i].id,
+              pinnedId: 'anchor',
+              anchorConfig: anchorConfig,
+              padding: const EdgeInsets.only(top: 60, bottom: 140),
+              itemSpacing: 16,
+              autoScrollMotion: const Motion.instant(),
+              itemBuilder: (context, i) => SizedBox(
+                key: ValueKey('box:${items[i].id}'),
+                height: items[i].height,
+                child: Text(items[i].id),
+              ),
             ),
           ),
-        ),
+        );
+      }
+
+      // 1. TurnAnchorConfig.top -> tall anchor (480) pins flush to topClearance
+      //    (60) with no trailing floor override.
+      await tester.pumpWidget(
+        buildView(anchorHeight: 480, anchorConfig: TurnAnchorConfig.top),
       );
-
-      // maxAnchorFraction: 1.0 -> tall anchor (480 <= 600 * 1.0) stays pinned
-      // flush at topClearance (60).
-      await tester.pumpWidget(buildView(maxAnchorFraction: 1));
       await tester.pumpAndSettle();
-      expect(_itemTopInViewport(tester, 'tall-anchor'), closeTo(60, 1.5));
+      expect(_itemTopInViewport(tester, 'anchor'), closeTo(60, 1.5));
 
-      // maxAnchorFraction: 0.5 -> tall anchor (480 > 600 * 0.5 = 300) scrolls
-      // up so its bottom rests at topClearance + 300 = 360, leaving 50% below.
-      await tester.pumpWidget(buildView(maxAnchorFraction: 0.5));
+      // 2. TurnAnchorConfig.standard -> tall anchor (480 > 300) scrolls up so
+      //    its bottom rests at topClearance + 300 = 360 (leaving 50% below).
+      await tester.pumpWidget(
+        buildView(anchorHeight: 480, anchorConfig: TurnAnchorConfig.standard),
+      );
       await tester.pumpAndSettle();
       await controller.jumpToBottom(animate: false);
       await tester.pumpAndSettle();
-      expect(_itemBottomInViewport(tester, 'tall-anchor'), closeTo(360, 1.5));
-      expect(_itemTopInViewport(tester, 'tall-anchor'), closeTo(-120, 1.5));
+      expect(_itemBottomInViewport(tester, 'anchor'), closeTo(360, 1.5));
+      expect(_itemTopInViewport(tester, 'anchor'), closeTo(-120, 1.5));
+
+      // 3. Custom TurnAnchorConfig(alignment: 0.25, minTrailingFraction: 0.5):
+      //    - Short anchor (100): 100 + 300 = 400 <= 450, rests at
+      //      60 + 150 = 210.
+      const customWithFloor = TurnAnchorConfig(
+        alignment: 0.25,
+        minTrailingFraction: 0.5,
+      );
+      await tester.pumpWidget(
+        buildView(anchorHeight: 100, anchorConfig: customWithFloor),
+      );
+      await tester.pumpAndSettle();
+      await controller.jumpToBottom(animate: false);
+      await tester.pumpAndSettle();
+      expect(_itemTopInViewport(tester, 'anchor'), closeTo(210, 1.5));
+
+      //    - Taller anchor (200): 200 + 300 = 500 > 450, scrolls up so bottom
+      //      rests at 60 + 300 = 360 (top at 160), preserving 50% below.
+      await tester.pumpWidget(
+        buildView(anchorHeight: 200, anchorConfig: customWithFloor),
+      );
+      await tester.pumpAndSettle();
+      await controller.jumpToBottom(animate: false);
+      await tester.pumpAndSettle();
+      expect(_itemBottomInViewport(tester, 'anchor'), closeTo(360, 1.5));
+      expect(_itemTopInViewport(tester, 'anchor'), closeTo(160, 1.5));
+
+      // 4. TurnAnchorConfig(alignment: 0.4) (minTrailingFraction == null):
+      //    no surprise trailing-floor override! Anchor (280) rests at
+      //    60 + 0.4 * 600 = 300 even though only 80px (< 50%) remains below.
+      await tester.pumpWidget(
+        buildView(
+          anchorHeight: 280,
+          anchorConfig: const TurnAnchorConfig(alignment: 0.4),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await controller.jumpToBottom(animate: false);
+      await tester.pumpAndSettle();
+      expect(_itemTopInViewport(tester, 'anchor'), closeTo(300, 1.5));
+    },
+  );
+
+  testWidgets(
+    'per-call motion on scrollTo and jumpToBottom overrides autoScrollMotion '
+    'while still respecting reduced motion',
+    (tester) async {
+      final items = [for (var i = 0; i < 40; i++) _TestItem('m$i', 90)];
+      final (:controller, :state) = await _pumpView(
+        tester,
+        _HarnessState(items: items),
+        autoScrollMotion: const Motion.linear(Duration(milliseconds: 1000)),
+      );
+      await tester.pumpAndSettle();
+
+      // Control check: default view autoScrollMotion (1000ms) is still in
+      // flight after 160ms.
+      bool? slowArrived;
+      final slowFuture = controller.scrollTo('m32').then((v) {
+        slowArrived = v;
+      });
+      await _pumpFrames(tester, 10);
+      expect(slowArrived, isNull);
+      expect(
+        (controller.position as TurnScrollPosition).isTrackingTarget,
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      await slowFuture;
+      expect(slowArrived, isTrue);
+
+      // Per-call fast motion (100ms) on jumpToBottom settles well within 160ms
+      // (faster than the view's 1000ms autoScrollMotion).
+      bool? fastJumpArrived;
+      final fastJump = controller
+          .jumpToBottom(
+            motion: const Motion.linear(Duration(milliseconds: 100)),
+          )
+          .then((v) {
+            fastJumpArrived = v;
+          });
+      await _pumpFrames(tester, 10);
+      expect(fastJumpArrived, isTrue);
+      await fastJump;
+      expect(_itemBottomInViewport(tester, 'm39'), closeTo(704, 2));
+
+      // Per-call Motion.instant() on scrollTo settles immediately (within
+      // 2 frames / 16ms elapsed, far faster than the 1000ms default).
+      bool? instantArrived;
+      final instantToM30 = controller
+          .scrollTo('m30', motion: const Motion.instant())
+          .then((v) {
+            instantArrived = v;
+          });
+      await _pumpFrames(tester, 2);
+      expect(instantArrived, isTrue);
+      await instantToM30;
+      expect(_itemTopInViewport(tester, 'm30'), closeTo(68, 2));
+
+      // Reduced motion still jumps instantaneously even with a slow per-call
+      // motion.
+      _update(state, (s) => s.disableAnimations = true);
+      await tester.pump();
+
+      bool? reducedScrollArrived;
+      final reducedToM5 = controller
+          .scrollTo(
+            'm5',
+            motion: const Motion.linear(Duration(milliseconds: 1000)),
+          )
+          .then((v) {
+            reducedScrollArrived = v;
+          });
+      await tester.pump();
+      await tester.pump();
+      expect(reducedScrollArrived, isTrue);
+      await reducedToM5;
+      expect(_itemTopInViewport(tester, 'm5'), closeTo(68, 2));
+
+      bool? reducedJumpArrived;
+      final reducedJump = controller
+          .jumpToBottom(
+            motion: const Motion.linear(Duration(milliseconds: 1000)),
+          )
+          .then((v) {
+            reducedJumpArrived = v;
+          });
+      await tester.pump();
+      await tester.pump();
+      expect(reducedJumpArrived, isTrue);
+      await reducedJump;
+      expect(_itemBottomInViewport(tester, 'm39'), closeTo(704, 2));
     },
   );
 }

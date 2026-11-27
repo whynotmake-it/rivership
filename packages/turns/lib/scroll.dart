@@ -8,7 +8,7 @@
 ///   for arbitrary Flutter slivers (`SliverAppBar`, `SliverMainAxisGroup`,
 ///   `SliverPersistentHeader`) with offscreen `scrollTo` and `jumpToBottom`.
 /// - [TurnScrollController], [TurnScrollNotification], [TurnScrollScope],
-///   [TurnScrollItem], and [SliverTurnStage].
+///   [TurnScrollItem], [SliverTurnStage], and [TurnAnchorConfig].
 ///
 /// @docImport 'package:turns/scroll.dart';
 library;

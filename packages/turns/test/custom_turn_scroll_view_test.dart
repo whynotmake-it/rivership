@@ -65,7 +65,7 @@ void main() {
                 initialAtBottom: false,
                 applyTopPadding: false,
                 padding: const EdgeInsets.fromLTRB(16, 48, 16, 80),
-                pinMotion: const CupertinoMotion.smooth(),
+                autoScrollMotion: const CupertinoMotion.smooth(),
                 slivers: [
                   // Pinned app-bar-like header sliver (height 68).
                   SliverPersistentHeader(
