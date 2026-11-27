@@ -231,9 +231,10 @@ class _TrackBuilderState extends State<TrackBuilder>
     if (values.isNotEmpty) _controller.set(values);
   }
 
-  /// Restarts only the tracks whose animation differs from [oldAnimations],
-  /// so tracks that didn't change keep playing, for example keyframes next
-  /// to a track that follows user input.
+  /// Updates tracks whose animation differs from [oldAnimations], so tracks
+  /// that didn't change keep playing. Tracks where only step motions changed
+  /// update in place without restarting from step 0; structural changes restart
+  /// from their current value and velocity.
   void _animateChanged(
     List<TrackAnimation> animations,
     List<TrackAnimation> oldAnimations,
@@ -242,12 +243,23 @@ class _TrackBuilderState extends State<TrackBuilder>
     final old = {
       for (final animation in oldAnimations) animation.track: animation,
     };
-    final changed = [
-      for (final animation in animations)
-        if (old[animation.track] != animation) animation,
-    ];
-    if (changed.isEmpty) return;
-    _controller.animate(changed, onStep: _onStep);
+    final toAnimate = <TrackAnimation>[];
+    final toUpdateMotion = <TrackAnimation>[];
+    for (final animation in animations) {
+      final previous = old[animation.track];
+      if (previous == animation) continue;
+      if (previous != null && previous.hasSameStructureAs(animation)) {
+        toUpdateMotion.add(animation);
+      } else {
+        toAnimate.add(animation);
+      }
+    }
+    if (toUpdateMotion.isNotEmpty) {
+      _controller.internalUpdateMotions(toUpdateMotion);
+    }
+    if (toAnimate.isNotEmpty) {
+      _controller.animate(toAnimate, onStep: _onStep);
+    }
   }
 
   @override
@@ -276,21 +288,31 @@ class _TrackBuilderState extends State<TrackBuilder>
     if (!widget.active) return;
 
     if (restart) {
-      // Jump every track back to its start value before replaying, so a
-      // restartTrigger change starts the animation from the start rather than
-      // animating from the current value back to the first value. The
-      // initialValues then apply on top, as on mount.
+      // Jump every track back to its start value before replaying, respecting
+      // from > initialValues > Track.initial (preserving initialValues
+      // velocities).
       _controller.set(_startValues());
-      if (widget.initialValues case final values? when values.isNotEmpty) {
-        _controller.set(values);
-      }
     }
 
     _controller.animate(widget.animations, onStep: _onStep);
   }
 
-  List<TrackValue> _startValues() => [
-        for (final animation in widget.animations)
-          animation.track.value(animation.resolveStartValue()),
-      ];
+  List<TrackValue> _startValues() {
+    final seededByTrack = <Track, TrackValue>{
+      if (widget.initialValues case final values?)
+        for (final value in values) value.track: value,
+    };
+    final values = <TrackValue>[];
+    final seen = <Track>{};
+    for (final animation in widget.animations) {
+      seen.add(animation.track);
+      values.add(
+        animation.resolveStartTrackValue(seededByTrack[animation.track]),
+      );
+    }
+    for (final entry in seededByTrack.entries) {
+      if (!seen.contains(entry.key)) values.add(entry.value);
+    }
+    return values;
+  }
 }

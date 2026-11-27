@@ -141,12 +141,14 @@ base class Track<T extends Object> {
             StepSync(:final token) => StepSync<T>(token: token),
             StepLoop(
               :final steps,
+              :final from,
               :final mode,
               :final count,
               :final together,
             ) =>
               StepLoop<T>(
                 _retypeSteps(steps),
+                from: from as T?,
                 mode: mode,
                 count: count,
                 together: together,
@@ -279,12 +281,14 @@ final class TrackAnimation<T extends Object> {
               ),
             StepLoop<S>(
               :final steps,
+              :final from,
               :final mode,
               :final count,
               :final together,
             ) =>
               TrackStep.loop(
                 _overrideMotions(steps, motion),
+                from: from,
                 mode: mode,
                 count: count,
                 together: together,
@@ -314,6 +318,62 @@ final class TrackAnimation<T extends Object> {
     );
   }
 
+  /// Resolves the start snapshot for [track] given an optional seeded
+  /// [initialValue] (from `TrackBuilder.initialValues`), respecting precedence:
+  /// [from] > [initialValue] > [Track.initial] > inferred zero target.
+  @internal
+  TrackValue<T> resolveStartTrackValue(TrackValue? initialValue) {
+    final seeded = initialValue is TrackValue<T> ? initialValue : null;
+    if (from case final value?) {
+      return track.value(value, velocity: seeded?.velocity);
+    }
+    if (seeded != null) {
+      if (seeded.value != null) return seeded;
+      return track.value(resolveStartValue(), velocity: seeded.velocity);
+    }
+    return track.value(resolveStartValue());
+  }
+
+  /// Whether [other] has the same track, start/delay settings, and step
+  /// structure (targets, holds, sync tokens, loop modes/counts/from/together),
+  /// differing at most in step motions.
+  @internal
+  bool hasSameStructureAs(TrackAnimation other) =>
+      other is TrackAnimation<T> &&
+      identical(other.track, track) &&
+      other.from == from &&
+      other.withVelocity == withVelocity &&
+      other.delay == delay &&
+      _stepsHaveSameStructure(steps, other.steps);
+
+  static bool _stepsHaveSameStructure<S extends Object>(
+    List<TrackStep<S>> a,
+    List<TrackStep<S>> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final same = switch ((a[i], b[i])) {
+        (final StepTo<S> sa, final StepTo<S> sb) =>
+          sa.value == sb.value && sa.until == sb.until,
+        (final StepAt<S> sa, final StepAt<S> sb) =>
+          sa.at == sb.at && sa.value == sb.value,
+        (final StepFree<S> sa, final StepFree<S> sb) => sa.until == sb.until,
+        (final StepHold<S> sa, final StepHold<S> sb) =>
+          sa.duration == sb.duration,
+        (final StepSync<S> sa, final StepSync<S> sb) => sa.token == sb.token,
+        (final StepLoop<S> sa, final StepLoop<S> sb) =>
+          sa.from == sb.from &&
+              sa.mode == sb.mode &&
+              sa.count == sb.count &&
+              sa.together == sb.together &&
+              _stepsHaveSameStructure(sa.steps, sb.steps),
+        _ => false,
+      };
+      if (!same) return false;
+    }
+    return true;
+  }
+
   /// The end value of this animation: its last [TrackStep.to]/[TrackStep.at]
   /// value, or null when no step carries a value.
   @internal
@@ -324,8 +384,9 @@ final class TrackAnimation<T extends Object> {
       switch (step) {
         case StepTo<T>(:final value) || StepAt<T>(:final value):
           return track.value(value);
-        case StepLoop<T>(:final steps):
+        case StepLoop<T>(:final steps, :final from):
           if (_lastTargetOf(steps) case final value?) return value;
+          if (from != null) return track.value(from);
         default:
           break;
       }
@@ -342,7 +403,8 @@ final class TrackAnimation<T extends Object> {
       switch (step) {
         case StepTo<T>(:final value) || StepAt<T>(:final value):
           return track.converter.normalize(value).length;
-        case StepLoop<T>(:final steps):
+        case StepLoop<T>(:final steps, :final from):
+          if (from != null) return track.converter.normalize(from).length;
           if (_firstDimensionsOf(steps) case final dimensions?) {
             return dimensions;
           }

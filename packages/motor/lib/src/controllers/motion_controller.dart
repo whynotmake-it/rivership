@@ -398,12 +398,14 @@ class MotionController<T extends Object> extends Animation<T>
               TrackStep.at(at, value, motionPerDimension: _motionPerDimension),
             StepLoop<T>(
               :final steps,
+              :final from,
               :final mode,
               :final count,
               :final together,
             ) =>
               TrackStep.loop(
                 _withDefaultMotions(steps),
+                from: from,
                 mode: mode,
                 count: count,
                 together: together,

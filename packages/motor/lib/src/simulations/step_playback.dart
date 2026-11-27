@@ -152,6 +152,7 @@ class StepPlayback<T extends Object> {
         if (step
             case StepLoop<T>(
               :final steps,
+              :final from,
               :final mode,
               :final count,
               :final together,
@@ -175,6 +176,12 @@ class StepPlayback<T extends Object> {
           );
           loops.add(frame);
           (startingAt[start] ??= []).add(frameIndex);
+
+          if (from != null) {
+            flat.add(StepTo<T>(from, motion: const Motion.instant()));
+            reported.add(-1);
+            enclosing.add(frameIndex);
+          }
 
           emit(
             steps,
@@ -346,8 +353,8 @@ class StepPlayback<T extends Object> {
   /// Gaps shorter than this (one microsecond) count as no time at all.
   static const _instant = 1e-6;
 
-  final List<TrackStep<T>> _rawSteps;
-  late final List<TrackStep<T>> _steps;
+  List<TrackStep<T>> _rawSteps;
+  late List<TrackStep<T>> _steps;
   late final List<int> _reportedStepIndices;
   late final List<int?> _enclosingLoop;
   late final List<_LoopFrame> _loops;
@@ -549,6 +556,326 @@ class StepPlayback<T extends Object> {
         delay: delay,
         unrollLoopsOnce: true,
       );
+
+  /// Updates step motions in place for a plan with the same structure as
+  /// [_rawSteps], keeping the current step, cycle, and direction instead of
+  /// restarting from step 0.
+  ///
+  /// For a running [CurvedMotion] (including [LinearMotion]) whose curve is
+  /// unchanged and only duration changed, preserves the current progress
+  /// fraction so even per-frame duration changes move at the true new speed
+  /// without snapping or slowing down. For springs or curve-shape changes,
+  /// redirects smoothly from the current value and velocity.
+  void updateMotions(List<TrackStep<T>> newRawSteps) {
+    assert(
+      _validateDurations(
+        newRawSteps,
+        _fallbackMotion,
+        _fallbackMotionPerDimension,
+      ),
+      'durations must not be negative',
+    );
+    final newFlat = _flattenUpdatedSteps(newRawSteps);
+    assert(
+      newFlat.length == _steps.length,
+      'updateMotions requires an identical step structure.',
+    );
+    _rawSteps = List.of(newRawSteps);
+    _steps = newFlat;
+
+    if (_isDone || _segments.isEmpty) return;
+    if (_leading || _settlingTail || _isWaitingForSync) {
+      _period = null;
+      _cycleStarts.clear();
+      _estimatedSegmentSeconds = null;
+      return;
+    }
+
+    final now = _lastElapsedSeconds;
+    final view = _view;
+    final activeStep = view.stepIndex;
+    if (activeStep < 0) return;
+
+    final activeDir = view.direction;
+    final activeCycle = view.cycle + _viewCycleShift;
+    final oldSims = view.simulations;
+    final localTime = _viewTime;
+    final oldViewTimeShift = _viewTimeShift;
+    final wasFolded = _period != null && oldViewTimeShift > 0;
+
+    _copyInto(_values, _viewValues);
+    _showVelocities();
+    _copyInto(_velocities, _viewVelocities);
+
+    // Unfold and align the resolution cursor to the exact shown state.
+    _period = null;
+    _cycleStarts.clear();
+    _viewTimeShift = 0;
+    _viewCycleShift = 0;
+    _estimatedSegmentSeconds = null;
+    _stepIndex = activeStep;
+    _direction = activeDir;
+    _cycle = activeCycle;
+    if (wasFolded) {
+      _cycleStartSeconds += oldViewTimeShift;
+    }
+    var frameIdx = _enclosingLoop[activeStep];
+    var innermost = true;
+    while (frameIdx != null) {
+      final loop = _loops[frameIdx];
+      if (innermost) {
+        loop.direction = activeDir;
+        innermost = false;
+      }
+      if (frameIdx == _primaryLoopIndex) {
+        loop.iteration = activeCycle;
+      }
+      frameIdx = loop.parent;
+    }
+
+    final step = _steps[_stepIndex];
+    if (step is StepHold<T> || step is StepSync<T>) {
+      if (wasFolded || _viewIndex < _segments.length - 1) {
+        _segmentStartSeconds = now;
+        _plannedEnd = view.duration == null
+            ? null
+            : math.max(0.0, view.duration! - localTime);
+        _askEnd = false;
+        _handedOver = false;
+        _handsOver = false;
+        _simulations = [
+          for (final sim in oldSims) _ContinuedSimulation.after(sim, localTime),
+        ];
+        _startSegmentEnd();
+        final replacement = _Segment(
+          stepIndex: _stepIndex,
+          direction: _direction,
+          cycle: _cycle,
+          start: now,
+          simulations: _simulations,
+        );
+        if (wasFolded) {
+          _segments
+            ..clear()
+            ..add(replacement);
+          _reportedIndex = 0;
+        } else {
+          _segments
+            ..removeRange(_viewIndex, _segments.length)
+            ..add(replacement);
+          _reportedIndex = math.min(_reportedIndex, _segments.length - 1);
+        }
+      }
+      _scheduleCutForNextAt();
+      _show(now);
+      return;
+    }
+
+    _segmentStartSeconds = now;
+    _plannedEnd = null;
+    _askEnd = false;
+    _handedOver = false;
+    _handsOver = false;
+
+    double? updatedLastSeconds;
+    switch (step) {
+      case StepTo<T>(:final motion, :final motionPerDimension, :final until):
+        final motions = _motions(motion, motionPerDimension);
+        final targets = _direction > 0
+            ? _waypoints[_stepIndex]
+            : _reverseTargets(_stepIndex);
+        final newSims = _redirectToMotions(
+          oldSims,
+          motions,
+          targets,
+          localTime,
+        );
+        _simulations = newSims;
+        if (_allDoneAtStart(newSims)) {
+          _plannedEnd = 0;
+          updatedLastSeconds = 0;
+        } else {
+          _askEnd = true;
+          final remaining = _remainingLogicalSeconds(newSims, motions);
+          if (until == WaitUntil.ended && _isFollowed() && remaining != null) {
+            _plannedEnd = remaining;
+            _handsOver = true;
+          }
+          updatedLastSeconds = remaining;
+        }
+      case StepAt<T>(:final at, :final motion, :final motionPerDimension):
+        final motions = _motions(motion, motionPerDimension);
+        if (_direction > 0) {
+          _simulations = _simulateAt(at, motions);
+        } else {
+          final targets = _reverseTargets(_stepIndex);
+          _simulations = _redirectToMotions(
+            oldSims,
+            motions,
+            targets,
+            localTime,
+          );
+          if (_allDoneAtStart(_simulations)) {
+            _plannedEnd = 0;
+          } else {
+            _askEnd = true;
+          }
+        }
+        updatedLastSeconds = _plannedEnd;
+      case StepFree<T>(:final motion):
+        _simulations = _simulateFree(motion);
+        updatedLastSeconds = _lastStepSeconds();
+      case StepHold<T>() || StepSync<T>() || StepLoop<T>():
+        break;
+    }
+
+    _startSegmentEnd();
+    if (!_isFollowed()) {
+      _lastEndsAt =
+          _segmentStartSeconds + (updatedLastSeconds ?? double.infinity);
+    }
+
+    final replacement = _Segment(
+      stepIndex: _stepIndex,
+      direction: _direction,
+      cycle: _cycle,
+      start: now,
+      simulations: _simulations,
+      from: converter is DirectionalMotionConverter<T>
+          ? List.of(_values)
+          : null,
+    );
+    if (wasFolded) {
+      _segments
+        ..clear()
+        ..add(replacement);
+      _reportedIndex = 0;
+    } else {
+      _segments
+        ..removeRange(_viewIndex, _segments.length)
+        ..add(replacement);
+      _reportedIndex = math.min(_reportedIndex, _segments.length - 1);
+    }
+    _scheduleCutForNextAt();
+    _show(now);
+  }
+
+  List<TrackStep<T>> _flattenUpdatedSteps(List<TrackStep<T>> rawSteps) {
+    final flat = <TrackStep<T>>[];
+    void emit(List<TrackStep<T>> list) {
+      for (final step in list) {
+        if (step
+            case StepLoop<T>(
+              :final steps,
+              :final from,
+              :final mode,
+              :final together,
+            )) {
+          final start = flat.length;
+          if (from != null) {
+            flat.add(StepTo<T>(from, motion: const Motion.instant()));
+          }
+          emit(steps);
+          final end = flat.length - 1;
+          var targetCount = 0;
+          for (var i = start; i <= end; i++) {
+            if (flat[i] is StepTo<T> || flat[i] is StepAt<T>) {
+              if (++targetCount >= 2) break;
+            }
+          }
+          if (together != null) {
+            if (mode == LoopMode.pingPong && targetCount >= 2) {
+              flat.add(
+                LoopBarrier<T>(
+                  token: LoopSyncToken(together, turnaround: true),
+                ),
+              );
+            }
+            flat.add(LoopBarrier<T>(token: LoopSyncToken(together)));
+          }
+        } else {
+          flat.add(step);
+        }
+      }
+    }
+
+    emit(rawSteps);
+    return flat;
+  }
+
+  List<Simulation> _redirectToMotions(
+    List<Simulation> oldSims,
+    List<Motion> motions,
+    List<double> targets,
+    double localTime,
+  ) =>
+      [
+        for (var i = 0; i < targets.length; i++)
+          _redirectDimensionMotion(
+            i < oldSims.length ? oldSims[i] : null,
+            motions[i],
+            _values[i],
+            targets[i],
+            _velocities[i],
+            localTime,
+          ),
+      ];
+
+  Simulation _redirectDimensionMotion(
+    Simulation? oldSim,
+    Motion newMotion,
+    double currentValue,
+    double target,
+    double velocity,
+    double localTime,
+  ) {
+    if (oldSim != null &&
+        newMotion is CurvedMotion &&
+        newMotion.duration > Duration.zero) {
+      final (baseSim, baseOffset) = switch (oldSim) {
+        _ContinuedSimulation(:final inner, :final offset) => (inner, offset),
+        _ => (oldSim, 0.0),
+      };
+      if (baseSim is CurveSimulation && baseSim.curve == newMotion.curve) {
+        final oldSeconds = baseSim.duration.toSeconds();
+        final fraction = oldSeconds > 0
+            ? ((baseOffset + localTime) / oldSeconds).clamp(0.0, 1.0)
+            : 1.0;
+        final newFull = newMotion.createSimulation(
+          start: baseSim.start,
+          end: target,
+        );
+        final newSeconds = newMotion.duration.toSeconds();
+        return _ContinuedSimulation.after(newFull, fraction * newSeconds);
+      }
+    }
+    return newMotion.createSimulation(
+      start: currentValue,
+      end: target,
+      velocity: velocity,
+    );
+  }
+
+  static double? _remainingLogicalSeconds(
+    List<Simulation> simulations,
+    List<Motion> motions,
+  ) {
+    var longest = 0.0;
+    for (var i = 0; i < motions.length; i++) {
+      final double? dimSeconds;
+      if (simulations[i] case _ContinuedSimulation(
+        inner: final CurveSimulation curve,
+        :final offset,
+      )) {
+        dimSeconds = math.max(0.0, curve.duration.toSeconds() - offset);
+      } else {
+        dimSeconds = motions[i].duration?.toSeconds();
+      }
+      if (dimSeconds == null) return null;
+      if (dimSeconds > longest) longest = dimSeconds;
+    }
+    return longest;
+  }
 
   /// The simulations playing at the time shown, continuing from there, for a
   /// plan that replaces this one; null once this one is done.

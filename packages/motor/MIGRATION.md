@@ -8,6 +8,11 @@ This guide covers upgrading from Motor 1.x to 2.0. It has three parts:
    `MotionSequence` stack.
 3. [Deprecation timeline](#deprecation-timeline) — what gets removed in 3.0.
 
+> **Companion packages:** upgrade `heroine`, `stupid_simple_sheet`,
+> `scroll_drag_detector`, and `motor_widgets` alongside `motor` 2.0. Packages
+> that relied on `PaddingExtended` or `MotionPadding` transitively through
+> `motor` should now depend on `motor_widgets` directly.
+
 ## Breaking changes
 
 ### Springs snap to their end value by default
@@ -50,6 +55,13 @@ final controller = MotionController(
 
 When you do have gesture velocity (e.g. from `DragEndDetails`), still prefer
 passing it explicitly via `withVelocity:` for accuracy.
+
+Because manual drags now carry momentum into the release spring, even a
+critically damped spring (`bounce: 0`) on a `BoundedSingleMotionController` can
+briefly overshoot `lowerBound` or `upperBound` (bounded controllers clamp
+inputs and targets, not spring overshoot). Clamp `controller.value` where a
+consumer asserts a strict range (such as `Opacity`), or pass
+`velocityTracking: const .off()`.
 
 ### `status` is directional for directional converters
 
@@ -560,6 +572,30 @@ final animations = [
   ]),
 ];
 ```
+
+Loops are self-contained around their first target — they do not implicitly
+return to `Track.initial` or `TrackAnimation.from`. For `LoopMode.seamless` or
+`LoopMode.pingPong` with a single target, pass `from:` on `TrackStep.loop` (or
+list both endpoints inside the loop):
+
+```dart
+// Seamless 0 -> 1 -> (jump) 0 -> 1:
+shimmer([.loop([.to(1.0, motion: sweep)], from: 0.0, mode: .seamless)])
+
+// Ping-pong 0 <-> 1:
+pulse([.loop([.to(1.0, motion: smooth)], from: 0.0, mode: .pingPong)])
+```
+
+Two timing differences to watch for when migrating `StepSequence` tests:
+
+- **No-op `.to` steps settle in 0 ms:** `TrackStep.to(0.0, motion: .curved(200ms))`
+  completes immediately when the track is already at rest on `0.0`. Use
+  `TrackStep.hold(const Duration(milliseconds: 200))` when you want an
+  intentional pause.
+- **Exact sub-frame handoffs:** step and phase transitions happen at exact
+  sub-frame timestamps rather than waiting for the next `pump()` tick. Under
+  coarse test pumps (e.g. `pump(Duration(milliseconds: 60))`), sequences finish
+  at their true duration instead of stretching to frame multiples.
 
 ### Spanning sequences → absolute-time steps
 
