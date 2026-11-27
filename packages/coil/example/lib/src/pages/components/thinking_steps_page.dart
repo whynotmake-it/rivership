@@ -60,6 +60,8 @@ class _ThinkingStepsPageState extends State<ThinkingStepsPage> {
   var _sources = true;
   var _icons = true;
   var _expanded = true;
+  var _connectorGap = 4.0;
+  var _connectorWidth = 1.0;
 
   @override
   Widget build(BuildContext context) => CatalogPage(
@@ -97,9 +99,9 @@ CoilThinkingSteps(
       CatalogNote(
         "Do / Don't",
         'Append steps as they arrive; the ones already there on the first '
-            'build appear at once. A step with only a title draws no '
-            'connector, so it is the details and sources that link the steps '
-            'together.',
+            'build appear at once. Consecutive steps stay linked by a '
+            'vertical connector; tune connectorGap and connectorWidth in '
+            'CoilThinkingStepsStyle as needed.',
       ),
       CatalogNote(
         'Screen readers',
@@ -130,6 +132,20 @@ CoilThinkingSteps(
               value: _icons,
               onChanged: (v) => setState(() => _icons = v),
             ),
+            DemoControl.choice<double>(
+              label: 'Line gap',
+              value: _connectorGap,
+              values: const [0, 2, 4, 8],
+              labelOf: (v) => '${v.toInt()}',
+              onChanged: (v) => setState(() => _connectorGap = v),
+            ),
+            DemoControl.choice<double>(
+              label: 'Line width',
+              value: _connectorWidth,
+              values: const [0, 1, 2],
+              labelOf: (v) => '${v.toInt()}',
+              onChanged: (v) => setState(() => _connectorWidth = v),
+            ),
           ],
         ),
         child: Align(
@@ -138,6 +154,10 @@ CoilThinkingSteps(
             label: const Text('Thought for 4 seconds'),
             expanded: _expanded,
             onChanged: (v) => setState(() => _expanded = v),
+            style: CoilThinkingStepsStyle(
+              connectorGap: _connectorGap,
+              connectorWidth: _connectorWidth,
+            ),
             steps: [
               for (final step in _research)
                 CoilThinkingStep(

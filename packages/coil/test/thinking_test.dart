@@ -873,6 +873,55 @@ void main() {
       },
     );
 
+    testWidgets('opening and closing keeps the trigger label opaque', (
+      tester,
+    ) async {
+      var expanded = false;
+      late StateSetter setPageState;
+      await tester.pumpWidget(
+        _app(
+          StatefulBuilder(
+            builder: (context, setState) {
+              setPageState = setState;
+              return CoilThinkingSteps(
+                label: const Text('Thought for 4 seconds'),
+                steps: const [done],
+                expanded: expanded,
+                onChanged: (next) => setState(() => expanded = next),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      void expectLabelOpaque() {
+        final opacities = tester.widgetList<Opacity>(
+          find.ancestor(
+            of: find.text('Thought for 4 seconds'),
+            matching: find.byType(Opacity),
+          ),
+        );
+        for (final o in opacities) {
+          expect(o.opacity, 1);
+        }
+      }
+
+      setPageState(() => expanded = true);
+      for (var i = 0; i < 15; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectLabelOpaque();
+      }
+      await tester.pumpAndSettle();
+
+      setPageState(() => expanded = false);
+      for (var i = 0; i < 15; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectLabelOpaque();
+      }
+      await tester.pumpAndSettle();
+    });
+
     testWidgets(
       'header rolls vertically on label change and animates leading slot',
       (tester) async {
