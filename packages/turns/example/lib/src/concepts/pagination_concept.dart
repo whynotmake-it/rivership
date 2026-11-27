@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:coil/coil.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:turns/scroll.dart';
 import 'package:turns_example/src/concepts/concept_page.dart';
+import 'package:turns_example/src/concepts/visible_items.dart';
 import 'package:turns_example/src/shell/turns_playground.dart';
 import 'package:turns_example/src/shell/turns_shell.dart';
 
@@ -42,8 +42,7 @@ class _PaginationConceptState extends State<PaginationConcept> {
   final _timers = <Timer>[];
 
   final _viewportKey = GlobalKey();
-  final _boxes = <int, RenderBox>{};
-  final _visible = ValueNotifier<(int, int)?>(null);
+  final _visible = VisibleItems();
 
   final _code = ValueNotifier('');
 
@@ -51,7 +50,7 @@ class _PaginationConceptState extends State<PaginationConcept> {
   void initState() {
     super.initState();
     _open();
-    WidgetsBinding.instance.addPostFrameCallback(_measure);
+    _visible.attach(_viewportKey);
   }
 
   @override
@@ -91,7 +90,6 @@ class _PaginationConceptState extends State<PaginationConcept> {
     setState(() {
       _generation++;
       _controller = TurnScrollController();
-      _boxes.clear();
       _open();
     });
   }
@@ -193,30 +191,6 @@ class _PaginationConceptState extends State<PaginationConcept> {
     _timers.add(timer);
   }
 
-  void _measure(Duration _) {
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback(_measure);
-    final viewport = _viewportKey.currentContext?.findRenderObject();
-    if (viewport is! RenderBox || !viewport.hasSize) return;
-    int? first;
-    int? last;
-    for (final MapEntry(key: index, value: box) in _boxes.entries) {
-      if (!box.attached || !box.hasSize) continue;
-      final top = viewport.globalToLocal(box.localToGlobal(Offset.zero)).dy;
-      if (top + box.size.height <= 0 || top >= viewport.size.height) continue;
-      first = first == null ? index : math.min(first, index);
-      last = last == null ? index : math.max(last, index);
-    }
-    final next = first == null ? null : (first, last!);
-    if (next != _visible.value) _visible.value = next;
-  }
-
-  void _register(int index, RenderBox box) => _boxes[index] = box;
-
-  void _unregister(int index, RenderBox box) {
-    if (identical(_boxes[index], box)) _boxes.remove(index);
-  }
-
   Widget _settings() {
     Widget sized(Widget child) => SizedBox(width: 196, child: child);
     return Wrap(
@@ -308,11 +282,9 @@ class _PaginationConceptState extends State<PaginationConcept> {
               : null,
           itemBuilder: (context, i) {
             final index = _lo + i;
-            return _Reporter(
-              index: index,
-              onAttach: _register,
-              onDetach: _unregister,
-              child: _Message(index: index, deepLinked: index == _deepLink),
+            return _visible.wrap(
+              index,
+              _Message(index: index, deepLinked: index == _deepLink),
             );
           },
         ),
@@ -381,53 +353,6 @@ class _PaginationConceptState extends State<PaginationConcept> {
       ),
       code: _code,
     );
-  }
-}
-
-/// Registers its render box with the page while attached, so the page can
-/// tell which messages are on screen.
-class _Reporter extends SingleChildRenderObjectWidget {
-  const _Reporter({
-    required this.index,
-    required this.onAttach,
-    required this.onDetach,
-    required super.child,
-  });
-
-  final int index;
-  final void Function(int index, RenderBox box) onAttach;
-  final void Function(int index, RenderBox box) onDetach;
-
-  @override
-  _RenderReporter createRenderObject(BuildContext context) =>
-      _RenderReporter(index, onAttach, onDetach);
-
-  @override
-  void updateRenderObject(BuildContext context, _RenderReporter renderObject) {
-    renderObject
-      ..index = index
-      ..onAttach = onAttach
-      ..onDetach = onDetach;
-  }
-}
-
-class _RenderReporter extends RenderProxyBox {
-  _RenderReporter(this.index, this.onAttach, this.onDetach);
-
-  int index;
-  void Function(int index, RenderBox box) onAttach;
-  void Function(int index, RenderBox box) onDetach;
-
-  @override
-  void attach(PipelineOwner owner) {
-    super.attach(owner);
-    onAttach(index, this);
-  }
-
-  @override
-  void detach() {
-    onDetach(index, this);
-    super.detach();
   }
 }
 

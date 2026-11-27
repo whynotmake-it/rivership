@@ -11,7 +11,6 @@ class PlaygroundLayout extends StatefulWidget {
     required this.settings,
     super.key,
     this.settingsKey,
-    this.buttonTop = 10,
   });
 
   final Widget body;
@@ -21,10 +20,6 @@ class PlaygroundLayout extends StatefulWidget {
 
   /// Key on the button that opens the panel on narrow screens.
   final Key? settingsKey;
-
-  /// How far from the top the settings button floats on narrow screens,
-  /// clear of the demo's own header controls.
-  final double buttonTop;
 
   /// Windows at least this wide dock the panel beside the demo.
   static const dockBreakpoint = 900.0;
@@ -78,7 +73,7 @@ class _PlaygroundLayoutState extends State<PlaygroundLayout> {
           children: [
             widget.body,
             PositionedDirectional(
-              top: widget.buttonTop,
+              top: 10,
               end: 12,
               child: CoilTooltip(
                 message: const Text('Settings'),

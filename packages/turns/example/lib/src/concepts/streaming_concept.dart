@@ -43,29 +43,29 @@ for (final block in doc.stable) cache[block.id] ??= render(block);
 Questions go in the thread, and _thanks_ for the reviews!
 ''';
 
+/// Characters per second while playing.
 enum _Speed {
-  slow('Slow', 2),
-  normal('Normal', 6),
-  fast('Fast', 18);
+  crawl('Crawl', 6),
+  slow('Slow', 20),
+  normal('Normal', 60);
 
-  const _Speed(this.label, this.chars);
+  const _Speed(this.label, this.charsPerSecond);
 
   final String label;
-  final int chars;
+  final int charsPerSecond;
 }
 
 class _StreamingConceptState extends State<StreamingConcept> {
   var _session = MarkdownSession();
   late MarkdownDocument _doc = _session.update('');
   var _cursor = 0;
-  var _playing = true;
-  var _speed = _Speed.normal;
+  var _playing = false;
+  var _speed = _Speed.slow;
   Timer? _timer;
+  var _carry = 0.0;
 
-  /// Rendered stable segments, by id: built once, reused on every token.
+  /// Rendered frozen segments by id: each is built once and reused.
   final _cache = <int, Widget>{};
-  var _cacheHits = 0;
-  var _reparsedChars = 0;
 
   final _scroll = ScrollController();
   final _code = ValueNotifier(
@@ -80,12 +80,6 @@ class _StreamingConceptState extends State<StreamingConcept> {
   );
 
   @override
-  void initState() {
-    super.initState();
-    _start();
-  }
-
-  @override
   void dispose() {
     _timer?.cancel();
     _scroll.dispose();
@@ -93,58 +87,59 @@ class _StreamingConceptState extends State<StreamingConcept> {
     super.dispose();
   }
 
-  void _start() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 40), (_) => _tick());
-  }
-
-  void _tick() {
-    if (!mounted || !_playing) return;
-    if (_cursor >= _reply.length) {
-      _timer?.cancel();
-      setState(() => _playing = false);
-      return;
+  /// Shows the reply as it was after `to` characters had streamed in.
+  ///
+  /// Forward, the session continues where it was, as it would in an app.
+  /// Backward, the text no longer extends what it saw, so it starts over:
+  /// that is the session's reset, and the result is the same either way.
+  void _seek(int to) {
+    final cursor = to.clamp(0, _reply.length);
+    if (cursor < _cursor) {
+      _session = MarkdownSession();
+      _cache.clear();
     }
-    setState(() {
-      _cursor = math.min(_reply.length, _cursor + _speed.chars);
-      final streaming = _cursor < _reply.length;
-      _doc = _session.update(
-        _reply.substring(0, _cursor),
-        streaming: streaming,
-      );
-      _reparsedChars = _doc.pending?.source.length ?? 0;
-    });
+    _cursor = cursor;
+    _doc = _session.update(
+      _reply.substring(0, cursor),
+      streaming: cursor < _reply.length,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
       _scroll.jumpTo(_scroll.position.maxScrollExtent);
     });
   }
 
-  void _restart() {
-    setState(() {
-      _session = MarkdownSession();
-      _doc = _session.update('');
-      _cursor = 0;
-      _cache.clear();
-      _cacheHits = 0;
-      _reparsedChars = 0;
-      _playing = true;
+  void _togglePlay() {
+    if (_playing) {
+      _timer?.cancel();
+      setState(() => _playing = false);
+      return;
+    }
+    if (_cursor >= _reply.length) setState(() => _seek(0));
+    setState(() => _playing = true);
+    _carry = 0;
+    _timer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
+      if (!mounted) return timer.cancel();
+      _carry += _speed.charsPerSecond * 0.033;
+      final step = _carry.floor();
+      if (step == 0) return;
+      _carry -= step;
+      setState(() {
+        _seek(_cursor + step);
+        if (_cursor >= _reply.length) {
+          _playing = false;
+          timer.cancel();
+        }
+      });
     });
-    _start();
   }
 
-  Widget _stable(MarkdownSegment segment) {
-    if (_cache.containsKey(segment.id)) {
-      _cacheHits++;
-      return _cache[segment.id]!;
-    }
-    return _cache[segment.id] = _Segment(
-      key: ValueKey(segment.id),
-      id: segment.id,
-      source: segment.source,
-      pending: false,
-    );
-  }
+  Widget _stable(MarkdownSegment segment) => _cache[segment.id] ??= _Segment(
+    key: ValueKey(segment.id),
+    id: segment.id,
+    source: segment.source,
+    pending: false,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +157,11 @@ class _StreamingConceptState extends State<StreamingConcept> {
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
       children: [
+        if (_cursor == 0)
+          Text(
+            'Drag the scrubber or press play.',
+            style: text.muted.caption,
+          ),
         for (final segment in _doc.stable) _stable(segment),
         if (pending != null)
           _Segment(
@@ -182,10 +182,7 @@ class _StreamingConceptState extends State<StreamingConcept> {
           Text('The pending tail, as streamed', style: text.muted.micro),
           _Source(rawTail.isEmpty ? '·' : rawTail, color: colors.destructive),
           Text('After completeMarkdown', style: text.muted.micro),
-          _Source(
-            pending?.source ?? '·',
-            color: colors.brandInk,
-          ),
+          _Source(pending?.source ?? '·', color: colors.brandInk),
         ],
       ),
     );
@@ -193,48 +190,49 @@ class _StreamingConceptState extends State<StreamingConcept> {
     return ConceptPage(
       routeName: turnsStreamingRouteName,
       lead:
-          'A reply streams in a few characters at a time. Blocks that later '
-          'text can no longer change freeze: they are parsed once and their '
-          'widgets reused. Only the tail is parsed again, after '
-          'completeMarkdown closes what is half written so it never shows '
-          'raw asterisks.',
-      controls: Wrap(
-        spacing: 16,
-        runSpacing: 10,
-        crossAxisAlignment: WrapCrossAlignment.end,
+          'Drag through a reply as it streams in. A block freezes once the '
+          'text after it can no longer change it: it is parsed once and its '
+          'widget reused. Only the tail is parsed again on every token, '
+          'after completeMarkdown closes what is half written, so watch the '
+          'two boxes on the right around ** and backticks.',
+      controls: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 10,
         children: [
-          if (_cursor >= _reply.length)
-            CoilButton(
-              key: const Key('concept.streaming.play'),
-              variant: CoilButtonVariant.secondary,
-              size: CoilSize.compact,
-              leading: const Icon(LucideIcons.play, size: 14),
-              onPressed: _restart,
-              child: const Text('Replay'),
-            )
-          else
-            CoilButton(
-              key: const Key('concept.streaming.play'),
-              variant: CoilButtonVariant.secondary,
-              size: CoilSize.compact,
-              leading: Icon(
-                _playing ? LucideIcons.pause : LucideIcons.play,
-                size: 14,
+          Row(
+            children: [
+              CoilButton.icon(
+                key: const Key('concept.streaming.play'),
+                variant: CoilButtonVariant.secondary,
+                size: CoilSize.compact,
+                semanticLabel: _playing ? 'Pause' : 'Play',
+                icon: Icon(
+                  _playing ? LucideIcons.pause : LucideIcons.play,
+                  size: 14,
+                ),
+                onPressed: _togglePlay,
               ),
-              onPressed: () => setState(() => _playing = !_playing),
-              child: Text(_playing ? 'Pause' : 'Play'),
-            ),
-          CoilButton(
-            variant: CoilButtonVariant.ghost,
-            size: CoilSize.compact,
-            leading: const Icon(LucideIcons.rotateCcw, size: 14),
-            onPressed: _restart,
-            child: const Text('Restart'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: CoilSlider(
+                  key: const Key('concept.streaming.scrubber'),
+                  value: _cursor.toDouble(),
+                  max: _reply.length.toDouble(),
+                  divisions: _reply.length,
+                  size: CoilSize.compact,
+                  label: const Text('Streamed'),
+                  valueBuilder: (context, v) =>
+                      Text('${v.round()} / ${_reply.length}'),
+                  semanticLabel: 'Characters streamed',
+                  onChanged: (v) => setState(() => _seek(v.round())),
+                ),
+              ),
+            ],
           ),
           SizedBox(
-            width: 220,
+            width: 260,
             child: PlaygroundChoice<_Speed>(
-              label: 'Speed',
+              label: 'Play speed',
               value: _speed,
               options: {for (final s in _Speed.values) s: s.label},
               onChanged: (v) => setState(() => _speed = v),
@@ -251,28 +249,17 @@ class _StreamingConceptState extends State<StreamingConcept> {
                 ? const SizedBox(width: 1, height: double.infinity)
                 : const SizedBox(height: 1, width: double.infinity),
           );
+          final children = [
+            Expanded(flex: 3, child: segments),
+            divider,
+            Expanded(flex: 2, child: SingleChildScrollView(child: tail)),
+          ];
           return wide
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 3, child: segments),
-                    divider,
-                    Expanded(
-                      flex: 2,
-                      child: SingleChildScrollView(child: tail),
-                    ),
-                  ],
+                  children: children,
                 )
-              : Column(
-                  children: [
-                    Expanded(flex: 3, child: segments),
-                    divider,
-                    Expanded(
-                      flex: 2,
-                      child: SingleChildScrollView(child: tail),
-                    ),
-                  ],
-                );
+              : Column(children: children);
         },
       ),
       stageHeight: 500,
@@ -284,8 +271,8 @@ class _StreamingConceptState extends State<StreamingConcept> {
             tone: ConceptTone.good,
           ),
           ConceptStat(
-            label: 'Parsed this token',
-            value: '$_reparsedChars chars',
+            label: 'Parsed on this token',
+            value: '${pending?.source.length ?? 0} chars',
             tone: ConceptTone.good,
           ),
           ConceptStat(
@@ -293,7 +280,6 @@ class _StreamingConceptState extends State<StreamingConcept> {
             value: '${streamed.length} chars',
             tone: ConceptTone.bad,
           ),
-          ConceptStat(label: 'Widgets reused', value: '$_cacheHits'),
         ],
       ),
       code: _code,

@@ -6,7 +6,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
-import 'package:turns_example/src/shell/turns_playground.dart';
 
 /// Slack-style channel demo showcasing [TurnScrollView.sectioned] across a
 /// 3,000-message O(1) timeline with `isPinned` section headers (hairline rule
@@ -243,7 +242,7 @@ class _SlackDemoState extends State<SlackDemo> {
             ),
           );
 
-          final channel = ColoredBox(
+          return ColoredBox(
             color: colors.background,
             child: Column(
               children: [
@@ -280,8 +279,7 @@ class _SlackDemoState extends State<SlackDemo> {
                               sectionId: (i) => _messages[i].day,
                               applyTopPadding: false,
                               applyBottomPadding: false,
-                              itemSpacing: _messageSpacing,
-                              stickySectionHeaders: _stickyHeaders,
+                              itemSpacing: 2,
                               sectionHeaderSpacing: 2,
                               padding: const EdgeInsets.only(bottom: 16),
                               leadingSlivers: [
@@ -449,43 +447,10 @@ class _SlackDemoState extends State<SlackDemo> {
               ],
             ),
           );
-          return PlaygroundLayout(
-            settingsKey: const Key('slack.settings'),
-            body: channel,
-            settings: [
-              PlaygroundSection(
-                title: 'Channel',
-                children: [
-                  PlaygroundChoice<bool>(
-                    label: 'Date headers',
-                    hint:
-                        'Sticky shows a floating pill (isPinned: true) '
-                        'over the hairline dividers; inline keeps only the '
-                        'dividers.',
-                    value: _stickyHeaders,
-                    options: const {true: 'Sticky', false: 'Inline'},
-                    onChanged: (v) => setState(() => _stickyHeaders = v),
-                  ),
-                  PlaygroundSlider(
-                    label: 'Message spacing',
-                    value: _messageSpacing,
-                    min: 0,
-                    max: 20,
-                    divisions: 10,
-                    format: (v) => '${v.round()} px',
-                    onChanged: (v) => setState(() => _messageSpacing = v),
-                  ),
-                ],
-              ),
-            ],
-          );
         },
       ),
     );
   }
-
-  var _stickyHeaders = true;
-  var _messageSpacing = 2.0;
 
   static String _formatDay(DateTime day) {
     if (day == _today) return 'Today';
@@ -578,14 +543,21 @@ class _ChannelHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${_SlackDemoState._formatCount(messageCount)} messages '
-                    '· opens in O(1)',
+                    'TurnScrollView.sectioned · O(1) open · isPinned headers',
                     style: text.muted.micro,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
+            ),
+            const SizedBox(width: 8),
+            CoilBadge(
+              variant: CoilBadgeVariant.dot,
+              color: CoilBadgeColor.brand,
+              shape: CoilBadgeShape.pill,
+              size: CoilSize.compact,
+              child: Text('${_SlackDemoState._formatCount(messageCount)} msgs'),
             ),
           ],
         ),

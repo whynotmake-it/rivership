@@ -124,12 +124,15 @@ NotificationListener<TurnScrollNotification>(
 );
 ```
 
-`scrollTo` and `scrollToBottom` return `Future<bool>` (`true` on clean arrival,
-`false` if interrupted by a user drag or superseded):
+`scrollTo` and `scrollToBottom` return a `TurnScrollFuture`: a `Future<bool>`
+that completes once the spring has settled (`true` on clean arrival, `false` if
+interrupted by a user drag or superseded), plus `ended`, which completes as
+soon as the motion's duration has passed, while the spring may still be
+settling. Await `ended` to follow up when the scroll looks finished:
 
 ```dart
-final arrived = await controller.scrollTo(quotedMessageId, alignment: 0.25);
-if (arrived && mounted) {
+final flight = controller.scrollTo(quotedMessageId, alignment: 0.25);
+if (await flight.ended && mounted) {
   highlightMessage(quotedMessageId);
 }
 ```

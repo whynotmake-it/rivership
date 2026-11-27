@@ -10,7 +10,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
-import 'package:turns_example/src/shell/turns_playground.dart';
 
 /// iMessage-style 1:1 thread over two years of history (about 1,900
 /// messages), built on [TurnScrollView.sectioned] with
@@ -246,15 +245,14 @@ class _IMessageDemoState extends State<IMessageDemo> {
     );
     setState(() {
       _messages = [..._messages, newMsg];
-      _peerTyping = _peerReplies;
+      _peerTyping = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_controller.scrollToBottom());
     });
 
     _replyTimer?.cancel();
-    if (!_peerReplies) return;
-    _replyTimer = Timer(Duration(milliseconds: _typingDelay.round()), () {
+    _replyTimer = Timer(const Duration(milliseconds: 1100), () {
       if (!mounted) return;
       final reply = _IMessage(
         id: 'im-live-in-$seq',
@@ -295,41 +293,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
     );
   }
 
-  var _peerReplies = true;
-  var _typingDelay = 1100.0;
-
-  Widget _buildScaffold(BuildContext context) => PlaygroundLayout(
-    settingsKey: const Key('imessage.settings'),
-    // Clear of the header's search button.
-    buttonTop: 84,
-    body: _buildThread(context),
-    settings: [
-      PlaygroundSection(
-        title: 'Maya',
-        children: [
-          PlaygroundToggle(
-            label: 'Replies',
-            hint: 'Maya types back after each message you send.',
-            value: _peerReplies,
-            onChanged: (v) => setState(() => _peerReplies = v),
-          ),
-          if (_peerReplies)
-            PlaygroundSlider(
-              label: 'Typing for',
-              hint: 'How long the typing bubble (tailSliver) shows.',
-              value: _typingDelay,
-              min: 300,
-              max: 5000,
-              divisions: 47,
-              format: (v) => '${(v / 1000).toStringAsFixed(1)} s',
-              onChanged: (v) => setState(() => _typingDelay = v),
-            ),
-        ],
-      ),
-    ],
-  );
-
-  Widget _buildThread(BuildContext context) {
+  Widget _buildScaffold(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
     final remainingPages = _olderPages.length - _olderPagesLoaded;

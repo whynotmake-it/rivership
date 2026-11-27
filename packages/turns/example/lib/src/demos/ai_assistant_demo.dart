@@ -292,6 +292,34 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
     );
   }
 
+  /// A prompt taller than the view: the anchor's minimum trailing space
+  /// scrolls it up so the reply still gets room below it.
+  void _sendQuickTall() {
+    _startTurn(
+      prompt:
+          'Can you review this incident log and tell me what went wrong?'
+          '\n\n${_incidentLog()}',
+      steps: const [
+        _ThinkingStepData(
+          id: 'read-log',
+          title: 'Reading 28 log lines',
+          detail: 'Groups the retries by upstream.',
+          sources: ['incident.log'],
+          status: CoilThinkingStepStatus.running,
+        ),
+      ],
+      reply:
+          'The **cache node in eu-west** started refusing connections at '
+          '09:17, and every retry after that piled onto the primary until '
+          'its pool ran dry at 09:31.\n\n'
+          '- **Root cause:** a config push that halved the pool size.\n'
+          '- **Fix:** restore the pool size and cap retries at three.\n\n'
+          'Notice how your message scrolled up when it was sent: it is '
+          'taller than the view, so the anchor keeps half the view free '
+          'below it for this reply (minTrailingFraction: 0.5).',
+    );
+  }
+
   void _sendQuickLong() {
     _startTurn(
       prompt:
@@ -628,6 +656,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                                 horizontal: horizontal,
                                 onShort: _sendQuickShort,
                                 onLong: _sendQuickLong,
+                                onTall: _sendQuickTall,
                               ),
                             ),
                             ColoredBox(
@@ -949,12 +978,14 @@ class _Suggestions extends StatelessWidget {
     required this.horizontal,
     required this.onShort,
     required this.onLong,
+    required this.onTall,
   });
 
   final bool visible;
   final double horizontal;
   final VoidCallback onShort;
   final VoidCallback onLong;
+  final VoidCallback onTall;
 
   @override
   Widget build(BuildContext context) {
@@ -962,20 +993,15 @@ class _Suggestions extends StatelessWidget {
     return SingleMotionBuilder(
       value: visible ? 1 : 0,
       motion: visible ? motion.standard : motion.fadeExit,
-      builder: (context, t, child) {
-        final clamped = t.clamp(0.0, 1.0);
-        if (clamped <= 0.01) return const SizedBox(width: double.infinity);
-        return ClipRect(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            heightFactor: clamped,
-            child: Opacity(
-              opacity: clamped,
-              child: IgnorePointer(ignoring: !visible, child: child),
-            ),
-          ),
-        );
-      },
+      // Hidden suggestions keep their room, so the composer (and the
+      // bottom inset the transcript reads) never moves when they fade.
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0.0, 1.0),
+        child: IgnorePointer(
+          ignoring: !visible,
+          child: ExcludeSemantics(excluding: !visible, child: child),
+        ),
+      ),
       child: TurnsActionStrip(
         padding: EdgeInsets.fromLTRB(horizontal, 2, horizontal, 4),
         children: [
@@ -996,6 +1022,15 @@ class _Suggestions extends StatelessWidget {
             leading: const Icon(LucideIcons.fileCode2, size: 14),
             onPressed: onLong,
             child: const Text('Walk me through the architecture'),
+          ),
+          CoilButton(
+            key: const Key('ai.quick_tall'),
+            variant: CoilButtonVariant.secondary,
+            size: CoilSize.compact,
+            style: const CoilButtonStyle(radius: 999),
+            leading: const Icon(LucideIcons.clipboardPaste, size: 14),
+            onPressed: onTall,
+            child: const Text('Paste a very long message'),
           ),
         ],
       ),
@@ -1147,6 +1182,22 @@ class _RenderHeightObserver extends RenderProxyBox {
     }
   }
 }
+
+const _incidentLines = [
+  'WARN  cache-eu-west  connection refused, retrying (1/5)',
+  'WARN  cache-eu-west  connection refused, retrying (2/5)',
+  'INFO  api            falling back to primary for session reads',
+  'WARN  primary        pool at 92% (46/50)',
+  'ERROR cache-eu-west  giving up after 5 retries',
+  'WARN  primary        pool at 100% (50/50), queueing',
+  'ERROR api            session read timed out after 3000 ms',
+];
+
+/// Twenty-eight log lines, enough to make a prompt taller than the view.
+String _incidentLog() => [
+  for (var i = 0; i < 28; i++)
+    '09:${(14 + i).toString().padLeft(2, '0')}  ${_incidentLines[i % 7]}',
+].join('\n');
 
 String _formatClock(int turnNumber) {
   final minutes = (14 + turnNumber * 2) % 60;

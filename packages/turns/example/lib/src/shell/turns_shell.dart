@@ -16,6 +16,7 @@ const turnsWhatsAppRouteName = 'turns:whatsapp';
 const turnsSlackRouteName = 'turns:slack';
 const turnsIMessageRouteName = 'turns:imessage';
 const turnsOnboardingRouteName = 'turns:onboarding';
+const turnsPinningRouteName = 'turns:concept-pinning';
 const turnsPrependRouteName = 'turns:concept-prepend';
 const turnsPaginationRouteName = 'turns:concept-pagination';
 const turnsJumpsRouteName = 'turns:concept-jumps';
@@ -71,6 +72,7 @@ class TurnsGlyph {
     LucideIcons400.layers,
   );
   static const zap = TurnsGlyph(LucideIcons300.zap, LucideIcons400.zap);
+  static const pin = TurnsGlyph(LucideIcons300.pin, LucideIcons400.pin);
   static const textCursor = TurnsGlyph(
     LucideIcons300.textCursorInput,
     LucideIcons400.textCursorInput,
@@ -182,6 +184,16 @@ const turnsDemos = <TurnsDemoEntry>[
 
 /// Concept pages: one idea each, drawn live, like motor's chapters.
 const turnsConcepts = <TurnsDemoEntry>[
+  TurnsDemoEntry(
+    routeName: turnsPinningRouteName,
+    path: 'concepts/pinning',
+    title: 'Pinning a turn',
+    primitive: 'SliverTurnStage',
+    description:
+        'Scrub a reply as it grows under a pinned prompt, with the whole '
+        'scroll extent and the reserved space drawn to scale.',
+    glyph: TurnsGlyph.pin,
+  ),
   TurnsDemoEntry(
     routeName: turnsPrependRouteName,
     path: 'concepts/prepend',

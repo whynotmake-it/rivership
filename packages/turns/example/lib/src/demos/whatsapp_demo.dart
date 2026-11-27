@@ -8,7 +8,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
-import 'package:turns_example/src/shell/turns_playground.dart';
 
 /// Interactive WhatsApp-style group chat demo showcasing
 /// `TurnScrollView<DateTime>.sectioned` with sticky push-up date pills,
@@ -258,46 +257,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
     );
   }
 
-  var _stickyPills = true;
-  var _wallpaper = true;
-  var _bubbleSpacing = 4.0;
-
-  Widget _buildScaffold(BuildContext context) => PlaygroundLayout(
-    settingsKey: const Key('whatsapp.settings'),
-    body: _buildChat(context),
-    settings: [
-      PlaygroundSection(
-        title: 'Timeline',
-        children: [
-          PlaygroundChoice<bool>(
-            label: 'Date pills',
-            hint:
-                'stickySectionHeaders: a pill floats at the top and is '
-                'pushed up by the next day, or each day keeps its own.',
-            value: _stickyPills,
-            options: const {true: 'Sticky', false: 'Inline'},
-            onChanged: (v) => setState(() => _stickyPills = v),
-          ),
-          PlaygroundSlider(
-            label: 'Bubble spacing',
-            value: _bubbleSpacing,
-            min: 0,
-            max: 24,
-            divisions: 12,
-            format: (v) => '${v.round()} px',
-            onChanged: (v) => setState(() => _bubbleSpacing = v),
-          ),
-          PlaygroundToggle(
-            label: 'Wallpaper',
-            value: _wallpaper,
-            onChanged: (v) => setState(() => _wallpaper = v),
-          ),
-        ],
-      ),
-    ],
-  );
-
-  Widget _buildChat(BuildContext context) {
+  Widget _buildScaffold(BuildContext context) {
     final theme = CoilTheme.of(context);
     final colors = theme.colors;
     final text = CoilTheme.textOf(context);
@@ -322,14 +282,13 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (_wallpaper)
-                    IgnorePointer(
-                      child: CustomPaint(
-                        painter: _ChatWallpaperPainter(
-                          color: wallpaperMarkColor,
-                        ),
+                  IgnorePointer(
+                    child: CustomPaint(
+                      painter: _ChatWallpaperPainter(
+                        color: wallpaperMarkColor,
                       ),
                     ),
+                  ),
                   NotificationListener<TurnScrollNotification>(
                     onNotification: _onTurnScroll,
                     child: TurnScrollView<DateTime>.sectioned(
@@ -339,8 +298,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                       itemId: (i) => _messages[i].id,
                       sectionId: (i) => _messages[i].day,
                       sectionHeaderSpacing: 8,
-                      stickySectionHeaders: _stickyPills,
-                      itemSpacing: _bubbleSpacing,
+                      itemSpacing: 4,
                       applyTopPadding: false,
                       applyBottomPadding: false,
                       initialItemId: _deepLinkActive ? _deepLinkTargetId : null,

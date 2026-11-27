@@ -3,6 +3,7 @@ import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:turns_example/src/concepts/jumps_concept.dart';
 import 'package:turns_example/src/concepts/pagination_concept.dart';
+import 'package:turns_example/src/concepts/pinning_concept.dart';
 import 'package:turns_example/src/concepts/prepend_concept.dart';
 import 'package:turns_example/src/concepts/streaming_concept.dart';
 import 'package:turns_example/src/demos/ai_assistant_demo.dart';
@@ -85,10 +86,11 @@ List<AutoRoute> turnsRoutesFor({VoidCallback? onHome}) => [
         builder: (context, state) => const OnboardingDemo(),
       ),
       for (final (concept, page) in <(TurnsDemoEntry, Widget Function())>[
-        (turnsConcepts[0], PrependConcept.new),
-        (turnsConcepts[1], PaginationConcept.new),
-        (turnsConcepts[2], JumpsConcept.new),
-        (turnsConcepts[3], StreamingConcept.new),
+        (turnsConcepts[0], PinningConcept.new),
+        (turnsConcepts[1], PrependConcept.new),
+        (turnsConcepts[2], PaginationConcept.new),
+        (turnsConcepts[3], JumpsConcept.new),
+        (turnsConcepts[4], StreamingConcept.new),
       ])
         NamedRouteDef(
           name: concept.routeName,
