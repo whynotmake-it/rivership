@@ -7,8 +7,8 @@
 /// - [CustomTurnScrollView] and [SliverTurnList]: forward-only sliver viewport
 ///   for arbitrary Flutter slivers (`SliverAppBar`, `SliverMainAxisGroup`,
 ///   `SliverPersistentHeader`) with offscreen `scrollTo` and `jumpToBottom`.
-/// - [TurnScrollController], [TurnScrollScope], [TurnScrollItem], and
-///   [SliverTurnStage].
+/// - [TurnScrollController], [TurnScrollNotification], [TurnScrollScope],
+///   [TurnScrollItem], and [SliverTurnStage].
 ///
 /// @docImport 'package:turns/scroll.dart';
 library;
@@ -17,5 +17,6 @@ export 'src/scroll/custom_turn_scroll_view.dart';
 export 'src/scroll/sliver_turn_list.dart';
 export 'src/scroll/turn_scroll_controller.dart';
 export 'src/scroll/turn_scroll_motion.dart';
+export 'src/scroll/turn_scroll_notification.dart';
 export 'src/scroll/turn_scroll_view.dart';
 export 'src/scroll/turn_sliver.dart';

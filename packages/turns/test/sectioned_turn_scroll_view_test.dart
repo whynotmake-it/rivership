@@ -88,49 +88,56 @@ void main() {
       expect(find.byKey(const ValueKey('box:m4999')), findsNothing);
 
       // 2. Immediately pins section 342 at topClearance (60) even though item
-      //    3420 (section 342's start) was above center.
+      //    3420 (section 342's start) was above center, and clears m3421 below
+      //    the sticky header (60 + 32 + 12 = 104).
       final day342 = _formatDay(baseDate.add(const Duration(days: 342)));
       final day343 = _formatDay(baseDate.add(const Duration(days: 343)));
       final day341 = _formatDay(baseDate.add(const Duration(days: 341)));
 
       final stickyDay342 = find.byKey(ValueKey('hdr:$day342'));
       expect(stickyDay342, findsAtLeastNWidgets(1));
-      // One instance sits pinned right at topClearance = 60.
-      final pinnedTop = tester
-          .widgetList<SizedBox>(stickyDay342)
-          .map((_) => tester.getTopLeft(stickyDay342.last).dy)
-          .first;
+      final pinnedTop = tester.getTopLeft(stickyDay342.last).dy;
       expect(pinnedTop, closeTo(60, 1));
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('box:m3421'))).dy,
+        closeTo(104, 1.5),
+      );
 
-      // 3. scrollTo section-start item 'm3430' lands the item cleanly below its
-      //    inline header (at topClearance = 60), and hides the inline header
-      //    via Visibility.maintain while the sticky overlay pins day 343.
+      // Sticky overlay ignores pointers by default so dragging directly on it
+      // scrolls the list smoothly.
+      final pixelsBeforeHeaderDrag = controller.position.pixels;
+      await tester.dragFrom(
+        tester.getCenter(stickyDay342.last),
+        const Offset(0, -80),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.position.pixels, greaterThan(pixelsBeforeHeaderDrag));
+
+      // 3. scrollTo section-start item 'm3430' lands cleanly below the sticky
+      //    header (60 + 32 + 12 = 104) while hiding its inline header via
+      //    Visibility.maintain so floating pills never double-render.
       final to3430 = controller.scrollTo('m3430', animate: false);
       await tester.pumpAndSettle();
-      await to3430;
+      expect(await to3430, isTrue);
 
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('box:m3430'))).dy,
-        closeTo(60, 1.5),
+        closeTo(104, 1.5),
       );
-      // Verify the inline header for day343 is hidden (Visibility.maintain
-      // visible: false) so floating pills never double-render.
       final hiddenVisibilities = tester
           .widgetList<Visibility>(find.byType(Visibility))
           .where((v) => !v.visible)
           .toList();
       expect(hiddenVisibilities, isNotEmpty);
 
-      // 4. Push-up transition: back up so day343's inline header sits halfway
-      //    into the 32px sticky zone (e.g. at y = 60 + 16 = 76).
-      //    At m3430 top == 60, day343's inline header top is 60 - 32 - 12 = 16.
-      //    Scrolling up by 60px puts day343's inline header top at y = 76!
-      controller.jumpTo(controller.position.pixels - 60);
+      // 4. Push-up transition: back up 16px so day343's inline header sits
+      //    halfway into the 32px sticky zone (at y = 60 + 16 = 76).
+      controller.jumpTo(controller.position.pixels - 16);
       await tester.pump();
       await tester.pump();
 
-      // Now day342 should be the active sticky header, pushed up by -16px
-      // (top at 60 - 16 = 44), touching day343's visible inline header at 76!
+      // Now day342 is active and pushed up by -16px (top at 60 - 16 = 44),
+      // flush against day343's visible inline header at 76.
       final day342Headers = find.byKey(ValueKey('hdr:$day342'));
       final day343Headers = find.byKey(ValueKey('hdr:$day343'));
       expect(day342Headers, findsAtLeastNWidgets(1));
@@ -143,11 +150,15 @@ void main() {
       //    day341 above center!
       final to3415 = controller.scrollTo('m3415', animate: false);
       await tester.pumpAndSettle();
-      await to3415;
+      expect(await to3415, isTrue);
 
       final day341Headers = find.byKey(ValueKey('hdr:$day341'));
       expect(day341Headers, findsAtLeastNWidgets(1));
       expect(tester.getTopLeft(day341Headers.last).dy, closeTo(60, 1.5));
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('box:m3415'))).dy,
+        closeTo(104, 1.5),
+      );
     },
   );
 

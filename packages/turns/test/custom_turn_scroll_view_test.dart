@@ -161,11 +161,14 @@ void main() {
       expect(find.byKey(const ValueKey('box:a0')), findsOneWidget);
       expect(find.byKey(const ValueKey('box:t20')), findsNothing);
 
+      // Unknown item returns false immediately.
+      expect(await controller.scrollTo('missing'), isFalse);
+
       // Offscreen animated scrollTo across 3 SliverMainAxisGroups to 't20'.
       // Lands below pinned AppBar (68) + pinned Today header (40) = 108.
       final toT20 = controller.scrollTo('t20');
       await tester.pumpAndSettle();
-      await toT20;
+      expect(await toT20, isTrue);
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('box:t20'))).dy,
         closeTo(108, 2),
@@ -183,25 +186,34 @@ void main() {
       // Lands cleanly below pinned AppBar (68) + pinned Archive header (40).
       final toA5 = controller.scrollTo('a5', animate: false);
       await tester.pumpAndSettle();
-      await toA5;
+      expect(await toA5, isTrue);
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('box:a5'))).dy,
         closeTo(108, 2),
       );
 
+      // Interrupted scrollTo returns false.
+      final interrupted = controller.scrollTo('t25');
+      await tester.pump(const Duration(milliseconds: 32));
+      controller.cancelAutoScroll();
+      await tester.pump();
+      expect(await interrupted, isFalse);
+
       // Exact jumpToBottom across all 3 SliverTurnLists lands at bottom of t29
       // (800 - (16 safe + 80 padding) = 704).
       final toBottom = controller.jumpToBottom();
       await tester.pumpAndSettle();
-      await toBottom;
+      expect(await toBottom, isTrue);
       expect(
         tester.getBottomLeft(find.byKey(const ValueKey('box:t29'))).dy,
         closeTo(704, 2),
       );
 
-      // Activate SliverTurnStage pin: u_new pins cleanly to effectiveTop (68).
+      // Activate SliverTurnStage pin: u_new pins cleanly to effectiveTop (68)
+      // and controller.isPinActive flips true.
       pinned.value = 'u_new';
       await tester.pumpAndSettle();
+      expect(controller.isPinActive.value, isTrue);
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('box:u_new'))).dy,
         closeTo(68, 2),

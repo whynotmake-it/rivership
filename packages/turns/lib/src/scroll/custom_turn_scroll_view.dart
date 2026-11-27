@@ -40,6 +40,12 @@ class CustomTurnScrollView extends StatefulWidget {
   final List<Widget> slivers;
 
   /// Optional `Viewport.center` key.
+  ///
+  /// Note that [CustomTurnScrollView] is primarily forward-oriented: offscreen
+  /// `SliverTurnList` estimation assumes slivers grow in
+  /// `GrowthDirection.forward`. Use `TurnScrollView` for bidirectional
+  /// `Viewport(center:)` timelines with O(1) deep-link opening and `0.0px`
+  /// prepend pagination.
   final Key? center;
 
   /// Identity of the active turn's anchor item, or `null` when no turn is
@@ -47,8 +53,9 @@ class CustomTurnScrollView extends StatefulWidget {
   final Object? pinnedId;
 
   /// Optional controller exposing [TurnScrollController.jumpToBottom],
-  /// [TurnScrollController.scrollTo], and
-  /// [TurnScrollController.isAwayFromBottom].
+  /// [TurnScrollController.scrollTo], [TurnScrollController.isAwayFromBottom],
+  /// [TurnScrollController.distanceFromBottom], and
+  /// [TurnScrollController.isPinActive].
   final TurnScrollController? controller;
 
   /// Content padding added on top of `MediaQuery.paddingOf(context)` and
@@ -58,10 +65,19 @@ class CustomTurnScrollView extends StatefulWidget {
   /// Whether to insert an automatic top clearance sliver
   /// (`safe.top + padding.top`). Set `false` when placing a
   /// `SliverAppBar(pinned: true)` as the first sliver.
+  ///
+  /// Note that `padding.top` and `MediaQuery.padding.top` still contribute to
+  /// [TurnScrollScope.topClearance]; wrap in `MediaQuery.removePadding` when
+  /// an outer scaffold already consumed safe-area insets.
   final bool applyTopPadding;
 
   /// Whether to insert an automatic bottom clearance sliver
   /// (`max(safe.bottom, viewInsets.bottom) + padding.bottom`).
+  ///
+  /// Setting `false` omits the trailing spacer sliver while still factoring
+  /// `padding.bottom` into [TurnScrollScope.bottomClearance] and alignment
+  /// math (pass `EdgeInsets.only(bottom: 0)` when a docked composer sits
+  /// outside the scroll view).
   final bool applyBottomPadding;
 
   /// Whether a fresh scroll view opens scrolled to the bottom (when [pinnedId]
@@ -262,13 +278,15 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     }
 
     final estHeight = estItemExtent(targetIndex);
-    final usable = math.max(
+    final obstruction = pinnedObstructionFor(sliver);
+    final topInset = math.max(effectiveTop, obstruction);
+    final usable = math.max<double>(
       0,
-      viewportDimension - effectiveTop - effectiveBottom,
+      viewportDimension - topInset - effectiveBottom,
     );
     return sliverStart +
         itemOffsetInSliver -
-        effectiveTop -
+        topInset -
         alignment * (usable - estHeight);
   }
 
@@ -304,9 +322,9 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   }
 
   @override
-  Future<void> jumpToBottom({required bool animate}) async {
+  Future<bool> jumpToBottom({required bool animate}) async {
     final pos = turnPosition;
-    if (pos == null || !pos.hasContentDimensions) return;
+    if (pos == null || !pos.hasContentDimensions) return false;
 
     onUserScroll();
     final epoch = navEpoch;
@@ -316,21 +334,23 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
       for (var pass = 0; pass < _maxConvergencePasses; pass++) {
         final prevMax = pos.maxScrollExtent;
         if ((pos.maxScrollExtent - pos.pixels).abs() > 0.5) {
-          pos.jumpTo(pos.maxScrollExtent);
+          programmaticJumpTo(pos, pos.maxScrollExtent);
         }
-        if (_hasExactBottomExtent()) return;
+        if (_hasExactBottomExtent()) return true;
         await nextFrame();
-        if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) return;
+        if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+          return false;
+        }
         if (_hasExactBottomExtent() &&
             (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
-          return;
+          return true;
         }
         if ((pos.maxScrollExtent - prevMax).abs() <= 0.5 &&
             (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
-          return;
+          return true;
         }
       }
-      return;
+      return mounted && epoch == navEpoch;
     }
 
     double? frozenTarget;
@@ -339,7 +359,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     }
 
     for (var pass = 0; pass < _maxConvergencePasses; pass++) {
-      await pos.animateToTarget(
+      final arrived = await pos.animateToTarget(
         motion: resolvedMotion,
         vsync: this,
         resolveTarget: () {
@@ -353,26 +373,34 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
           return pos.maxScrollExtent;
         },
       );
-      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) return;
-      if (frozenTarget != null || _hasExactBottomExtent()) return;
+      if (!arrived ||
+          !mounted ||
+          epoch != navEpoch ||
+          !pos.hasContentDimensions) {
+        return false;
+      }
+      if (frozenTarget != null || _hasExactBottomExtent()) return true;
       final prevMax = pos.maxScrollExtent;
       await nextFrame();
-      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) return;
+      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+        return false;
+      }
       if ((pos.maxScrollExtent - prevMax).abs() <= 0.5 &&
           (pos.maxScrollExtent - pos.pixels).abs() <= 1) {
-        return;
+        return true;
       }
     }
+    return mounted && epoch == navEpoch;
   }
 
   @override
-  Future<void> scrollTo(
+  Future<bool> scrollTo(
     Object itemId, {
     required double alignment,
     required bool animate,
   }) async {
     final pos = turnPosition;
-    if (pos == null || !pos.hasContentDimensions) return;
+    if (pos == null || !pos.hasContentDimensions) return false;
 
     onUserScroll();
     final epoch = navEpoch;
@@ -398,37 +426,43 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
       return est?.clamp(pos.minScrollExtent, pos.maxScrollExtent);
     }
 
+    if (resolveOffset() == null) return false;
+
     if (!shouldAnimate) {
       for (var pass = 0; pass < _maxConvergencePasses; pass++) {
         final ex = exact();
         if (ex != null) {
-          if ((ex - pos.pixels).abs() > 0.5) pos.jumpTo(ex);
-          return;
+          if ((ex - pos.pixels).abs() > 0.5) programmaticJumpTo(pos, ex);
+          return true;
         }
         final target = resolveOffset();
-        if (target == null) return;
+        if (target == null) return false;
         final prevPixels = pos.pixels;
         final prevMax = pos.maxScrollExtent;
         if ((target - prevPixels).abs() > 0.5) {
-          pos.jumpTo(target);
+          programmaticJumpTo(pos, target);
         }
         await nextFrame();
-        if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) return;
+        if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+          return false;
+        }
         final afterExact = exact();
         if (afterExact != null) {
-          if ((afterExact - pos.pixels).abs() > 0.5) pos.jumpTo(afterExact);
-          return;
+          if ((afterExact - pos.pixels).abs() > 0.5) {
+            programmaticJumpTo(pos, afterExact);
+          }
+          return true;
         }
         if ((pos.pixels - prevPixels).abs() <= 0.5 &&
             (pos.maxScrollExtent - prevMax).abs() <= 0.5) {
-          return;
+          return exact() != null;
         }
       }
-      return;
+      return mounted && epoch == navEpoch && exact() != null;
     }
 
     for (var pass = 0; pass < _maxConvergencePasses; pass++) {
-      await pos.animateToTarget(
+      final arrived = await pos.animateToTarget(
         motion: resolvedMotion,
         vsync: this,
         resolveTarget: () {
@@ -438,21 +472,29 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
           return resolveOffset();
         },
       );
-      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) return;
+      if (!arrived ||
+          !mounted ||
+          epoch != navEpoch ||
+          !pos.hasContentDimensions) {
+        return false;
+      }
       final ex = exact();
-      if (ex != null && (ex - pos.pixels).abs() <= 1.5) return;
+      if (ex != null && (ex - pos.pixels).abs() <= 1.5) return true;
       final prevMax = pos.maxScrollExtent;
       await nextFrame();
-      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) return;
+      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+        return false;
+      }
       final afterEx = exact();
-      if (afterEx != null && (afterEx - pos.pixels).abs() <= 1.5) return;
+      if (afterEx != null && (afterEx - pos.pixels).abs() <= 1.5) return true;
       final nextTarget = resolveOffset();
-      if (nextTarget == null) return;
+      if (nextTarget == null) return false;
       if ((nextTarget - pos.pixels).abs() <= 1 &&
           (pos.maxScrollExtent - prevMax).abs() <= 0.5) {
-        return;
+        return afterEx != null;
       }
     }
+    return mounted && epoch == navEpoch;
   }
 
   @override
@@ -476,12 +518,14 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
       onTurnStageDetach: onTurnStageDetach,
       onListAttach: _onListAttach,
       onListDetach: _onListDetach,
-      child: CustomScrollView(
-        controller: turnController,
-        center: widget.center,
-        physics: widget.physics,
-        scrollCacheExtent: widget.scrollCacheExtent,
-        slivers: slivers,
+      child: wrapWithTurnNotification(
+        CustomScrollView(
+          controller: turnController,
+          center: widget.center,
+          physics: widget.physics,
+          scrollCacheExtent: widget.scrollCacheExtent,
+          slivers: slivers,
+        ),
       ),
     );
   }

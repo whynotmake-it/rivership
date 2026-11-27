@@ -368,27 +368,30 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Instant jump far up to unmounted m5.
+      // Instant jump far up to unmounted m5 returns true.
       final toM5 = controller.scrollTo('m5', animate: false);
       await tester.pumpAndSettle();
-      await toM5;
+      expect(await toM5, isTrue);
       expect(_itemTopInViewport(tester, 'm5'), closeTo(68, 2));
       expect(controller.isAwayFromBottom.value, isTrue);
 
-      // Animated scroll down to m55 aligned to bottom.
+      // Unknown item returns false immediately.
+      expect(await controller.scrollTo('missing'), isFalse);
+
+      // Animated scroll down to m55 aligned to bottom returns true.
       final toM55 = controller.scrollTo('m55', alignment: 1);
       await tester.pumpAndSettle();
-      await toM55;
+      expect(await toM55, isTrue);
       expect(_itemBottomInViewport(tester, 'm55'), closeTo(704, 2));
 
       // Jump back to m5, then animated jumpToBottom across 75 variable items.
       final backToM5 = controller.scrollTo('m5', animate: false);
       await tester.pumpAndSettle();
-      await backToM5;
+      expect(await backToM5, isTrue);
 
       final jumpFuture = controller.jumpToBottom();
       await tester.pumpAndSettle();
-      await jumpFuture;
+      expect(await jumpFuture, isTrue);
       expect(_itemBottomInViewport(tester, 'm79'), closeTo(704, 1.5));
 
       // Freeze against new tokens streaming in after jumpToBottom pressed.
@@ -408,10 +411,11 @@ void main() {
         (s) => s.items[s.items.length - 1] = _TestItem('m79', 1300),
       );
       await tester.pumpAndSettle();
-      await streamJump;
+      expect(await streamJump, isTrue);
       expect(controller.position.pixels, closeTo(bottomAtPress, 2));
 
-      // Mouse wheel during streaming cancels active pin and never jumps back.
+      // Mouse wheel during streaming cancels active pin (isPinActive -> false)
+      // and never jumps back.
       _update(state, (s) {
         s.items
           ..add(_TestItem('u1', 44))
@@ -419,12 +423,14 @@ void main() {
         s.pinnedId = 'u1';
       });
       await _pumpFrames(tester, 4);
+      expect(controller.isPinActive.value, isTrue);
 
       final center = tester.getCenter(find.byType(TurnScrollView));
       final pointer = TestPointer(1, PointerDeviceKind.mouse);
       await tester.sendEventToBinding(pointer.hover(center));
       await tester.sendEventToBinding(pointer.scroll(const Offset(0, -240)));
       await tester.pump();
+      expect(controller.isPinActive.value, isFalse);
       final pixelsAfterWheel = controller.position.pixels;
 
       for (var i = 1; i <= 5; i++) {
@@ -503,7 +509,7 @@ void main() {
       await _pumpFrames(tester, 4);
       controller.cancelAutoScroll();
       await tester.pump();
-      await jumpFuture;
+      expect(await jumpFuture, isFalse);
 
       expect(controller.position.pixels, greaterThan(startPixels));
       expect(
@@ -514,6 +520,71 @@ void main() {
         (controller.position as TurnScrollPosition).isTrackingTarget,
         isFalse,
       );
+    },
+  );
+
+  testWidgets(
+    'TurnScrollNotification reports non-negative leadingExtent/trailingExtent '
+    'and distinguishes programmatic scrollTo from user drag',
+    (tester) async {
+      const viewport = Size(390, 800);
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = viewport;
+      addTearDown(tester.view.reset);
+
+      final items = [for (var i = 0; i < 40; i++) _TestItem('m$i', 90)];
+      final controller = TurnScrollController();
+      addTearDown(controller.dispose);
+      final received = <TurnScrollNotification>[];
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: const MediaQueryData(size: viewport),
+            child: NotificationListener<TurnScrollNotification>(
+              onNotification: (n) {
+                received.add(n);
+                return false;
+              },
+              child: TurnScrollView(
+                controller: controller,
+                itemCount: items.length,
+                itemId: (i) => items[i].id,
+                itemSpacing: 20,
+                pinMotion: const CupertinoMotion.smooth(),
+                itemBuilder: (context, i) => SizedBox(
+                  key: ValueKey('box:${items[i].id}'),
+                  height: items[i].height,
+                  child: Text(items[i].id),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      received.clear();
+
+      // Programmatic scrollTo emits isProgrammatic == true with non-negative
+      // leadingExtent/trailingExtent (even above center with negative pixels).
+      final toM5 = controller.scrollTo('m5');
+      await tester.pumpAndSettle();
+      expect(await toM5, isTrue);
+      expect(received, isNotEmpty);
+      expect(received.every((n) => n.isProgrammatic), isTrue);
+      expect(received.every((n) => n.leadingExtent >= 0), isTrue);
+      expect(received.every((n) => n.trailingExtent >= 0), isTrue);
+      expect(received.last.trailingExtent, greaterThan(500));
+
+      // User drag emits isProgrammatic == false and updates leadingExtent.
+      received.clear();
+      await tester.drag(find.byType(TurnScrollView), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(received, isNotEmpty);
+      expect(received.every((n) => !n.isProgrammatic), isTrue);
+      expect(received.last.leadingExtent, greaterThanOrEqualTo(0));
     },
   );
 }

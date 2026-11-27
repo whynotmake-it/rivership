@@ -10,10 +10,18 @@ import 'package:motor/motor.dart';
 /// Delegate connecting [TurnScrollController] to its attached scroll view.
 abstract interface class TurnScrollDelegate {
   /// Scrolls to where the bottom was when called.
-  Future<void> jumpToBottom({required bool animate});
+  ///
+  /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
+  /// interrupted by a user gesture, superseded by another programmatic scroll,
+  /// or unable to scroll (e.g. empty list or detached position).
+  Future<bool> jumpToBottom({required bool animate});
 
   /// Scrolls to the item identified by [itemId].
-  Future<void> scrollTo(
+  ///
+  /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
+  /// interrupted by a user gesture, superseded by another programmatic scroll,
+  /// or [itemId] was not found.
+  Future<bool> scrollTo(
     Object itemId, {
     required double alignment,
     required bool animate,
@@ -33,8 +41,8 @@ abstract interface class TurnScrollDelegate {
     required double viewportDimension,
   });
 
-  /// Called whenever scroll metrics or pixels change so `isAwayFromBottom`
-  /// stays current.
+  /// Called whenever scroll metrics or pixels change so `isAwayFromBottom` and
+  /// `distanceFromBottom` stay current.
   void onMetricsChanged(double pixels, double maxScrollExtent);
 }
 
@@ -51,11 +59,13 @@ class TurnScrollController extends ScrollController {
 
   final _isAwayFromBottom = ValueNotifier<bool>(false);
   final _distanceFromBottom = ValueNotifier<double>(0);
+  final _isPinActive = ValueNotifier<bool>(false);
   TurnScrollDelegate? _delegate;
   var _disposed = false;
   var _notifyScheduled = false;
-  double _pendingDistance = 0;
+  double _pendingDistanceBottom = 0;
   double _pendingThreshold = 160;
+  bool _pendingPinActive = false;
 
   /// Whether the viewport is more than `jumpThreshold` above the bottom.
   ValueListenable<bool> get isAwayFromBottom => _isAwayFromBottom;
@@ -63,6 +73,10 @@ class TurnScrollController extends ScrollController {
   /// Distance in logical pixels from the current scroll offset to
   /// `maxScrollExtent`.
   ValueListenable<double> get distanceFromBottom => _distanceFromBottom;
+
+  /// Whether the attached view's `pinnedId` currently owns auto-pinning
+  /// (cleared immediately on any user scroll or when `pinnedId` is cleared).
+  ValueListenable<bool> get isPinActive => _isPinActive;
 
   /// Attaches the owning view's delegate. Internal to turn scroll views.
   void attachDelegate(TurnScrollDelegate delegate) {
@@ -89,29 +103,42 @@ class TurnScrollController extends ScrollController {
   /// views.
   void updateBottomDistance(double distance, {required double threshold}) {
     if (_disposed) return;
-    _pendingDistance = math.max(0, distance);
+    _pendingDistanceBottom = math.max(0, distance);
     _pendingThreshold = threshold;
+    _scheduleOrApplyNotifiers();
+  }
+
+  /// Updates [isPinActive]. Internal to turn scroll views.
+  void updatePinActive({required bool active}) {
+    if (_disposed) return;
+    _pendingPinActive = active;
+    _scheduleOrApplyNotifiers();
+  }
+
+  void _scheduleOrApplyNotifiers() {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
       if (_notifyScheduled) return;
       _notifyScheduled = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
         _notifyScheduled = false;
-        if (!_disposed) _applyBottomDistance();
+        if (!_disposed) _applyNotifiers();
       });
       return;
     }
-    _applyBottomDistance();
+    _applyNotifiers();
   }
 
-  void _applyBottomDistance() {
-    final clamped = _pendingDistance;
-    if ((_distanceFromBottom.value - clamped).abs() > 0.5) {
-      _distanceFromBottom.value = clamped;
+  void _applyNotifiers() {
+    if ((_distanceFromBottom.value - _pendingDistanceBottom).abs() > 0.5) {
+      _distanceFromBottom.value = _pendingDistanceBottom;
     }
-    final away = clamped > _pendingThreshold;
+    final away = _pendingDistanceBottom > _pendingThreshold;
     if (_isAwayFromBottom.value != away) {
       _isAwayFromBottom.value = away;
+    }
+    if (_isPinActive.value != _pendingPinActive) {
+      _isPinActive.value = _pendingPinActive;
     }
   }
 
@@ -120,26 +147,34 @@ class TurnScrollController extends ScrollController {
   /// When the last item is virtualized/offscreen, the spring converges across
   /// unmeasured items as they lay out and freezes as soon as the last item
   /// lays out, so newly streaming tokens never cause jittery chasing.
-  Future<void> jumpToBottom({bool animate = true}) async {
+  ///
+  /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
+  /// interrupted by a user scroll, superseded by another navigation call, or
+  /// the list is empty / unattached.
+  Future<bool> jumpToBottom({bool animate = true}) async {
     final delegate = _delegate;
-    if (delegate == null) return;
-    await delegate.jumpToBottom(animate: animate);
+    if (delegate == null) return false;
+    return delegate.jumpToBottom(animate: animate);
   }
 
   /// Scrolls to the item identified by [itemId], even if it is currently
   /// offscreen/virtualized.
   ///
   /// [alignment] `0.0` aligns the item's top to the usable top edge (below
-  /// `padding.top` + safe area); `1.0` aligns its bottom to the usable bottom
-  /// edge; `0.5` centers it.
-  Future<void> scrollTo(
+  /// `padding.top` + safe area and any pinned/sticky header); `1.0` aligns its
+  /// bottom to the usable bottom edge; `0.5` centers it.
+  ///
+  /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
+  /// interrupted by a user scroll, superseded by another navigation call, or
+  /// [itemId] was not found.
+  Future<bool> scrollTo(
     Object itemId, {
     double alignment = 0,
     bool animate = true,
   }) async {
     final delegate = _delegate;
-    if (delegate == null) return;
-    await delegate.scrollTo(itemId, alignment: alignment, animate: animate);
+    if (delegate == null) return false;
+    return delegate.scrollTo(itemId, alignment: alignment, animate: animate);
   }
 
   /// Cancels any active pin or programmatic scroll animation immediately.
@@ -196,6 +231,7 @@ class TurnScrollController extends ScrollController {
     _delegate = null;
     _isAwayFromBottom.dispose();
     _distanceFromBottom.dispose();
+    _isPinActive.dispose();
     super.dispose();
   }
 }
@@ -226,18 +262,20 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
   /// Runs a live-target Motor spring activity toward [resolveTarget].
   ///
   /// Automatically cancels if the user starts dragging, wheeling, or scrolling.
-  Future<void> animateToTarget({
+  /// Returns `true` if the spring settled cleanly on the target, or `false` if
+  /// interrupted or unresolvable.
+  Future<bool> animateToTarget({
     required double? Function() resolveTarget,
     required Motion motion,
     TickerProvider? vsync,
   }) {
-    if (!hasPixels || !hasContentDimensions) return Future.value();
+    if (!hasPixels || !hasContentDimensions) return Future.value(false);
     final initialTarget = resolveTarget();
-    if (initialTarget == null) return Future.value();
+    if (initialTarget == null) return Future.value(false);
     final clamped = initialTarget.clamp(minScrollExtent, maxScrollExtent);
     if ((pixels - clamped).abs() <= 0.5) {
       if (pixels != clamped) jumpTo(clamped);
-      return Future.value();
+      return Future.value(true);
     }
     final activity = TargetTrackingScrollActivity(
       this,
@@ -413,13 +451,14 @@ class TargetTrackingScrollActivity extends ScrollActivity {
   final double? Function() resolveTarget;
 
   late final SingleMotionController _controller;
-  final _completer = Completer<void>();
+  final _completer = Completer<bool>();
   double _target;
   var _disposed = false;
   var _retargeting = false;
 
-  /// Completes when the scroll arrives or is interrupted.
-  Future<void> get done => _completer.future;
+  /// Completes with `true` when the scroll arrives cleanly, or `false` when
+  /// interrupted or unresolvable.
+  Future<bool> get done => _completer.future;
 
   @override
   bool get shouldIgnorePointer => false;
@@ -447,7 +486,7 @@ class TargetTrackingScrollActivity extends ScrollActivity {
           delegate.setPixels(clamped);
         }
       }
-      _finish();
+      _finish(arrived: true);
     }
   }
 
@@ -479,7 +518,7 @@ class TargetTrackingScrollActivity extends ScrollActivity {
     if (_disposed || _retargeting || !_position.hasContentDimensions) return;
     final raw = resolveTarget();
     if (raw == null) {
-      _finish();
+      _finish(arrived: false);
       return;
     }
     final clamped = raw.clamp(
@@ -502,6 +541,7 @@ class TargetTrackingScrollActivity extends ScrollActivity {
     // Directional SingleMotionController settles as `completed` when moving up
     // and `dismissed` when moving down — handle both settled states.
     if (!status.isAnimating) {
+      var arrived = false;
       if (_position.hasContentDimensions) {
         final raw = resolveTarget();
         if (raw != null) {
@@ -516,15 +556,16 @@ class TargetTrackingScrollActivity extends ScrollActivity {
           if ((clamped - _position.pixels).abs() > 0.01) {
             delegate.setPixels(clamped);
           }
+          arrived = true;
         }
       }
-      _finish();
+      _finish(arrived: arrived);
     }
   }
 
-  void _finish() {
+  void _finish({required bool arrived}) {
     if (_disposed) return;
-    if (!_completer.isCompleted) _completer.complete();
+    if (!_completer.isCompleted) _completer.complete(arrived);
     delegate.goIdle();
   }
 
@@ -536,7 +577,7 @@ class TargetTrackingScrollActivity extends ScrollActivity {
         ..removeListener(_tick)
         ..removeStatusListener(_onStatus)
         ..dispose();
-      if (!_completer.isCompleted) _completer.complete();
+      if (!_completer.isCompleted) _completer.complete(false);
     }
     super.dispose();
   }

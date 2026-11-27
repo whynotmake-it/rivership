@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_motion.dart';
+import 'package:turns/src/scroll/turn_scroll_notification.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
 
 /// Shared scroll engine mixin backing `TurnScrollView` and
@@ -40,6 +41,10 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Whether [id] can currently be pinned by this view.
   bool canPinId(Object id) => true;
+
+  /// Extra top clearance above items occupied by an overlay (such as a sticky
+  /// section header pill) that is not part of `getOffsetToReveal` obstruction.
+  double get extraTopObstruction => 0;
 
   /// Active [RenderSliverTurnStage] registered via [TurnScrollScope].
   RenderSliverTurnStage? activeTurnStage;
@@ -111,26 +116,37 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     return sum / extents.length;
   }
 
+  void _setPinnedActive({required bool active}) {
+    pinnedActive = active;
+    turnController.updatePinActive(active: active);
+  }
+
   /// Initializes controller attachment and initial pin state.
   void initEngine() {
     turnController.attachDelegate(this);
     final pin = widgetPinnedId;
     if (pin != null && canPinId(pin)) {
-      pinnedActive = true;
+      _setPinnedActive(active: true);
       pendingPinScroll = true;
       schedulePinScroll();
+    } else {
+      turnController.updatePinActive(active: false);
     }
   }
 
   /// Reconciles controller swapping during `didUpdateWidget`.
   void updateEngineController(TurnScrollController? oldController) {
     if (oldController != widgetController) {
-      (oldController ?? _ownController)?.detachDelegate(this);
+      (oldController ?? _ownController)
+        ?..updatePinActive(active: false)
+        ..detachDelegate(this);
       if (widgetController != null) {
         _ownController?.dispose();
         _ownController = null;
       }
-      turnController.attachDelegate(this);
+      turnController
+        ..attachDelegate(this)
+        ..updatePinActive(active: pinnedActive);
     }
   }
 
@@ -142,7 +158,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     if (widgetPinnedId == oldPinnedId) return;
     final pin = widgetPinnedId;
     if (pin != null && canPinId(pin)) {
-      pinnedActive = true;
+      _setPinnedActive(active: true);
       pendingPinScroll = true;
       _pinRetries = 0;
       needsInitialBottomJump = false;
@@ -155,7 +171,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
           pos.hasPixels &&
           pos.hasContentDimensions &&
           (pos.maxScrollExtent - pos.pixels) <= 2;
-      pinnedActive = false;
+      _setPinnedActive(active: false);
       pendingPinScroll = false;
       pinEpoch++;
       if (oldPinnedId != null && wasAtBottom) {
@@ -169,11 +185,52 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   void disposeEngine() {
     turnController
       ..updateBottomDistance(0, threshold: widgetJumpThreshold)
+      ..updatePinActive(active: false)
       ..detachDelegate(this);
     _ownController?.dispose();
     mountedBoxes.clear();
     activeTurnStage = null;
   }
+
+  var _inProgrammaticJump = false;
+
+  /// Whether this view is currently driven by programmatic scrolling
+  /// (`scrollTo`, `jumpToBottom`, pin animation, or initial positioning).
+  bool get isProgrammaticScroll =>
+      _inProgrammaticJump ||
+      needsInitialBottomJump ||
+      pendingPinScroll ||
+      (turnPosition?.isTrackingTarget ?? false);
+
+  /// Performs a programmatic `jumpTo` so any resulting [TurnScrollNotification]
+  /// reports `isProgrammatic: true`.
+  void programmaticJumpTo(TurnScrollPosition pos, double value) {
+    _inProgrammaticJump = true;
+    try {
+      pos.jumpTo(value);
+    } finally {
+      _inProgrammaticJump = false;
+    }
+  }
+
+  /// Wraps [child] to dispatch a [TurnScrollNotification] alongside Flutter's
+  /// standard [ScrollUpdateNotification] on every scroll update.
+  Widget wrapWithTurnNotification(Widget child) =>
+      NotificationListener<ScrollUpdateNotification>(
+        onNotification: (notification) {
+          final metrics = notification.metrics;
+          TurnScrollNotification(
+            metrics: metrics,
+            context: context,
+            leadingExtent: math.max<double>(0, metrics.extentBefore),
+            trailingExtent: math.max<double>(0, metrics.extentAfter),
+            isProgrammatic: isProgrammaticScroll,
+            isPinActive: pinnedActive,
+          ).dispatch(context);
+          return false;
+        },
+        child: child,
+      );
 
   /// Resolves [effectiveTop], [effectiveBottom], [effectiveLeft], and
   /// [effectiveRight] from [MediaQuery] and [widgetPadding].
@@ -246,7 +303,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     final target = pinTargetOffset() ?? pos.maxScrollExtent;
     final animate = !MediaQuery.disableAnimationsOf(context);
     if (!animate) {
-      if ((pos.pixels - target).abs() > 0.5) pos.jumpTo(target);
+      if ((pos.pixels - target).abs() > 0.5) programmaticJumpTo(pos, target);
       return;
     }
     final pinnedId = widgetPinnedId;
@@ -266,10 +323,10 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Computes the total pinned obstruction (e.g. pinned `SliverAppBar` and
   /// `SliverPersistentHeader`s) that Flutter's `getOffsetToReveal` already
-  /// accounts for above [box].
-  double _pinnedObstructionFor(RenderBox box) {
+  /// accounts for above [target] (either a [RenderBox] or a [RenderSliver]).
+  double pinnedObstructionFor(RenderObject target) {
     var obstruction = 0.0;
-    RenderObject? node = box;
+    RenderObject? node = target;
     while (node != null && node is! RenderViewportBase) {
       if (node is RenderSliver &&
           node.constraints.growthDirection == GrowthDirection.forward) {
@@ -312,8 +369,8 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     final viewport = RenderAbstractViewport.maybeOf(box);
     if (viewport == null) return null;
 
-    final obstruction = _pinnedObstructionFor(box);
-    final topInset = math.max(effectiveTop, obstruction);
+    final obstruction = pinnedObstructionFor(box);
+    final topInset = math.max(effectiveTop + extraTopObstruction, obstruction);
     final usable = math.max<double>(
       0,
       pos.viewportDimension - topInset - effectiveBottom,
@@ -361,8 +418,8 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     }
     final viewport = RenderAbstractViewport.maybeOf(box);
     if (viewport == null) return null;
-    final obstruction = _pinnedObstructionFor(box);
-    final topInset = math.max(effectiveTop, obstruction);
+    final obstruction = pinnedObstructionFor(box);
+    final topInset = math.max(effectiveTop + extraTopObstruction, obstruction);
     final usable = math.max<double>(
       0,
       viewportDimension - topInset - effectiveBottom,
@@ -430,7 +487,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   @override
   void onUserScroll() {
-    pinnedActive = false;
+    _setPinnedActive(active: false);
     pendingPinScroll = false;
     needsInitialBottomJump = false;
     pinEpoch++;
