@@ -135,7 +135,9 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
     while (!_loadedMessageIds.contains(targetId) && _olderPages.isNotEmpty) {
       _prependNextPage();
     }
-    if (await _controller.scrollTo(targetId, alignment: 0.25) && mounted) {
+    // Highlight as soon as the flight looks done, not once it settles.
+    if (await _controller.scrollTo(targetId, alignment: 0.25).ended &&
+        mounted) {
       _highlightMessage(targetId);
     }
   }

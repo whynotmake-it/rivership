@@ -217,7 +217,8 @@ class _IMessageDemoState extends State<IMessageDemo> {
   }
 
   Future<void> _jumpToMessage(String targetId) async {
-    final arrived = await _controller.scrollTo(targetId, alignment: 0.35);
+    // Highlight as soon as the flight looks done, not once it settles.
+    final arrived = await _controller.scrollTo(targetId, alignment: 0.35).ended;
     if (!mounted || !arrived) return;
     final nonce = ++_highlightNonce;
     _highlightNotifier.value = (id: targetId, nonce: nonce);

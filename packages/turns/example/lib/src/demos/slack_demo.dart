@@ -70,7 +70,8 @@ class _SlackDemoState extends State<SlackDemo> {
 
   Future<bool> _jumpToMessage(String id, {double alignment = 0.08}) async {
     _highlightTimer?.cancel();
-    if (!await _controller.scrollTo(id, alignment: alignment)) {
+    // Highlight as soon as the flight looks done, not once it settles.
+    if (!await _controller.scrollTo(id, alignment: alignment).ended) {
       return false;
     }
     if (!mounted) return false;
