@@ -41,7 +41,7 @@ Flutter AI chat transcripts, streaming timelines, and messaging feeds.
   - **Zero-fight user control**: any drag, wheel, or trackpad gesture disengages auto-pinning immediately.
   - **Synchronous keyboard-inset anchoring**: shifts scroll offset by the exact bottom-edge delta during layout without a 1-frame flash.
 - **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with an `isPinned` flag (hairline divider inline vs elevated floating pill when pinned), automatic `alignment: 0` clearance, and pointer pass-through (`stickyHeaderIgnoresPointer`).
-- **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: escape hatch for bounded feeds that need arbitrary Flutter slivers (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s) while keeping Motor-driven offscreen `scrollTo()` and `jumpToBottom()`.
+- **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: escape hatch for bounded feeds that need arbitrary Flutter slivers (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s) while keeping Motor-driven offscreen `scrollTo()` and `scrollToBottom()`.
 - **Pure-Dart streaming markdown (`MarkdownSession`)**: freezes settled top-level blocks by identity and repairs unfinished inline syntax (`completeMarkdown`) while tokens arrive, plus pure-Dart LaTeX math syntaxes (`latexMathSyntaxes`).
 
 ## Choosing `TurnScrollView` vs `CustomTurnScrollView`
@@ -80,14 +80,23 @@ TurnScrollView<Object>(
 );
 ```
 
-React to bottom distance or active pinning without extra scroll listeners:
+React to bottom distance, programmatic flights, or active pinning without extra
+scroll listeners:
 
 ```dart
-ValueListenableBuilder<bool>(
-  valueListenable: controller.isAwayFromBottom,
-  builder: (context, isAway, _) => isAway
-      ? JumpToBottomButton(onPressed: controller.jumpToBottom)
-      : const SizedBox.shrink(),
+ListenableBuilder(
+  listenable: Listenable.merge([
+    controller.isAwayFromBottom,
+    controller.isAutoScrolling,
+  ]),
+  builder: (context, _) {
+    final shown =
+        controller.isAwayFromBottom.value &&
+        !controller.isAutoScrolling.value;
+    return shown
+        ? JumpToBottomButton(onPressed: controller.scrollToBottom)
+        : const SizedBox.shrink();
+  },
 );
 ```
 
@@ -114,7 +123,7 @@ NotificationListener<TurnScrollNotification>(
 );
 ```
 
-`scrollTo` and `jumpToBottom` return `Future<bool>` (`true` on clean arrival,
+`scrollTo` and `scrollToBottom` return `Future<bool>` (`true` on clean arrival,
 `false` if interrupted by a user drag or superseded):
 
 ```dart

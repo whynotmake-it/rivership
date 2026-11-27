@@ -189,7 +189,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
     if (!wasAway) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          unawaited(_controller.jumpToBottom());
+          unawaited(_controller.scrollToBottom());
         }
       });
     }
@@ -221,14 +221,14 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        unawaited(_controller.jumpToBottom());
+        unawaited(_controller.scrollToBottom());
       }
     });
   }
 
-  Future<void> _jumpToBottom() async {
+  Future<void> _scrollToBottom() async {
     setState(() => _unreadCount = 0);
-    await _controller.jumpToBottom();
+    await _controller.scrollToBottom();
   }
 
   void _onComposerSizeChanged(Size size) {
@@ -355,12 +355,17 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                   Positioned(
                     right: 16,
                     bottom: _composerHeight + 14,
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: _controller.isAwayFromBottom,
-                      builder: (context, isAway, _) => _JumpToBottomPill(
-                        visible: isAway,
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _controller.isAwayFromBottom,
+                        _controller.isAutoScrolling,
+                      ]),
+                      builder: (context, _) => _JumpToBottomPill(
+                        visible:
+                            _controller.isAwayFromBottom.value &&
+                            !_controller.isAutoScrolling.value,
                         unreadCount: _unreadCount,
-                        onPressed: () => unawaited(_jumpToBottom()),
+                        onPressed: () => unawaited(_scrollToBottom()),
                       ),
                     ),
                   ),
@@ -746,7 +751,7 @@ class _JumpToBottomPill extends StatelessWidget {
     return SingleMotionBuilder(
       value: visible ? 1.0 : 0.0,
       motion: visible ? motion.standard : motion.standardExit,
-      debugLabel: 'WhatsApp.jumpToBottom',
+      debugLabel: 'WhatsApp.scrollToBottom',
       builder: (context, progress, _) {
         if (!visible && progress <= 0.01) {
           return const SizedBox.shrink();

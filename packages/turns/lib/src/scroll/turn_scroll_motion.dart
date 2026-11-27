@@ -2,7 +2,7 @@ import 'package:motor/motor.dart';
 
 /// Default Motor spring motion used by `TurnScrollView` and
 /// `CustomTurnScrollView` for automatic and programmatic scroll flights
-/// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+/// (`pinnedId`, `scrollTo`, and `scrollToBottom`).
 ///
 /// This controls only automatic scroll animations and never affects user drag
 /// `physics`.

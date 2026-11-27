@@ -404,8 +404,9 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
                 child: Center(
                   child: _JumpToBottomButton(
                     buttonKey: const Key('onboarding.jump_bottom'),
-                    listenable: _controller.isAwayFromBottom,
-                    onPressed: () => unawaited(_controller.jumpToBottom()),
+                    awayFromBottom: _controller.isAwayFromBottom,
+                    autoScrolling: _controller.isAutoScrolling,
+                    onPressed: () => unawaited(_controller.scrollToBottom()),
                   ),
                 ),
               ),
@@ -1115,38 +1116,43 @@ class _GoalOptionCard extends StatelessWidget {
 class _JumpToBottomButton extends StatelessWidget {
   const _JumpToBottomButton({
     required this.buttonKey,
-    required this.listenable,
+    required this.awayFromBottom,
+    required this.autoScrolling,
     required this.onPressed,
   });
 
   final Key buttonKey;
-  final ValueListenable<bool> listenable;
+  final ValueListenable<bool> awayFromBottom;
+  final ValueListenable<bool> autoScrolling;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final motion = CoilTheme.motionOf(context);
-    return ValueListenableBuilder<bool>(
-      valueListenable: listenable,
-      builder: (context, visible, child) => SingleMotionBuilder(
-        value: visible ? 1 : 0,
-        motion: visible ? motion.standard : motion.fadeExit,
-        debugLabel: 'OnboardingDemo.jumpBottom',
-        child: child,
-        builder: (context, progress, child) {
-          final clamped = progress.clamp(0.0, 1.0);
-          return IgnorePointer(
-            ignoring: !visible,
-            child: Opacity(
-              opacity: clamped,
-              child: Transform.translate(
-                offset: Offset(0, (1 - progress) * 14),
-                child: child,
+    return ListenableBuilder(
+      listenable: Listenable.merge([awayFromBottom, autoScrolling]),
+      builder: (context, child) {
+        final visible = awayFromBottom.value && !autoScrolling.value;
+        return SingleMotionBuilder(
+          value: visible ? 1 : 0,
+          motion: visible ? motion.standard : motion.fadeExit,
+          debugLabel: 'OnboardingDemo.jumpBottom',
+          child: child,
+          builder: (context, progress, child) {
+            final clamped = progress.clamp(0.0, 1.0);
+            return IgnorePointer(
+              ignoring: !visible,
+              child: Opacity(
+                opacity: clamped,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - progress) * 14),
+                  child: child,
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
       child: CoilButton.icon(
         key: buttonKey,
         size: CoilSize.compact,
@@ -1292,7 +1298,7 @@ String _buildFinishReply(Set<String> selectedIds) {
   return '''
 You are all set for $summary! Quick checklist before shipping:
 
-1. Attach a **`TurnScrollController`** to drive `scrollTo(...)`, `jumpToBottom()`, and `isAwayFromBottom`.
+1. Attach a **`TurnScrollController`** to drive `scrollTo(...)`, `scrollToBottom()`, and `isAwayFromBottom`.
 2. Wrap every sliver-list item with **`SliverTurnList`** (or `TurnScrollItem`) so offscreen `scrollTo` clears pinned headers automatically.
 3. Pair streaming replies with **`CoilMarkdown(text, streaming: true)`** powered by `MarkdownSession`.''';
 }

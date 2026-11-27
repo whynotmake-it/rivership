@@ -30,9 +30,11 @@ import 'package:coil_example/src/pages/components/toggle_group_page.dart';
 import 'package:coil_example/src/pages/components/tooltip_page.dart';
 import 'package:coil_example/src/pages/home/bento.dart';
 import 'package:coil_example/src/widgets/catalog_asset.dart';
+import 'package:coil_example/src/widgets/chat_widgets.dart';
 import 'package:coil_example/src/widgets/icons.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:turns/turns.dart';
 
 /// The album cover and deck photo both share coil's one bundled image.
 /// [CatalogAsset] loads it whether the catalog runs on its own or inside the
@@ -131,37 +133,171 @@ String _time(num seconds) {
 // ---------------------------------------------------------------------------
 // Agent chat
 
-typedef _Turn = ({CoilChatSender from, String text, bool seeded});
+class _AgentStep {
+  const _AgentStep({
+    required this.id,
+    required this.glyph,
+    required this.title,
+    required this.status,
+    this.detail,
+    this.sources = const [],
+  });
 
-const _plan = [
-  CoilThinkingStep(
-    leading: CatalogIcon(Glyph.search),
-    title: Text('Read the onboarding funnel'),
-    sources: [Text('analytics'), Text('interviews.md')],
+  final String id;
+  final Glyph glyph;
+  final String title;
+  final String? detail;
+  final List<String> sources;
+  final CoilThinkingStepStatus status;
+
+  _AgentStep copyWith({CoilThinkingStepStatus? status}) => _AgentStep(
+    id: id,
+    glyph: glyph,
+    title: title,
+    detail: detail,
+    sources: sources,
+    status: status ?? this.status,
+  );
+}
+
+class _AgentMessage {
+  const _AgentMessage({
+    required this.id,
+    required this.sender,
+    required this.text,
+    required this.time,
+    this.thinkingLabel,
+    this.thinkingSteps = const [],
+    this.streaming = false,
+  });
+
+  final String id;
+  final CoilChatSender sender;
+  final String text;
+  final String time;
+  final String? thinkingLabel;
+  final List<_AgentStep> thinkingSteps;
+  final bool streaming;
+
+  _AgentMessage copyWith({
+    String? text,
+    String? thinkingLabel,
+    List<_AgentStep>? thinkingSteps,
+    bool? streaming,
+  }) => _AgentMessage(
+    id: id,
+    sender: sender,
+    text: text ?? this.text,
+    time: time,
+    thinkingLabel: thinkingLabel ?? this.thinkingLabel,
+    thinkingSteps: thinkingSteps ?? this.thinkingSteps,
+    streaming: streaming ?? this.streaming,
+  );
+}
+
+const _initialAgentMessages = <_AgentMessage>[
+  _AgentMessage(
+    id: 'agent-u-1',
+    sender: CoilChatSender.user,
+    time: '09:40',
+    text: 'Where are new teams dropping off in onboarding?',
   ),
-  CoilThinkingStep(
-    leading: CatalogIcon(Glyph.chart),
-    title: Text('Found the drop-off'),
-    detail: Text('Half of new teams stop at the invite step.'),
+  _AgentMessage(
+    id: 'agent-a-1',
+    sender: CoilChatSender.assistant,
+    time: '09:40',
+    text:
+        'Half of signups stall on **Invite teammates** before they have '
+        'created a workspace:\n\n'
+        '- **Step 1 (Account):** 92% completion\n'
+        '- **Step 2 (Invite team):** 48% completion\n'
+        '- **Step 3 (First project):** 84% of teams that reach it finish',
   ),
-  CoilThinkingStep(
-    leading: CatalogIcon(Glyph.lightbulb),
-    title: Text('Compared three fixes'),
-    detail: Text('Kept the one with the fewest moving parts.'),
+  _AgentMessage(
+    id: 'agent-u-2',
+    sender: CoilChatSender.user,
+    time: '09:42',
+    text: 'Plan the onboarding redesign',
   ),
-  CoilThinkingStep(
-    leading: CatalogIcon(Glyph.pencil),
-    title: Text('Drafted the plan'),
+  _AgentMessage(
+    id: 'agent-a-2',
+    sender: CoilChatSender.assistant,
+    time: '09:42',
+    thinkingLabel: 'Thought for 3.2s',
+    thinkingSteps: [
+      _AgentStep(
+        id: 'funnel',
+        glyph: Glyph.search,
+        title: 'Read the onboarding funnel',
+        sources: ['analytics', 'interviews.md'],
+        status: CoilThinkingStepStatus.done,
+      ),
+      _AgentStep(
+        id: 'dropoff',
+        glyph: Glyph.chart,
+        title: 'Isolated the invite drop-off',
+        detail: 'Half of new teams stop before creating a first project.',
+        status: CoilThinkingStepStatus.done,
+      ),
+      _AgentStep(
+        id: 'compare',
+        glyph: Glyph.lightbulb,
+        title: 'Compared three rollout options',
+        detail: 'Kept the sequence with the fewest moving parts.',
+        status: CoilThinkingStepStatus.done,
+      ),
+      _AgentStep(
+        id: 'draft',
+        glyph: Glyph.pencil,
+        title: 'Drafted the three-step plan',
+        status: CoilThinkingStepStatus.done,
+      ),
+    ],
+    text:
+        'Move the invite step **after the first project**, and let solo '
+        'builders skip it in one tap:\n\n'
+        '1. **Workspace name** — single field with sensible defaults.\n'
+        '2. **First project** — pre-seeded template so teams see value fast.\n'
+        '3. **Invite teammates** — optional share link once the project is '
+        'live.',
   ),
 ];
 
-const _planReply =
-    'Move the invite step after the first project, and let teams skip it. '
-    'That keeps the funnel to three steps.';
+const _timelineReply = '''
+Here is a lightweight **two-week rollout**:
 
-/// An agent at work: its thinking streams in as steps, the reply follows,
-/// and messages sent meanwhile wait in a queue you can fan out, reorder
-/// and edit.
+- **Days 1–3:** Ship the reordered flow behind `onboarding_v2` for 20% of new signups.
+- **Days 4–7:** Track first-project completion and solo-skip rate against the baseline.
+- **Week 2:** Roll to 100% and retire the blocking invite screen.''';
+
+const _kickoffReply = '''
+### Kickoff note draft
+
+**Subject:** Onboarding v2 — faster path to first project
+
+We are moving **Invite teammates** after the first project so new teams hit value in under two minutes:
+
+- **Scope:** Reorder steps 2 and 3, add a one-tap skip link.
+- **Metric:** Lift day-1 project creation from `48%` to `70%+`.
+- **Target:** Flag on for internal workspaces this Thursday.''';
+
+const _deepDiveReply = '''
+### Funnel & instrumentation plan
+
+Keeping the active turn anchored in `TurnScrollView` lets reviewers scroll up to compare numbers while this plan streams in:
+
+| Milestone | Baseline | Target | Guardrail |
+| :--- | :--- | :--- | :--- |
+| First project created | 48% | 72% | Time to interactive < 2m |
+| Teammate invited (D7) | 41% | 45% | Prompt inside project header |
+| Skip-and-return rate | — | < 15% | One-click share link |
+
+1. Emit `onboarding_step_completed` with `skipped: true | false`.
+2. Keep the invite modal reachable from the top bar so skipping never feels permanent.''';
+
+/// An agent at work: a [TurnScrollView] transcript with thinking steps,
+/// streaming markdown replies, quick prompts, and a queue of waiting follow-ups
+/// you can fan out, reorder and edit.
 class AgentTile extends StatefulWidget {
   const AgentTile({super.key});
 
@@ -170,243 +306,545 @@ class AgentTile extends StatefulWidget {
 }
 
 class _AgentTileState extends State<AgentTile> {
-  static const _replyTime = Duration(milliseconds: 2400);
-
+  final _controller = TurnScrollController();
   final _composer = TextEditingController();
-  final _copy = CoilCopyController();
+  final _copyControllers = <String, CoilCopyController>{};
+  final _freshIds = <String>{};
+  final _expandedThinking = <String, bool>{};
+  final _timers = <Timer>[];
   final _texts = <Object, String>{};
-  var _ids = 0;
 
-  var _turns = <_Turn>[
-    (
-      from: CoilChatSender.user,
-      text: 'Plan the onboarding redesign',
-      seeded: true,
-    ),
-  ];
+  late List<_AgentMessage> _messages;
   var _queue = <CoilQueuedMessage>[];
-  var _streamed = 0;
-  var _stepsExpanded = true;
-  var _thought = false;
-  var _replying = true;
-  Timer? _timer;
+  var _queueIds = 0;
+  var _nextTurn = 3;
+
+  String? _pinnedId;
+  String? _streamingMessageId;
+  Timer? _thinkingTimer;
+  Timer? _streamTimer;
+
+  bool get _isStreaming => _streamingMessageId != null;
 
   @override
   void initState() {
     super.initState();
+    _messages = [..._initialAgentMessages];
     _queue = [
-      _message('Add a timeline'),
-      _message('Draft the kickoff email'),
+      _queuedMessage('Add a rollout timeline'),
+      _queuedMessage('Draft the kickoff note'),
     ];
-    _timer = Timer.periodic(const Duration(milliseconds: 900), (timer) {
-      if (_streamed < _plan.length) {
-        setState(() => _streamed++);
-        return;
-      }
-      timer.cancel();
-      setState(() {
-        _stepsExpanded = false;
-        _thought = true;
-        _turns = [
-          ..._turns,
-          (from: CoilChatSender.assistant, text: _planReply, seeded: false),
-        ];
-        _replying = false;
-      });
-      // Then the messages queued meanwhile go out, one after another.
-      _timer = Timer(const Duration(milliseconds: 1600), _resume);
-    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _thinkingTimer?.cancel();
+    _streamTimer?.cancel();
+    for (final timer in _timers) {
+      timer.cancel();
+    }
+    for (final copy in _copyControllers.values) {
+      copy.dispose();
+    }
+    _controller.dispose();
     _composer.dispose();
-    _copy.dispose();
     super.dispose();
   }
 
-  CoilQueuedMessage _message(String text) {
-    final id = _ids++;
+  CoilCopyController _copyFor(String id) =>
+      _copyControllers.putIfAbsent(id, CoilCopyController.new);
+
+  CoilQueuedMessage _queuedMessage(String text) {
+    final id = _queueIds++;
     _texts[id] = text;
     return CoilQueuedMessage(id: id, child: Text(text));
   }
 
-  void _send(String text) {
-    _timer?.cancel();
-    setState(() {
-      _turns = [
-        ..._turns,
-        (from: CoilChatSender.user, text: text, seeded: false),
-      ];
-      _replying = true;
+  void _markFresh(String id) {
+    _freshIds.add(id);
+    late final Timer timer;
+    timer = Timer(const Duration(milliseconds: 900), () {
+      _timers.remove(timer);
+      if (!mounted) return;
+      _freshIds.remove(id);
     });
-    _timer = Timer(_replyTime, _answer);
+    _timers.add(timer);
   }
 
-  void _answer({bool stopped = false}) {
-    _timer?.cancel();
-    final asked = _turns.lastWhere((t) => t.from == CoilChatSender.user);
+  void _updateMessage(
+    String id,
+    _AgentMessage Function(_AgentMessage current) transform,
+  ) {
+    _messages = [
+      for (final message in _messages)
+        if (message.id == id) transform(message) else message,
+    ];
+  }
+
+  void _startTurn({
+    required String prompt,
+    required List<_AgentStep> steps,
+    required String reply,
+    int chunkSize = 8,
+  }) {
+    if (_isStreaming) {
+      _stopStreaming();
+    }
+
+    final turn = _nextTurn++;
+    final userId = 'agent-u-$turn';
+    final assistantId = 'agent-a-$turn';
+    final time = '09:${(42 + turn).toString().padLeft(2, '0')}';
+
+    _markFresh(userId);
+    _markFresh(assistantId);
+    _expandedThinking[assistantId] = true;
+
     setState(() {
-      _turns = [
-        ..._turns,
-        (
-          from: CoilChatSender.assistant,
-          text: stopped ? 'Stopped.' : 'Done: ${asked.text.toLowerCase()}.',
-          seeded: false,
+      _messages = [
+        ..._messages,
+        _AgentMessage(
+          id: userId,
+          sender: CoilChatSender.user,
+          text: prompt,
+          time: time,
+        ),
+        _AgentMessage(
+          id: assistantId,
+          sender: CoilChatSender.assistant,
+          text: '',
+          time: time,
+          thinkingLabel: 'Planning…',
+          thinkingSteps: [steps.first],
+          streaming: true,
         ),
       ];
-      _replying = false;
+      _pinnedId = userId;
+      _streamingMessageId = assistantId;
     });
-    if (_queue.isEmpty || stopped) return;
-    final next = _queue.first;
-    setState(() => _queue = _queue.sublist(1));
-    _send(_texts.remove(next.id)!);
+
+    var revealed = 1;
+    _thinkingTimer?.cancel();
+    _thinkingTimer = Timer.periodic(const Duration(milliseconds: 340), (timer) {
+      if (!mounted || _streamingMessageId != assistantId) {
+        timer.cancel();
+        return;
+      }
+      if (revealed < steps.length) {
+        revealed++;
+        final nextSteps = <_AgentStep>[
+          for (var i = 0; i < revealed; i++)
+            if (i < revealed - 1)
+              steps[i].copyWith(status: CoilThinkingStepStatus.done)
+            else
+              steps[i],
+        ];
+        setState(() {
+          _updateMessage(
+            assistantId,
+            (m) => m.copyWith(thinkingSteps: nextSteps),
+          );
+        });
+        return;
+      }
+
+      timer.cancel();
+      _thinkingTimer = null;
+      final completed = [
+        for (final step in steps)
+          step.copyWith(status: CoilThinkingStepStatus.done),
+      ];
+      setState(() {
+        _expandedThinking[assistantId] = false;
+        _updateMessage(
+          assistantId,
+          (m) => m.copyWith(
+            thinkingLabel:
+                'Thought for ${(steps.length * 0.4 + 0.3).toStringAsFixed(1)}s',
+            thinkingSteps: completed,
+          ),
+        );
+      });
+      _beginStream(
+        assistantId: assistantId,
+        fullReply: reply,
+        chunkSize: chunkSize,
+      );
+    });
   }
 
-  void _resume() {
-    // The first reply is the plan; queued messages go after it.
-    if (_replying || _queue.isEmpty) return;
+  void _beginStream({
+    required String assistantId,
+    required String fullReply,
+    required int chunkSize,
+  }) {
+    var cursor = 0;
+    _streamTimer?.cancel();
+    _streamTimer = Timer.periodic(const Duration(milliseconds: 24), (timer) {
+      if (!mounted || _streamingMessageId != assistantId) {
+        timer.cancel();
+        return;
+      }
+      cursor = math.min(fullReply.length, cursor + chunkSize);
+      final done = cursor >= fullReply.length;
+      final slice = fullReply.substring(0, cursor);
+      setState(() {
+        _updateMessage(
+          assistantId,
+          (m) => m.copyWith(text: slice, streaming: !done),
+        );
+        if (done) {
+          _streamingMessageId = null;
+        }
+      });
+      if (done) {
+        timer.cancel();
+        _streamTimer = null;
+        if (_queue.isNotEmpty) {
+          late final Timer nextTimer;
+          nextTimer = Timer(const Duration(milliseconds: 700), () {
+            _timers.remove(nextTimer);
+            if (mounted && !_isStreaming) _resumeQueue();
+          });
+          _timers.add(nextTimer);
+        }
+      }
+    });
+  }
+
+  void _stopStreaming({bool drainQueue = false}) {
+    _thinkingTimer?.cancel();
+    _thinkingTimer = null;
+    _streamTimer?.cancel();
+    _streamTimer = null;
+    final activeId = _streamingMessageId;
+    if (activeId == null) return;
+    setState(() {
+      _streamingMessageId = null;
+      _expandedThinking[activeId] = false;
+      _updateMessage(
+        activeId,
+        (m) => m.copyWith(
+          streaming: false,
+          text: m.text.isEmpty ? '_Generation stopped._' : m.text,
+          thinkingLabel: m.thinkingSteps.isEmpty ? null : 'Stopped',
+          thinkingSteps: [
+            for (final step in m.thinkingSteps)
+              step.copyWith(status: CoilThinkingStepStatus.done),
+          ],
+        ),
+      );
+    });
+    if (drainQueue && _queue.isNotEmpty) {
+      _resumeQueue();
+    }
+  }
+
+  void _sendPrompt(String prompt) {
+    final lower = prompt.toLowerCase();
+    if (lower.contains('timeline')) {
+      _startTurn(
+        prompt: prompt,
+        steps: const [
+          _AgentStep(
+            id: 'scope',
+            glyph: Glyph.calendar,
+            title: 'Mapped rollout milestones',
+            detail: 'Splits flag ramp and instrumentation into two weeks.',
+            sources: ['release.md'],
+            status: CoilThinkingStepStatus.running,
+          ),
+          _AgentStep(
+            id: 'owners',
+            glyph: Glyph.pencil,
+            title: 'Drafted launch checkpoints',
+            status: CoilThinkingStepStatus.running,
+          ),
+        ],
+        reply: _timelineReply,
+      );
+      return;
+    }
+    if (lower.contains('kickoff') || lower.contains('email')) {
+      _startTurn(
+        prompt: prompt,
+        steps: const [
+          _AgentStep(
+            id: 'summary',
+            glyph: Glyph.mail,
+            title: 'Collected funnel highlights',
+            sources: ['analytics'],
+            status: CoilThinkingStepStatus.running,
+          ),
+          _AgentStep(
+            id: 'note',
+            glyph: Glyph.pencil,
+            title: 'Drafted kickoff note',
+            status: CoilThinkingStepStatus.running,
+          ),
+        ],
+        reply: _kickoffReply,
+      );
+      return;
+    }
+    _startTurn(
+      prompt: prompt,
+      steps: const [
+        _AgentStep(
+          id: 'context',
+          glyph: Glyph.search,
+          title: 'Reviewed onboarding context',
+          detail: 'Anchors the new turn while drafting the reply.',
+          sources: ['funnel.md'],
+          status: CoilThinkingStepStatus.running,
+        ),
+        _AgentStep(
+          id: 'draft',
+          glyph: Glyph.sparkles,
+          title: 'Drafted recommendation',
+          status: CoilThinkingStepStatus.running,
+        ),
+      ],
+      reply:
+          'Updated the plan for **"${prompt.replaceAll('"', "'")}"**:\n\n'
+          '- Keep the first-project step front and center.\n'
+          '- Surface team invites right inside the project header once '
+          'created.\n'
+          '- Watch day-1 completion before expanding the rollout.',
+    );
+  }
+
+  void _sendDeepDive() {
+    _startTurn(
+      prompt: 'Break down the funnel metrics and guardrails in detail',
+      steps: const [
+        _AgentStep(
+          id: 'metrics',
+          glyph: Glyph.chart,
+          title: 'Pulled baseline conversion numbers',
+          sources: ['analytics', 'events.sql'],
+          status: CoilThinkingStepStatus.running,
+        ),
+        _AgentStep(
+          id: 'guardrails',
+          glyph: Glyph.shield,
+          title: 'Checked activation guardrails',
+          detail: 'Pairs D1 project creation with D7 team invite health.',
+          status: CoilThinkingStepStatus.running,
+        ),
+      ],
+      reply: _deepDiveReply,
+      chunkSize: 10,
+    );
+  }
+
+  void _resumeQueue() {
+    if (_isStreaming || _queue.isEmpty) return;
     final next = _queue.first;
+    final text = _texts.remove(next.id);
     setState(() => _queue = _queue.sublist(1));
-    _send(_texts.remove(next.id)!);
+    if (text != null) {
+      _sendPrompt(text);
+    }
+  }
+
+  Widget _buildMessage(BuildContext context, _AgentMessage message) {
+    final entrance = _freshIds.contains(message.id)
+        ? CoilChatMessageEntrance.animated
+        : CoilChatMessageEntrance.none;
+
+    if (message.sender == CoilChatSender.user) {
+      return CoilChatMessage(
+        sender: CoilChatSender.user,
+        entrance: entrance,
+        time: Text(message.time),
+        timeLabel: message.time,
+        child: Text(message.text),
+      );
+    }
+
+    final copy = _copyFor(message.id);
+    final expanded = _expandedThinking[message.id] ?? false;
+
+    return CoilChatMessage(
+      sender: CoilChatSender.assistant,
+      entrance: entrance,
+      time: message.streaming ? const Text('Streaming…') : Text(message.time),
+      timeLabel: message.streaming ? 'Streaming' : message.time,
+      actions: [
+        if (!message.streaming && message.text.isNotEmpty)
+          CoilChatMessageAction(
+            label: const Text('Copy'),
+            icon: Semantics(
+              label: 'Copy',
+              child: CoilCopyGlyph.listening(controller: copy),
+            ),
+            onPressed: () =>
+                unawaited(copy.copy(message.text, context: context)),
+          ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (message.thinkingSteps.isNotEmpty) ...[
+            CoilThinkingSteps(
+              label: Text(message.thinkingLabel ?? 'Planning…'),
+              expanded: expanded,
+              onChanged: (v) =>
+                  setState(() => _expandedThinking[message.id] = v),
+              steps: [
+                for (final step in message.thinkingSteps)
+                  CoilThinkingStep(
+                    key: ValueKey('${message.id}.${step.id}'),
+                    leading: CatalogIcon(step.glyph),
+                    title: Text(step.title),
+                    detail: step.detail == null ? null : Text(step.detail!),
+                    sources: [for (final s in step.sources) Text(s)],
+                    status: step.status,
+                  ),
+              ],
+            ),
+            if (message.text.isNotEmpty) const SizedBox(height: 8),
+          ],
+          if (message.text.isNotEmpty)
+            CoilMarkdown(
+              message.text,
+              streaming: message.streaming,
+              trailing: message.streaming ? const ChatStreamingCaret() : null,
+            ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final touch = CoilTheme.tierOf(context) == CoilTier.touch;
-    final conversation = <Widget>[
-      for (final (i, turn) in _turns.indexed) ...[
-        Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: CoilChatMessage(
-            sender: turn.from,
-            entrance: turn.seeded
-                ? CoilChatMessageEntrance.none
-                : CoilChatMessageEntrance.animated,
-            actions: turn.text == _planReply
-                ? [
-                    CoilChatMessageAction(
-                      label: const Text('Copy'),
-                      // The icon names the button, as in an IconButton.
-                      icon: Semantics(
-                        label: 'Copy',
-                        child: CoilCopyGlyph.listening(controller: _copy),
-                      ),
-                      onPressed: () => _copy.copy(_planReply, context: context),
-                    ),
-                  ]
-                : const [],
-            child: Text(turn.text),
-          ),
-        ),
-        // The agent's thinking, under the question it answers.
-        if (i == 0 && _streamed > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: CoilThinkingSteps(
-                label: Text(_thought ? 'Thought for 4 seconds' : 'Planning'),
-                expanded: _stepsExpanded,
-                onChanged: (v) => setState(() => _stepsExpanded = v),
-                steps: _plan.take(_streamed).toList(),
-              ),
-            ),
-          ),
-      ],
-      if (_replying && _thought)
-        const Padding(
-          padding: EdgeInsets.only(top: 12),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: CoilThinkingIndicator(
-              words: [Text('Thinking'), Text('Reading'), Text('Drafting')],
-            ),
-          ),
-        ),
-    ];
+    final motion = CoilTheme.motionOf(context);
     return SizedBox(
       height: touch ? 480 : 420,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,
         children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            primary: false,
+            child: Row(
+              spacing: 6,
+              children: [
+                CoilButton(
+                  variant: CoilButtonVariant.secondary,
+                  size: CoilSize.compact,
+                  leading: const CatalogIcon(Glyph.zap),
+                  onPressed: () => _sendPrompt('Add a rollout timeline'),
+                  child: const Text('Add timeline'),
+                ),
+                CoilButton(
+                  variant: CoilButtonVariant.secondary,
+                  size: CoilSize.compact,
+                  leading: const CatalogIcon(Glyph.chart),
+                  onPressed: _sendDeepDive,
+                  child: const Text('Metrics deep dive'),
+                ),
+                if (!_isStreaming && _queue.isNotEmpty)
+                  CoilButton(
+                    variant: CoilButtonVariant.ghost,
+                    size: CoilSize.compact,
+                    trailing: const CatalogIcon(Glyph.arrowRight),
+                    onPressed: _resumeQueue,
+                    child: Text(
+                      _queue.length == 1
+                          ? 'Run 1 queued'
+                          : 'Run ${_queue.length} queued',
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Expanded(
-            child: CoilQueuedStack(
-              messages: _queue,
-              onChanged: (queue) => setState(() => _queue = queue),
-              onEdit: (message) => setState(() {
-                _composer.text = _texts.remove(message.id)!;
-                _queue = [
-                  for (final m in _queue)
-                    if (m.id != message.id) m,
-                ];
-              }),
-              icon: const CatalogIcon(Glyph.cornerDownRight),
-              editIcon: const CatalogIcon(Glyph.pencil),
-              child: ListView(
-                // Its own scroll position, not the page's.
-                primary: false,
-                reverse: true,
-                children: conversation.reversed.toList(),
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeBottom: true,
+              child: MediaQuery.removeViewInsets(
+                context: context,
+                removeBottom: true,
+                child: CoilQueuedStack(
+                  messages: _queue,
+                  onChanged: (queue) => setState(() => _queue = queue),
+                  onEdit: (message) => setState(() {
+                    _composer.text = _texts.remove(message.id)!;
+                    _queue = [
+                      for (final m in _queue)
+                        if (m.id != message.id) m,
+                    ];
+                  }),
+                  icon: const CatalogIcon(Glyph.cornerDownRight),
+                  editIcon: const CatalogIcon(Glyph.pencil),
+                  child: Stack(
+                    children: [
+                      CoilScrollArea(
+                        controller: _controller,
+                        edgeFades: CoilEdgeFades.none,
+                        keyboard: false,
+                        child: TurnScrollView<Object>(
+                          controller: _controller,
+                          itemCount: _messages.length,
+                          itemId: (i) => _messages[i].id,
+                          pinnedId: _pinnedId,
+                          autoScrollMotion: motion.standard,
+                          applyTopPadding: false,
+                          itemSpacing: 14,
+                          jumpThreshold: 80,
+                          padding: const EdgeInsets.only(top: 4, bottom: 12),
+                          itemBuilder: (context, index) =>
+                              _buildMessage(context, _messages[index]),
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) => Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: MediaQuery.paddingOf(context).bottom + 10,
+                          child: Center(
+                            child: ChatJumpToBottomButton(
+                              controller: _controller,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
           CoilInputMessage(
             controller: _composer,
             placeholder: Text(
-              _replying ? 'Send to queue a message…' : 'Ask for a change…',
+              _isStreaming ? 'Send to queue a message…' : 'Ask for a change…',
             ),
-            status: _replying
+            status: _isStreaming
                 ? CoilMessageStatus.streaming
                 : CoilMessageStatus.idle,
             onSend: (text) {
-              if (_replying) {
-                setState(() => _queue = [..._queue, _message(text)]);
+              final trimmed = text.trim();
+              if (trimmed.isEmpty) return;
+              if (_isStreaming) {
+                setState(() => _queue = [..._queue, _queuedMessage(trimmed)]);
               } else {
-                _send(text);
+                _sendPrompt(trimmed);
               }
             },
-            onQueue: (text) =>
-                setState(() => _queue = [..._queue, _message(text)]),
-            onStop: () {
-              if (_thought) {
-                _answer(stopped: true);
-              } else {
-                _timer?.cancel();
-                setState(() {
-                  _streamed = _plan.length;
-                  _thought = true;
-                  _stepsExpanded = false;
-                  _replying = false;
-                  _turns = [
-                    ..._turns,
-                    (
-                      from: CoilChatSender.assistant,
-                      text: 'Stopped.',
-                      seeded: false,
-                    ),
-                  ];
-                });
-              }
+            onQueue: (text) {
+              final trimmed = text.trim();
+              if (trimmed.isEmpty) return;
+              setState(() => _queue = [..._queue, _queuedMessage(trimmed)]);
             },
+            onStop: _stopStreaming,
           ),
-          if (!_replying && _queue.isNotEmpty)
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: CoilButton(
-                variant: CoilButtonVariant.ghost,
-                size: CoilSize.compact,
-                trailing: const CatalogIcon(Glyph.arrowRight),
-                onPressed: _resume,
-                child: Text(
-                  _queue.length == 1
-                      ? 'Send the queued message'
-                      : 'Send ${_queue.length} queued messages',
-                ),
-              ),
-            ),
         ],
       ),
     );

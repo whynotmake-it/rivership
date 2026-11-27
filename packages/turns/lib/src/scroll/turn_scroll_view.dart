@@ -179,10 +179,11 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// in the horizontal content [padding].
   final Widget? tailSliver;
 
-  /// Optional controller exposing [TurnScrollController.jumpToBottom],
+  /// Optional controller exposing [TurnScrollController.scrollToBottom],
   /// [TurnScrollController.scrollTo], [TurnScrollController.isAwayFromBottom],
-  /// [TurnScrollController.distanceFromBottom], and
-  /// [TurnScrollController.isPinActive].
+  /// [TurnScrollController.distanceFromBottom],
+  /// [TurnScrollController.isPinActive], and
+  /// [TurnScrollController.isAutoScrolling].
   final TurnScrollController? controller;
 
   /// Content padding added on top of `MediaQuery.paddingOf(context)` and
@@ -221,7 +222,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   final TurnAnchorConfig anchorConfig;
 
   /// Motor spring used for automatic and programmatic scroll flights
-  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  /// (`pinnedId`, `scrollTo`, and `scrollToBottom`).
   ///
   /// This controls only automatic scroll animations and never affects user drag
   /// [physics]. Under `MediaQuery.disableAnimationsOf(context)`, all
@@ -379,6 +380,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       oldWidget.pinnedId,
       onPinActivated: () => _pendingInitialAlign = null,
     );
+    syncAutoScrolling();
     if (_hasStickyHeaders) {
       if (widget.itemCount == 0) {
         _setStickyState(const _StickyHeaderState());
@@ -806,8 +808,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       extents[widget.itemId(index)] ?? meanExtent;
 
   @override
-  void onUserScroll() {
-    super.onUserScroll();
+  void resetAutoScrollState() {
+    super.resetAutoScrollState();
     _pendingInstantOffset = null;
     _pendingInitialAlign = null;
   }
@@ -1092,12 +1094,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   }
 
   @override
-  Future<bool> jumpToBottom({required bool animate, Motion? motion}) async {
+  Future<bool> scrollToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
     if (widget.itemCount == 0) return false;
 
-    onUserScroll();
+    resetAutoScrollState();
     final epoch = navEpoch;
 
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
@@ -1127,6 +1129,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
           needsInitialBottomJump = true;
           initialBottomPasses = 0;
         });
+        syncAutoScrolling();
         await nextFrame();
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
           return false;
@@ -1141,7 +1144,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       frozenTarget = pos.maxScrollExtent;
     }
 
-    final arrived = await pos.animateToTarget(
+    final future = pos.animateToTarget(
       motion: flightMotion,
       vsync: this,
       resolveTarget: () {
@@ -1155,6 +1158,10 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         return _cachedBottomOffset(pos) ?? pos.maxScrollExtent;
       },
     );
+    if (!pos.isTrackingTarget) {
+      syncAutoScrolling();
+    }
+    final arrived = await future;
     return arrived && mounted && epoch == navEpoch;
   }
 
@@ -1170,7 +1177,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final targetIndex = _indexOfId(itemId);
     if (targetIndex < 0) return false;
 
-    onUserScroll();
+    resetAutoScrollState();
     final epoch = navEpoch;
 
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
@@ -1237,12 +1244,14 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       final refined = estimated(targetIndex);
       if ((refined - pos.pixels).abs() > 0.5) {
         programmaticJumpTo(pos, refined);
+      } else {
+        syncAutoScrolling();
       }
       _pendingInstantOffset = null;
       return mounted && epoch == navEpoch;
     }
 
-    final arrived = await pos.animateToTarget(
+    final future = pos.animateToTarget(
       motion: flightMotion,
       vsync: this,
       resolveTarget: () {
@@ -1254,6 +1263,10 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         return estimated(currentIndex);
       },
     );
+    if (!pos.isTrackingTarget) {
+      syncAutoScrolling();
+    }
+    final arrived = await future;
     return arrived && mounted && epoch == navEpoch;
   }
 

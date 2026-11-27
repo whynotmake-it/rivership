@@ -506,8 +506,9 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                       child: Center(
                         child: _JumpToBottomButton(
                           buttonKey: const Key('ai.jump_bottom'),
-                          listenable: _controller.isAwayFromBottom,
-                          onPressed: _controller.jumpToBottom,
+                          awayFromBottom: _controller.isAwayFromBottom,
+                          autoScrolling: _controller.isAutoScrolling,
+                          onPressed: _controller.scrollToBottom,
                         ),
                       ),
                     ),
@@ -835,38 +836,43 @@ class _TranscriptTopBanner extends StatelessWidget {
 class _JumpToBottomButton extends StatelessWidget {
   const _JumpToBottomButton({
     required this.buttonKey,
-    required this.listenable,
+    required this.awayFromBottom,
+    required this.autoScrolling,
     required this.onPressed,
   });
 
   final Key buttonKey;
-  final ValueListenable<bool> listenable;
+  final ValueListenable<bool> awayFromBottom;
+  final ValueListenable<bool> autoScrolling;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final motion = CoilTheme.motionOf(context);
-    return ValueListenableBuilder<bool>(
-      valueListenable: listenable,
-      builder: (context, visible, child) => SingleMotionBuilder(
-        value: visible ? 1 : 0,
-        motion: visible ? motion.standard : motion.fadeExit,
-        debugLabel: 'AiAssistantDemo.jumpBottom',
-        child: child,
-        builder: (context, progress, child) {
-          final clamped = progress.clamp(0.0, 1.0);
-          return IgnorePointer(
-            ignoring: !visible,
-            child: Opacity(
-              opacity: clamped,
-              child: Transform.translate(
-                offset: Offset(0, (1 - progress) * 14),
-                child: child,
+    return ListenableBuilder(
+      listenable: Listenable.merge([awayFromBottom, autoScrolling]),
+      builder: (context, child) {
+        final visible = awayFromBottom.value && !autoScrolling.value;
+        return SingleMotionBuilder(
+          value: visible ? 1 : 0,
+          motion: visible ? motion.standard : motion.fadeExit,
+          debugLabel: 'AiAssistantDemo.jumpBottom',
+          child: child,
+          builder: (context, progress, child) {
+            final clamped = progress.clamp(0.0, 1.0);
+            return IgnorePointer(
+              ignoring: !visible,
+              child: Opacity(
+                opacity: clamped,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - progress) * 14),
+                  child: child,
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
       child: CoilButton.icon(
         key: buttonKey,
         size: CoilSize.compact,

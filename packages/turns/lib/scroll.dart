@@ -6,7 +6,7 @@
 ///   [SliverTurnStage] turn pinning, and optional sticky section headers.
 /// - [CustomTurnScrollView] and [SliverTurnList]: forward-only sliver viewport
 ///   for arbitrary Flutter slivers (`SliverAppBar`, `SliverMainAxisGroup`,
-///   `SliverPersistentHeader`) with offscreen `scrollTo` and `jumpToBottom`.
+///   `SliverPersistentHeader`) with offscreen `scrollTo` and `scrollToBottom`.
 /// - [TurnScrollController], [TurnScrollNotification], [TurnScrollScope],
 ///   [TurnScrollItem], [SliverTurnStage], and [TurnAnchorConfig].
 ///

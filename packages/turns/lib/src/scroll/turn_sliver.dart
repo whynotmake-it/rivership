@@ -7,7 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 /// Registration handle connecting a `SliverTurnList` to its enclosing
-/// [TurnScrollScope] so offscreen `scrollTo` and exact `jumpToBottom` work
+/// [TurnScrollScope] so offscreen `scrollTo` and exact `scrollToBottom` work
 /// across multiple sliver lists.
 abstract interface class TurnListRegistration {
   /// The underlying sliver multi-box adaptor render object, if attached.
