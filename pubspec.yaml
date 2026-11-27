@@ -29,6 +29,7 @@ workspace:
   - packages/coil/example
   - packages/coil_cli
   - packages/turns
+  - packages/turns/example
   
 dev_dependencies:
   lintervention: ^0.3.1

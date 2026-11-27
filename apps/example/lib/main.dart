@@ -9,6 +9,7 @@ import 'package:motor_example/font_licenses.dart';
 import 'package:motor_example/main.dart';
 import 'package:rivership/rivership.dart';
 import 'package:stupid_simple_sheet_example/main.dart';
+import 'package:turns_example/main.dart';
 
 import 'src/cupertino_environment.dart';
 import 'src/landing_page.dart';
@@ -52,6 +53,7 @@ Widget _fadeTransition(
 const _exampleRouteNames = {
   'coil': 'Coil',
   'motor': 'Motor',
+  'turns': 'Turns',
   'heroine': 'Heroine',
   'stupid_simple_sheet': 'Stupid Simple Sheet',
 };
@@ -95,6 +97,12 @@ void main() async {
         path: '/motor',
         type: exampleRouteType,
         children: motorRoutesFor(onHome: home),
+      ),
+      NamedRouteDef.shell(
+        name: 'Turns',
+        path: '/turns',
+        type: exampleRouteType,
+        children: turnsRoutesFor(onHome: home),
       ),
       coilCatalogRoute(
         path: '/coil',

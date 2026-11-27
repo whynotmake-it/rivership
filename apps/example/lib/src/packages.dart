@@ -50,6 +50,14 @@ const examplePackages = [
     exampleRoute: '/motor',
   ),
   Package(
+    name: 'turns',
+    description:
+        'Turn-anchored scroll views (bidirectional O(1) timelines, sticky '
+        'sectioned headers, composable slivers) and incremental streaming '
+        'markdown parsing for chat and AI interfaces.',
+    exampleRoute: '/turns',
+  ),
+  Package(
     name: 'heroine',
     description: "The queen of hero transitions. Flutter's most addictive "
         'interactions.',
