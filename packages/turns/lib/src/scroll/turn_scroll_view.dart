@@ -179,7 +179,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// in the horizontal content [padding].
   final Widget? tailSliver;
 
-  /// Optional controller exposing [TurnScrollController.jumpToBottom],
+  /// Optional controller exposing [TurnScrollController.scrollToBottom],
   /// [TurnScrollController.scrollTo], [TurnScrollController.isAwayFromBottom],
   /// [TurnScrollController.distanceFromBottom], and
   /// [TurnScrollController.isPinActive].
@@ -221,7 +221,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   final TurnAnchorConfig anchorConfig;
 
   /// Motor spring used for automatic and programmatic scroll flights
-  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  /// (`pinnedId`, `scrollTo`, and `scrollToBottom`).
   ///
   /// This controls only automatic scroll animations and never affects user drag
   /// [physics]. Under `MediaQuery.disableAnimationsOf(context)`, all
@@ -1092,7 +1092,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   }
 
   @override
-  Future<bool> jumpToBottom({required bool animate, Motion? motion}) async {
+  Future<bool> scrollToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
     if (widget.itemCount == 0) return false;

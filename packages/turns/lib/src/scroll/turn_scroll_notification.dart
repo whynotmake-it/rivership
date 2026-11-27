@@ -28,8 +28,8 @@ class TurnScrollNotification extends ScrollNotification {
   final double trailingExtent;
 
   /// Whether this scroll update is driven by programmatic navigation
-  /// (`scrollTo`, `jumpToBottom`, pin animation, or initial positioning) rather
-  /// than a user gesture.
+  /// (`scrollTo`, `scrollToBottom`, pin animation, or initial positioning)
+  /// rather than a user gesture.
   final bool isProgrammatic;
 
   /// Whether the enclosing view's `pinnedId` currently owns auto-pinning.

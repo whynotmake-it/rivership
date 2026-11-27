@@ -17,7 +17,7 @@ import 'package:turns/src/scroll/turn_sliver.dart';
 ///
 /// Use `SliverTurnList` inside [slivers] to enable offscreen
 /// [TurnScrollController.scrollTo] across multiple sections and exact
-/// [TurnScrollController.jumpToBottom] convergence.
+/// [TurnScrollController.scrollToBottom] convergence.
 class CustomTurnScrollView extends StatefulWidget {
   /// Creates a sliver-native turn scroll view.
   const CustomTurnScrollView({
@@ -52,7 +52,7 @@ class CustomTurnScrollView extends StatefulWidget {
   /// pinned.
   final Object? pinnedId;
 
-  /// Optional controller exposing [TurnScrollController.jumpToBottom],
+  /// Optional controller exposing [TurnScrollController.scrollToBottom],
   /// [TurnScrollController.scrollTo], [TurnScrollController.isAwayFromBottom],
   /// [TurnScrollController.distanceFromBottom], and
   /// [TurnScrollController.isPinActive].
@@ -85,7 +85,7 @@ class CustomTurnScrollView extends StatefulWidget {
   final double jumpThreshold;
 
   /// Motor spring used for automatic and programmatic scroll flights
-  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  /// (`pinnedId`, `scrollTo`, and `scrollToBottom`).
   ///
   /// This controls only automatic scroll animations and never affects user drag
   /// [physics]. Under `MediaQuery.disableAnimationsOf(context)`, all
@@ -320,7 +320,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   }
 
   @override
-  Future<bool> jumpToBottom({required bool animate, Motion? motion}) async {
+  Future<bool> scrollToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
 

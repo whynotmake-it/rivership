@@ -99,9 +99,9 @@ class _SlackDemoState extends State<SlackDemo> {
     }
   }
 
-  Future<void> _jumpToBottom() async {
+  Future<void> _scrollToBottom() async {
     final farAway = _controller.distanceFromBottom.value > 6000;
-    await _controller.jumpToBottom(animate: !farAway);
+    await _controller.scrollToBottom(animate: !farAway);
   }
 
   void _dismissUnread() {
@@ -193,7 +193,7 @@ class _SlackDemoState extends State<SlackDemo> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(_jumpToBottom());
+      unawaited(_scrollToBottom());
     });
   }
 
@@ -408,7 +408,8 @@ class _SlackDemoState extends State<SlackDemo> {
                                       LucideIcons.arrowDown,
                                       size: 14,
                                     ),
-                                    onPressed: () => unawaited(_jumpToBottom()),
+                                    onPressed: () =>
+                                        unawaited(_scrollToBottom()),
                                     child: const Text('Jump to latest'),
                                   ),
                                 ),
@@ -1949,7 +1950,7 @@ List<_SlackMessage> _buildInitialMessages() {
       author: _SlackAuthor.amir,
       timestamp: '1:15 PM',
       markdown:
-          'Caught a nice subtlety in `jumpToBottom()`: we verify the final '
+          'Caught a nice subtlety in `scrollToBottom()`: we verify the final '
           '`RenderBox` is attached and not `keptAlive` offscreen before '
           'freezing the spring target.',
     ),

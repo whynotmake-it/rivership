@@ -161,7 +161,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
       _peerTyping = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_controller.jumpToBottom());
+      if (mounted) unawaited(_controller.scrollToBottom());
     });
 
     _replyTimer?.cancel();
@@ -180,7 +180,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_controller.isAwayFromBottom.value) {
-          unawaited(_controller.jumpToBottom());
+          unawaited(_controller.scrollToBottom());
         }
       });
     });
@@ -341,7 +341,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
                       child: Center(
                         child: _IMessageJumpPill(
                           listenable: _controller.isAwayFromBottom,
-                          onPressed: _controller.jumpToBottom,
+                          onPressed: _controller.scrollToBottom,
                         ),
                       ),
                     ),

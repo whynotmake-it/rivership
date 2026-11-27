@@ -507,7 +507,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                         child: _JumpToBottomButton(
                           buttonKey: const Key('ai.jump_bottom'),
                           listenable: _controller.isAwayFromBottom,
-                          onPressed: _controller.jumpToBottom,
+                          onPressed: _controller.scrollToBottom,
                         ),
                       ),
                     ),

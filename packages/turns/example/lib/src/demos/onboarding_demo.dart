@@ -405,7 +405,7 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
                   child: _JumpToBottomButton(
                     buttonKey: const Key('onboarding.jump_bottom'),
                     listenable: _controller.isAwayFromBottom,
-                    onPressed: () => unawaited(_controller.jumpToBottom()),
+                    onPressed: () => unawaited(_controller.scrollToBottom()),
                   ),
                 ),
               ),
@@ -1292,7 +1292,7 @@ String _buildFinishReply(Set<String> selectedIds) {
   return '''
 You are all set for $summary! Quick checklist before shipping:
 
-1. Attach a **`TurnScrollController`** to drive `scrollTo(...)`, `jumpToBottom()`, and `isAwayFromBottom`.
+1. Attach a **`TurnScrollController`** to drive `scrollTo(...)`, `scrollToBottom()`, and `isAwayFromBottom`.
 2. Wrap every sliver-list item with **`SliverTurnList`** (or `TurnScrollItem`) so offscreen `scrollTo` clears pinned headers automatically.
 3. Pair streaming replies with **`CoilMarkdown(text, streaming: true)`** powered by `MarkdownSession`.''';
 }

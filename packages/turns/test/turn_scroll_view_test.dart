@@ -361,7 +361,7 @@ void main() {
   );
 
   testWidgets(
-    'offscreen scrollTo, jumpToBottom convergence, freeze against streaming '
+    'offscreen scrollTo, scrollToBottom convergence, freeze against streaming '
     'tokens, and user scroll cancellation',
     (tester) async {
       final items = [
@@ -389,17 +389,17 @@ void main() {
       expect(await toM55, isTrue);
       expect(_itemBottomInViewport(tester, 'm55'), closeTo(704, 2));
 
-      // Jump back to m5, then animated jumpToBottom across 75 variable items.
+      // Jump back to m5, then animated scrollToBottom across 75 variable items.
       final backToM5 = controller.scrollTo('m5', animate: false);
       await tester.pumpAndSettle();
       expect(await backToM5, isTrue);
 
-      final jumpFuture = controller.jumpToBottom();
+      final jumpFuture = controller.scrollToBottom();
       await tester.pumpAndSettle();
       expect(await jumpFuture, isTrue);
       expect(_itemBottomInViewport(tester, 'm79'), closeTo(704, 1.5));
 
-      // Freeze against new tokens streaming in after jumpToBottom pressed.
+      // Freeze against new tokens streaming in after scrollToBottom pressed.
       _update(
         state,
         (s) => s.items[s.items.length - 1] = _TestItem('m79', 900),
@@ -409,7 +409,7 @@ void main() {
       await tester.pump();
       final bottomAtPress = controller.position.maxScrollExtent;
 
-      final streamJump = controller.jumpToBottom();
+      final streamJump = controller.scrollToBottom();
       await _pumpFrames(tester, 4);
       _update(
         state,
@@ -510,7 +510,7 @@ void main() {
       await tester.pump();
       final startPixels = controller.position.pixels;
 
-      final jumpFuture = controller.jumpToBottom();
+      final jumpFuture = controller.scrollToBottom();
       await _pumpFrames(tester, 4);
       controller.cancelAutoScroll();
       await tester.pump();
@@ -737,7 +737,7 @@ void main() {
         buildView(anchorHeight: 480, anchorConfig: TurnAnchorConfig.standard),
       );
       await tester.pumpAndSettle();
-      await controller.jumpToBottom(animate: false);
+      await controller.scrollToBottom(animate: false);
       await tester.pumpAndSettle();
       expect(_itemBottomInViewport(tester, 'anchor'), closeTo(360, 1.5));
       expect(_itemTopInViewport(tester, 'anchor'), closeTo(-120, 1.5));
@@ -753,7 +753,7 @@ void main() {
         buildView(anchorHeight: 100, anchorConfig: customWithFloor),
       );
       await tester.pumpAndSettle();
-      await controller.jumpToBottom(animate: false);
+      await controller.scrollToBottom(animate: false);
       await tester.pumpAndSettle();
       expect(_itemTopInViewport(tester, 'anchor'), closeTo(210, 1.5));
 
@@ -763,7 +763,7 @@ void main() {
         buildView(anchorHeight: 200, anchorConfig: customWithFloor),
       );
       await tester.pumpAndSettle();
-      await controller.jumpToBottom(animate: false);
+      await controller.scrollToBottom(animate: false);
       await tester.pumpAndSettle();
       expect(_itemBottomInViewport(tester, 'anchor'), closeTo(360, 1.5));
       expect(_itemTopInViewport(tester, 'anchor'), closeTo(160, 1.5));
@@ -778,14 +778,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await controller.jumpToBottom(animate: false);
+      await controller.scrollToBottom(animate: false);
       await tester.pumpAndSettle();
       expect(_itemTopInViewport(tester, 'anchor'), closeTo(300, 1.5));
     },
   );
 
   testWidgets(
-    'per-call motion on scrollTo and jumpToBottom overrides autoScrollMotion '
+    'per-call motion on scrollTo and scrollToBottom overrides autoScrollMotion '
     'while still respecting reduced motion',
     (tester) async {
       final items = [for (var i = 0; i < 40; i++) _TestItem('m$i', 90)];
@@ -812,11 +812,11 @@ void main() {
       await slowFuture;
       expect(slowArrived, isTrue);
 
-      // Per-call fast motion (100ms) on jumpToBottom settles well within 160ms
-      // (faster than the view's 1000ms autoScrollMotion).
+      // Per-call fast motion (100ms) on scrollToBottom settles well within
+      // 160ms (faster than the view's 1000ms autoScrollMotion).
       bool? fastJumpArrived;
       final fastJump = controller
-          .jumpToBottom(
+          .scrollToBottom(
             motion: const Motion.linear(Duration(milliseconds: 100)),
           )
           .then((v) {
@@ -862,7 +862,7 @@ void main() {
 
       bool? reducedJumpArrived;
       final reducedJump = controller
-          .jumpToBottom(
+          .scrollToBottom(
             motion: const Motion.linear(Duration(milliseconds: 1000)),
           )
           .then((v) {

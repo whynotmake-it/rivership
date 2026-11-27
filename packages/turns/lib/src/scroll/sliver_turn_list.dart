@@ -9,7 +9,7 @@ import 'package:turns/src/scroll/turn_sliver.dart';
 /// [itemSpacing] allows `CustomTurnScrollView` to support offscreen
 /// `controller.scrollTo(anyId)` across multiple [SliverTurnList]s separated by
 /// `SliverAppBar`, `SliverMainAxisGroup`, or `SliverPersistentHeader`, as well
-/// as exact `jumpToBottom()` verification.
+/// as exact `scrollToBottom()` verification.
 class SliverTurnList extends StatefulWidget {
   /// Creates an indexed turn sliver list.
   const SliverTurnList({

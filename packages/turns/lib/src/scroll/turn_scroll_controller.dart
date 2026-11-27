@@ -18,7 +18,7 @@ abstract interface class TurnScrollDelegate {
   /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
   /// or unable to scroll (e.g. empty list or detached position).
-  Future<bool> jumpToBottom({required bool animate, Motion? motion});
+  Future<bool> scrollToBottom({required bool animate, Motion? motion});
 
   /// Scrolls to the item identified by [itemId].
   ///
@@ -164,10 +164,10 @@ class TurnScrollController extends ScrollController {
   /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// the list is empty / unattached.
-  Future<bool> jumpToBottom({bool animate = true, Motion? motion}) async {
+  Future<bool> scrollToBottom({bool animate = true, Motion? motion}) async {
     final delegate = _delegate;
     if (delegate == null) return false;
-    return delegate.jumpToBottom(animate: animate, motion: motion);
+    return delegate.scrollToBottom(animate: animate, motion: motion);
   }
 
   /// Scrolls to the item identified by [itemId], even if it is currently

@@ -35,7 +35,7 @@ void main() {
   testWidgets(
     'CustomTurnScrollView composes SliverPersistentHeader app bar, multiple '
     'SliverMainAxisGroup sections with SliverTurnList, offscreen scrollTo '
-    'across sections, exact jumpToBottom, and SliverTurnStage pinning',
+    'across sections, exact scrollToBottom, and SliverTurnStage pinning',
     (tester) async {
       const viewport = Size(390, 800);
       tester.view
@@ -199,9 +199,9 @@ void main() {
       await tester.pump();
       expect(await interrupted, isFalse);
 
-      // Exact jumpToBottom across all 3 SliverTurnLists lands at bottom of t29
-      // (800 - (16 safe + 80 padding) = 704).
-      final toBottom = controller.jumpToBottom();
+      // Exact scrollToBottom across all 3 SliverTurnLists lands at bottom of
+      // t29 (800 - (16 safe + 80 padding) = 704).
+      final toBottom = controller.scrollToBottom();
       await tester.pumpAndSettle();
       expect(await toBottom, isTrue);
       expect(

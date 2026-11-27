@@ -34,7 +34,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   double get widgetJumpThreshold;
 
   /// Optional custom Motor spring motion for automatic/programmatic scroll
-  /// flights (`pinnedId`, `scrollTo`, `jumpToBottom`).
+  /// flights (`pinnedId`, `scrollTo`, `scrollToBottom`).
   Motion? get widgetAutoScrollMotion;
 
   /// Effective [TurnAnchorConfig] used when computing [pinTargetOffset].
@@ -109,7 +109,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   }
 
   /// Resolved Motor motion for automatic/programmatic scroll flights
-  /// (`pinnedId`, `scrollTo`, and `jumpToBottom`).
+  /// (`pinnedId`, `scrollTo`, and `scrollToBottom`).
   Motion get resolvedMotion =>
       widgetAutoScrollMotion ?? defaultTurnAutoScrollMotion;
 
@@ -202,7 +202,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   var _inProgrammaticJump = false;
 
   /// Whether this view is currently driven by programmatic scrolling
-  /// (`scrollTo`, `jumpToBottom`, pin animation, or initial positioning).
+  /// (`scrollTo`, `scrollToBottom`, pin animation, or initial positioning).
   bool get isProgrammaticScroll =>
       _inProgrammaticJump ||
       needsInitialBottomJump ||
