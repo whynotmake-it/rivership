@@ -645,6 +645,29 @@ void main() {
       await tester.pumpAndSettle(frame);
       expect(tester.getSize(find.byType(MotionSizeSwitcher)), Size.zero);
     });
+
+    testWidgets(
+      'growing the same child in place stays opaque without flickering',
+      (tester) async {
+        const key = ValueKey('same');
+        await tester.pumpWidget(
+          sizeSwitcher(const SizedBox(key: key, width: 100, height: 20)),
+        );
+        await tester.pumpWidget(
+          sizeSwitcher(const SizedBox(key: key, width: 140, height: 20)),
+        );
+        for (var i = 0; i < 10; i++) {
+          await tester.pump(frame);
+          final opacity = tester.widget<Opacity>(
+            find
+                .ancestor(of: find.byKey(key), matching: find.byType(Opacity))
+                .first,
+          );
+          expect(opacity.opacity, 1);
+        }
+        await tester.pumpAndSettle(frame);
+      },
+    );
   });
 
   testWidgets('a leaving child is inert, and interactive again if it returns '

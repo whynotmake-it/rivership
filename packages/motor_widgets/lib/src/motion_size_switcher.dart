@@ -100,6 +100,12 @@ class _MotionSizeSwitcherState extends State<MotionSizeSwitcher> {
   /// [RawMotionSize.widthGrowth].
   final _growth = ValueNotifier<double>(1);
 
+  /// Whether the current child switched in (as opposed to resizing in place).
+  ///
+  /// Only a newly switched-in child fades with [_growth]; a settled child
+  /// whose own width grows (such as an animated font weight) stays opaque.
+  bool _switching = false;
+
   /// Wraps the user's transition. Replaced when the user's builder changes,
   /// which makes [MotionSwitcher] rebuild its transitions.
   late AnimatedSwitcherTransitionBuilder _transition = _buildTransition;
@@ -109,6 +115,12 @@ class _MotionSizeSwitcherState extends State<MotionSizeSwitcher> {
     super.didUpdateWidget(oldWidget);
     if (widget.transitionBuilder != oldWidget.transitionBuilder) {
       _transition = _buildTransition;
+    }
+    final oldChild = oldWidget.child;
+    final newChild = widget.child;
+    if (newChild != null &&
+        (oldChild == null || !Widget.canUpdate(oldChild, newChild))) {
+      _switching = true;
     }
   }
 
@@ -122,11 +134,20 @@ class _MotionSizeSwitcherState extends State<MotionSizeSwitcher> {
     return ListenableBuilder(
       listenable: Listenable.merge([_growth, presence]),
       child: widget.transitionBuilder(child, presence),
-      builder: (context, child) => Opacity(
-        // Only a child on its way in follows the growth.
-        opacity: presence.status == AnimationStatus.reverse ? 1 : _growth.value,
-        child: child,
-      ),
+      builder: (context, child) {
+        if (_switching &&
+            presence.status == AnimationStatus.completed &&
+            _growth.value >= 1) {
+          _switching = false;
+        }
+        return Opacity(
+          // Only a newly switched-in child follows the growth.
+          opacity: _switching && presence.status != AnimationStatus.reverse
+              ? _growth.value
+              : 1,
+          child: child,
+        );
+      },
     );
   }
 
@@ -150,6 +171,7 @@ class _MotionSizeSwitcherState extends State<MotionSizeSwitcher> {
       tickerRate: tickerRate,
       debugLabel: '$label size',
       widthGrowth: _growth,
+      onEnd: () => _switching = false,
       child: MotionSwitcher(
         motion: motion,
         exitMotion: exitMotion,
