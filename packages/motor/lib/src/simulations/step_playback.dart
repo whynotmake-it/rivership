@@ -844,7 +844,6 @@ class StepPlayback<T extends Object> {
         final newFull = newMotion.createSimulation(
           start: baseSim.start,
           end: target,
-          velocity: 0,
         );
         final newSeconds = newMotion.duration.toSeconds();
         return _ContinuedSimulation.after(newFull, fraction * newSeconds);
