@@ -158,6 +158,16 @@ sealed class TrackStep<T extends Object> {
   ///   [steps].
   /// - [LoopMode.none] plays [steps] once and continues to the next step.
   ///
+  /// When [from] is provided, the loop jumps to [from] on entry and uses it as
+  /// the loop's first target anchor (without appearing in `onStep` indices):
+  /// - [LoopMode.seamless] snaps back to [from] at each cycle wrap, so
+  ///   `TrackStep.loop([.to(1, motion: lap)], from: 0, mode: .seamless)` loops
+  ///   `0 → 1 ⇝ 0 → 1`.
+  /// - [LoopMode.pingPong] reverses back to [from] using the step's motion, so
+  ///   `TrackStep.loop([.to(1, motion: m)], from: 0, mode: .pingPong)` bounces
+  ///   `0 ↔ 1`.
+  /// - [LoopMode.loop] jumps to [from] at the start of each cycle.
+  ///
   /// When [count] is provided, the loop runs that many cycles (full
   /// forward-and-reverse round-trips for [LoopMode.pingPong]) and then moves
   /// on to any following step. When [count] is `null` and [mode] loops, it
@@ -169,6 +179,7 @@ sealed class TrackStep<T extends Object> {
   /// [TrackStep.sync] barriers.
   const factory TrackStep.loop(
     List<TrackStep<T>> steps, {
+    T? from,
     LoopMode mode,
     int? count,
     Object? together,
@@ -404,6 +415,7 @@ final class StepLoop<T extends Object> extends TrackStep<T> {
   /// Creates a loop step.
   const StepLoop(
     this.steps, {
+    this.from,
     this.mode = LoopMode.loop,
     this.count,
     this.together,
@@ -416,6 +428,10 @@ final class StepLoop<T extends Object> extends TrackStep<T> {
   ///
   /// Steps compare by this list, so do not modify it after passing it in.
   final List<TrackStep<T>> steps;
+
+  /// Optional starting value to jump to on loop entry and use as the loop's
+  /// first target anchor.
+  final T? from;
 
   /// How [steps] repeat.
   final LoopMode mode;
@@ -441,6 +457,7 @@ final class StepLoop<T extends Object> extends TrackStep<T> {
       other is StepLoop<T> &&
           other.runtimeType == runtimeType &&
           listEquals(other.steps, steps) &&
+          other.from == from &&
           other.mode == mode &&
           other.count == count &&
           other.together == together;
@@ -449,6 +466,7 @@ final class StepLoop<T extends Object> extends TrackStep<T> {
   int get hashCode => Object.hash(
         runtimeType,
         _hashList(steps),
+        from,
         mode,
         count,
         together,
@@ -456,6 +474,7 @@ final class StepLoop<T extends Object> extends TrackStep<T> {
 
   @override
   String toString() => '${objectRuntimeType(this, 'StepLoop')}($steps'
+      '${from == null ? '' : ', from: $from'}'
       '${mode == LoopMode.loop ? '' : ', mode: ${mode.name}'}'
       '${count == null ? '' : ', count: $count'}'
       '${together == null ? '' : ', together: $together'})';

@@ -1163,19 +1163,24 @@ class TrackController extends Animation<TrackValueReader>
       );
     }
 
-    bool hasTwoTargets(List<TrackStep<Object>> list) {
-      var targets = 0;
+    bool hasTwoTargets(
+      List<TrackStep<Object>> list, {
+      int initialCount = 0,
+    }) {
+      var targets = initialCount;
       void scan(List<TrackStep<Object>> items) {
         for (final step in items) {
           if (step is StepTo || step is StepAt) {
             if (++targets >= 2) return;
-          } else if (step case StepLoop(:final steps)) {
+          } else if (step case StepLoop(:final steps, :final from)) {
+            if (from != null && ++targets >= 2) return;
             scan(steps);
             if (targets >= 2) return;
           }
         }
       }
 
+      if (targets >= 2) return true;
       scan(list);
       return targets >= 2;
     }
@@ -1184,15 +1189,37 @@ class TrackController extends Animation<TrackValueReader>
       if (step case StepSync(:final token)) {
         register(token);
       } else if (step
-          case StepLoop(:final steps, :final mode, :final together)) {
+          case StepLoop(
+            :final steps,
+            :final from,
+            :final mode,
+            :final together,
+          )) {
         _joinSyncTokens(track, steps, rounds);
         if (together != null) {
-          if (mode == LoopMode.pingPong && hasTwoTargets(steps)) {
+          if (mode == LoopMode.pingPong &&
+              hasTwoTargets(steps, initialCount: from != null ? 1 : 0)) {
             register(LoopSyncToken(together, turnaround: true));
           }
           register(LoopSyncToken(together));
         }
       }
+    }
+  }
+
+  /// Updates only the step motions of running tracks without restarting their
+  /// playback from step 0. Idle tracks are left untouched.
+  @internal
+  void internalUpdateMotions(List<TrackAnimation> animations) {
+    for (final animation in animations) {
+      _updateAnimationMotions(_applyMotionOverride(animation));
+    }
+  }
+
+  void _updateAnimationMotions<T extends Object>(TrackAnimation<T> animation) {
+    final slot = _slots[animation.track];
+    if (slot is _TrackSlot<T>) {
+      slot.updateMotions(animation.steps);
     }
   }
 

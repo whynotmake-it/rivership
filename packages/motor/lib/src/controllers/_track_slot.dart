@@ -436,6 +436,15 @@ class _TrackSlot<T extends Object> {
       .._playing = true;
   }
 
+  /// Updates the step motions of this slot's running playback in place without
+  /// restarting from step 0. No-op when idle.
+  void updateMotions(List<TrackStep<T>> steps) {
+    final playback = _stepPlayback;
+    if (playback == null || !_playing) return;
+    playback.updateMotions(steps);
+    _pullPlaybackState();
+  }
+
   void _pullPlaybackState() {
     _stepPlayback!.copyValuesInto(_currentValues);
     _velocitiesStale = true;

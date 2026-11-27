@@ -973,6 +973,285 @@ void main() {
     );
   });
 
+  group('TrackStep.loop from: anchor', () {
+    testWidgets(
+      'seamless, pingPong (with together turnaround), loop, and count work '
+      'with a single step + from:, without shifting onStep indices',
+      (tester) async {
+        final controller = TrackController(vsync: tester);
+        addTearDown(controller.dispose);
+
+        // 1. Seamless: from: 0 with single .to(1) loops 0 -> 1 ~> 0 -> 1.
+        final shimmer = Track<double>(MotionConverter.single, initial: 0.5);
+        final entered = <int>[];
+        controller.animate(
+          [
+            shimmer([
+              const TrackStep.loop(
+                [TrackStep.to(1, motion: linear100)],
+                from: 0,
+                mode: LoopMode.seamless,
+              ),
+            ]),
+          ],
+          onStep: (_, index) => entered.add(index),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.value(shimmer), closeTo(0.5, 1e-2));
+        await tester.pump(const Duration(milliseconds: 100)); // t = 150ms
+        expect(controller.value(shimmer), closeTo(0.5, 1e-2));
+        expect(entered, [0, 0]);
+        controller.stop(canceled: true);
+
+        // 2. PingPong with from: 0 + together: bounces 0 -> 1 -> 0 and
+        //    synchronizes turnaround with a sibling loop.
+        final fast = Track<double>(MotionConverter.single, initial: 0);
+        final slow = Track<double>(MotionConverter.single, initial: 0);
+        controller.animate([
+          fast([
+            const TrackStep.loop(
+              [TrackStep.to(1, motion: linear100)],
+              from: 0,
+              mode: LoopMode.pingPong,
+              together: #bounce,
+            ),
+          ]),
+          slow([
+            const TrackStep.loop(
+              [
+                TrackStep.to(
+                  1,
+                  motion: Motion.linear(Duration(milliseconds: 200)),
+                ),
+              ],
+              from: 0,
+              mode: LoopMode.pingPong,
+              together: #bounce,
+            ),
+          ]),
+        ]);
+        await tester.pump();
+        // At 150ms, fast reached 1 at 100ms and must hold at 1 until slow
+        // arrives at 200ms (turnaround barrier).
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(controller.value(fast), closeTo(1, 1e-2));
+        expect(controller.value(slow), closeTo(0.75, 1e-2));
+        // At 250ms (50ms into reverse leg), fast is halfway back to 0.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(controller.value(fast), closeTo(0.5, 1e-2));
+        expect(controller.value(slow), closeTo(0.75, 1e-2));
+        controller.stop(canceled: true);
+
+        // 3. Finite count: 2 with from: 0 exits cleanly into following step.
+        final bell = Track<double>(MotionConverter.single, initial: 0.8);
+        var settled = false;
+        controller
+            .animate([
+              bell([
+                const TrackStep.loop(
+                  [TrackStep.to(1, motion: linear100)],
+                  from: 0,
+                  mode: LoopMode.pingPong,
+                  count: 2,
+                ),
+                const TrackStep.to(0.25, motion: linear100),
+              ]),
+            ])
+            .then((_) => settled = true);
+        await tester.pump();
+        // 2 pingPong cycles = 400ms, then 0 -> 0.25 (100ms) = 500ms.
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(settled, isTrue);
+        expect(controller.value(bell), closeTo(0.25, 1e-2));
+      },
+    );
+  });
+
+  group('TrackBuilder in-place motion updates', () {
+    testWidgets(
+      'updating LinearMotion duration every frame inside a seamless loop '
+      'keeps phase continuity at the true new speed without snapping or '
+      'restarting (including after folding)',
+      (tester) async {
+        final progress = Track<double>(MotionConverter.single, initial: 0);
+        var current = 0.0;
+
+        Widget build(Duration lapDuration) => TrackBuilder(
+              animations: [
+                progress([
+                  TrackStep.loop(
+                    [TrackStep.to(1, motion: Motion.linear(lapDuration))],
+                    from: 0,
+                    mode: LoopMode.seamless,
+                  ),
+                ]),
+              ],
+              builder: (context, value, child) {
+                current = value(progress);
+                return const SizedBox();
+              },
+            );
+
+        // Start at 1000ms per lap (speed 1.0/s) and run 2.25s so the loop
+        // has already folded before we start changing duration.
+        await tester.pumpWidget(build(const Duration(milliseconds: 1000)));
+        await tester.pump();
+        for (var i = 0; i < 45; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(current, closeTo(0.25, 0.02));
+
+        // Now change duration every 16ms frame (250ms per lap => 4.0/s).
+        // Over 10 frames (160ms), progress should advance by ~0.64 (from ~0.25
+        // to ~0.89) with zero snap back to 0 and no exponential slowdown.
+        var previous = current;
+        for (var i = 0; i < 10; i++) {
+          final lapMs = 250 + (i % 2) * 2; // changes every single frame
+          await tester.pumpWidget(build(Duration(milliseconds: lapMs)));
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(
+            current,
+            greaterThan(previous + 0.05),
+            reason: 'frame $i should advance at ~4/s without Zeno slowdown',
+          );
+          previous = current;
+        }
+        expect(current, closeTo(0.89, 0.04));
+
+        // Pump 100ms more: wraps seamlessly past 1.0 into the next lap.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(current, closeTo(0.29, 0.05));
+      },
+    );
+
+    testWidgets(
+      'swapping a spring motion mid-sequence stays on the current step '
+      'and idle settled animations do not restart on motion-only rebuilds',
+      (tester) async {
+        final x = Track<double>(MotionConverter.single, initial: 0);
+        final entered = <int>[];
+        var current = 0.0;
+
+        Widget build(Motion secondMotion) => TrackBuilder(
+              onStep: (_, step) => entered.add(step),
+              animations: [
+                x([
+                  const TrackStep.to(100, motion: linear100),
+                  TrackStep.to(200, motion: secondMotion),
+                ]),
+              ],
+              builder: (context, value, child) {
+                current = value(x);
+                return const SizedBox();
+              },
+            );
+
+        await tester.pumpWidget(build(const Motion.smoothSpring()));
+        await tester.pump();
+        // Finish step 0 (100ms) and advance 80ms into step 1.
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 80));
+        expect(entered, [0, 1]);
+        final midStep1 = current;
+        expect(midStep1, greaterThan(105));
+        expect(midStep1, lessThan(195));
+
+        // Swap step 1's motion to a bouncy spring mid-flight: must NOT restart
+        // step 0 or jump value.
+        await tester.pumpWidget(build(const Motion.bouncySpring()));
+        expect(current, closeTo(midStep1, 1e-6));
+        expect(entered, [0, 1]);
+
+        await tester.pumpAndSettle();
+        expect(current, closeTo(200, 1e-3));
+        expect(entered, [0, 1]);
+
+        // Once settled, changing motion again does not restart the animation.
+        await tester.pumpWidget(build(const Motion.snappySpring()));
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(current, closeTo(200, 1e-3));
+        expect(entered, [0, 1]);
+      },
+    );
+  });
+
+  group('TrackBuilder(active: false) and start value precedence', () {
+    testWidgets(
+      'respects animation.from > initialValues > Track.initial on inactive '
+      'mount and restartTrigger replay',
+      (tester) async {
+        final withInitial = Track<double>(MotionConverter.single, initial: 0);
+        final withoutInitial = Track<double>(MotionConverter.single);
+        final withFrom = Track<double>(MotionConverter.single, initial: 0);
+        final velocitySeeded = Track<double>(
+          MotionConverter.single,
+          initial: 0,
+        );
+
+        var a = -1.0;
+        var b = -1.0;
+        var c = -1.0;
+        var dPeak = 0.0;
+
+        Widget build({required bool active, int restart = 0}) => TrackBuilder(
+              active: active,
+              restartTrigger: restart,
+              initialValues: [
+                withInitial.value(1),
+                withoutInitial.value(42),
+                withFrom.value(10),
+                velocitySeeded.velocity(200),
+              ],
+              animations: [
+                withInitial([const TrackStep.to(2, motion: linear100)]),
+                withoutInitial([const TrackStep.to(100, motion: linear100)]),
+                withFrom(
+                  [const TrackStep.to(100, motion: linear100)],
+                  from: 50,
+                ),
+                velocitySeeded([
+                  const TrackStep.to(0, motion: CupertinoMotion()),
+                ]),
+              ],
+              builder: (context, value, child) {
+                a = value(withInitial);
+                b = value(withoutInitial);
+                c = value(withFrom);
+                if (value(velocitySeeded) > dPeak) {
+                  dPeak = value(velocitySeeded);
+                }
+                return const SizedBox();
+              },
+            );
+
+        // Mounted inactive: must honor initialValues (1 and 42) and let
+        // animation.from (50) beat initialValues (10).
+        await tester.pumpWidget(build(active: false));
+        expect(a, 1);
+        expect(b, 42);
+        expect(c, 50);
+
+        // Turning active plays from those exact start values, then restarting
+        // preserves from > initialValues > Track.initial and keeps velocity.
+        await tester.pumpWidget(build(active: true));
+        await tester.pumpAndSettle();
+        expect(a, closeTo(2, 1e-3));
+        expect(c, closeTo(100, 1e-3));
+
+        dPeak = 0;
+        await tester.pumpWidget(build(active: true, restart: 1));
+        expect(a, 1);
+        expect(b, 42);
+        expect(c, 50);
+        await tester.pumpAndSettle();
+        expect(dPeak, greaterThan(0.5));
+      },
+    );
+  });
+
   group('TrackController dispose guard', () {
     testWidgets('animate after dispose asserts clearly', (tester) async {
       final track = Track<double>(MotionConverter.single, initial: 0);

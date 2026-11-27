@@ -222,11 +222,19 @@ class PhaseTrackController<P extends Object> extends TrackController {
     final before = {
       for (final animation in remaining(old)) animation.track: animation,
     };
-    final changed = [
-      for (final animation in remaining(timeline))
-        if (before[animation.track] != animation) animation,
-    ];
-    if (changed.isNotEmpty) animate(changed);
+    final toAnimate = <TrackAnimation>[];
+    final toUpdateMotion = <TrackAnimation>[];
+    for (final animation in remaining(timeline)) {
+      final previous = before[animation.track];
+      if (previous == animation) continue;
+      if (previous != null && previous.hasSameStructureAs(animation)) {
+        toUpdateMotion.add(animation);
+      } else {
+        toAnimate.add(animation);
+      }
+    }
+    if (toUpdateMotion.isNotEmpty) internalUpdateMotions(toUpdateMotion);
+    if (toAnimate.isNotEmpty) animate(toAnimate);
     return true;
   }
 
