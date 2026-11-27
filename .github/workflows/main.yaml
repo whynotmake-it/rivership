@@ -85,11 +85,11 @@ jobs:
         run: flutter pub get
 
       - name: 🎬 Install FFmpeg
-        # snaptest's video recording shells out to ffmpeg.
+        # snaptest's video recording shells out to ffmpeg. Installed via apt
+        # rather than setup-ffmpeg, whose johnvansickle.com scrape frequently
+        # fails on GitHub Actions runners.
         if: ${{ matrix.ffmpeg }}
-        uses: FedericoCarboni/setup-ffmpeg@v3
-        with:
-          github-token: ${{ github.token }}
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: 📝 Run Test
         working-directory: ${{ matrix.path }}
