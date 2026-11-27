@@ -6,8 +6,8 @@ import 'package:flutter/widgets.dart';
 import 'package:turns_example/src/shell/turns_environment.dart';
 import 'package:turns_example/src/shell/turns_shell.dart';
 
-/// Overview page introducing `turns`, its five interactive demos, and its core
-/// scroll and streaming-markdown building blocks.
+/// Overview page introducing `turns`, its interactive demos, and the concept
+/// pages that draw its ideas live.
 class TurnsOverviewPage extends StatelessWidget {
   const TurnsOverviewPage({super.key});
 
@@ -108,50 +108,27 @@ class TurnsOverviewPage extends StatelessWidget {
                   Semantics(
                     header: true,
                     child: Text(
-                      'Core Primitives',
+                      'Concepts, drawn live',
                       style: text.subtitle.copyWith(fontWeight: text.emphasis),
                     ),
                   ),
                   const SizedBox(height: 12),
                   CoilCardGroup(
                     columns: columns,
-                    children: const [
-                      CoilCard(
-                        variant: CoilCardVariant.inline,
-                        title: Text('TurnScrollView'),
-                        description: Text(
-                          'Bidirectional Viewport(center:) timeline with '
-                          '0px prepend stability, SliverTurnStage pinning, '
-                          'and O(1) opening at any message.',
+                    children: [
+                      for (final concept in turnsConcepts)
+                        CoilCard(
+                          variant: CoilCardVariant.inline,
+                          icon: TurnsGlyphIcon(concept.glyph),
+                          title: Text(concept.title),
+                          description: Text(concept.description),
+                          onPressed: () => unawaited(
+                            openTurnsRoute(
+                              AutoRouter.of(context),
+                              concept.routeName,
+                            ),
+                          ),
                         ),
-                      ),
-                      CoilCard(
-                        variant: CoilCardVariant.inline,
-                        title: Text('TurnScrollView.sectioned'),
-                        description: Text(
-                          'Typed section headers with an isPinned flag for '
-                          'inline dividers vs floating sticky pills, O(1) '
-                          'open, and smooth push-up across the center seam.',
-                        ),
-                      ),
-                      CoilCard(
-                        variant: CoilCardVariant.inline,
-                        title: Text('CustomTurnScrollView + SliverTurnList'),
-                        description: Text(
-                          'Escape hatch for bounded feeds needing '
-                          'SliverAppBar, SliverGrid, or stacked '
-                          'SliverPersistentHeaders with offscreen scrollTo().',
-                        ),
-                      ),
-                      CoilCard(
-                        variant: CoilCardVariant.inline,
-                        title: Text('MarkdownSession'),
-                        description: Text(
-                          'Pure-Dart incremental GFM parser that freezes '
-                          'settled blocks and closes in-flight syntax cleanly '
-                          'while tokens stream.',
-                        ),
-                      ),
                     ],
                   ),
                 ],

@@ -16,6 +16,10 @@ const turnsWhatsAppRouteName = 'turns:whatsapp';
 const turnsSlackRouteName = 'turns:slack';
 const turnsIMessageRouteName = 'turns:imessage';
 const turnsOnboardingRouteName = 'turns:onboarding';
+const turnsPrependRouteName = 'turns:concept-prepend';
+const turnsPaginationRouteName = 'turns:concept-pagination';
+const turnsJumpsRouteName = 'turns:concept-jumps';
+const turnsStreamingRouteName = 'turns:concept-streaming';
 
 /// A Lucide glyph paired across stroke weights so Coil controls can emphasize
 /// icons on hover and selection while remaining tree-shakeable.
@@ -57,6 +61,19 @@ class TurnsGlyph {
   static const monitor = TurnsGlyph(
     LucideIcons300.monitor,
     LucideIcons400.monitor,
+  );
+  static const arrowUpToLine = TurnsGlyph(
+    LucideIcons300.arrowUpToLine,
+    LucideIcons400.arrowUpToLine,
+  );
+  static const layers = TurnsGlyph(
+    LucideIcons300.layers,
+    LucideIcons400.layers,
+  );
+  static const zap = TurnsGlyph(LucideIcons300.zap, LucideIcons400.zap);
+  static const textCursor = TurnsGlyph(
+    LucideIcons300.textCursorInput,
+    LucideIcons400.textCursorInput,
   );
 }
 
@@ -156,10 +173,53 @@ const turnsDemos = <TurnsDemoEntry>[
     title: 'Onboarding',
     primitive: 'CustomTurnScrollView',
     description:
-        'Bounded sliver chat composing a collapsing hero '
-        'SliverPersistentHeader, interactive goal-picker SliverGrid, and '
-        'SliverTurnList + SliverTurnStage.',
+        'Three steps in one scroll view, each a different sliver: a '
+        'collapsing hero, sticky step headers, a grid, a carousel, a list '
+        'and a chat. "Show slivers" outlines them.',
     glyph: TurnsGlyph.compass,
+  ),
+];
+
+/// Concept pages: one idea each, drawn live, like motor's chapters.
+const turnsConcepts = <TurnsDemoEntry>[
+  TurnsDemoEntry(
+    routeName: turnsPrependRouteName,
+    path: 'concepts/prepend',
+    title: 'Prepend without a jump',
+    primitive: 'Viewport(center:)',
+    description:
+        'Load older messages into a ListView and a TurnScrollView side by '
+        'side, and watch what you were reading.',
+    glyph: TurnsGlyph.arrowUpToLine,
+  ),
+  TurnsDemoEntry(
+    routeName: turnsPaginationRouteName,
+    path: 'concepts/pagination',
+    title: 'Paginated history',
+    primitive: 'TurnScrollNotification',
+    description:
+        'Open in the middle of 400 messages and page in both directions, '
+        'with the loaded range drawn beside the chat.',
+    glyph: TurnsGlyph.layers,
+  ),
+  TurnsDemoEntry(
+    routeName: turnsJumpsRouteName,
+    path: 'concepts/jumps',
+    title: 'Long jumps',
+    primitive: 'scrollTo · scrollToBottom',
+    description:
+        'Jump across 10,000 messages and count the rows each jump builds.',
+    glyph: TurnsGlyph.zap,
+  ),
+  TurnsDemoEntry(
+    routeName: turnsStreamingRouteName,
+    path: 'concepts/streaming-markdown',
+    title: 'Streaming markdown',
+    primitive: 'MarkdownSession',
+    description:
+        'See which blocks freeze and which tail is parsed again on every '
+        'token, and how completeMarkdown repairs it.',
+    glyph: TurnsGlyph.textCursor,
   ),
 ];
 
@@ -284,6 +344,22 @@ class _TurnsNavigationState extends State<_TurnsNavigation> {
     ),
     children: [
       CoilSidebarGroup(
+        label: const Text('Concepts'),
+        child: CoilSidebarMenu(
+          items: [
+            for (final concept in turnsConcepts)
+              CoilSidebarItem(
+                label: Text(concept.title),
+                leading: TurnsGlyphIcon(concept.glyph),
+                selected: concept.routeName == current,
+                onPressed: () => unawaited(
+                  openTurnsRoute(widget.router, concept.routeName),
+                ),
+              ),
+          ],
+        ),
+      ),
+      CoilSidebarGroup(
         label: const Text('Demos'),
         child: CoilSidebarMenu(
           items: [
@@ -302,7 +378,10 @@ class _TurnsNavigationState extends State<_TurnsNavigation> {
   );
 
   Widget _bodyFor(BuildContext context, String current) {
-    final demo = turnsDemos.where((d) => d.routeName == current).firstOrNull;
+    final demo = [
+      ...turnsDemos,
+      ...turnsConcepts,
+    ].where((d) => d.routeName == current).firstOrNull;
     final title = demo?.title ?? 'Overview';
     final primitive = demo?.primitive;
     final isOverview = current == turnsOverviewRouteName;

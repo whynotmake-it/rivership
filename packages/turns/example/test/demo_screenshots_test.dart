@@ -136,7 +136,7 @@ void main() {
       await _pumpFrames(tester, const Duration(milliseconds: 500));
 
       expect(find.text('Interactive Demos'), findsOneWidget);
-      expect(find.text('Core Primitives'), findsOneWidget);
+      expect(find.text('Concepts, drawn live'), findsOneWidget);
 
       await snap(name: 'shell_desktop_overview');
       await tester.pumpWidget(const SizedBox.shrink());
