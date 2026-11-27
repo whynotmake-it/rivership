@@ -6,6 +6,7 @@ import 'package:snaptest/snaptest.dart';
 import 'package:turns_example/main.dart';
 import 'package:turns_example/src/demos/ai_assistant_demo.dart';
 import 'package:turns_example/src/demos/imessage_demo.dart';
+import 'package:turns_example/src/demos/onboarding_demo.dart';
 import 'package:turns_example/src/demos/slack_demo.dart';
 import 'package:turns_example/src/demos/whatsapp_demo.dart';
 import 'package:turns_example/src/shell/turns_shell.dart';
@@ -258,6 +259,26 @@ void main() {
       expect(find.byKey(const Key('imessage.jump_ref')), findsOneWidget);
 
       await snap(name: 'imessage_iphone');
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  snapTest(
+    'onboarding iphone',
+    devices: {Devices.ios.iPhone16Pro},
+    settings: _phoneSettings,
+    (tester) async {
+      await tester.pumpWidget(
+        _buildPhoneDemoHost(
+          padSafeArea: true,
+          child: const OnboardingDemo(),
+        ),
+      );
+      await _pumpFrames(tester, const Duration(milliseconds: 600));
+
+      expect(find.byKey(const Key('onboarding.continue')), findsOneWidget);
+
+      await snap(name: 'onboarding_iphone');
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

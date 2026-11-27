@@ -127,11 +127,13 @@ class TurnScrollItem extends StatelessWidget {
 ///
 /// Let `V = viewportMainAxisExtent - topClearance - bottomClearance` and let
 /// `H_u` be the anchor item's height (`anchor.geometry.scrollExtent`):
-/// - Short anchor (`H_u <= V / 2`): reserves `minExtent = V`, so scrolling to
-///   `maxScrollExtent` places the anchor's top at `topClearance`.
-/// - Tall anchor (`H_u > V / 2`): reserves `minExtent = H_u + V / 2`, so
-///   scrolling to `maxScrollExtent` places the anchor's bottom at
-///   `topClearance + V / 2`.
+/// - Short anchor (`H_u <= V * maxAnchorFraction`): reserves `minExtent = V`,
+///   so scrolling to `maxScrollExtent` places the anchor's top at
+///   `topClearance`.
+/// - Tall anchor (`H_u > V * maxAnchorFraction`): reserves
+///   `minExtent = H_u + V * (1.0 - maxAnchorFraction)`, so scrolling to
+///   `maxScrollExtent` leaves `1.0 - maxAnchorFraction` of `V` below the
+///   anchor's bottom.
 ///
 /// The reported `scrollExtent` is `max(minExtent, actualContentExtent)`, so
 /// `maxScrollExtent` stays completely constant while the reply grows inside
@@ -148,9 +150,14 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
     required Widget afterSliver,
     this.topClearance,
     this.bottomClearance,
+    this.maxAnchorFraction = 0.5,
     Widget? tailSliver,
     super.key,
-  }) : super(children: [anchorSliver, afterSliver, ?tailSliver]);
+  }) : assert(
+         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
+         'maxAnchorFraction must be in (0.0, 1.0]',
+       ),
+       super(children: [anchorSliver, afterSliver, ?tailSliver]);
 
   /// Viewport top clearance (safe area + content top padding) where a pinned
   /// short anchor item should rest. Defaults to [TurnScrollScope.topClearance].
@@ -160,12 +167,21 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
   /// Defaults to [TurnScrollScope.bottomClearance].
   final double? bottomClearance;
 
+  /// Maximum fraction of the usable viewport height that a pinned anchor item
+  /// may occupy before scrolling up to preserve room below it for the reply.
+  ///
+  /// Defaults to `0.5` (tall prompts scroll up so the bottom 50% remains clear
+  /// for the response). Set to `1.0` to keep tall anchors pinned at the top
+  /// edge regardless of height.
+  final double maxAnchorFraction;
+
   @override
   RenderSliverTurnStage createRenderObject(BuildContext context) {
     final scope = TurnScrollScope.maybeOf(context);
     return RenderSliverTurnStage(
       topClearance: topClearance ?? scope?.topClearance ?? 0,
       bottomClearance: bottomClearance ?? scope?.bottomClearance ?? 0,
+      maxAnchorFraction: maxAnchorFraction,
       onAttach: scope?.onTurnStageAttach,
       onDetach: scope?.onTurnStageDetach,
     );
@@ -180,6 +196,7 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
     renderObject
       ..topClearance = topClearance ?? scope?.topClearance ?? 0
       ..bottomClearance = bottomClearance ?? scope?.bottomClearance ?? 0
+      ..maxAnchorFraction = maxAnchorFraction
       ..onAttach = scope?.onTurnStageAttach
       ..onDetach = scope?.onTurnStageDetach;
   }
@@ -199,10 +216,32 @@ class RenderSliverTurnStage extends RenderSliver
   RenderSliverTurnStage({
     required double topClearance,
     required double bottomClearance,
+    double maxAnchorFraction = 0.5,
     this.onAttach,
     this.onDetach,
-  }) : _topClearance = topClearance,
-       _bottomClearance = bottomClearance;
+  }) : assert(
+         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
+         'maxAnchorFraction must be in (0.0, 1.0]',
+       ),
+       _topClearance = topClearance,
+       _bottomClearance = bottomClearance,
+       _maxAnchorFraction = maxAnchorFraction;
+
+  /// Computes the minimum reserved scroll extent for a turn stage given
+  /// [usableExtent], [anchorExtent], and [maxAnchorFraction].
+  static double computeMinExtent({
+    required double usableExtent,
+    required double anchorExtent,
+    double maxAnchorFraction = 0.5,
+  }) {
+    assert(
+      maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
+      'maxAnchorFraction must be in (0.0, 1.0]',
+    );
+    return anchorExtent <= usableExtent * maxAnchorFraction
+        ? usableExtent
+        : anchorExtent + usableExtent * (1.0 - maxAnchorFraction);
+  }
 
   /// Called when this stage attaches to the pipeline.
   void Function(RenderSliverTurnStage stage)? onAttach;
@@ -229,6 +268,22 @@ class RenderSliverTurnStage extends RenderSliver
   set bottomClearance(double value) {
     if (_bottomClearance == value) return;
     _bottomClearance = value;
+    markNeedsLayout();
+  }
+
+  double _maxAnchorFraction;
+
+  /// Maximum fraction of the usable viewport height reserved for the anchor
+  /// before scrolling it up to keep room below it.
+  double get maxAnchorFraction => _maxAnchorFraction;
+
+  set maxAnchorFraction(double value) {
+    assert(
+      value > 0.0 && value <= 1.0,
+      'maxAnchorFraction must be in (0.0, 1.0]',
+    );
+    if (_maxAnchorFraction == value) return;
+    _maxAnchorFraction = value;
     markNeedsLayout();
   }
 
@@ -363,8 +418,11 @@ class RenderSliverTurnStage extends RenderSliver
     }
 
     _actualContentExtent = offset;
-    _minExtent =
-        anchorExtent <= usable * 0.5 ? usable : anchorExtent + usable * 0.5;
+    _minExtent = computeMinExtent(
+      usableExtent: usable,
+      anchorExtent: anchorExtent,
+      maxAnchorFraction: _maxAnchorFraction,
+    );
     final totalScrollExtent = math.max(_minExtent, _actualContentExtent);
 
     final paintExtent = math.min(

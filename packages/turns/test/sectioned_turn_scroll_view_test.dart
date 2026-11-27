@@ -64,14 +64,18 @@ void main() {
               itemSpacing: 20,
               sectionHeaderSpacing: 12,
               pinMotion: const Motion.instant(),
-              sectionHeaderBuilder: (context, DateTime day) => SizedBox(
-                key: ValueKey('hdr:${_formatDay(day)}'),
-                height: 32,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(_formatDay(day)),
-                ),
-              ),
+              sectionHeaderBuilder: (context, DateTime day, bool isPinned) =>
+                  SizedBox(
+                    key: ValueKey(
+                      'hdr:${_formatDay(day)}:'
+                      '${isPinned ? 'pinned' : 'inline'}',
+                    ),
+                    height: 32,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(_formatDay(day)),
+                    ),
+                  ),
               itemBuilder: (context, i) => SizedBox(
                 key: ValueKey('box:${items[i].id}'),
                 height: items[i].height,
@@ -87,16 +91,17 @@ void main() {
       expect(find.byKey(const ValueKey('box:m0')), findsNothing);
       expect(find.byKey(const ValueKey('box:m4999')), findsNothing);
 
-      // 2. Immediately pins section 342 at topClearance (60) even though item
-      //    3420 (section 342's start) was above center, and clears m3421 below
-      //    the sticky header (60 + 32 + 12 = 104).
+      // 2. Immediately pins section 342 at topClearance (60) with
+      //    isPinned == true even though item 3420 (section 342's start) was
+      //    above center, and clears m3421 below the sticky header
+      //    (60 + 32 + 12 = 104).
       final day342 = _formatDay(baseDate.add(const Duration(days: 342)));
       final day343 = _formatDay(baseDate.add(const Duration(days: 343)));
       final day341 = _formatDay(baseDate.add(const Duration(days: 341)));
 
-      final stickyDay342 = find.byKey(ValueKey('hdr:$day342'));
-      expect(stickyDay342, findsAtLeastNWidgets(1));
-      final pinnedTop = tester.getTopLeft(stickyDay342.last).dy;
+      final stickyDay342 = find.byKey(ValueKey('hdr:$day342:pinned'));
+      expect(stickyDay342, findsOneWidget);
+      final pinnedTop = tester.getTopLeft(stickyDay342).dy;
       expect(pinnedTop, closeTo(60, 1));
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('box:m3421'))).dy,
@@ -107,7 +112,7 @@ void main() {
       // scrolls the list smoothly.
       final pixelsBeforeHeaderDrag = controller.position.pixels;
       await tester.dragFrom(
-        tester.getCenter(stickyDay342.last),
+        tester.getCenter(stickyDay342),
         const Offset(0, -80),
       );
       await tester.pumpAndSettle();
@@ -124,6 +129,7 @@ void main() {
         tester.getTopLeft(find.byKey(const ValueKey('box:m3430'))).dy,
         closeTo(104, 1.5),
       );
+      expect(find.byKey(ValueKey('hdr:$day343:pinned')), findsOneWidget);
       final hiddenVisibilities = tester
           .widgetList<Visibility>(find.byType(Visibility))
           .where((v) => !v.visible)
@@ -136,14 +142,16 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Now day342 is active and pushed up by -16px (top at 60 - 16 = 44),
-      // flush against day343's visible inline header at 76.
-      final day342Headers = find.byKey(ValueKey('hdr:$day342'));
-      final day343Headers = find.byKey(ValueKey('hdr:$day343'));
-      expect(day342Headers, findsAtLeastNWidgets(1));
-      expect(day343Headers, findsOneWidget);
-      expect(tester.getTopLeft(day343Headers).dy, closeTo(76, 1.5));
-      expect(tester.getTopLeft(day342Headers.last).dy, closeTo(44, 1.5));
+      // Now day342 is active with isPinned == true and pushed up by -16px
+      // (top at 60 - 16 = 44), flush against day343's visible inline header
+      // (isPinned == false) at 76.
+      final day342Pinned = find.byKey(ValueKey('hdr:$day342:pinned'));
+      final day343Inline = find.byKey(ValueKey('hdr:$day343:inline'));
+      expect(day342Pinned, findsOneWidget);
+      expect(day343Inline, findsOneWidget);
+      expect(find.byKey(ValueKey('hdr:$day343:pinned')), findsNothing);
+      expect(tester.getTopLeft(day343Inline).dy, closeTo(76, 1.5));
+      expect(tester.getTopLeft(day342Pinned).dy, closeTo(44, 1.5));
 
       // 5. Scroll UP across the center seam (into items < 3421, i.e., above
       //    center in section 341!): sticky header switches seamlessly to
@@ -152,9 +160,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(await to3415, isTrue);
 
-      final day341Headers = find.byKey(ValueKey('hdr:$day341'));
-      expect(day341Headers, findsAtLeastNWidgets(1));
-      expect(tester.getTopLeft(day341Headers.last).dy, closeTo(60, 1.5));
+      final day341Pinned = find.byKey(ValueKey('hdr:$day341:pinned'));
+      expect(day341Pinned, findsOneWidget);
+      expect(tester.getTopLeft(day341Pinned).dy, closeTo(60, 1.5));
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('box:m3415'))).dy,
         closeTo(104, 1.5),
@@ -191,8 +199,8 @@ void main() {
             leadingSlivers: const [
               SliverToBoxAdapter(child: SizedBox(height: 150)),
             ],
-            sectionHeaderBuilder: (context, section) => SizedBox(
-              key: ValueKey('sec:$section'),
+            sectionHeaderBuilder: (context, section, isPinned) => SizedBox(
+              key: ValueKey('sec:$section:${isPinned ? 'pinned' : 'inline'}'),
               height: 30,
               child: Text(section),
             ),
@@ -209,24 +217,28 @@ void main() {
       await tester.pumpAndSettle();
 
       // Leading sliver (150px) pushes 'Older' inline header to y = 170.
-      // Only the inline header exists — no sticky overlay yet!
-      expect(find.byKey(const ValueKey('sec:Older')), findsOneWidget);
+      // Only the inline header (isPinned == false) exists — no sticky overlay!
+      expect(find.byKey(const ValueKey('sec:Older:inline')), findsOneWidget);
+      expect(find.byKey(const ValueKey('sec:Older:pinned')), findsNothing);
       expect(
-        tester.getTopLeft(find.byKey(const ValueKey('sec:Older'))).dy,
+        tester.getTopLeft(find.byKey(const ValueKey('sec:Older:inline'))).dy,
         closeTo(170, 1),
       );
 
       // Scroll down 200px so 'Older' passes topClearance (20): sticky overlay
-      // pins 'Older' at y = 20.
+      // pins 'Older' (isPinned == true) at y = 20.
       controller.jumpTo(200);
       await tester.pump();
       await tester.pump();
-      final olderHeaders = find.byKey(const ValueKey('sec:Older'));
-      expect(tester.getTopLeft(olderHeaders.last).dy, closeTo(20, 1));
+      final olderPinned = find.byKey(const ValueKey('sec:Older:pinned'));
+      expect(olderPinned, findsOneWidget);
+      expect(tester.getTopLeft(olderPinned).dy, closeTo(20, 1));
 
-      // Disable sticky headers: no sticky overlay rendered.
+      // Disable sticky headers: no sticky overlay rendered
+      // (`isPinned` is never true).
       await tester.pumpWidget(buildView(sticky: false));
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('sec:Older:pinned')), findsNothing);
       expect(find.byType(Visibility), findsNothing);
     },
   );
@@ -262,8 +274,10 @@ void main() {
               applyBottomPadding: false,
               padding: const EdgeInsets.only(bottom: 100),
               itemSpacing: 16,
-              sectionHeaderBuilder: (context, section) => SizedBox(
-                key: ValueKey('pill:$section'),
+              sectionHeaderBuilder: (context, section, isPinned) => SizedBox(
+                key: ValueKey(
+                  'pill:$section:${isPinned ? 'pinned' : 'inline'}',
+                ),
                 height: 32,
                 child: Text(section),
               ),
@@ -279,9 +293,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Sticky header pins at y == 0 (NOT 59 from MediaQuery.padding.top).
-      final todayPills = find.byKey(const ValueKey('pill:Today'));
-      expect(todayPills, findsAtLeastNWidgets(1));
-      expect(tester.getTopLeft(todayPills.last).dy, closeTo(0, 1));
+      final todayPinned = find.byKey(const ValueKey('pill:Today:pinned'));
+      expect(todayPinned, findsOneWidget);
+      expect(tester.getTopLeft(todayPinned).dy, closeTo(0, 1));
 
       // Last item sits cleanly 100px above viewport bottom (800 - 100 = 700),
       // preserving explicit padding.bottom without adding MediaQuery 34px.

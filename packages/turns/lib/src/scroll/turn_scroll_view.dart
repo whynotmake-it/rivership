@@ -9,6 +9,22 @@ import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_engine.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
 
+/// Signature for building a section header in [TurnScrollView.sectioned].
+///
+/// Called with `isPinned: false` when building inline section headers that
+/// scroll with the timeline, and `isPinned: true` when building the sticky
+/// overlay header pinned at top clearance (when
+/// [TurnScrollView.stickySectionHeaders] is `true`).
+///
+/// Use [isPinned] to adapt presentation between inline and pinned states — for
+/// example, rendering a hairline divider inline while floating only a shadowed
+/// pill when pinned.
+// Callback signature intentionally mirrors Flutter sliver/header builders with
+// a trailing positional boolean state flag (`isPinned`).
+typedef TurnSectionHeaderBuilder<S> =
+    // ignore: avoid_positional_boolean_parameters
+    Widget Function(BuildContext context, S section, bool isPinned);
+
 /// A first-principles, turn-anchored bidirectional scroll view built for AI
 /// chat transcripts, streaming timelines, and messaging feeds.
 ///
@@ -43,11 +59,16 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.applyBottomPadding = true,
     this.itemSpacing = 24,
     this.jumpThreshold = 160,
+    this.maxAnchorFraction = 0.5,
     this.pinMotion,
     this.physics,
     this.scrollCacheExtent,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
+       assert(
+         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
+         'maxAnchorFraction must be in (0.0, 1.0]',
+       ),
        sectionId = null,
        sectionHeaderBuilder = null,
        stickySectionHeaders = false,
@@ -72,8 +93,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     required this.itemId,
     required this.itemBuilder,
     required S Function(int index) this.sectionId,
-    required Widget Function(BuildContext context, S section)
-    this.sectionHeaderBuilder,
+    required TurnSectionHeaderBuilder<S> this.sectionHeaderBuilder,
     super.key,
     this.stickySectionHeaders = true,
     this.stickyHeaderIgnoresPointer = true,
@@ -90,6 +110,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.applyBottomPadding = true,
     this.itemSpacing = 24,
     this.jumpThreshold = 160,
+    this.maxAnchorFraction = 0.5,
     this.pinMotion,
     this.physics,
     this.scrollCacheExtent,
@@ -98,6 +119,10 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
        assert(
          sectionHeaderSpacing >= 0,
          'sectionHeaderSpacing must be non-negative',
+       ),
+       assert(
+         maxAnchorFraction > 0.0 && maxAnchorFraction <= 1.0,
+         'maxAnchorFraction must be in (0.0, 1.0]',
        );
 
   /// Total number of items in chronological order (oldest first).
@@ -113,14 +138,15 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// [TurnScrollView.sectioned]).
   final S Function(int index)? sectionId;
 
-  /// Builds the inline and sticky header widget for a section (set by
+  /// Builds the inline (`isPinned: false`) and sticky overlay
+  /// (`isPinned: true`) header widget for a section (set by
   /// [TurnScrollView.sectioned]).
   ///
   /// When [stickySectionHeaders] is `true`, the sticky overlay is clipped with
   /// [ClipRect] during push-up transitions; floating pills with drop shadows
   /// should include small vertical padding inside the header widget so shadows
   /// are not clipped.
-  final Widget Function(BuildContext context, S section)? sectionHeaderBuilder;
+  final TurnSectionHeaderBuilder<S>? sectionHeaderBuilder;
 
   /// Whether to pin the active section header at the top clearance while
   /// scrolling.
@@ -194,6 +220,12 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// Distance above the bottom at which [TurnScrollController.isAwayFromBottom]
   /// becomes `true`.
   final double jumpThreshold;
+
+  /// Maximum fraction of the usable viewport height that a pinned anchor item
+  /// may occupy before scrolling up to preserve room below it for the reply.
+  ///
+  /// Forwarded to the internal [SliverTurnStage]. Defaults to `0.5`.
+  final double maxAnchorFraction;
 
   /// Motor spring used for pin animations, `jumpToBottom`, and `scrollTo`.
   /// Under `MediaQuery.disableAnimationsOf(context)`, all transitions jump
@@ -307,10 +339,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   @override
   double get extraTopObstruction {
     if (!_hasStickyHeaders) return 0;
-    final h =
-        _stickyHeaderHeight > 0
-            ? _stickyHeaderHeight
-            : _meanSectionHeaderExtent;
+    final h = _stickyHeaderHeight > 0
+        ? _stickyHeaderHeight
+        : _meanSectionHeaderExtent;
     return h + widget.sectionHeaderSpacing;
   }
 
@@ -386,10 +417,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     if (widget.initialItemId case final initId?) {
       final idx = _indexOfId(initId);
       if (idx >= 0) {
-        final hidden =
-            _isSectionStart(idx) && widget.initialAlignment <= 0
-                ? initId
-                : null;
+        final hidden = _isSectionStart(idx) && widget.initialAlignment <= 0
+            ? initId
+            : null;
         _stickyState.value = _StickyHeaderState<S>(
           section: sectionOf(idx),
           hiddenHeaderItemId: hidden,
@@ -610,8 +640,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     for (var i = startFrom; i < entries.length; i++) {
       final e = entries[i];
       if (!e.hasHeader) continue;
-      final stickyH =
-          _stickyHeaderHeight > 0 ? _stickyHeaderHeight : fallbackHeight;
+      final stickyH = _stickyHeaderHeight > 0
+          ? _stickyHeaderHeight
+          : fallbackHeight;
       if (e.slotTop < pinY + stickyH) {
         return (e.slotTop - (pinY + stickyH)).clamp(-stickyH, 0);
       }
@@ -636,21 +667,21 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       return;
     }
 
-    final pinnedIndex =
-        widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
     final initialIndex =
         initial && pinnedIndex < 0 && widget.initialItemId != null
-            ? _indexOfId(widget.initialItemId!)
-            : -1;
+        ? _indexOfId(widget.initialItemId!)
+        : -1;
 
     final openAtTop =
         !widget.initialAtBottom && initialIndex < 0 && pinnedIndex < 0;
-    var index =
-        initialIndex >= 0
-            ? initialIndex
-            : (openAtTop || count <= _initialTailWindow
-                ? 0
-                : count - _initialTailWindow);
+    var index = initialIndex >= 0
+        ? initialIndex
+        : (openAtTop || count <= _initialTailWindow
+              ? 0
+              : count - _initialTailWindow);
     if (pinnedIndex >= 0 && index > pinnedIndex) {
       index = pinnedIndex;
     }
@@ -720,8 +751,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       nextCenter = _centerIndex.clamp(0, count - 1);
     }
 
-    final pinnedIndex =
-        widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
     if (pinnedIndex >= 0 && nextCenter > pinnedIndex) {
       for (var i = pinnedIndex; i < nextCenter; i++) {
         _pendingCenterShift +=
@@ -795,13 +827,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     var coord = split == 0 ? _topSpacer : 0.0;
     if (index >= split) {
       for (var i = split; i < index; i++) {
-        coord +=
-            _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
+        coord += _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
       }
     } else {
       for (var i = split - 1; i >= index; i--) {
-        coord -=
-            _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
+        coord -= _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
       }
     }
     coord += _sectionHeaderExtraFor(index);
@@ -910,8 +940,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       return false;
     }
 
-    final pinnedIndex =
-        widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
     final centerIndex = _centerIndex.clamp(
       0,
       pinnedIndex >= 0 ? pinnedIndex : count - 1,
@@ -936,8 +967,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   double? _cachedBottomOffset(TurnScrollPosition pos) {
     final count = widget.itemCount;
     if (count == 0) return pos.minScrollExtent;
-    final pinnedIndex =
-        widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
     final centerIndex = _centerIndex.clamp(
       0,
       pinnedIndex >= 0 ? pinnedIndex : count - 1,
@@ -978,8 +1010,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         0,
         pos.viewportDimension - effectiveTop - effectiveBottom,
       );
-      final minTurn =
-          anchorH <= usable * 0.5 ? usable : anchorH + usable * 0.5;
+      final minTurn = RenderSliverTurnStage.computeMinExtent(
+        usableExtent: usable,
+        anchorExtent: anchorH,
+        maxAnchorFraction: widget.maxAnchorFraction,
+      );
       total += math.max(minTurn, actualTurn);
     }
 
@@ -1004,12 +1039,15 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         return true;
       }
       final count = widget.itemCount;
-      final pinnedIndex =
-          widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
-      final tailStart =
-          count <= _initialTailWindow ? 0 : count - _initialTailWindow;
-      final nextCenter =
-          pinnedIndex >= 0 ? math.min(tailStart, pinnedIndex) : tailStart;
+      final pinnedIndex = widget.pinnedId == null
+          ? -1
+          : _indexOfId(widget.pinnedId!);
+      final tailStart = count <= _initialTailWindow
+          ? 0
+          : count - _initialTailWindow;
+      final nextCenter = pinnedIndex >= 0
+          ? math.min(tailStart, pinnedIndex)
+          : tailStart;
       if (nextCenter != _centerIndex) {
         setState(() {
           _centerIndex = nextCenter;
@@ -1094,10 +1132,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         return true;
       }
 
-      final pinnedIndex =
-          widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
-      final nextCenter =
-          pinnedIndex >= 0 ? math.min(targetIndex, pinnedIndex) : targetIndex;
+      final pinnedIndex = widget.pinnedId == null
+          ? -1
+          : _indexOfId(widget.pinnedId!);
+      final nextCenter = pinnedIndex >= 0
+          ? math.min(targetIndex, pinnedIndex)
+          : targetIndex;
       if (nextCenter != _centerIndex) {
         final initialOffset = _estimatedOffsetFor(
           targetIndex,
@@ -1147,7 +1187,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 
   Widget _buildInlineHeader(BuildContext context, int index, Object itemId) {
     final section = widget.sectionId!(index);
-    final header = widget.sectionHeaderBuilder!(context, section);
+    final header = widget.sectionHeaderBuilder!(context, section, false);
     var content = header;
     if (_hasStickyHeaders) {
       content = ValueListenableBuilder<_StickyHeaderState<S>>(
@@ -1207,20 +1247,21 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       right: effectiveRight,
     );
     final count = widget.itemCount;
-    final pinnedIndex =
-        widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
-    final centerIndex =
-        count == 0
-            ? 0
-            : _centerIndex.clamp(
-              0,
-              pinnedIndex >= 0 ? pinnedIndex : count - 1,
-            );
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
+    final centerIndex = count == 0
+        ? 0
+        : _centerIndex.clamp(
+            0,
+            pinnedIndex >= 0 ? pinnedIndex : count - 1,
+          );
     final aboveCount = centerIndex;
     final belowPrePinEnd = pinnedIndex >= 0 ? pinnedIndex : count;
     final belowPrePinCount = math.max(0, belowPrePinEnd - centerIndex);
-    final afterPinCount =
-        pinnedIndex >= 0 ? math.max(0, count - pinnedIndex - 1) : 0;
+    final afterPinCount = pinnedIndex >= 0
+        ? math.max(0, count - pinnedIndex - 1)
+        : 0;
 
     final spacing = widget.itemSpacing;
     final topSpacer = _topSpacer;
@@ -1233,8 +1274,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     }
     _builtWithAbove = hasAbove;
 
-    final leading =
-        hasAbove ? widget.leadingSlivers.reversed : widget.leadingSlivers;
+    final leading = hasAbove
+        ? widget.leadingSlivers.reversed
+        : widget.leadingSlivers;
     final pinnedHasInlineHeader =
         pinnedIndex >= 0 && _isSectionStart(pinnedIndex);
 
@@ -1308,6 +1350,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 
       if (pinnedIndex >= 0)
         SliverTurnStage(
+          maxAnchorFraction: widget.maxAnchorFraction,
           anchorSliver: SliverPadding(
             padding: horizontal,
             sliver: SliverToBoxAdapter(
@@ -1340,13 +1383,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
               ),
             ),
           ),
-          tailSliver:
-              widget.tailSliver == null
-                  ? null
-                  : SliverPadding(
-                    padding: horizontal,
-                    sliver: widget.tailSliver,
-                  ),
+          tailSliver: widget.tailSliver == null
+              ? null
+              : SliverPadding(
+                  padding: horizontal,
+                  sliver: widget.tailSliver,
+                ),
         )
       else if (widget.tailSliver != null)
         SliverPadding(
@@ -1399,7 +1441,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
                       offset: Offset(0, sticky.pushOffset),
                       child: _StickyHeightObserver(
                         onHeight: _onStickyHeaderHeight,
-                        child: widget.sectionHeaderBuilder!(context, section),
+                        child: widget.sectionHeaderBuilder!(
+                          context,
+                          section,
+                          true,
+                        ),
                       ),
                     ),
                   );

@@ -15,6 +15,7 @@ const turnsAiRouteName = 'turns:ai';
 const turnsWhatsAppRouteName = 'turns:whatsapp';
 const turnsSlackRouteName = 'turns:slack';
 const turnsIMessageRouteName = 'turns:imessage';
+const turnsOnboardingRouteName = 'turns:onboarding';
 
 /// A Lucide glyph paired across stroke weights so Coil controls can emphasize
 /// icons on hover and selection while remaining tree-shakeable.
@@ -42,6 +43,10 @@ class TurnsGlyph {
   static const messageCircle = TurnsGlyph(
     LucideIcons300.messageCircle,
     LucideIcons400.messageCircle,
+  );
+  static const compass = TurnsGlyph(
+    LucideIcons300.compass,
+    LucideIcons400.compass,
   );
   static const sun = TurnsGlyph(LucideIcons300.sun, LucideIcons400.sun);
   static const moon = TurnsGlyph(LucideIcons300.moon, LucideIcons400.moon);
@@ -127,10 +132,11 @@ const turnsDemos = <TurnsDemoEntry>[
     routeName: turnsSlackRouteName,
     path: 'slack',
     title: 'Slack',
-    primitive: 'CustomTurnScrollView + SliverTurnList',
+    primitive: 'TurnScrollView.sectioned (3,000 msgs)',
     description:
-        'Composable channel header, SliverMainAxisGroup sticky dividers, and '
-        'offscreen scrollTo() across multiple turn slivers.',
+        '3,000-message O(1) channel with inline date dividers vs transparent '
+        'floating pinned pills via isPinned, 0px-shift prepend pagination, and '
+        'unread divider jumps.',
     glyph: TurnsGlyph.hash,
   ),
   TurnsDemoEntry(
@@ -142,6 +148,17 @@ const turnsDemos = <TurnsDemoEntry>[
         'Inline timestamp headers, tapback reactions, 0px-shift prepend '
         'pagination, and Motor spring jump highlights.',
     glyph: TurnsGlyph.messageCircle,
+  ),
+  TurnsDemoEntry(
+    routeName: turnsOnboardingRouteName,
+    path: 'onboarding',
+    title: 'Onboarding',
+    primitive: 'CustomTurnScrollView',
+    description:
+        'Bounded sliver chat composing a collapsing hero '
+        'SliverPersistentHeader, interactive goal-picker SliverGrid, and '
+        'SliverTurnList + SliverTurnStage.',
+    glyph: TurnsGlyph.compass,
   ),
 ];
 

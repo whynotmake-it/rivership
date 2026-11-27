@@ -89,11 +89,11 @@ _pumpView(
                     customTailSliver ??
                     (s.tailHeight > 0
                         ? SliverToBoxAdapter(
-                          child: SizedBox(
-                            key: const ValueKey('tail'),
-                            height: s.tailHeight,
-                          ),
-                        )
+                            child: SizedBox(
+                              key: const ValueKey('tail'),
+                              height: s.tailHeight,
+                            ),
+                          )
                         : null),
                 itemBuilder: (context, index) {
                   final item = s.items[index];
@@ -585,6 +585,65 @@ void main() {
       expect(received, isNotEmpty);
       expect(received.every((n) => !n.isProgrammatic), isTrue);
       expect(received.last.leadingExtent, greaterThanOrEqualTo(0));
+    },
+  );
+
+  testWidgets(
+    'maxAnchorFraction controls how tall pinned anchors settle relative to '
+    'topClearance',
+    (tester) async {
+      const viewport = Size(390, 800);
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = viewport;
+      addTearDown(tester.view.reset);
+
+      // Usable viewport = 800 - 60 (top) - 140 (bottom) = 600.
+      // Tall anchor height = 480 (> 50% of 600, <= 100% of 600).
+      final items = [
+        for (var i = 0; i < 8; i++) _TestItem('h$i', 90),
+        _TestItem('tall-anchor', 480),
+        _TestItem('reply', 60),
+      ];
+      final controller = TurnScrollController();
+      addTearDown(controller.dispose);
+
+      Widget buildView({required double maxAnchorFraction}) => Directionality(
+        textDirection: TextDirection.ltr,
+        child: MediaQuery(
+          data: const MediaQueryData(size: viewport),
+          child: TurnScrollView(
+            controller: controller,
+            itemCount: items.length,
+            itemId: (i) => items[i].id,
+            pinnedId: 'tall-anchor',
+            maxAnchorFraction: maxAnchorFraction,
+            padding: const EdgeInsets.only(top: 60, bottom: 140),
+            itemSpacing: 16,
+            pinMotion: const Motion.instant(),
+            itemBuilder: (context, i) => SizedBox(
+              key: ValueKey('box:${items[i].id}'),
+              height: items[i].height,
+              child: Text(items[i].id),
+            ),
+          ),
+        ),
+      );
+
+      // maxAnchorFraction: 1.0 -> tall anchor (480 <= 600 * 1.0) stays pinned
+      // flush at topClearance (60).
+      await tester.pumpWidget(buildView(maxAnchorFraction: 1));
+      await tester.pumpAndSettle();
+      expect(_itemTopInViewport(tester, 'tall-anchor'), closeTo(60, 1.5));
+
+      // maxAnchorFraction: 0.5 -> tall anchor (480 > 600 * 0.5 = 300) scrolls
+      // up so its bottom rests at topClearance + 300 = 360, leaving 50% below.
+      await tester.pumpWidget(buildView(maxAnchorFraction: 0.5));
+      await tester.pumpAndSettle();
+      await controller.jumpToBottom(animate: false);
+      await tester.pumpAndSettle();
+      expect(_itemBottomInViewport(tester, 'tall-anchor'), closeTo(360, 1.5));
+      expect(_itemTopInViewport(tester, 'tall-anchor'), closeTo(-120, 1.5));
     },
   );
 }

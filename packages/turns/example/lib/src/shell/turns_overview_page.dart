@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:turns_example/src/shell/turns_environment.dart';
 import 'package:turns_example/src/shell/turns_shell.dart';
 
-/// Overview page introducing `turns`, its four interactive demos, and its core
+/// Overview page introducing `turns`, its five interactive demos, and its core
 /// scroll and streaming-markdown building blocks.
 class TurnsOverviewPage extends StatelessWidget {
   const TurnsOverviewPage({super.key});
@@ -24,8 +24,9 @@ class TurnsOverviewPage extends StatelessWidget {
             width < turnsPhoneBreakpoint
         ? 16.0
         : 24.0;
-    final sectionGap =
-        CoilTheme.tierOf(context) == CoilTier.touch ? 32.0 : 24.0;
+    final sectionGap = CoilTheme.tierOf(context) == CoilTier.touch
+        ? 32.0
+        : 24.0;
     final columns = width >= 960 ? 2 : 1;
 
     return ColoredBox(
@@ -128,18 +129,18 @@ class TurnsOverviewPage extends StatelessWidget {
                         variant: CoilCardVariant.inline,
                         title: Text('TurnScrollView.sectioned'),
                         description: Text(
-                          'Typed section headers that render inline or pin '
-                          'at topClearance with smooth push-up across the '
-                          'center seam.',
+                          'Typed section headers with an isPinned flag for '
+                          'inline dividers vs floating sticky pills, O(1) '
+                          'open, and smooth push-up across the center seam.',
                         ),
                       ),
                       CoilCard(
                         variant: CoilCardVariant.inline,
                         title: Text('CustomTurnScrollView + SliverTurnList'),
                         description: Text(
-                          'Compose SliverAppBar, SliverMainAxisGroup, and '
-                          'multiple turn lists while keeping offscreen '
-                          'scrollTo() and jumpToBottom().',
+                          'Escape hatch for bounded feeds needing '
+                          'SliverAppBar, SliverGrid, or stacked '
+                          'SliverPersistentHeaders with offscreen scrollTo().',
                         ),
                       ),
                       CoilCard(

@@ -6,12 +6,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
 
-/// Slack-style channel demo showcasing [CustomTurnScrollView] composing native
-/// Flutter slivers (`SliverPersistentHeader`, `SliverToBoxAdapter`,
-/// `SliverMainAxisGroup`) with multiple [SliverTurnList] day sections,
-/// cross-sliver offscreen [TurnScrollController.scrollTo], rich [CoilMarkdown]
-/// messages, interactive reactions & threads, prepend pagination, and live
-/// messaging.
+/// Slack-style channel demo showcasing [TurnScrollView.sectioned] across a
+/// 3,000-message O(1) timeline with `isPinned` section headers (hairline rule
+/// inline vs transparent elevated date pill when pinned), `0.0px`-shift
+/// prepend pagination via [TurnScrollNotification] and `"Load earlier days"`,
+/// `"10 new messages"` unread jump landing on the inline `"New"` divider,
+/// cross-history [TurnScrollController.scrollTo], rich [CoilMarkdown]
+/// messages, interactive reactions & threads, and live messaging.
 class SlackDemo extends StatefulWidget {
   /// Creates the Slack channel demo.
   const SlackDemo({super.key});
@@ -24,52 +25,61 @@ class _SlackDemoState extends State<SlackDemo> {
   static const _rfcMessageId = 'msg-rfc-42';
   static const _deployMessageId = 'msg-deploy-checklist';
   static const _firstUnreadId = 'msg-unread-first';
+  static const _kickoffMessageId = 'msg-h0420';
+  static final _today = DateTime(2026, 5, 15);
 
-  final _controller = TurnScrollController();
+  final _controller = TurnScrollController(debugLabel: 'SlackDemo');
   final _composerController = TextEditingController();
 
-  late final List<_DaySection> _days;
-  late final List<_DaySection> _archiveQueue;
+  late List<_SlackMessage> _messages;
+  late List<List<_SlackMessage>> _archivePages;
   final _expandedThreads = <String>{};
 
   bool _showUnreadPill = true;
+  bool _isAutoLoadingEarlier = false;
   String? _highlightedId;
   Timer? _highlightTimer;
+  Timer? _autoLoadTimer;
   int _nextMessageNumber = 1;
 
   @override
   void initState() {
     super.initState();
-    _days = _buildInitialDays();
-    _archiveQueue = _buildArchiveDays();
+    _messages = _buildInitialMessages();
+    _archivePages = _buildArchivePages();
   }
 
   @override
   void dispose() {
     _highlightTimer?.cancel();
+    _autoLoadTimer?.cancel();
     _composerController.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  int get _totalMessageCount =>
-      _days.fold(0, (sum, day) => sum + day.messages.length);
-
   int get _unreadCount {
-    var counting = false;
-    var count = 0;
-    for (final day in _days) {
-      for (final message in day.messages) {
-        if (message.id == _firstUnreadId) counting = true;
-        if (counting) count++;
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      if (_messages[i].id == _firstUnreadId) {
+        return _messages.length - i;
       }
     }
-    return count;
+    return 0;
   }
 
-  Future<bool> _jumpToMessage(String id, {double alignment = 0.08}) async {
+  Future<bool> _jumpToMessage(
+    String id, {
+    double alignment = 0.08,
+    bool animate = true,
+  }) async {
     _highlightTimer?.cancel();
-    if (!await _controller.scrollTo(id, alignment: alignment)) return false;
+    if (!await _controller.scrollTo(
+      id,
+      alignment: alignment,
+      animate: animate,
+    )) {
+      return false;
+    }
     if (!mounted) return false;
     setState(() => _highlightedId = id);
     _highlightTimer = Timer(const Duration(milliseconds: 1600), () {
@@ -89,35 +99,62 @@ class _SlackDemoState extends State<SlackDemo> {
     }
   }
 
+  Future<void> _jumpToBottom() async {
+    final farAway = _controller.distanceFromBottom.value > 6000;
+    await _controller.jumpToBottom(animate: !farAway);
+  }
+
   void _dismissUnread() {
     if (!_showUnreadPill) return;
     setState(() => _showUnreadPill = false);
   }
 
-  void _loadEarlierDays() {
-    if (_archiveQueue.isEmpty) return;
+  void _loadEarlierDays({bool fromAutoScroll = false}) {
+    if (_archivePages.isEmpty) {
+      if (_isAutoLoadingEarlier) {
+        setState(() => _isAutoLoadingEarlier = false);
+      }
+      return;
+    }
+    if (!fromAutoScroll) {
+      _autoLoadTimer?.cancel();
+    }
     setState(() {
-      final earlierDay = _archiveQueue.removeAt(0);
-      _days.insert(0, earlierDay);
+      final earlierPage = _archivePages.removeAt(0);
+      _messages = [...earlierPage, ..._messages];
+      _isAutoLoadingEarlier = false;
     });
+  }
+
+  bool _onTurnScroll(TurnScrollNotification notification) {
+    if (notification.isProgrammatic) return false;
+    if (_archivePages.isEmpty || _isAutoLoadingEarlier) return false;
+    if (notification.leadingExtent > 160) return false;
+
+    setState(() => _isAutoLoadingEarlier = true);
+    _autoLoadTimer?.cancel();
+    _autoLoadTimer = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      _loadEarlierDays(fromAutoScroll: true);
+    });
+    return false;
   }
 
   void _toggleReaction(String messageId, _ReactionKind kind) {
     setState(() {
-      for (final day in _days) {
-        for (final message in day.messages) {
-          if (message.id != messageId) continue;
-          final index = message.reactions.indexWhere((r) => r.kind == kind);
-          if (index < 0) return;
-          final current = message.reactions[index];
-          final nextReacted = !current.reactedByMe;
-          message.reactions[index] = _SlackReaction(
-            kind: current.kind,
-            count: current.count + (nextReacted ? 1 : -1),
-            reactedByMe: nextReacted,
-          );
-          return;
-        }
+      for (var i = _messages.length - 1; i >= 0; i--) {
+        final message = _messages[i];
+        if (message.id != messageId) continue;
+        final index = message.reactions.indexWhere((r) => r.kind == kind);
+        if (index < 0) return;
+        final current = message.reactions[index];
+        final nextReacted = !current.reactedByMe;
+        message.reactions[index] = _SlackReaction(
+          kind: current.kind,
+          count: current.count + (nextReacted ? 1 : -1),
+          reactedByMe: nextReacted,
+        );
+        return;
       }
     });
   }
@@ -137,6 +174,7 @@ class _SlackDemoState extends State<SlackDemo> {
     final period = now.hour >= 12 ? 'PM' : 'AM';
     final newMessage = _SlackMessage(
       id: 'msg-live-${_nextMessageNumber++}',
+      day: _today,
       author: _SlackAuthor.you,
       timestamp: '$hour12:$minute $period',
       markdown: text,
@@ -150,22 +188,26 @@ class _SlackDemoState extends State<SlackDemo> {
     );
 
     setState(() {
-      _days.last.messages.add(newMessage);
+      _messages = [..._messages, newMessage];
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(_controller.jumpToBottom());
+      unawaited(_jumpToBottom());
     });
   }
 
   void _insertMarkdownSnippet() {
     const snippet =
-        'Verified `SliverTurnList` landing offset below stacked headers:\n'
+        'Verified `TurnScrollView.sectioned` `isPinned` date header:\n'
         '```dart\n'
-        'await controller.scrollTo(\n'
-        "  'msg-rfc-42',\n"
-        '  alignment: 0.08,\n'
+        'TurnScrollView<DateTime>.sectioned(\n'
+        '  itemCount: messages.length,\n'
+        '  itemId: (i) => messages[i].id,\n'
+        '  sectionId: (i) => messages[i].day,\n'
+        '  sectionHeaderBuilder: (context, day, isPinned) =>\n'
+        '      DayHeader(day: day, isPinned: isPinned),\n'
+        '  itemBuilder: buildRow,\n'
         ');\n'
         '```';
     final existing = _composerController.text;
@@ -192,7 +234,6 @@ class _SlackDemoState extends State<SlackDemo> {
         builder: (context) {
           final theme = CoilTheme.of(context);
           final colors = theme.colors;
-          final text = CoilTheme.textOf(context);
           final motion = CoilTheme.motionOf(context);
           final markdownStyle = CoilMarkdownStyle.fallback(context).merge(
             CoilMarkdownStyle(
@@ -209,67 +250,21 @@ class _SlackDemoState extends State<SlackDemo> {
             ),
           );
 
-          final slivers = <Widget>[
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _BookmarksHeaderDelegate(
-                colors: colors,
-                text: text,
-                onJumpRfc: () => unawaited(_jumpToMessage(_rfcMessageId)),
-                onJumpDeploy: () => unawaited(_jumpToMessage(_deployMessageId)),
-                onJumpUnread: () => unawaited(_jumpToUnread()),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _ChannelWelcomeBanner(
-                remainingArchiveDays: _archiveQueue.length,
-                onLoadEarlier: _loadEarlierDays,
-              ),
-            ),
-            for (final day in _days)
-              SliverMainAxisGroup(
-                key: ValueKey('day:${day.id}'),
-                slivers: [
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _DayHeaderDelegate(
-                      label: day.label,
-                      colors: colors,
-                      text: text,
-                    ),
-                  ),
-                  SliverTurnList(
-                    key: ValueKey('list:${day.id}'),
-                    itemCount: day.messages.length,
-                    itemId: (i) => day.messages[i].id,
-                    itemSpacing: 2,
-                    itemBuilder: (context, i) {
-                      final message = day.messages[i];
-                      return _SlackMessageRow(
-                        message: message,
-                        markdownStyle: markdownStyle,
-                        highlighted: _highlightedId == message.id,
-                        showUnreadDivider: message.id == _firstUnreadId,
-                        threadExpanded: _expandedThreads.contains(message.id),
-                        onToggleReaction: (kind) =>
-                            _toggleReaction(message.id, kind),
-                        onToggleThread: () => _toggleThread(message.id),
-                      );
-                    },
-                  ),
-                ],
-              ),
-          ];
-
           return ColoredBox(
             color: colors.background,
             child: Column(
               children: [
                 SafeArea(
                   bottom: false,
-                  child: _ChannelHeader(
-                    dayCount: _days.length,
-                    messageCount: _totalMessageCount,
+                  child: _ChannelHeader(messageCount: _messages.length),
+                ),
+                _BookmarksBar(
+                  onJumpRfc: () => unawaited(_jumpToMessage(_rfcMessageId)),
+                  onJumpDeploy: () =>
+                      unawaited(_jumpToMessage(_deployMessageId)),
+                  onJumpUnread: () => unawaited(_jumpToUnread()),
+                  onJumpKickoff: () => unawaited(
+                    _jumpToMessage(_kickoffMessageId, animate: false),
                   ),
                 ),
                 Expanded(
@@ -279,19 +274,59 @@ class _SlackDemoState extends State<SlackDemo> {
                     removeBottom: true,
                     child: Stack(
                       children: [
-                        CoilScrollArea(
-                          controller: _controller,
-                          edgeFades: CoilEdgeFades.none,
-                          semanticLabel: '#engineering-scroll channel messages',
-                          child: CustomTurnScrollView(
+                        NotificationListener<TurnScrollNotification>(
+                          onNotification: _onTurnScroll,
+                          child: CoilScrollArea(
                             controller: _controller,
-                            applyTopPadding: false,
-                            padding: const EdgeInsets.only(bottom: 16),
-                            slivers: slivers,
+                            edgeFades: CoilEdgeFades.none,
+                            semanticLabel:
+                                '#engineering-scroll channel messages',
+                            child: TurnScrollView<DateTime>.sectioned(
+                              controller: _controller,
+                              itemCount: _messages.length,
+                              itemId: (i) => _messages[i].id,
+                              sectionId: (i) => _messages[i].day,
+                              applyTopPadding: false,
+                              applyBottomPadding: false,
+                              itemSpacing: 2,
+                              sectionHeaderSpacing: 2,
+                              padding: const EdgeInsets.only(bottom: 16),
+                              leadingSlivers: [
+                                SliverToBoxAdapter(
+                                  child: _ChannelWelcomeBanner(
+                                    remainingArchivePages: _archivePages.length,
+                                    loadingEarlier: _isAutoLoadingEarlier,
+                                    onLoadEarlier: _loadEarlierDays,
+                                  ),
+                                ),
+                              ],
+                              sectionHeaderBuilder: (context, day, isPinned) =>
+                                  _DaySectionHeader(
+                                    label: _formatDay(day),
+                                    isPinned: isPinned,
+                                  ),
+                              itemBuilder: (context, i) {
+                                final message = _messages[i];
+                                return _SlackMessageRow(
+                                  message: message,
+                                  markdownStyle: markdownStyle,
+                                  highlighted: _highlightedId == message.id,
+                                  showUnreadDivider:
+                                      message.id == _firstUnreadId,
+                                  threadExpanded: _expandedThreads.contains(
+                                    message.id,
+                                  ),
+                                  onToggleReaction: (kind) =>
+                                      _toggleReaction(message.id, kind),
+                                  onToggleThread: () =>
+                                      _toggleThread(message.id),
+                                );
+                              },
+                            ),
                           ),
                         ),
                         Positioned(
-                          top: 86,
+                          top: 44,
                           left: 16,
                           right: 16,
                           child: Align(
@@ -373,8 +408,7 @@ class _SlackDemoState extends State<SlackDemo> {
                                       LucideIcons.arrowDown,
                                       size: 14,
                                     ),
-                                    onPressed: () =>
-                                        unawaited(_controller.jumpToBottom()),
+                                    onPressed: () => unawaited(_jumpToBottom()),
                                     child: const Text('Jump to latest'),
                                   ),
                                 ),
@@ -419,12 +453,58 @@ class _SlackDemoState extends State<SlackDemo> {
       ),
     );
   }
+
+  static String _formatDay(DateTime day) {
+    if (day == _today) return 'Today';
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final weekday = weekdays[day.weekday - 1];
+    final month = months[day.month - 1];
+    if (day.year < _today.year) {
+      return '$weekday, $month ${day.day}, ${day.year}';
+    }
+    return '$weekday, $month ${day.day}';
+  }
+
+  static String _formatCount(int value) {
+    final digits = value.toString();
+    if (digits.length <= 3) return digits;
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      final remaining = digits.length - i;
+      if (i > 0 && remaining % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
 }
 
 class _ChannelHeader extends StatelessWidget {
-  const _ChannelHeader({required this.dayCount, required this.messageCount});
+  const _ChannelHeader({required this.messageCount});
 
-  final int dayCount;
   final int messageCount;
 
   @override
@@ -465,8 +545,7 @@ class _ChannelHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'CustomTurnScrollView · SliverMainAxisGroup · '
-                    'SliverTurnList',
+                    'TurnScrollView.sectioned · O(1) open · isPinned headers',
                     style: text.muted.micro,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -480,7 +559,7 @@ class _ChannelHeader extends StatelessWidget {
               color: CoilBadgeColor.brand,
               shape: CoilBadgeShape.pill,
               size: CoilSize.compact,
-              child: Text('$dayCount days · $messageCount'),
+              child: Text('${_SlackDemoState._formatCount(messageCount)} msgs'),
             ),
           ],
         ),
@@ -489,48 +568,29 @@ class _ChannelHeader extends StatelessWidget {
   }
 }
 
-class _BookmarksHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _BookmarksHeaderDelegate({
-    required this.colors,
-    required this.text,
+class _BookmarksBar extends StatelessWidget {
+  const _BookmarksBar({
     required this.onJumpRfc,
     required this.onJumpDeploy,
     required this.onJumpUnread,
+    required this.onJumpKickoff,
   });
 
   static const double _height = 44;
 
-  final CoilColors colors;
-  final CoilTextTheme text;
   final VoidCallback onJumpRfc;
   final VoidCallback onJumpDeploy;
   final VoidCallback onJumpUnread;
+  final VoidCallback onJumpKickoff;
 
   @override
-  double get minExtent => _height;
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.surfaces[1],
         border: Border(bottom: BorderSide(color: colors.border)),
-        boxShadow: overlapsContent
-            ? [
-                BoxShadow(
-                  color: colors.shadowColor.withValues(alpha: 0.14),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
       ),
       child: SizedBox(
         height: _height,
@@ -568,16 +628,19 @@ class _BookmarksHeaderDelegate extends SliverPersistentHeaderDelegate {
                 accent: true,
                 onPressed: onJumpUnread,
               ),
+              const SizedBox(width: 6),
+              _BookmarkChip(
+                key: const Key('slack.jump_kickoff'),
+                icon: LucideIcons.history,
+                label: 'Kickoff · #420 · Feb 1',
+                onPressed: onJumpKickoff,
+              ),
             ],
           ),
         ),
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(_BookmarksHeaderDelegate oldDelegate) =>
-      colors != oldDelegate.colors || text != oldDelegate.text;
 }
 
 class _BookmarkChip extends StatelessWidget {
@@ -665,18 +728,20 @@ class _BookmarkChip extends StatelessWidget {
 
 class _ChannelWelcomeBanner extends StatelessWidget {
   const _ChannelWelcomeBanner({
-    required this.remainingArchiveDays,
+    required this.remainingArchivePages,
+    required this.loadingEarlier,
     required this.onLoadEarlier,
   });
 
-  final int remainingArchiveDays;
+  final int remainingArchivePages;
+  final bool loadingEarlier;
   final VoidCallback onLoadEarlier;
 
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
-    final hasEarlier = remainingArchiveDays > 0;
+    final hasEarlier = remainingArchivePages > 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
@@ -724,7 +789,7 @@ class _ChannelWelcomeBanner extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Turn-anchored sliver architecture & release notes',
+                          'TurnScrollView.sectioned · 3,000+ msgs',
                           style: text.muted.caption,
                         ),
                       ],
@@ -734,10 +799,10 @@ class _ChannelWelcomeBanner extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Each day below is a native Flutter SliverMainAxisGroup with a '
-                'pinned SliverPersistentHeader date pill and its own '
-                'SliverTurnList — enabling spring-driven cross-sliver jumps '
-                'across offscreen messages.',
+                'Backed by TurnScrollView<DateTime>.sectioned for O(1) open, '
+                '0.0px-shift prepend pagination, and section headers that '
+                'adapt between hairline rules inline and transparent floating '
+                'pills when isPinned == true.',
                 style: text.muted.caption,
               ),
               const SizedBox(height: 12),
@@ -747,6 +812,7 @@ class _ChannelWelcomeBanner extends StatelessWidget {
                     ? CoilButtonVariant.secondary
                     : CoilButtonVariant.tertiary,
                 size: CoilSize.compact,
+                loading: loadingEarlier,
                 leading: Icon(
                   hasEarlier ? LucideIcons.history : LucideIcons.check,
                   size: 14,
@@ -754,7 +820,7 @@ class _ChannelWelcomeBanner extends StatelessWidget {
                 onPressed: hasEarlier ? onLoadEarlier : null,
                 child: Text(
                   hasEarlier
-                      ? 'Load earlier days ($remainingArchiveDays more)'
+                      ? 'Load earlier days ($remainingArchivePages more)'
                       : 'Beginning of #engineering-scroll',
                 ),
               ),
@@ -766,44 +832,32 @@ class _ChannelWelcomeBanner extends StatelessWidget {
   }
 }
 
-class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _DayHeaderDelegate({
-    required this.label,
-    required this.colors,
-    required this.text,
-  });
+class _DaySectionHeader extends StatelessWidget {
+  const _DaySectionHeader({required this.label, required this.isPinned});
 
-  static const double _height = 38;
+  static const double _height = 40;
 
   final String label;
-  final CoilColors colors;
-  final CoilTextTheme text;
+  final bool isPinned;
 
   @override
-  double get minExtent => _height;
+  Widget build(BuildContext context) {
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
 
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
     final pill = DecoratedBox(
       decoration: ShapeDecoration(
-        color: overlapsContent ? colors.surfaces[2] : colors.surfaces[1],
+        color: isPinned ? colors.surfaces[2] : colors.surfaces[1],
         shape: RoundedSuperellipseBorder(
           borderRadius: BorderRadius.circular(999),
           side: BorderSide(color: colors.border),
         ),
-        shadows: overlapsContent
+        shadows: isPinned
             ? [
                 BoxShadow(
                   color: colors.shadowColor.withValues(alpha: 0.22),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ]
             : null,
@@ -817,43 +871,35 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
       ),
     );
 
-    return IgnorePointer(
-      child: SizedBox(
-        height: _height,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: overlapsContent
-              ? Center(child: pill)
-              : Row(
-                  children: [
-                    Expanded(
-                      child: ColoredBox(
-                        color: colors.border,
-                        child: const SizedBox(height: 1),
-                      ),
+    return SizedBox(
+      height: _height,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: isPinned
+            ? Center(child: pill)
+            : Row(
+                children: [
+                  Expanded(
+                    child: ColoredBox(
+                      color: colors.border,
+                      child: const SizedBox(height: 1),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: pill,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: pill,
+                  ),
+                  Expanded(
+                    child: ColoredBox(
+                      color: colors.border,
+                      child: const SizedBox(height: 1),
                     ),
-                    Expanded(
-                      child: ColoredBox(
-                        color: colors.border,
-                        child: const SizedBox(height: 1),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+                  ),
+                ],
+              ),
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(_DayHeaderDelegate oldDelegate) =>
-      label != oldDelegate.label ||
-      colors != oldDelegate.colors ||
-      text != oldDelegate.text;
 }
 
 class _UnreadBannerPill extends StatelessWidget {
@@ -1422,17 +1468,10 @@ class _InlineThreadList extends StatelessWidget {
   }
 }
 
-class _DaySection {
-  _DaySection({required this.id, required this.label, required this.messages});
-
-  final String id;
-  final String label;
-  final List<_SlackMessage> messages;
-}
-
 class _SlackMessage {
   _SlackMessage({
     required this.id,
+    required this.day,
     required this.author,
     required this.timestamp,
     required this.markdown,
@@ -1443,6 +1482,7 @@ class _SlackMessage {
   }) : reactions = reactions ?? [];
 
   final String id;
+  final DateTime day;
   final _SlackAuthor author;
   final String timestamp;
   final String markdown;
@@ -1576,80 +1616,145 @@ enum _SlackAuthor {
   final Color darkInk;
 }
 
-List<_DaySection> _buildArchiveDays() => [
-  _DaySection(
-    id: 'may-12',
-    label: 'Tuesday, May 12',
-    messages: [
-      _SlackMessage(
-        id: 'msg-arch-12-1',
+const _historyAuthors = <_SlackAuthor>[
+  _SlackAuthor.maya,
+  _SlackAuthor.amir,
+  _SlackAuthor.devon,
+  _SlackAuthor.sara,
+  _SlackAuthor.releaseBot,
+  _SlackAuthor.you,
+];
+
+const _historyTopics = <String>[
+  'Benchmarked `Viewport(center:)` open at `#3,000` — sub-millisecond layout.',
+  'Verified `0.0px`-shift prepend pagination inserting 40 older messages.',
+  'Checked sticky push-up across the seam: inline vs `isPinned: true`.',
+  'Confirmed `MarkdownSession` freezes settled blocks by identity.',
+  'Tested trackpad fling mid-spring: `onUserScroll()` cancels immediately.',
+  'Reviewed `TurnScrollNotification.leadingExtent` threshold (`160px`).',
+  'Ran `dart analyze --fatal-infos` across `turns` and `coil` — 0 issues.',
+  'Confirmed `stickyHeaderIgnoresPointer` lets drags pass through date pills.',
+  'Keyboard inset anchoring locked the bottom item with zero 1-frame flash.',
+  'Verified `Visibility.maintain` prevents double-rendered date pills.',
+  'Audit: zero bare `AnimationController` — all transitions run on Motor.',
+  'Spot-checked light and dark aubergine theme contrast across badges.',
+];
+
+const _historyReactions = <_ReactionKind>[
+  _ReactionKind.thumbsUp,
+  _ReactionKind.check,
+  _ReactionKind.sparkles,
+  _ReactionKind.zap,
+  _ReactionKind.rocket,
+  _ReactionKind.eye,
+];
+
+List<_SlackMessage> _generateHistoryRange({
+  required String idPrefix,
+  required int startNumber,
+  required int count,
+  required DateTime startDay,
+  required int daySpan,
+  int? kickoffNumber,
+}) {
+  return List<_SlackMessage>.generate(count, (i) {
+    final number = startNumber + i;
+    final dayOffset = (i * daySpan) ~/ count;
+    final day = DateTime(
+      startDay.year,
+      startDay.month,
+      startDay.day + dayOffset,
+    );
+
+    if (kickoffNumber != null && number == kickoffNumber) {
+      return _SlackMessage(
+        id: _SlackDemoState._kickoffMessageId,
+        day: DateTime(2026, 2),
         author: _SlackAuthor.maya,
-        timestamp: '9:18 AM',
+        timestamp: '10:00 AM',
+        bookmarkTag: 'Kickoff · #420',
         markdown:
-            'Kicked off the `packages/turns` extraction branch! Keeping zero '
-            'dependency on `coil` so any Flutter app can drop in '
-            '`TurnScrollView` or `CustomTurnScrollView` directly.',
+            '**Architecture Kickoff (#420 of 3,000)**\n\n'
+            'We just jumped straight across 2,500+ messages in O(1) via '
+            '`TurnScrollView.sectioned`! Only the visible window around this '
+            'message was built, and the sticky `Sunday, Feb 1` header synced '
+            'immediately.',
         reactions: [
-          const _SlackReaction(kind: _ReactionKind.party, count: 5),
-          const _SlackReaction(kind: _ReactionKind.flame, count: 3),
+          const _SlackReaction(
+            kind: _ReactionKind.rocket,
+            count: 9,
+            reactedByMe: true,
+          ),
+          const _SlackReaction(kind: _ReactionKind.zap, count: 6),
         ],
+      );
+    }
+
+    final author =
+        _historyAuthors[(number * 5 + dayOffset) % _historyAuthors.length];
+    final slot = i % 24;
+    final hour24 = 8 + (slot * 11) ~/ 24;
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final minute = ((number * 17 + slot * 11) % 60).toString().padLeft(2, '0');
+    final topic =
+        _historyTopics[(number * 3 + dayOffset) % _historyTopics.length];
+    final hasReaction = number % 7 == 0;
+
+    return _SlackMessage(
+      id: '$idPrefix${number.toString().padLeft(4, '0')}',
+      day: day,
+      author: author,
+      timestamp: '$hour12:$minute $period',
+      markdown: topic,
+      reactions: hasReaction
+          ? [
+              _SlackReaction(
+                kind: _historyReactions[number % _historyReactions.length],
+                count: 2 + (number % 5),
+              ),
+            ]
+          : null,
+    );
+  });
+}
+
+List<List<_SlackMessage>> _buildArchivePages() {
+  final jan11 = DateTime(2026, 1, 11);
+  final jan12 = DateTime(2026, 1, 12);
+
+  return [
+    // Page 1 (closest older: Jan 4 – Jan 12, 2026; 40 messages)
+    [
+      ..._generateHistoryRange(
+        idPrefix: 'msg-p1-',
+        startNumber: 1,
+        count: 33,
+        startDay: DateTime(2026, 1, 4),
+        daySpan: 7,
       ),
-      _SlackMessage(
-        id: 'msg-arch-12-2',
-        author: _SlackAuthor.amir,
-        timestamp: '11:04 AM',
-        markdown:
-            'Quick benchmark note: reusing `RenderTurnItemExtentObserver` '
-            'eliminates `GlobalKey` lookups during layout and keeps extent '
-            'estimates within ~1% once a section has scrolled.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.zap, count: 4)],
-      ),
-      _SlackMessage(
-        id: 'msg-arch-12-3',
-        author: _SlackAuthor.sara,
-        timestamp: '2:45 PM',
-        markdown:
-            'Typography & spacing review for the Slack channel demo: keep '
-            'date pills centered on a `1px` rule and give pinned headers a '
-            'subtle shadow only while `overlapsContent == true`.',
-        reactions: [
-          const _SlackReaction(kind: _ReactionKind.sparkles, count: 2),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-arch-12-4',
-        author: _SlackAuthor.devon,
-        timestamp: '4:52 PM',
-        markdown:
-            'Verified `MarkdownSession` preserves stable block IDs across '
-            'rebuilds — zero re-parsing of settled paragraphs or code fences.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.check, count: 3)],
-      ),
-    ],
-  ),
-  _DaySection(
-    id: 'may-11',
-    label: 'Monday, May 11',
-    messages: [
       _SlackMessage(
         id: 'msg-arch-11-1',
+        day: jan11,
         author: _SlackAuthor.devon,
         timestamp: '10:02 AM',
         markdown:
-            'Opened the tracking issue for **sliver-native chat feeds** — '
-            'teams want `SliverMainAxisGroup` + `SliverPersistentHeader` '
-            'without losing offscreen `scrollTo(id)`.',
+            'Opened the tracking issue for **bidirectional chat timelines** — '
+            'teams want Slack-scale channels with sticky date pills AND '
+            '`0.0px`-shift prepend pagination.',
         reactions: [const _SlackReaction(kind: _ReactionKind.eye, count: 4)],
       ),
       _SlackMessage(
         id: 'msg-arch-11-2',
+        day: jan11,
         author: _SlackAuthor.maya,
         timestamp: '1:30 PM',
         markdown:
             'Agreed. Let’s split the scroll API into two focused widgets:\n'
-            '- `TurnScrollView` for bidirectional `Viewport(center:)` feeds\n'
-            '- `CustomTurnScrollView` + `SliverTurnList` for arbitrary '
-            'Flutter sliver trees',
+            '- `TurnScrollView` / `TurnScrollView.sectioned` for bidirectional '
+            '`Viewport(center:)` feeds\n'
+            '- `CustomTurnScrollView` + `SliverTurnList` for bounded feeds '
+            'needing arbitrary Flutter slivers',
         reactions: [
           const _SlackReaction(
             kind: _ReactionKind.sparkles,
@@ -1660,338 +1765,415 @@ List<_DaySection> _buildArchiveDays() => [
       ),
       _SlackMessage(
         id: 'msg-arch-11-3',
+        day: jan11,
         author: _SlackAuthor.sara,
         timestamp: '3:15 PM',
         markdown:
-            'Love how clean that mental model is. Anyone coming from '
-            '`CustomScrollView` immediately knows where `SliverTurnList` goes.',
-      ),
-    ],
-  ),
-];
-
-List<_DaySection> _buildInitialDays() => [
-  _DaySection(
-    id: 'may-13',
-    label: 'Wednesday, May 13',
-    messages: [
-      _SlackMessage(
-        id: 'msg-13-1',
-        author: _SlackAuthor.amir,
-        timestamp: '9:05 AM',
-        markdown:
-            'Morning team! Ready to walk through the `CustomTurnScrollView` '
-            'obstruction math before we freeze the API.',
+            'Love how clear that mental model is — default to '
+            '`TurnScrollView.sectioned` for chat timelines, reach for '
+            '`CustomTurnScrollView` only for mixed sliver layouts.',
       ),
       _SlackMessage(
-        id: 'msg-rfc-42',
+        id: 'msg-arch-12-1',
+        day: jan12,
         author: _SlackAuthor.maya,
-        timestamp: '9:24 AM',
-        bookmarkTag: 'RFC #42',
-        markdown:
-            '**RFC #42: Multi-sliver offscreen `scrollTo(id)`**\n\n'
-            'Every `SliverTurnList` registers a `TurnListRegistration` with '
-            '`TurnScrollScope` so the engine can estimate offscreen offsets '
-            'across arbitrary `SliverMainAxisGroup` sections and retarget '
-            'seamlessly once the box lays out:\n\n'
-            '```dart\n'
-            'CustomTurnScrollView(\n'
-            '  controller: controller,\n'
-            '  slivers: [\n'
-            '    SliverPersistentHeader(pinned: true, delegate: bookmarks),\n'
-            '    SliverMainAxisGroup(\n'
-            '      slivers: [\n'
-            '        SliverPersistentHeader(\n'
-            '          pinned: true,\n'
-            '          delegate: dayHeader,\n'
-            '        ),\n'
-            '        SliverTurnList(\n'
-            '          itemCount: messages.length,\n'
-            '          itemId: (i) => messages[i].id,\n'
-            '          itemBuilder: buildRow,\n'
-            '        ),\n'
-            '      ],\n'
-            '    ),\n'
-            '  ],\n'
-            ')\n'
-            '```\n\n'
-            '- Walks ancestor `RenderSliver` siblings to sum '
-            '`maxScrollObstructionExtent`\n'
-            '- Keeps Motor spring velocity continuous when virtualized extents '
-            'refine mid-flight',
-        reactions: [
-          const _SlackReaction(
-            kind: _ReactionKind.rocket,
-            count: 7,
-            reactedByMe: true,
-          ),
-          const _SlackReaction(kind: _ReactionKind.sparkles, count: 4),
-          const _SlackReaction(kind: _ReactionKind.check, count: 3),
-        ],
-        lastReplyLabel: 'yesterday',
-        threadReplies: const [
-          _ThreadReply(
-            author: _SlackAuthor.devon,
-            timestamp: '9:41 AM',
-            body:
-                'Tested with stacked bookmarks + day header (82px combined '
-                'obstruction) — lands within 1px every time.',
-          ),
-          _ThreadReply(
-            author: _SlackAuthor.sara,
-            timestamp: '10:02 AM',
-            body:
-                'Love that alignment: 0.08 gives just enough breathing room '
-                'below the pinned date pill.',
-          ),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-13-3',
-        author: _SlackAuthor.devon,
-        timestamp: '10:48 AM',
-        markdown:
-            'Double-checked `TargetTrackingScrollActivity`: any mouse wheel, '
-            'trackpad fling, or touch drag cancels the spring immediately via '
-            '`onUserScroll()` with zero fighting.',
-        reactions: [
-          const _SlackReaction(kind: _ReactionKind.thumbsUp, count: 3),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-13-4',
-        author: _SlackAuthor.sara,
-        timestamp: '11:32 AM',
-        markdown:
-            'For the highlight pulse when landing from a bookmark jump, let’s '
-            'drive it with `SingleMotionBuilder` and `CoilTheme.motionOf` so '
-            '`TickerRateScope` and reduced-motion settings work automatically.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.heart, count: 4)],
-      ),
-      _SlackMessage(
-        id: 'msg-13-5',
-        author: _SlackAuthor.amir,
-        timestamp: '1:15 PM',
-        markdown:
-            'Caught a nice subtlety in `jumpToBottom()`: we check '
-            '`lastNonEmpty.reachedEnd` and verify the final `RenderBox` is '
-            'attached and not `keptAlive` offscreen before freezing the '
-            'target.',
-      ),
-      _SlackMessage(
-        id: 'msg-13-6',
-        author: _SlackAuthor.releaseBot,
-        timestamp: '3:00 PM',
-        markdown:
-            '**CI green** on `feat/turns` — `18/18` tests passing in '
-            '`packages/turns` and `2056/2056` in `packages/coil`.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.check, count: 5)],
-      ),
-      _SlackMessage(
-        id: 'msg-13-7',
-        author: _SlackAuthor.maya,
-        timestamp: '4:42 PM',
-        markdown:
-            'Wrapping up for today. Tomorrow we’ll wire the release checklist '
-            'and test cross-day jumps under both light and dark themes.',
-      ),
-    ],
-  ),
-  _DaySection(
-    id: 'may-14',
-    label: 'Thursday, May 14',
-    messages: [
-      _SlackMessage(
-        id: 'msg-14-1',
-        author: _SlackAuthor.sara,
-        timestamp: '9:12 AM',
-        markdown:
-            'Aubergine seed (`0xFF7C3AED` with `neutralHue: 305`, '
-            '`neutralChroma: 0.008`) looks super crisp in both light and dark '
-            'modes via `CoilTheme.override`.',
-        reactions: [
-          const _SlackReaction(kind: _ReactionKind.palette, count: 4),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-deploy-checklist',
-        author: _SlackAuthor.devon,
-        timestamp: '10:36 AM',
-        bookmarkTag: 'Deploy checklist',
-        markdown:
-            '**Release 0.1.0-dev.0 Deploy Checklist**\n\n'
-            'Before merging `feat/turns` into `main`, verify each gate:\n\n'
-            '- [x] `dart analyze --fatal-infos` clean across workspace\n'
-            '- [x] Zero Material/Cupertino imports in `turns` and `turns_example`\n'
-            '- [x] Zero bare `AnimationController` or Flutter ticker mixins\n'
-            '- [x] `CoilMarkdown` backed by `turns/markdown.dart` (`MarkdownSession`)\n'
-            '- [ ] Web WASM build green in `apps/example`\n\n'
-            'Run locally with:\n'
-            '```sh\n'
-            'cd apps/example && flutter build web --release --wasm\n'
-            '```',
-        reactions: [
-          const _SlackReaction(
-            kind: _ReactionKind.clipboard,
-            count: 5,
-            reactedByMe: true,
-          ),
-          const _SlackReaction(kind: _ReactionKind.rocket, count: 4),
-        ],
-        lastReplyLabel: '4h ago',
-        threadReplies: const [
-          _ThreadReply(
-            author: _SlackAuthor.releaseBot,
-            timestamp: '10:39 AM',
-            body: 'Analyzer gate passed with 0 infos, 0 warnings.',
-          ),
-          _ThreadReply(
-            author: _SlackAuthor.maya,
-            timestamp: '10:44 AM',
-            body: 'Only WASM verification left once all four demos land.',
-          ),
-          _ThreadReply(
-            author: _SlackAuthor.amir,
-            timestamp: '11:01 AM',
-            body:
-                'Confirmed `CoilScrollArea` pairs cleanly with '
-                'TurnScrollController.',
-          ),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-unread-first',
-        author: _SlackAuthor.amir,
-        timestamp: '11:50 AM',
-        bookmarkTag: 'First unread',
-        markdown:
-            'Also verified `CoilInputMessage` handles `Enter` to send on '
-            'desktop pointer and `Shift+Enter` for multiline markdown blocks, '
-            'while keeping Return as newline on touch.',
-        reactions: [
-          const _SlackReaction(kind: _ReactionKind.keyboard, count: 2),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-14-4',
-        author: _SlackAuthor.maya,
-        timestamp: '1:28 PM',
-        markdown:
-            'Reminder: keep `SliverMainAxisGroup` keyed with '
-            '`ValueKey(day.id)` and `SliverTurnList` keyed with '
-            '`ValueKey(list:day.id)` so prepending earlier days preserves '
-            'existing render objects.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.pin, count: 3)],
-      ),
-      _SlackMessage(
-        id: 'msg-14-5',
-        author: _SlackAuthor.sara,
-        timestamp: '3:04 PM',
-        markdown:
-            'Added tappable reaction counters and expandable inline threads so '
-            'you can feel dynamic item height updates inside `SliverTurnList`.',
-      ),
-      _SlackMessage(
-        id: 'msg-14-6',
-        author: _SlackAuthor.devon,
-        timestamp: '4:19 PM',
-        markdown:
-            'One more check: make sure `isAwayFromBottom` only surfaces the '
-            'jump-to-latest pill once scrolled past `jumpThreshold` (`160px`).',
-        reactions: [
-          const _SlackReaction(kind: _ReactionKind.thumbsUp, count: 2),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-14-7',
-        author: _SlackAuthor.releaseBot,
-        timestamp: '5:30 PM',
-        markdown:
-            'Scheduled nightly WASM smoke check for `apps/example` at `02:00 UTC`.',
-      ),
-    ],
-  ),
-  _DaySection(
-    id: 'today',
-    label: 'Today',
-    messages: [
-      _SlackMessage(
-        id: 'msg-today-1',
-        author: _SlackAuthor.maya,
-        timestamp: '9:02 AM',
-        markdown:
-            'Good morning! Notice how the pinned `Today` date pill floats '
-            'cleanly over scrolled messages without covering them — tap '
-            '**10 new messages** or any bookmark above to spring across days.',
-        reactions: [
-          const _SlackReaction(kind: _ReactionKind.sparkles, count: 4),
-          const _SlackReaction(
-            kind: _ReactionKind.flame,
-            count: 2,
-            reactedByMe: true,
-          ),
-        ],
-      ),
-      _SlackMessage(
-        id: 'msg-today-2',
-        author: _SlackAuthor.amir,
         timestamp: '9:18 AM',
         markdown:
-            'Tested jumping from Today straight up to **RFC #42** on May 13 '
-            'and back to **Deploy checklist** on May 14 — zero jump cut, '
-            'smooth Motor spring all the way.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.target, count: 3)],
-      ),
-      _SlackMessage(
-        id: 'msg-today-3',
-        author: _SlackAuthor.sara,
-        timestamp: '9:45 AM',
-        markdown:
-            'Quick tip: tap the **code icon** in the composer below to drop a '
-            'fenced Dart snippet, or type your own markdown (`**bold**`, '
-            '`` `inline code` ``, lists) and press Enter.',
-      ),
-      _SlackMessage(
-        id: 'msg-today-4',
-        author: _SlackAuthor.devon,
-        timestamp: '10:11 AM',
-        markdown:
-            'Here’s the complete sliver stack powering this channel:\n'
-            '1. Pinned `SliverPersistentHeader` (bookmarks bar)\n'
-            '2. `SliverToBoxAdapter` (welcome banner + `"Load earlier days"`)\n'
-            '3. Multiple `SliverMainAxisGroup` sections (floating pinned date '
-            'pill + `SliverTurnList`)\n'
-            '4. Inline red `"New"` marker + floating unread jump pill',
+            'Kicked off the `packages/turns` extraction branch! Keeping zero '
+            'dependency on `coil` so any Flutter app can drop in '
+            '`TurnScrollView` directly.',
         reactions: [
-          const _SlackReaction(kind: _ReactionKind.layers, count: 5),
-          const _SlackReaction(kind: _ReactionKind.party, count: 3),
-        ],
-        lastReplyLabel: '14m ago',
-        threadReplies: const [
-          _ThreadReply(
-            author: _SlackAuthor.maya,
-            timestamp: '10:16 AM',
-            body:
-                'And every message body uses CoilMarkdown backed by turns’s '
-                'incremental MarkdownSession.',
-          ),
-          _ThreadReply(
-            author: _SlackAuthor.sara,
-            timestamp: '10:22 AM',
-            body: 'Looks awesome in both light and dark modes!',
-          ),
+          const _SlackReaction(kind: _ReactionKind.party, count: 5),
+          const _SlackReaction(kind: _ReactionKind.flame, count: 3),
         ],
       ),
       _SlackMessage(
-        id: 'msg-today-5',
-        author: _SlackAuthor.releaseBot,
-        timestamp: '10:29 AM',
+        id: 'msg-arch-12-2',
+        day: jan12,
+        author: _SlackAuthor.amir,
+        timestamp: '11:04 AM',
         markdown:
-            '**Preview ready:** Scroll up to test `"Load earlier days"` and '
-            'the floating `"Jump to latest"` pill, or post a new message '
-            'below.',
-        reactions: [const _SlackReaction(kind: _ReactionKind.rocket, count: 2)],
+            'Quick benchmark note: reusing `RenderTurnItemExtentObserver` '
+            'eliminates `GlobalKey` lookups during layout and keeps extent '
+            'estimates within ~1% once a section has scrolled.',
+        reactions: [const _SlackReaction(kind: _ReactionKind.zap, count: 4)],
+      ),
+      _SlackMessage(
+        id: 'msg-arch-12-3',
+        day: jan12,
+        author: _SlackAuthor.sara,
+        timestamp: '2:45 PM',
+        markdown:
+            'Typography & spacing review for the Slack channel demo: keep '
+            'inline date pills centered on a `1px` rule and float a shadowed '
+            'pill with no rule whenever `isPinned == true`.',
+        reactions: [
+          const _SlackReaction(kind: _ReactionKind.sparkles, count: 2),
+        ],
+      ),
+      _SlackMessage(
+        id: 'msg-arch-12-4',
+        day: jan12,
+        author: _SlackAuthor.devon,
+        timestamp: '4:52 PM',
+        markdown:
+            'Verified `MarkdownSession` preserves stable block IDs across '
+            'rebuilds — zero re-parsing of settled paragraphs or code fences.',
+        reactions: [const _SlackReaction(kind: _ReactionKind.check, count: 3)],
       ),
     ],
-  ),
-];
+    // Page 2 (Dec 23 – Jan 3; 40 messages)
+    _generateHistoryRange(
+      idPrefix: 'msg-p2-',
+      startNumber: 41,
+      count: 40,
+      startDay: DateTime(2025, 12, 23),
+      daySpan: 12,
+    ),
+    // Page 3 (Dec 10 – Dec 22, 2025; 40 messages)
+    _generateHistoryRange(
+      idPrefix: 'msg-p3-',
+      startNumber: 81,
+      count: 40,
+      startDay: DateTime(2025, 12, 10),
+      daySpan: 13,
+    ),
+  ];
+}
+
+List<_SlackMessage> _buildInitialMessages() {
+  final may13 = DateTime(2026, 5, 13);
+  final may14 = DateTime(2026, 5, 14);
+  final today = _SlackDemoState._today;
+
+  // 2,981 historical messages (Jan 13 – May 12, 2026) + 19 recent = 3,000.
+  final earlier = _generateHistoryRange(
+    idPrefix: 'msg-h',
+    startNumber: 1,
+    count: 2981,
+    startDay: DateTime(2026, 1, 13),
+    daySpan: 120,
+    kickoffNumber: 420,
+  );
+
+  return [
+    ...earlier,
+    // --- Wednesday, May 13 (7 messages, including RFC #42) ---
+    _SlackMessage(
+      id: 'msg-13-1',
+      day: may13,
+      author: _SlackAuthor.amir,
+      timestamp: '9:05 AM',
+      markdown:
+          'Morning team! Ready to walk through the `TurnSectionHeaderBuilder` '
+          '`isPinned` API before we freeze `0.1.0`.',
+    ),
+    _SlackMessage(
+      id: _SlackDemoState._rfcMessageId,
+      day: may13,
+      author: _SlackAuthor.maya,
+      timestamp: '9:24 AM',
+      bookmarkTag: 'RFC #42',
+      markdown:
+          '**RFC #42: `TurnScrollView.sectioned` with `isPinned` headers**\n\n'
+          'Passing `bool isPinned` into `TurnSectionHeaderBuilder<S>` lets '
+          'Slack-scale 3,000+ message channels stay on the O(1) bidirectional '
+          '`Viewport(center:)` without forward-only slivers:\n\n'
+          '```dart\n'
+          'TurnScrollView<DateTime>.sectioned(\n'
+          '  controller: controller,\n'
+          '  itemCount: messages.length,\n'
+          '  itemId: (i) => messages[i].id,\n'
+          '  sectionId: (i) => messages[i].day,\n'
+          '  sectionHeaderBuilder: (context, day, isPinned) =>\n'
+          '      DayHeader(day: day, isPinned: isPinned),\n'
+          '  itemBuilder: buildRow,\n'
+          ')\n'
+          '```\n\n'
+          '- `isPinned: false` renders the `1px` hairline rule + date pill\n'
+          '- `isPinned: true` floats only the transparent elevated pill on top',
+      reactions: [
+        const _SlackReaction(
+          kind: _ReactionKind.rocket,
+          count: 7,
+          reactedByMe: true,
+        ),
+        const _SlackReaction(kind: _ReactionKind.sparkles, count: 4),
+        const _SlackReaction(kind: _ReactionKind.check, count: 3),
+      ],
+      lastReplyLabel: 'yesterday',
+      threadReplies: const [
+        _ThreadReply(
+          author: _SlackAuthor.devon,
+          timestamp: '9:41 AM',
+          body:
+              'Tested with 3,000 messages and sticky push-up across the center '
+              'seam — lands within 1px every time.',
+        ),
+        _ThreadReply(
+          author: _SlackAuthor.sara,
+          timestamp: '10:02 AM',
+          body:
+              'Love that alignment: 0.08 gives just enough breathing room '
+              'below the pinned date pill.',
+        ),
+      ],
+    ),
+    _SlackMessage(
+      id: 'msg-13-3',
+      day: may13,
+      author: _SlackAuthor.devon,
+      timestamp: '10:48 AM',
+      markdown:
+          'Double-checked `TargetTrackingScrollActivity`: any mouse wheel, '
+          'trackpad fling, or touch drag cancels the spring immediately via '
+          '`onUserScroll()` with zero fighting.',
+      reactions: [
+        const _SlackReaction(kind: _ReactionKind.thumbsUp, count: 3),
+      ],
+    ),
+    _SlackMessage(
+      id: 'msg-13-4',
+      day: may13,
+      author: _SlackAuthor.sara,
+      timestamp: '11:32 AM',
+      markdown:
+          'For the highlight pulse when landing from a bookmark jump, let’s '
+          'drive it with `SingleMotionBuilder` and `CoilTheme.motionOf` so '
+          '`TickerRateScope` and reduced-motion settings work automatically.',
+      reactions: [const _SlackReaction(kind: _ReactionKind.heart, count: 4)],
+    ),
+    _SlackMessage(
+      id: 'msg-13-5',
+      day: may13,
+      author: _SlackAuthor.amir,
+      timestamp: '1:15 PM',
+      markdown:
+          'Caught a nice subtlety in `jumpToBottom()`: we verify the final '
+          '`RenderBox` is attached and not `keptAlive` offscreen before '
+          'freezing the spring target.',
+    ),
+    _SlackMessage(
+      id: 'msg-13-6',
+      day: may13,
+      author: _SlackAuthor.releaseBot,
+      timestamp: '3:00 PM',
+      markdown:
+          '**CI green** on `feat/turns` — all unit tests passing in '
+          '`packages/turns` and `packages/coil`.',
+      reactions: [const _SlackReaction(kind: _ReactionKind.check, count: 5)],
+    ),
+    _SlackMessage(
+      id: 'msg-13-7',
+      day: may13,
+      author: _SlackAuthor.maya,
+      timestamp: '4:42 PM',
+      markdown:
+          'Wrapping up for today. Tomorrow we’ll wire the release checklist '
+          'and test cross-day jumps under both light and dark themes.',
+    ),
+
+    // --- Thursday, May 14 (7 messages: Deploy checklist + 5 unread) ---
+    _SlackMessage(
+      id: 'msg-14-1',
+      day: may14,
+      author: _SlackAuthor.sara,
+      timestamp: '9:12 AM',
+      markdown:
+          'Aubergine seed (`0xFF7C3AED` with `neutralHue: 305`, '
+          '`neutralChroma: 0.008`) looks super crisp in both light and dark '
+          'modes via `CoilTheme.override`.',
+      reactions: [
+        const _SlackReaction(kind: _ReactionKind.palette, count: 4),
+      ],
+    ),
+    _SlackMessage(
+      id: _SlackDemoState._deployMessageId,
+      day: may14,
+      author: _SlackAuthor.devon,
+      timestamp: '10:36 AM',
+      bookmarkTag: 'Deploy checklist',
+      markdown:
+          '**Release 0.1.0-dev.0 Deploy Checklist**\n\n'
+          'Before merging `feat/turns` into `main`, verify each gate:\n\n'
+          '- [x] `dart analyze --fatal-infos` clean across workspace\n'
+          '- [x] Zero Material/Cupertino imports in `turns` and `turns_example`\n'
+          '- [x] Zero bare `AnimationController` or Flutter ticker mixins\n'
+          '- [x] `CoilMarkdown` backed by `turns/markdown.dart` (`MarkdownSession`)\n'
+          '- [ ] Web WASM build green in `apps/example`\n\n'
+          'Run locally with:\n'
+          '```sh\n'
+          'cd apps/example && flutter build web --release --wasm\n'
+          '```',
+      reactions: [
+        const _SlackReaction(
+          kind: _ReactionKind.clipboard,
+          count: 5,
+          reactedByMe: true,
+        ),
+        const _SlackReaction(kind: _ReactionKind.rocket, count: 4),
+      ],
+      lastReplyLabel: '4h ago',
+      threadReplies: const [
+        _ThreadReply(
+          author: _SlackAuthor.releaseBot,
+          timestamp: '10:39 AM',
+          body: 'Analyzer gate passed with 0 infos, 0 warnings.',
+        ),
+        _ThreadReply(
+          author: _SlackAuthor.maya,
+          timestamp: '10:44 AM',
+          body: 'Only WASM verification left once all demos land.',
+        ),
+        _ThreadReply(
+          author: _SlackAuthor.amir,
+          timestamp: '11:01 AM',
+          body:
+              'Confirmed `CoilScrollArea` pairs cleanly with '
+              'TurnScrollController.',
+        ),
+      ],
+    ),
+    _SlackMessage(
+      id: _SlackDemoState._firstUnreadId,
+      day: may14,
+      author: _SlackAuthor.amir,
+      timestamp: '11:50 AM',
+      bookmarkTag: 'First unread',
+      markdown:
+          'Also verified `CoilInputMessage` handles `Enter` to send on '
+          'desktop pointer and `Shift+Enter` for multiline markdown blocks, '
+          'while keeping Return as newline on touch.',
+      reactions: [
+        const _SlackReaction(kind: _ReactionKind.keyboard, count: 2),
+      ],
+    ),
+    _SlackMessage(
+      id: 'msg-14-4',
+      day: may14,
+      author: _SlackAuthor.maya,
+      timestamp: '1:28 PM',
+      markdown:
+          'Prepending earlier archive pages above the viewport keeps every '
+          'visible message locked to `0.0px` shift because `TurnScrollView` '
+          'anchors on `Viewport(center:)`.',
+      reactions: [const _SlackReaction(kind: _ReactionKind.pin, count: 3)],
+    ),
+    _SlackMessage(
+      id: 'msg-14-5',
+      day: may14,
+      author: _SlackAuthor.sara,
+      timestamp: '3:04 PM',
+      markdown:
+          'Added tappable reaction counters and expandable inline threads so '
+          'you can feel dynamic item height updates inside '
+          '`TurnScrollView.sectioned`.',
+    ),
+    _SlackMessage(
+      id: 'msg-14-6',
+      day: may14,
+      author: _SlackAuthor.devon,
+      timestamp: '4:19 PM',
+      markdown:
+          'One more check: make sure `isAwayFromBottom` only surfaces the '
+          'jump-to-latest pill once scrolled past `jumpThreshold` (`160px`).',
+      reactions: [
+        const _SlackReaction(kind: _ReactionKind.thumbsUp, count: 2),
+      ],
+    ),
+    _SlackMessage(
+      id: 'msg-14-7',
+      day: may14,
+      author: _SlackAuthor.releaseBot,
+      timestamp: '5:30 PM',
+      markdown:
+          'Scheduled nightly WASM smoke check for `apps/example` at `02:00 UTC`.',
+    ),
+
+    // --- Today (5 messages -> 10 unread total from _firstUnreadId) ---
+    _SlackMessage(
+      id: 'msg-today-1',
+      day: today,
+      author: _SlackAuthor.maya,
+      timestamp: '9:02 AM',
+      markdown:
+          'Good morning! Notice how the pinned `Today` date pill floats '
+          'cleanly over scrolled messages without a hairline — tap '
+          '**10 new messages** or any bookmark above to jump across 3,000 '
+          'messages.',
+      reactions: [
+        const _SlackReaction(kind: _ReactionKind.sparkles, count: 4),
+        const _SlackReaction(
+          kind: _ReactionKind.flame,
+          count: 2,
+          reactedByMe: true,
+        ),
+      ],
+    ),
+    _SlackMessage(
+      id: 'msg-today-2',
+      day: today,
+      author: _SlackAuthor.amir,
+      timestamp: '9:18 AM',
+      markdown:
+          'Tested jumping from Today straight up to **RFC #42** on May 13 '
+          'or O(1) back to **Kickoff · #420** in February — smooth Motor '
+          'springs for nearby jumps, instant recenter across thousands.',
+      reactions: [const _SlackReaction(kind: _ReactionKind.target, count: 3)],
+    ),
+    _SlackMessage(
+      id: 'msg-today-3',
+      day: today,
+      author: _SlackAuthor.sara,
+      timestamp: '9:45 AM',
+      markdown:
+          'Quick tip: tap the **code icon** in the composer below to drop a '
+          'fenced Dart snippet, or type your own markdown (`**bold**`, '
+          '`` `inline code` ``, lists) and press Enter.',
+    ),
+    _SlackMessage(
+      id: 'msg-today-4',
+      day: today,
+      author: _SlackAuthor.devon,
+      timestamp: '10:11 AM',
+      markdown:
+          'Here’s the stack powering this 3,000-message channel:\n'
+          '1. Fixed bookmarks bar right below the channel header\n'
+          '2. `TurnScrollView<DateTime>.sectioned` on O(1) '
+          '`Viewport(center:)`\n'
+          '3. `isPinned` date headers (hairline inline vs floating pill)\n'
+          '4. `leadingSlivers` welcome banner + `0.0px`-shift top pagination\n'
+          '5. Inline red `"New"` marker + floating `"10 new messages"` pill',
+      reactions: [
+        const _SlackReaction(kind: _ReactionKind.layers, count: 5),
+        const _SlackReaction(kind: _ReactionKind.party, count: 3),
+      ],
+      lastReplyLabel: '14m ago',
+      threadReplies: const [
+        _ThreadReply(
+          author: _SlackAuthor.maya,
+          timestamp: '10:16 AM',
+          body:
+              'And every message body uses CoilMarkdown backed by turns’s '
+              'incremental MarkdownSession.',
+        ),
+        _ThreadReply(
+          author: _SlackAuthor.sara,
+          timestamp: '10:22 AM',
+          body: 'Looks awesome in both light and dark modes!',
+        ),
+      ],
+    ),
+    _SlackMessage(
+      id: 'msg-today-5',
+      day: today,
+      author: _SlackAuthor.releaseBot,
+      timestamp: '10:29 AM',
+      markdown:
+          '**Preview ready:** Tap **10 new messages** or any bookmark above, '
+          'scroll up to watch `Today` push off `Thursday, May 14`, or post a '
+          'new message below.',
+      reactions: [const _SlackReaction(kind: _ReactionKind.rocket, count: 2)],
+    ),
+  ];
+}

@@ -259,7 +259,7 @@ void main() {
   );
 
   snapTest(
-    'record slack_slivers video',
+    'record slack_sections video',
     devices: {Devices.ios.iPhone16Pro},
     skip: !_recordVideos,
     timeout: const Timeout(Duration(minutes: 4)),
@@ -273,23 +273,23 @@ void main() {
       await _pumpSmooth(tester, const Duration(milliseconds: 600));
 
       final recording = await snap.recordVideo(
-        name: 'slack_slivers',
+        name: 'slack_sections',
         settings: _videoSettings,
       );
 
-      // Pause briefly showing pinned bookmarks, transparent Today date pill,
-      // and Slack's floating "10 new messages" top pill.
+      // Pause briefly showing bookmarks, transparent pinned Today date pill,
+      // and Slack's floating "10 new messages" top pill over a 3,000-msg feed.
       await _pumpSmooth(tester, const Duration(milliseconds: 450));
 
-      // Tap Slack's floating "10 new messages" pill -> springs across slivers
-      // to the offscreen first-unread message with the red "New" divider line
-      // clearly visible right above it.
+      // Tap Slack's floating "10 new messages" pill -> springs to the
+      // offscreen first-unread message with the red "New" divider line clearly
+      // visible right above it.
       final unreadPill = find.byKey(const Key('slack.unread_pill'));
       expect(unreadPill, findsOneWidget);
       await _smoothTap(tester, unreadPill);
       await _pumpSmooth(tester, const Duration(milliseconds: 1150));
 
-      // Jump across multiple SliverTurnList day sections to Day 1 RFC #42.
+      // Jump across day sections to RFC #42 on May 13.
       await _smoothTap(tester, find.byKey(const Key('slack.jump_rfc')));
       await _pumpSmooth(tester, const Duration(milliseconds: 1200));
 

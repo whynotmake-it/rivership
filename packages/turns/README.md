@@ -22,12 +22,12 @@ Flutter AI chat transcripts, streaming timelines, and messaging feeds.
       pagination, and spring-driven jump to offscreen quoted replies.
     </td>
     <td align="center" width="33%">
-      <img src="doc/slack_slivers.gif" alt="Slack CustomTurnScrollView composing native slivers" width="240" /><br />
-      <b>Slack Slivers</b><br />
-      <code>CustomTurnScrollView</code> composing pinned bookmarks,
-      <code>SliverMainAxisGroup</code> + <code>SliverTurnList</code> day
-      sections, transparent floating date pills, and an unread jump pill landing
-      on the inline <code>New</code> divider.
+      <img src="doc/slack_sections.gif" alt="Slack 3,000-message channel built with TurnScrollView.sectioned" width="240" /><br />
+      <b>Slack Channel (3,000 msgs)</b><br />
+      <code>TurnScrollView.sectioned</code> across 3,000 messages using
+      <code>isPinned</code> to switch between inline date hairlines and
+      transparent floating pills, <code>0.0px</code>-shift prepend pagination,
+      and an unread jump pill landing on the inline <code>New</code> divider.
     </td>
   </tr>
 </table>
@@ -40,9 +40,28 @@ Flutter AI chat transcripts, streaming timelines, and messaging feeds.
   - **Single-pass `SliverTurnStage` turn pinning**: pass `pinnedId` to reserve a viewport stage for the active prompt so `maxScrollExtent` stays flat while tokens stream.
   - **Zero-fight user control**: any drag, wheel, or trackpad gesture disengages auto-pinning immediately.
   - **Synchronous keyboard-inset anchoring**: shifts scroll offset by the exact bottom-edge delta during layout without a 1-frame flash.
-- **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with automatic `alignment: 0` clearance and pointer pass-through (`stickyHeaderIgnoresPointer`).
-- **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: mix `SliverAppBar`, `SliverPersistentHeader`, `SliverMainAxisGroup`, and multiple `SliverTurnList` sections while keeping Motor-driven offscreen `scrollTo()` and `jumpToBottom()`.
+- **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with an `isPinned` flag (hairline divider inline vs elevated floating pill when pinned), automatic `alignment: 0` clearance, and pointer pass-through (`stickyHeaderIgnoresPointer`).
+- **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: escape hatch for bounded feeds that need arbitrary Flutter slivers (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s) while keeping Motor-driven offscreen `scrollTo()` and `jumpToBottom()`.
 - **Pure-Dart streaming markdown (`MarkdownSession`)**: freezes settled top-level blocks by identity and repairs unfinished inline syntax (`completeMarkdown`) while tokens arrive, plus pure-Dart LaTeX math syntaxes (`latexMathSyntaxes`).
+
+## Choosing `TurnScrollView` vs `CustomTurnScrollView`
+
+Most production chat, messaging, and AI apps — including Slack- and
+WhatsApp-scale channels with thousands of messages and sticky date pills —
+should use **`TurnScrollView`** or **`TurnScrollView.sectioned`**. Reach for
+**`CustomTurnScrollView` + `SliverTurnList`** only for bounded or
+moderate-length feeds (like the **Onboarding** demo in `example/`) where you
+genuinely need arbitrary Flutter slivers such as a collapsing `SliverAppBar` or
+an inline `SliverGrid`.
+
+| | `TurnScrollView` / `TurnScrollView.sectioned` | `CustomTurnScrollView` + `SliverTurnList` |
+| --- | --- | --- |
+| **Role** | **Default choice for almost all chat, messaging, and AI timelines** — including Slack/WhatsApp-scale 10,000+ message channels with sticky date headers. | **Escape hatch for bounded / moderate-length feeds** (onboarding flows, issue/ticket threads, detail views, media-rich feeds) that genuinely need arbitrary Flutter slivers. |
+| **Viewport model** | Bidirectional `Viewport(center:)` | Forward-only `Viewport` (walks from sliver `0`) |
+| **O(1) open at bottom or `initialItemId`** | **Yes** — opens at message `#10,000` without laying out earlier items. | **No** — walks forward from sliver `0` to reach deep targets. |
+| **Prepend pagination above viewport** | **`0.0px` shift** with preserved child widget `State`, plus bidirectional `TurnScrollNotification`. | **Shifts scroll position** when prepending above the viewport. |
+| **Sticky section headers** | Built-in via `TurnScrollView.sectioned` with `isPinned` styling and smooth push-up across the center seam. | Manual (`SliverMainAxisGroup` + `SliverPersistentHeader`). |
+| **Arbitrary mixed slivers** | `leadingSlivers` above item `0` and `tailSliver` below the last item — **no collapsing `SliverAppBar` or `SliverGrid` inside the list**. | **Full Flutter sliver composition** (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s). |
 
 ## Quick Start
 
@@ -88,7 +107,8 @@ NotificationListener<TurnScrollNotification>(
     itemId: (i) => messages[i].id,
     sectionId: (i) => messages[i].day,
     initialItemId: deepLinkedMessageId, // O(1) open + frame-1 sticky header
-    sectionHeaderBuilder: (context, day) => DatePill(day),
+    sectionHeaderBuilder: (context, day, isPinned) =>
+        DatePill(day, isPinned: isPinned),
     itemBuilder: (context, i) => MessageBubble(messages[i]),
   ),
 );
@@ -104,26 +124,24 @@ if (arrived && mounted) {
 }
 ```
 
-### 3. Composing Native Flutter Slivers
+### 3. Composing Native Flutter Slivers (Bounded Feeds)
+
+Use `CustomTurnScrollView` + `SliverTurnList` when a bounded or moderate-length
+feed genuinely needs arbitrary Flutter slivers such as a collapsing
+`SliverAppBar`, a `SliverGrid`, or stacked `SliverPersistentHeader`s:
 
 ```dart
 CustomTurnScrollView(
   controller: controller,
   slivers: [
-    SliverPersistentHeader(pinned: true, delegate: bookmarksDelegate),
-    for (final day in days)
-      SliverMainAxisGroup(
-        key: ValueKey('day:${day.id}'),
-        slivers: [
-          SliverPersistentHeader(pinned: true, delegate: dayHeader(day)),
-          SliverTurnList(
-            key: ValueKey('list:${day.id}'),
-            itemCount: day.messages.length,
-            itemId: (i) => day.messages[i].id,
-            itemBuilder: (context, i) => SlackRow(day.messages[i]),
-          ),
-        ],
-      ),
+    SliverAppBar(pinned: true, expandedHeight: 160, flexibleSpace: header),
+    SliverGrid.builder(gridDelegate: mediaGrid, itemBuilder: buildAttachment),
+    SliverTurnList(
+      key: const ValueKey('comments'),
+      itemCount: comments.length,
+      itemId: (i) => comments[i].id,
+      itemBuilder: (context, i) => CommentRow(comments[i]),
+    ),
   ],
 );
 ```
@@ -145,9 +163,9 @@ final doc = session.update(streamedText, streaming: true);
 
 - `package:turns/turns.dart` — full public API (scroll + markdown).
 - `package:turns/scroll.dart` — `TurnScrollView`, `TurnScrollView.sectioned`,
-  `CustomTurnScrollView`, `SliverTurnList`, `SliverTurnStage`,
-  `TurnScrollController`, `TurnScrollNotification`, `TurnScrollScope`,
-  `TurnScrollItem`.
+  `TurnSectionHeaderBuilder`, `CustomTurnScrollView`, `SliverTurnList`,
+  `SliverTurnStage`, `TurnScrollController`, `TurnScrollNotification`,
+  `TurnScrollScope`, `TurnScrollItem`.
 - `package:turns/markdown.dart` — `MarkdownSession`, `MarkdownDocument`,
   `MarkdownSegment`, `parseMarkdown`, `completeMarkdown`, `markdownBoundary`,
   and pure-Dart LaTeX math inline syntaxes (`latexMathSyntaxes`,

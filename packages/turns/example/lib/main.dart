@@ -3,6 +3,7 @@ import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
 import 'package:turns_example/src/demos/ai_assistant_demo.dart';
 import 'package:turns_example/src/demos/imessage_demo.dart';
+import 'package:turns_example/src/demos/onboarding_demo.dart';
 import 'package:turns_example/src/demos/slack_demo.dart';
 import 'package:turns_example/src/demos/whatsapp_demo.dart';
 import 'package:turns_example/src/shell/turns_overview_page.dart';
@@ -72,6 +73,12 @@ List<AutoRoute> turnsRoutesFor({VoidCallback? onHome}) => [
         path: 'imessage',
         type: _pageRouteType,
         builder: (context, state) => const IMessageDemo(),
+      ),
+      NamedRouteDef(
+        name: turnsOnboardingRouteName,
+        path: 'onboarding',
+        type: _pageRouteType,
+        builder: (context, state) => const OnboardingDemo(),
       ),
       NamedRouteDef(
         name: turnsOverviewRouteName,

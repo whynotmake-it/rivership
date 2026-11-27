@@ -318,8 +318,11 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                           ),
                         ),
                       ],
-                      sectionHeaderBuilder: (context, day) =>
-                          _DatePillHeader(label: _formatDay(day)),
+                      sectionHeaderBuilder: (context, day, isPinned) =>
+                          _DatePillHeader(
+                            label: _formatDay(day),
+                            isPinned: isPinned,
+                          ),
                       itemBuilder: (context, index) {
                         final message = _messages[index];
                         final prev = index > 0 ? _messages[index - 1] : null;
@@ -675,9 +678,10 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
 }
 
 class _DatePillHeader extends StatelessWidget {
-  const _DatePillHeader({required this.label});
+  const _DatePillHeader({required this.label, required this.isPinned});
 
   final String label;
+  final bool isPinned;
 
   @override
   Widget build(BuildContext context) {
@@ -699,13 +703,15 @@ class _DatePillHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               side: BorderSide(color: colors.border),
             ),
-            shadows: [
-              BoxShadow(
-                color: colors.shadowColor,
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            shadows: isPinned
+                ? [
+                    BoxShadow(
+                      color: colors.shadowColor,
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

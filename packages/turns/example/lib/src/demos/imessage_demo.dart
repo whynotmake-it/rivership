@@ -294,8 +294,8 @@ class _IMessageDemoState extends State<IMessageDemo> {
                                   ),
                                 )
                               : null,
-                          sectionHeaderBuilder: (context, section) =>
-                              _InlineTimestampHeader(section: section),
+                          sectionHeaderBuilder: (_, date, _) =>
+                              _InlineTimestampHeader(section: date),
                           itemBuilder: (context, index) {
                             final message = _messages[index];
                             final isSectionFirst =
