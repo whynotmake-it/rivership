@@ -875,6 +875,127 @@ void main() {
       expect(_itemBottomInViewport(tester, 'm39'), closeTo(704, 2));
     },
   );
+
+  testWidgets(
+    'isAutoScrolling tracks pinnedId, scrollToBottom, scrollTo, and user '
+    'interruption while isAwayFromBottom stays truthful',
+    (tester) async {
+      final items = [for (var i = 0; i < 30; i++) _TestItem('m$i', 90)];
+      final (:controller, :state) = await _pumpView(
+        tester,
+        _HarnessState(items: items),
+        autoScrollMotion: const Motion.linear(Duration(milliseconds: 320)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.isAwayFromBottom.value, isFalse);
+      expect(controller.isAutoScrolling.value, isFalse);
+
+      // 1. Activating pinnedId: isAutoScrolling flips true immediately (and
+      //    stays true across stage reservation + pin flight), while
+      //    isAwayFromBottom truthfully tracks distance > jumpThreshold so
+      //    (isAwayFromBottom && !isAutoScrolling) never flashes during a short
+      //    turn pin flight.
+      var shownDuringPinFlight = false;
+      final merged = Listenable.merge([
+        controller.isAwayFromBottom,
+        controller.isAutoScrolling,
+      ]);
+      void checkPinOverlay() {
+        if (controller.isAwayFromBottom.value &&
+            !controller.isAutoScrolling.value) {
+          shownDuringPinFlight = true;
+        }
+      }
+
+      merged.addListener(checkPinOverlay);
+      _update(state, (s) {
+        s.items
+          ..add(_TestItem('u1', 44))
+          ..add(_TestItem('a1', 30));
+        s.pinnedId = 'u1';
+      });
+      await tester.pump();
+      expect(controller.isAutoScrolling.value, isTrue);
+      expect(controller.isAwayFromBottom.value, isTrue);
+      expect(controller.distanceFromBottom.value, greaterThan(160));
+
+      await tester.pumpAndSettle();
+      merged.removeListener(checkPinOverlay);
+      expect(shownDuringPinFlight, isFalse);
+      expect(controller.isAutoScrolling.value, isFalse);
+      expect(controller.isAwayFromBottom.value, isFalse);
+
+      // Pin flight with an already-overflowing reply keeps isAutoScrolling true
+      // mid-flight and flips it false upon arrival while isAwayFromBottom stays
+      // true.
+      _update(state, (s) {
+        s.items
+          ..add(_TestItem('u2', 44))
+          ..add(_TestItem('a2', 900));
+        s.pinnedId = 'u2';
+      });
+      await tester.pump();
+      expect(controller.isAutoScrolling.value, isTrue);
+      expect(controller.isAwayFromBottom.value, isTrue);
+      await tester.pumpAndSettle();
+      expect(controller.isAutoScrolling.value, isFalse);
+      expect(controller.isAwayFromBottom.value, isTrue);
+
+      // Clear pin and settle at bottom before testing scrollTo / scrollToBottom.
+      _update(state, (s) => s.pinnedId = null);
+      await tester.pumpAndSettle();
+      final settleBottom = controller.scrollToBottom(animate: false);
+      await tester.pumpAndSettle();
+      expect(await settleBottom, isTrue);
+      expect(controller.isAwayFromBottom.value, isFalse);
+      expect(controller.isAutoScrolling.value, isFalse);
+
+      // 2. scrollTo(olderId) from bottom: isAutoScrolling flips true on frame 0
+      //    while isAwayFromBottom truthfully flips true once > jumpThreshold
+      //    mid-flight; upon arrival isAutoScrolling flips false and
+      //    isAwayFromBottom remains true.
+      final toOld = controller.scrollTo('m2');
+      expect(controller.isAutoScrolling.value, isTrue);
+      await _pumpFrames(tester, 8);
+      expect(controller.isAutoScrolling.value, isTrue);
+      expect(controller.isAwayFromBottom.value, isTrue);
+      expect(controller.distanceFromBottom.value, greaterThan(160));
+      await tester.pumpAndSettle();
+      expect(await toOld, isTrue);
+      expect(controller.isAutoScrolling.value, isFalse);
+      expect(controller.isAwayFromBottom.value, isTrue);
+
+      // 3. scrollToBottom() from scrolled-up: isAutoScrolling flips true
+      //    immediately on frame 0 while isAwayFromBottom remains truthfully
+      //    true; interrupting mid-flight with a user drag while still away from
+      //    bottom immediately flips isAutoScrolling back to false.
+      final toBottomInterrupted = controller.scrollToBottom();
+      expect(controller.isAutoScrolling.value, isTrue);
+      expect(controller.isAwayFromBottom.value, isTrue);
+
+      await _pumpFrames(tester, 4);
+      expect(controller.isAutoScrolling.value, isTrue);
+      expect(controller.isAwayFromBottom.value, isTrue);
+
+      await tester.drag(find.byType(TurnScrollView), const Offset(0, 120));
+      expect(controller.isAutoScrolling.value, isFalse);
+      expect(controller.isAwayFromBottom.value, isTrue);
+      await tester.pumpAndSettle();
+      expect(await toBottomInterrupted, isFalse);
+      expect(controller.isAutoScrolling.value, isFalse);
+      expect(controller.isAwayFromBottom.value, isTrue);
+
+      // Uninterrupted scrollToBottom() flips isAutoScrolling true on frame 0
+      // and clears both flags upon arrival.
+      final toBottomClean = controller.scrollToBottom();
+      expect(controller.isAutoScrolling.value, isTrue);
+      await tester.pumpAndSettle();
+      expect(await toBottomClean, isTrue);
+      expect(controller.isAutoScrolling.value, isFalse);
+      expect(controller.isAwayFromBottom.value, isFalse);
+    },
+  );
 }
 
 class _StatefulTestBox extends StatefulWidget {

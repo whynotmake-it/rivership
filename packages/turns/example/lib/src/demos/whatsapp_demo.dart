@@ -355,10 +355,15 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                   Positioned(
                     right: 16,
                     bottom: _composerHeight + 14,
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: _controller.isAwayFromBottom,
-                      builder: (context, isAway, _) => _JumpToBottomPill(
-                        visible: isAway,
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _controller.isAwayFromBottom,
+                        _controller.isAutoScrolling,
+                      ]),
+                      builder: (context, _) => _JumpToBottomPill(
+                        visible:
+                            _controller.isAwayFromBottom.value &&
+                            !_controller.isAutoScrolling.value,
                         unreadCount: _unreadCount,
                         onPressed: () => unawaited(_scrollToBottom()),
                       ),

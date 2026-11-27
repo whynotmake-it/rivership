@@ -80,14 +80,23 @@ TurnScrollView<Object>(
 );
 ```
 
-React to bottom distance or active pinning without extra scroll listeners:
+React to bottom distance, programmatic flights, or active pinning without extra
+scroll listeners:
 
 ```dart
-ValueListenableBuilder<bool>(
-  valueListenable: controller.isAwayFromBottom,
-  builder: (context, isAway, _) => isAway
-      ? JumpToBottomButton(onPressed: controller.scrollToBottom)
-      : const SizedBox.shrink(),
+ListenableBuilder(
+  listenable: Listenable.merge([
+    controller.isAwayFromBottom,
+    controller.isAutoScrolling,
+  ]),
+  builder: (context, _) {
+    final shown =
+        controller.isAwayFromBottom.value &&
+        !controller.isAutoScrolling.value;
+    return shown
+        ? JumpToBottomButton(onPressed: controller.scrollToBottom)
+        : const SizedBox.shrink();
+  },
 );
 ```
 

@@ -69,14 +69,21 @@ class TurnScrollController extends ScrollController {
   final _isAwayFromBottom = ValueNotifier<bool>(false);
   final _distanceFromBottom = ValueNotifier<double>(0);
   final _isPinActive = ValueNotifier<bool>(false);
+  final _isAutoScrolling = ValueNotifier<bool>(false);
   TurnScrollDelegate? _delegate;
   var _disposed = false;
   var _notifyScheduled = false;
   double _pendingDistanceBottom = 0;
   double _pendingThreshold = 160;
   bool _pendingPinActive = false;
+  bool _pendingAutoScrolling = false;
 
   /// Whether the viewport is more than `jumpThreshold` above the bottom.
+  ///
+  /// Always reflects the true distance (`distanceFromBottom > jumpThreshold`),
+  /// including during programmatic scroll flights. Compose with
+  /// [isAutoScrolling] (`isAwayFromBottom.value && !isAutoScrolling.value`) to
+  /// hide scroll-to-bottom controls while an automatic scroll is in flight.
   ValueListenable<bool> get isAwayFromBottom => _isAwayFromBottom;
 
   /// Distance in logical pixels from the current scroll offset to
@@ -86,6 +93,13 @@ class TurnScrollController extends ScrollController {
   /// Whether the attached view's `pinnedId` currently owns auto-pinning
   /// (cleared immediately on any user scroll or when `pinnedId` is cleared).
   ValueListenable<bool> get isPinActive => _isPinActive;
+
+  /// Whether the attached view is currently executing a programmatic scroll
+  /// flight (`scrollTo`, `scrollToBottom`, active `pinnedId` scroll, or
+  /// initial bottom positioning).
+  ///
+  /// Clears immediately upon arrival or any user scroll gesture.
+  ValueListenable<bool> get isAutoScrolling => _isAutoScrolling;
 
   /// Attaches the owning view's delegate. Internal to turn scroll views.
   void attachDelegate(TurnScrollDelegate delegate) {
@@ -124,6 +138,13 @@ class TurnScrollController extends ScrollController {
     _scheduleOrApplyNotifiers();
   }
 
+  /// Updates [isAutoScrolling]. Internal to turn scroll views.
+  void updateAutoScrolling({required bool active}) {
+    if (_disposed) return;
+    _pendingAutoScrolling = active;
+    _scheduleOrApplyNotifiers();
+  }
+
   void _scheduleOrApplyNotifiers() {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
@@ -143,8 +164,18 @@ class TurnScrollController extends ScrollController {
       _distanceFromBottom.value = _pendingDistanceBottom;
     }
     final away = _pendingDistanceBottom > _pendingThreshold;
+    // Update isAutoScrolling before isAwayFromBottom when entering an auto
+    // scroll, and after isAwayFromBottom when leaving one, so listeners on
+    // Listenable.merge([isAwayFromBottom, isAutoScrolling]) never observe a
+    // transient (away: true, autoScrolling: false) intermediate state.
+    if (_pendingAutoScrolling && !_isAutoScrolling.value) {
+      _isAutoScrolling.value = true;
+    }
     if (_isAwayFromBottom.value != away) {
       _isAwayFromBottom.value = away;
+    }
+    if (!_pendingAutoScrolling && _isAutoScrolling.value) {
+      _isAutoScrolling.value = false;
     }
     if (_isPinActive.value != _pendingPinActive) {
       _isPinActive.value = _pendingPinActive;
@@ -255,6 +286,7 @@ class TurnScrollController extends ScrollController {
     _isAwayFromBottom.dispose();
     _distanceFromBottom.dispose();
     _isPinActive.dispose();
+    _isAutoScrolling.dispose();
     super.dispose();
   }
 }
@@ -326,6 +358,7 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
 
   @override
   void beginActivity(ScrollActivity? newActivity) {
+    final wasTracking = isTrackingTarget;
     // Disengage auto-pinning for any external or user-driven activity
     // (keyboard springs, scrollbar drags, fling ballistics, etc.).
     // Ignore activities started internally during applyContentDimensions (such
@@ -337,6 +370,9 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
       delegate?.onUserScroll();
     }
     super.beginActivity(newActivity);
+    if (wasTracking != isTrackingTarget && hasPixels && hasContentDimensions) {
+      delegate?.onMetricsChanged(pixels, maxScrollExtent);
+    }
   }
 
   @override
@@ -357,6 +393,9 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
       delegate?.onUserScroll();
     }
     super.pointerScroll(delta);
+    if (hasPixels && hasContentDimensions) {
+      delegate?.onMetricsChanged(pixels, maxScrollExtent);
+    }
   }
 
   @override

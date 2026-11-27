@@ -363,21 +363,27 @@ class _SlackDemoState extends State<SlackDemo> {
                         Positioned(
                           right: 16,
                           bottom: 12,
-                          child: ValueListenableBuilder<bool>(
-                            valueListenable: _controller.isAwayFromBottom,
-                            builder: (context, away, _) {
+                          child: ListenableBuilder(
+                            listenable: Listenable.merge([
+                              _controller.isAwayFromBottom,
+                              _controller.isAutoScrolling,
+                            ]),
+                            builder: (context, child) {
+                              final shown =
+                                  _controller.isAwayFromBottom.value &&
+                                  !_controller.isAutoScrolling.value;
                               return SingleMotionBuilder(
-                                value: away ? 1.0 : 0.0,
-                                motion: away
+                                value: shown ? 1.0 : 0.0,
+                                motion: shown
                                     ? motion.standard
                                     : motion.fadeExit,
                                 builder: (context, t, child) {
                                   final clamped = t.clamp(0.0, 1.0);
-                                  if (!away && clamped <= 0.01) {
+                                  if (!shown && clamped <= 0.01) {
                                     return const SizedBox.shrink();
                                   }
                                   return IgnorePointer(
-                                    ignoring: !away,
+                                    ignoring: !shown,
                                     child: Opacity(
                                       opacity: clamped,
                                       child: Transform.translate(
@@ -387,34 +393,34 @@ class _SlackDemoState extends State<SlackDemo> {
                                     ),
                                   );
                                 },
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(999),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: colors.shadowColor.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: CoilButton(
-                                    key: const Key('slack.jump_bottom'),
-                                    variant: CoilButtonVariant.brand,
-                                    size: CoilSize.compact,
-                                    leading: const Icon(
-                                      LucideIcons.arrowDown,
-                                      size: 14,
-                                    ),
-                                    onPressed: () =>
-                                        unawaited(_scrollToBottom()),
-                                    child: const Text('Jump to latest'),
-                                  ),
-                                ),
+                                child: child,
                               );
                             },
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colors.shadowColor.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: CoilButton(
+                                key: const Key('slack.jump_bottom'),
+                                variant: CoilButtonVariant.brand,
+                                size: CoilSize.compact,
+                                leading: const Icon(
+                                  LucideIcons.arrowDown,
+                                  size: 14,
+                                ),
+                                onPressed: () => unawaited(_scrollToBottom()),
+                                child: const Text('Jump to latest'),
+                              ),
+                            ),
                           ),
                         ),
                       ],

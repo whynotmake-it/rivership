@@ -73,6 +73,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Monotonic counter invalidating in-flight async navigation coroutines.
   int navEpoch = 0;
+  int? _activeNavigationEpoch;
 
   /// Whether the first layout should open scrolled to the bottom.
   bool needsInitialBottomJump = false;
@@ -103,9 +104,18 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Attached [TurnScrollPosition], if any.
   TurnScrollPosition? get turnPosition {
-    if (!turnController.hasClients) return null;
-    final pos = turnController.position;
-    return pos is TurnScrollPosition ? pos : null;
+    final positions = turnController.positions;
+    if (positions.isEmpty) return null;
+    if (positions.length == 1) {
+      final pos = positions.first;
+      return pos is TurnScrollPosition ? pos : null;
+    }
+    for (final pos in positions) {
+      if (pos is TurnScrollPosition && identical(pos.delegate, this)) {
+        return pos;
+      }
+    }
+    return null;
   }
 
   /// Resolved Motor motion for automatic/programmatic scroll flights
@@ -139,6 +149,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     } else {
       turnController.updatePinActive(active: false);
     }
+    syncAutoScrolling();
   }
 
   /// Reconciles controller swapping during `didUpdateWidget`.
@@ -146,6 +157,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     if (oldController != widgetController) {
       (oldController ?? _ownController)
         ?..updatePinActive(active: false)
+        ..updateAutoScrolling(active: false)
         ..detachDelegate(this);
       if (widgetController != null) {
         _ownController?.dispose();
@@ -153,7 +165,8 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
       }
       turnController
         ..attachDelegate(this)
-        ..updatePinActive(active: pinnedActive);
+        ..updatePinActive(active: pinnedActive)
+        ..updateAutoScrolling(active: isAutoScrolling);
     }
   }
 
@@ -169,6 +182,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
       pendingPinScroll = true;
       _pinRetries = 0;
       needsInitialBottomJump = false;
+      syncAutoScrolling();
       onPinActivated?.call();
       schedulePinScroll();
     } else {
@@ -185,6 +199,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
         needsInitialBottomJump = true;
         initialBottomPasses = 0;
       }
+      syncAutoScrolling();
     }
   }
 
@@ -193,6 +208,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     turnController
       ..updateBottomDistance(0, threshold: widgetJumpThreshold)
       ..updatePinActive(active: false)
+      ..updateAutoScrolling(active: false)
       ..detachDelegate(this);
     _ownController?.dispose();
     mountedBoxes.clear();
@@ -201,13 +217,41 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   var _inProgrammaticJump = false;
 
-  /// Whether this view is currently driven by programmatic scrolling
-  /// (`scrollTo`, `scrollToBottom`, pin animation, or initial positioning).
-  bool get isProgrammaticScroll =>
-      _inProgrammaticJump ||
+  /// Whether this view is currently executing a programmatic scroll flight
+  /// (`scrollTo`, `scrollToBottom`, active `pinnedId` scroll, or initial
+  /// bottom positioning).
+  bool get isAutoScrolling =>
+      _activeNavigationEpoch != null ||
       needsInitialBottomJump ||
       pendingPinScroll ||
       (turnPosition?.isTrackingTarget ?? false);
+
+  /// Whether this view is currently driven by programmatic scrolling
+  /// (`scrollTo`, `scrollToBottom`, pin animation, initial positioning, or
+  /// synchronous programmatic jumps).
+  bool get isProgrammaticScroll => _inProgrammaticJump || isAutoScrolling;
+
+  /// Synchronizes [TurnScrollController.isAutoScrolling] with
+  /// [isAutoScrolling].
+  void syncAutoScrolling() {
+    turnController.updateAutoScrolling(active: isAutoScrolling);
+  }
+
+  /// Marks an async multi-pass programmatic navigation identified by [epoch]
+  /// as active so [TurnScrollController.isAutoScrolling] stays `true` across
+  /// inter-pass frames.
+  void beginNavigation(int epoch) {
+    _activeNavigationEpoch = epoch;
+    syncAutoScrolling();
+  }
+
+  /// Ends an async multi-pass programmatic navigation if [epoch] is still
+  /// active.
+  void endNavigation(int epoch) {
+    if (_activeNavigationEpoch != epoch) return;
+    _activeNavigationEpoch = null;
+    syncAutoScrolling();
+  }
 
   /// Performs a programmatic `jumpTo` so any resulting [TurnScrollNotification]
   /// reports `isProgrammatic: true`.
@@ -310,6 +354,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
         schedulePinScroll();
       } else {
         pendingPinScroll = false;
+        syncAutoScrolling();
       }
       return;
     }
@@ -319,6 +364,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     final animate = !MediaQuery.disableAnimationsOf(context);
     if (!animate) {
       if ((pos.pixels - target).abs() > 0.5) programmaticJumpTo(pos, target);
+      syncAutoScrolling();
       return;
     }
     final pinnedId = widgetPinnedId;
@@ -334,6 +380,9 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
         },
       ),
     );
+    if (!pos.isTrackingTarget) {
+      syncAutoScrolling();
+    }
   }
 
   /// Computes the total pinned obstruction (e.g. pinned `SliverAppBar` and
@@ -504,20 +553,30 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     return completer.future;
   }
 
-  @override
-  void onUserScroll() {
+  /// Clears active pinning and invalidates pending pin/navigation epochs
+  /// without syncing [TurnScrollController.isAutoScrolling] yet.
+  void resetAutoScrollState() {
     _setPinnedActive(active: false);
     pendingPinScroll = false;
     needsInitialBottomJump = false;
+    _activeNavigationEpoch = null;
     pinEpoch++;
     navEpoch++;
   }
 
   @override
+  void onUserScroll() {
+    resetAutoScrollState();
+    syncAutoScrolling();
+  }
+
+  @override
   void onMetricsChanged(double pixels, double maxScrollExtent) {
-    turnController.updateBottomDistance(
-      maxScrollExtent - pixels,
-      threshold: widgetJumpThreshold,
-    );
+    turnController
+      ..updateBottomDistance(
+        maxScrollExtent - pixels,
+        threshold: widgetJumpThreshold,
+      )
+      ..updateAutoScrolling(active: isAutoScrolling);
   }
 }

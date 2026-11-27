@@ -54,8 +54,9 @@ class CustomTurnScrollView extends StatefulWidget {
 
   /// Optional controller exposing [TurnScrollController.scrollToBottom],
   /// [TurnScrollController.scrollTo], [TurnScrollController.isAwayFromBottom],
-  /// [TurnScrollController.distanceFromBottom], and
-  /// [TurnScrollController.isPinActive].
+  /// [TurnScrollController.distanceFromBottom],
+  /// [TurnScrollController.isPinActive], and
+  /// [TurnScrollController.isAutoScrolling].
   final TurnScrollController? controller;
 
   /// Content padding added on top of `MediaQuery.paddingOf(context)` and
@@ -324,72 +325,83 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
 
-    onUserScroll();
+    resetAutoScrollState();
     final epoch = navEpoch;
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
     final flightMotion = motion ?? resolvedMotion;
 
-    if (!shouldAnimate) {
-      for (var pass = 0; pass < _maxConvergencePasses; pass++) {
-        final prevMax = pos.maxScrollExtent;
-        if ((pos.maxScrollExtent - pos.pixels).abs() > 0.5) {
-          programmaticJumpTo(pos, pos.maxScrollExtent);
+    if (_hasExactBottomExtent() &&
+        (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
+      syncAutoScrolling();
+      return true;
+    }
+
+    beginNavigation(epoch);
+    try {
+      if (!shouldAnimate) {
+        for (var pass = 0; pass < _maxConvergencePasses; pass++) {
+          final prevMax = pos.maxScrollExtent;
+          if ((pos.maxScrollExtent - pos.pixels).abs() > 0.5) {
+            programmaticJumpTo(pos, pos.maxScrollExtent);
+          }
+          if (_hasExactBottomExtent()) return true;
+          await nextFrame();
+          if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+            return false;
+          }
+          if (_hasExactBottomExtent() &&
+              (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
+            return true;
+          }
+          if ((pos.maxScrollExtent - prevMax).abs() <= 0.5 &&
+              (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
+            return true;
+          }
         }
-        if (_hasExactBottomExtent()) return true;
+        return mounted && epoch == navEpoch;
+      }
+
+      double? frozenTarget;
+      if (_hasExactBottomExtent()) {
+        frozenTarget = pos.maxScrollExtent;
+      }
+
+      for (var pass = 0; pass < _maxConvergencePasses; pass++) {
+        final arrived = await pos.animateToTarget(
+          motion: flightMotion,
+          vsync: this,
+          resolveTarget: () {
+            if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+              return null;
+            }
+            if (frozenTarget != null) return frozenTarget;
+            if (_hasExactBottomExtent()) {
+              return frozenTarget = pos.maxScrollExtent;
+            }
+            return pos.maxScrollExtent;
+          },
+        );
+        if (!arrived ||
+            !mounted ||
+            epoch != navEpoch ||
+            !pos.hasContentDimensions) {
+          return false;
+        }
+        if (frozenTarget != null || _hasExactBottomExtent()) return true;
+        final prevMax = pos.maxScrollExtent;
         await nextFrame();
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
           return false;
         }
-        if (_hasExactBottomExtent() &&
-            (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
-          return true;
-        }
         if ((pos.maxScrollExtent - prevMax).abs() <= 0.5 &&
-            (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
+            (pos.maxScrollExtent - pos.pixels).abs() <= 1) {
           return true;
         }
       }
       return mounted && epoch == navEpoch;
+    } finally {
+      endNavigation(epoch);
     }
-
-    double? frozenTarget;
-    if (_hasExactBottomExtent()) {
-      frozenTarget = pos.maxScrollExtent;
-    }
-
-    for (var pass = 0; pass < _maxConvergencePasses; pass++) {
-      final arrived = await pos.animateToTarget(
-        motion: flightMotion,
-        vsync: this,
-        resolveTarget: () {
-          if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
-            return null;
-          }
-          if (frozenTarget != null) return frozenTarget;
-          if (_hasExactBottomExtent()) {
-            return frozenTarget = pos.maxScrollExtent;
-          }
-          return pos.maxScrollExtent;
-        },
-      );
-      if (!arrived ||
-          !mounted ||
-          epoch != navEpoch ||
-          !pos.hasContentDimensions) {
-        return false;
-      }
-      if (frozenTarget != null || _hasExactBottomExtent()) return true;
-      final prevMax = pos.maxScrollExtent;
-      await nextFrame();
-      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
-        return false;
-      }
-      if ((pos.maxScrollExtent - prevMax).abs() <= 0.5 &&
-          (pos.maxScrollExtent - pos.pixels).abs() <= 1) {
-        return true;
-      }
-    }
-    return mounted && epoch == navEpoch;
   }
 
   @override
@@ -402,7 +414,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
 
-    onUserScroll();
+    resetAutoScrollState();
     final epoch = navEpoch;
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
     final flightMotion = motion ?? resolvedMotion;
@@ -427,75 +439,89 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
       return est?.clamp(pos.minScrollExtent, pos.maxScrollExtent);
     }
 
-    if (resolveOffset() == null) return false;
+    if (resolveOffset() == null) {
+      syncAutoScrolling();
+      return false;
+    }
 
-    if (!shouldAnimate) {
+    final initialExact = exact();
+    if (initialExact != null && (initialExact - pos.pixels).abs() <= 0.5) {
+      syncAutoScrolling();
+      return true;
+    }
+
+    beginNavigation(epoch);
+    try {
+      if (!shouldAnimate) {
+        for (var pass = 0; pass < _maxConvergencePasses; pass++) {
+          final ex = exact();
+          if (ex != null) {
+            if ((ex - pos.pixels).abs() > 0.5) programmaticJumpTo(pos, ex);
+            return true;
+          }
+          final target = resolveOffset();
+          if (target == null) return false;
+          final prevPixels = pos.pixels;
+          final prevMax = pos.maxScrollExtent;
+          if ((target - prevPixels).abs() > 0.5) {
+            programmaticJumpTo(pos, target);
+          }
+          await nextFrame();
+          if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+            return false;
+          }
+          final afterExact = exact();
+          if (afterExact != null) {
+            if ((afterExact - pos.pixels).abs() > 0.5) {
+              programmaticJumpTo(pos, afterExact);
+            }
+            return true;
+          }
+          if ((pos.pixels - prevPixels).abs() <= 0.5 &&
+              (pos.maxScrollExtent - prevMax).abs() <= 0.5) {
+            return exact() != null;
+          }
+        }
+        return mounted && epoch == navEpoch && exact() != null;
+      }
+
       for (var pass = 0; pass < _maxConvergencePasses; pass++) {
+        final arrived = await pos.animateToTarget(
+          motion: flightMotion,
+          vsync: this,
+          resolveTarget: () {
+            if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+              return null;
+            }
+            return resolveOffset();
+          },
+        );
+        if (!arrived ||
+            !mounted ||
+            epoch != navEpoch ||
+            !pos.hasContentDimensions) {
+          return false;
+        }
         final ex = exact();
-        if (ex != null) {
-          if ((ex - pos.pixels).abs() > 0.5) programmaticJumpTo(pos, ex);
-          return true;
-        }
-        final target = resolveOffset();
-        if (target == null) return false;
-        final prevPixels = pos.pixels;
+        if (ex != null && (ex - pos.pixels).abs() <= 1.5) return true;
         final prevMax = pos.maxScrollExtent;
-        if ((target - prevPixels).abs() > 0.5) {
-          programmaticJumpTo(pos, target);
-        }
         await nextFrame();
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
           return false;
         }
-        final afterExact = exact();
-        if (afterExact != null) {
-          if ((afterExact - pos.pixels).abs() > 0.5) {
-            programmaticJumpTo(pos, afterExact);
-          }
-          return true;
-        }
-        if ((pos.pixels - prevPixels).abs() <= 0.5 &&
+        final afterEx = exact();
+        if (afterEx != null && (afterEx - pos.pixels).abs() <= 1.5) return true;
+        final nextTarget = resolveOffset();
+        if (nextTarget == null) return false;
+        if ((nextTarget - pos.pixels).abs() <= 1 &&
             (pos.maxScrollExtent - prevMax).abs() <= 0.5) {
-          return exact() != null;
+          return afterEx != null;
         }
       }
-      return mounted && epoch == navEpoch && exact() != null;
+      return mounted && epoch == navEpoch;
+    } finally {
+      endNavigation(epoch);
     }
-
-    for (var pass = 0; pass < _maxConvergencePasses; pass++) {
-      final arrived = await pos.animateToTarget(
-        motion: flightMotion,
-        vsync: this,
-        resolveTarget: () {
-          if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
-            return null;
-          }
-          return resolveOffset();
-        },
-      );
-      if (!arrived ||
-          !mounted ||
-          epoch != navEpoch ||
-          !pos.hasContentDimensions) {
-        return false;
-      }
-      final ex = exact();
-      if (ex != null && (ex - pos.pixels).abs() <= 1.5) return true;
-      final prevMax = pos.maxScrollExtent;
-      await nextFrame();
-      if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
-        return false;
-      }
-      final afterEx = exact();
-      if (afterEx != null && (afterEx - pos.pixels).abs() <= 1.5) return true;
-      final nextTarget = resolveOffset();
-      if (nextTarget == null) return false;
-      if ((nextTarget - pos.pixels).abs() <= 1 &&
-          (pos.maxScrollExtent - prevMax).abs() <= 0.5) {
-        return afterEx != null;
-      }
-    }
-    return mounted && epoch == navEpoch;
   }
 
   @override

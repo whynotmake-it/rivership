@@ -340,7 +340,8 @@ class _IMessageDemoState extends State<IMessageDemo> {
                       bottom: _composerHeight + 12,
                       child: Center(
                         child: _IMessageJumpPill(
-                          listenable: _controller.isAwayFromBottom,
+                          awayFromBottom: _controller.isAwayFromBottom,
+                          autoScrolling: _controller.isAutoScrolling,
                           onPressed: _controller.scrollToBottom,
                         ),
                       ),
@@ -1055,32 +1056,40 @@ class _TypingDot extends StatelessWidget {
 }
 
 class _IMessageJumpPill extends StatelessWidget {
-  const _IMessageJumpPill({required this.listenable, required this.onPressed});
+  const _IMessageJumpPill({
+    required this.awayFromBottom,
+    required this.autoScrolling,
+    required this.onPressed,
+  });
 
-  final ValueListenable<bool> listenable;
+  final ValueListenable<bool> awayFromBottom;
+  final ValueListenable<bool> autoScrolling;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final motion = CoilTheme.motionOf(context);
-    return ValueListenableBuilder<bool>(
-      valueListenable: listenable,
-      builder: (context, visible, child) => SingleMotionBuilder(
-        value: visible ? 1 : 0,
-        motion: visible ? motion.standard : motion.fadeExit,
-        debugLabel: 'IMessageDemo.jumpBottom',
-        child: child,
-        builder: (context, progress, child) => IgnorePointer(
-          ignoring: !visible,
-          child: Opacity(
-            opacity: progress.clamp(0.0, 1.0),
-            child: Transform.translate(
-              offset: Offset(0, (1 - progress) * 14),
-              child: child,
+    return ListenableBuilder(
+      listenable: Listenable.merge([awayFromBottom, autoScrolling]),
+      builder: (context, child) {
+        final visible = awayFromBottom.value && !autoScrolling.value;
+        return SingleMotionBuilder(
+          value: visible ? 1 : 0,
+          motion: visible ? motion.standard : motion.fadeExit,
+          debugLabel: 'IMessageDemo.jumpBottom',
+          child: child,
+          builder: (context, progress, child) => IgnorePointer(
+            ignoring: !visible,
+            child: Opacity(
+              opacity: progress.clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, (1 - progress) * 14),
+                child: child,
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
       child: CoilButton(
         key: const Key('imessage.jump_bottom'),
         variant: CoilButtonVariant.brand,
