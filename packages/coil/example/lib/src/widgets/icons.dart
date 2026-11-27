@@ -178,6 +178,10 @@ class Glyph {
     LucideIcons400.paperclip,
   );
   static const arrowUp = Glyph(LucideIcons300.arrowUp, LucideIcons400.arrowUp);
+  static const arrowDown = Glyph(
+    LucideIcons300.arrowDown,
+    LucideIcons400.arrowDown,
+  );
   static const mic = Glyph(LucideIcons300.mic, LucideIcons400.mic);
   static const image = Glyph(LucideIcons300.image, LucideIcons400.image);
   static const filter = Glyph(LucideIcons300.filter, LucideIcons400.filter);

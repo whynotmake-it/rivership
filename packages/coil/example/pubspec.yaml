@@ -22,6 +22,7 @@ dependencies:
     path: ../../motor_devtools
   motor_widgets:
     path: ../../motor_widgets
+  turns: ^0.1.0-dev.0
 
 dev_dependencies:
   flutter_test:
