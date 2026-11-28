@@ -97,22 +97,59 @@ class MarkdownSession {
   final MarkdownParser _parse;
   final _stable = <MarkdownSegment>[];
   var _stableLength = 0;
-  var _source = '';
+
+  /// The source text the stable segments were cut from, to tell an edit from
+  /// an append without copying it again on every update.
+  var _stableSource = '';
   var _nextId = 0;
 
-  static final _definition = RegExp(r'^ {0,3}\[[^\]\n]+\]:', multiLine: true);
+  static final _definition = RegExp(r'^ {0,3}\[[^\]\n]+\]:');
+
+  /// Whether [source] has a link reference or footnote definition at or after
+  /// [from] (a line start outside any code fence).
+  ///
+  /// Starts at the end of the stable text: that was clean when it became
+  /// stable, and it ends outside any fence, so only what is still pending is
+  /// scanned, not the whole source again on every update.
+  static bool _hasDefinition(String source, int from) {
+    String? fence;
+    var offset = from;
+    while (offset < source.length) {
+      final newline = source.indexOf('\n', offset);
+      final end = newline < 0 ? source.length : newline;
+      final line = source.substring(offset, end);
+      offset = end + 1;
+      if (fence != null) {
+        if (_closesFence(line, fence)) fence = null;
+        continue;
+      }
+      if (_fence.firstMatch(line) case final open?) {
+        fence = open[1];
+      } else if (_definition.hasMatch(line)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// Parses [source], reusing the stable segments of the last update.
   MarkdownDocument update(String source, {bool streaming = false}) {
     var reset = false;
-    final definitions = _definition.hasMatch(source);
-    if (definitions ||
-        !source.startsWith(_source.substring(0, _stableLength))) {
-      reset = _stable.isNotEmpty;
+    // The stable text must still be the start of the source, otherwise it was
+    // an edit (or a new message). A comparison, with no copy and no regex.
+    if (_stableLength > 0 && !source.startsWith(_stableSource)) {
+      reset = true;
       _stable.clear();
       _stableLength = 0;
+      _stableSource = '';
     }
-    _source = source;
+    final definitions = _hasDefinition(source, _stableLength);
+    if (definitions && _stable.isNotEmpty) {
+      reset = true;
+      _stable.clear();
+      _stableLength = 0;
+      _stableSource = '';
+    }
     if (!definitions) {
       var from = _stableLength;
       while (true) {
@@ -128,7 +165,10 @@ class MarkdownSession {
         );
         from = cut;
       }
-      _stableLength = from;
+      if (from != _stableLength) {
+        _stableLength = from;
+        _stableSource = source.substring(0, from);
+      }
     }
     final tail = source.substring(_stableLength);
     final pending = tail.trim().isEmpty
@@ -157,6 +197,15 @@ final _htmlOpeners = <RegExp, String>{
   RegExp(r'^ {0,3}<style\b', caseSensitive: false): '</style>',
   RegExp(r'^ {0,3}<textarea\b', caseSensitive: false): '</textarea>',
 };
+
+/// Whether [line] closes a code fence opened with [fence].
+bool _closesFence(String line, String fence) {
+  final close = _fence.firstMatch(line);
+  return close != null &&
+      close[1]![0] == fence[0] &&
+      close[1]!.length >= fence.length &&
+      line.trim() == close[1];
+}
 
 /// The offset after the first safe boundary in [source] at or after [from]:
 /// the start of a top-level block that nothing before it can change. Null
@@ -195,13 +244,7 @@ int? markdownBoundary(String source, int from) {
     final line = source.substring(start, newline);
     offset = newline + 1;
     if (fence != null) {
-      final close = _fence.firstMatch(line);
-      if (close != null &&
-          close[1]![0] == fence[0] &&
-          close[1]!.length >= fence.length &&
-          line.trim() == close[1]) {
-        fence = null;
-      }
+      if (_closesFence(line, fence)) fence = null;
       continue;
     }
     if (htmlCloser != null) {

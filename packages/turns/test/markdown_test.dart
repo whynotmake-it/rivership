@@ -62,6 +62,39 @@ void main() {
     });
   });
 
+  group('MarkdownSession and code fences', () {
+    test('a definition-looking line inside a fence is code, not a '
+        'definition', () {
+      final session = MarkdownSession();
+      const head = 'One\n\nTwo\n\n';
+      final before = session.update('${head}Three\n\n```ts\ntype T = {');
+      expect(before.stable, hasLength(3));
+      final stableBefore = before.stable.toList();
+
+      // Streaming on through a line that would be a definition outside a fence.
+      for (final text in [
+        '$head'
+            'Three\n\n```ts\ntype T = {\n  [key: string]: nu',
+        '$head'
+            'Three\n\n```ts\ntype T = {\n  [key: string]: number;\n}',
+      ]) {
+        final doc = session.update(text, streaming: true);
+        expect(doc.reset, isFalse);
+        expect(doc.stable, hasLength(3));
+        for (var i = 0; i < stableBefore.length; i++) {
+          expect(identical(doc.stable[i], stableBefore[i]), isTrue);
+        }
+      }
+
+      // A real definition after the fence still makes the source parse whole.
+      final real = session.update(
+        '${head}Three\n\n```ts\n[a]: x\n```\n\n[ref]: http://x\n',
+      );
+      expect(real.reset, isTrue);
+      expect(real.stable, isEmpty);
+    });
+  });
+
   group('completeMarkdown', () {
     test('closes what can pair, innermost first, before trailing spaces', () {
       expect(completeMarkdown('the **key ide'), 'the **key ide**');
