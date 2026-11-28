@@ -16,6 +16,7 @@ class TurnChildDelegate extends SliverChildBuilderDelegate {
     super.builder, {
     required int super.childCount,
     required this.slotExtent,
+    super.findChildIndexCallback,
   });
 
   /// The estimated extent of one unbuilt child, spacing included.
@@ -33,3 +34,34 @@ class TurnChildDelegate extends SliverChildBuilderDelegate {
     return trailingScrollOffset + (count - 1 - lastIndex) * slotExtent();
   }
 }
+
+/// Finds the index of the item with identity [id] among [count] items.
+///
+/// Items rarely move far between builds (an insert or removal shifts a whole
+/// tail by one), so this probes next to [hint] before falling back to a scan
+/// from the end. That keeps `findChildIndexCallback` cheap for every mounted
+/// child after a mid-list change, instead of O(n) each.
+int indexOfItemId({
+  required int count,
+  required Object Function(int index) itemId,
+  required Object id,
+  int? hint,
+}) {
+  if (count == 0) return -1;
+  if (hint != null) {
+    for (var distance = 0; distance <= _hintWindow; distance++) {
+      for (final candidate
+          in distance == 0 ? [hint] : [hint + distance, hint - distance]) {
+        if (candidate >= 0 && candidate < count && itemId(candidate) == id) {
+          return candidate;
+        }
+      }
+    }
+  }
+  for (var i = count - 1; i >= 0; i--) {
+    if (itemId(i) == id) return i;
+  }
+  return -1;
+}
+
+const _hintWindow = 8;

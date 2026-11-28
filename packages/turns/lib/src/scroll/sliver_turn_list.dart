@@ -41,6 +41,7 @@ class SliverTurnList extends StatefulWidget {
 class _SliverTurnListState extends State<SliverTurnList>
     implements TurnListRegistration {
   final _listKey = GlobalKey(debugLabel: 'SliverTurnList');
+  final _indexHints = <Object, int>{};
   void Function(TurnListRegistration list)? _detachCallback;
 
   @override
@@ -59,13 +60,12 @@ class _SliverTurnListState extends State<SliverTurnList>
   double get itemSpacing => widget.itemSpacing;
 
   @override
-  int indexOfId(Object id) {
-    final count = widget.itemCount;
-    for (var i = count - 1; i >= 0; i--) {
-      if (widget.itemId(i) == id) return i;
-    }
-    return -1;
-  }
+  int indexOfId(Object id) => indexOfItemId(
+    count: widget.itemCount,
+    itemId: widget.itemId,
+    id: id,
+    hint: _indexHints[id],
+  );
 
   @override
   bool get reachedEnd {
@@ -106,8 +106,14 @@ class _SliverTurnListState extends State<SliverTurnList>
       key: _listKey,
       delegate: TurnChildDelegate(
         slotExtent: () => (mean?.call() ?? 72) + spacing,
+        findChildIndexCallback: (key) {
+          if (key is! ValueKey<Object>) return null;
+          final index = indexOfId(key.value);
+          return index < 0 ? null : index;
+        },
         (context, index) {
           final id = widget.itemId(index);
+          _indexHints[id] = index;
           Widget child = TurnScrollItem(
             id: id,
             child: widget.itemBuilder(context, index),

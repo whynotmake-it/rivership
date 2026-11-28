@@ -812,19 +812,20 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return false;
   }
 
-  int _indexOfId(Object id, {int? hint}) {
-    final count = widget.itemCount;
-    if (count == 0) return -1;
-    if (hint != null &&
-        hint >= 0 &&
-        hint < count &&
-        widget.itemId(hint) == id) {
-      return hint;
-    }
-    for (var i = count - 1; i >= 0; i--) {
-      if (widget.itemId(i) == id) return i;
-    }
-    return -1;
+  int _indexOfId(Object id, {int? hint}) => indexOfItemId(
+    count: widget.itemCount,
+    itemId: widget.itemId,
+    id: id,
+    hint: hint,
+  );
+
+  /// Maps a delegate child key back to the current global item index, for
+  /// `findChildIndexCallback`.
+  int? _indexOfKey(Key key) {
+    if (key is! ValueKey<Object>) return null;
+    final id = key.value;
+    final index = _indexOfId(id, hint: _indexHints[id]);
+    return index < 0 ? null : index;
   }
 
   /// What one unbuilt item adds to its list's extent, from every item
@@ -1439,6 +1440,14 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     );
   }
 
+  // Every item gets the same wrapper shape (key -> Padding -> [Column] ->
+  // keyed item), whether or not it starts a section or sits next to a gap, so
+  // an item's element (and `State`) survives gaining or losing a header, a
+  // neighbour or a trailing gap.
+  static const _itemSlotKey = ValueKey('TurnScrollView.item');
+  static const _headerSlotKey = ValueKey('TurnScrollView.header');
+  static const _headerGapKey = ValueKey('TurnScrollView.headerGap');
+
   Widget _buildObservedItem(
     BuildContext context,
     int index, {
@@ -1452,25 +1461,33 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       id: id,
       child: widget.itemBuilder(context, index),
     );
-    if (includeInlineHeader && _isSectionStart(index)) {
+    if (widget._isSectioned) {
+      final hasHeader = includeInlineHeader && _isSectionStart(index);
       child = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildInlineHeader(context, index, id),
-          if (widget.sectionHeaderSpacing > 0)
-            SizedBox(height: widget.sectionHeaderSpacing),
-          child,
+          if (hasHeader)
+            KeyedSubtree(
+              key: _headerSlotKey,
+              child: _buildInlineHeader(context, index, id),
+            ),
+          if (hasHeader && widget.sectionHeaderSpacing > 0)
+            SizedBox(
+              key: _headerGapKey,
+              height: widget.sectionHeaderSpacing,
+            ),
+          KeyedSubtree(key: _itemSlotKey, child: child),
         ],
       );
     }
-    if (topGap > 0 || bottomGap > 0) {
-      child = Padding(
+    return KeyedSubtree(
+      key: ValueKey(id),
+      child: Padding(
         padding: EdgeInsets.only(top: topGap, bottom: bottomGap),
         child: child,
-      );
-    }
-    return KeyedSubtree(key: ValueKey(id), child: child);
+      ),
+    );
   }
 
   (List<Widget> slivers, Key? center) _buildSlivers() {
@@ -1526,6 +1543,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         sliver: SliverList(
           delegate: TurnChildDelegate(
             slotExtent: _slotExtent,
+            findChildIndexCallback: (key) {
+              final index = _indexOfKey(key);
+              if (index == null) return null;
+              final reverse = centerIndex - 1 - index;
+              return reverse >= 0 && reverse < aboveCount ? reverse : null;
+            },
             (context, reverseIndex) {
               final index = centerIndex - 1 - reverseIndex;
               return _buildObservedItem(
@@ -1547,6 +1570,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
           key: _belowListKey,
           delegate: TurnChildDelegate(
             slotExtent: _slotExtent,
+            findChildIndexCallback: (key) {
+              final index = _indexOfKey(key);
+              if (index == null) return null;
+              final local = index - centerIndex;
+              return local >= 0 && local < belowPrePinCount ? local : null;
+            },
             (context, localIndex) {
               final index = centerIndex + localIndex;
               final isLastBeforePin =
@@ -1605,6 +1634,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
               key: _afterListKey,
               delegate: TurnChildDelegate(
                 slotExtent: _slotExtent,
+                findChildIndexCallback: (key) {
+                  final index = _indexOfKey(key);
+                  if (index == null) return null;
+                  final local = index - pinnedIndex - 1;
+                  return local >= 0 && local < afterPinCount ? local : null;
+                },
                 (context, localIndex) {
                   final index = pinnedIndex + 1 + localIndex;
                   return _buildObservedItem(
@@ -1655,39 +1690,44 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       slivers: slivers,
     );
 
-    if (_hasStickyHeaders) {
+    // The Stack is part of every sectioned view, sticky or not, so toggling
+    // [TurnScrollView.stickySectionHeaders] never remounts the scroll view.
+    if (widget._isSectioned) {
       scrollView = Stack(
         fit: StackFit.passthrough,
         children: [
           scrollView,
-          Positioned(
-            top: effectiveTop,
-            left: effectiveLeft,
-            right: effectiveRight,
-            child: IgnorePointer(
-              ignoring: widget.stickyHeaderIgnoresPointer,
-              child: ValueListenableBuilder<_StickyHeaderState<S>>(
-                valueListenable: _stickyState,
-                builder: (context, sticky, _) {
-                  final section = sticky.section;
-                  if (section == null) return const SizedBox.shrink();
-                  return ClipRect(
-                    child: Transform.translate(
-                      offset: Offset(0, sticky.pushOffset),
-                      child: _StickyHeightObserver(
-                        onHeight: _onStickyHeaderHeight,
-                        child: widget.sectionHeaderBuilder!(
-                          context,
-                          section,
-                          true,
+          if (_hasStickyHeaders)
+            Positioned(
+              top: effectiveTop,
+              left: effectiveLeft,
+              right: effectiveRight,
+              child: IgnorePointer(
+                ignoring: widget.stickyHeaderIgnoresPointer,
+                child: ValueListenableBuilder<_StickyHeaderState<S>>(
+                  valueListenable: _stickyState,
+                  builder: (context, sticky, _) {
+                    final section = sticky.section;
+                    if (section == null) return const SizedBox.shrink();
+                    return ClipRect(
+                      child: Transform.translate(
+                        offset: Offset(0, sticky.pushOffset),
+                        child: _StickyHeightObserver(
+                          onHeight: _onStickyHeaderHeight,
+                          child: widget.sectionHeaderBuilder!(
+                            context,
+                            section,
+                            true,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ),
+            )
+          else
+            const SizedBox.shrink(),
         ],
       );
     }
