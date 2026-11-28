@@ -1318,6 +1318,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       frozenContentEnd = contentEndOf(pos);
     }
 
+    bottomFlightEpoch = epoch;
     final future = pos.animateToTarget(
       motion: flightMotion,
       vsync: this,

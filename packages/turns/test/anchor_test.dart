@@ -229,6 +229,45 @@ void main() {
   );
 
   testWidgets(
+    'a message sent while the keyboard closes flies to the bottom without '
+    'leaving a gap above the composer, and a reply mid-flight still lands',
+    (tester) async {
+      final h = await _pump(
+        tester,
+        _Scene(heights: List.filled(40, 80), keyboard: 300),
+        motion: const CupertinoMotion.smooth(),
+      );
+      expect(h.distanceFromBottom, closeTo(0, 1));
+
+      void scrollToBottomNextFrame() =>
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => unawaited(h.controller.scrollToBottom()),
+          );
+
+      // Send: the message is appended, the app scrolls to it and the keyboard
+      // starts to close, all at once.
+      h.update((s) => s.heights.add(80));
+      scrollToBottomNextFrame();
+      for (var frame = 1; frame <= 30; frame++) {
+        h.update((s) => s.keyboard = (300.0 - frame * 30).clamp(0, 300));
+        if (frame == 5) {
+          // A reply arrives while the flight and the keyboard are moving.
+          final following = !h.controller.isAwayFromBottom.value;
+          h.update((s) => s.heights.add(80));
+          if (following) scrollToBottomNextFrame();
+        }
+        await tester.pump(const Duration(milliseconds: 16));
+        // Never scrolled past the bottom: no blank gap under the last message.
+        expect(h.distanceFromBottom, greaterThan(-1), reason: 'frame $frame');
+      }
+      await tester.pumpAndSettle();
+      expect(h.distanceFromBottom, closeTo(0, 1));
+      // The reply is on screen, above the bottom edge.
+      expect(h.top('m41') + 80, lessThanOrEqualTo(_viewport.height + 1));
+    },
+  );
+
+  testWidgets(
     'an app jumpTo while followBottom is armed stays where the app put it',
     (tester) async {
       final h = await _pump(

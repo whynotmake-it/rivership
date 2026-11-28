@@ -356,6 +356,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
 
       // Freeze where the content ends, not the offset, so a bottom inset that
       // is still growing counts when the flight lands.
+      bottomFlightEpoch = epoch;
       double? frozenContentEnd;
       if (hasExactBottomExtent()) {
         frozenContentEnd = contentEndOf(pos);

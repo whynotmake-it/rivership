@@ -172,6 +172,11 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
 
   /// Monotonic counter invalidating in-flight async navigation coroutines.
   int navEpoch = 0;
+
+  /// The [navEpoch] of a flight to the bottom, set by `scrollToBottom` when it
+  /// starts one. While that flight runs, the content stays glued above a
+  /// moving bottom inset (a keyboard opening or closing), like a view at rest.
+  int? bottomFlightEpoch;
   int? _activeNavigationEpoch;
 
   /// How many passes a bottom anchor may spend settling.
@@ -799,9 +804,14 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
         nextPixels <= minScrollExtent + 0.5 &&
         maxScrollExtent > minScrollExtent;
     final current = _anchor;
+    // A flight to an item or a pin aims at a place measured from the top, so
+    // the inset leaves it alone. A flight to the bottom moves with the inset:
+    // its target does, and what is on screen should not come apart from the
+    // composer while the keyboard moves under it.
+    final flyingToBottom = bottomFlightEpoch == navEpoch;
     if (atTop ||
         (current is PinAnchor && current.flightPending) ||
-        (pos != null && pos.isTrackingTarget)) {
+        (pos != null && pos.isTrackingTarget && !flyingToBottom)) {
       return shifted
           ? nextPixels.clamp(minScrollExtent, maxScrollExtent)
           : null;
