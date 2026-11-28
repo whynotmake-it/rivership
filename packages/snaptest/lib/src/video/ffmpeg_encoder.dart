@@ -161,7 +161,7 @@ class RawVideoEncoder {
       '$frameRate',
       '-i',
       'pipe:0',
-      ...encoding.ffmpegCodecArguments,
+      ...encoding.ffmpegOutputArguments(frameRate: frameRate),
       outputFile.path,
     ]);
     return RawVideoEncoder._(process, timeout);

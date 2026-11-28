@@ -280,6 +280,53 @@ void main() {
       expect(pixels[3], closeTo(128, 2));
     });
 
+    testWidgets('a 60 fps GIF plays back at the recorded speed', (
+      tester,
+    ) async {
+      _smallView(tester);
+      final recording = await snap.recordVideo(
+        name: 'unit_gif',
+        settings: const SnapVideoSettings(encoding: VideoEncoding.gif()),
+      );
+      await tester.pumpWidget(const ColoredBox(color: Colors.red));
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpWidget(const ColoredBox(color: Colors.blue));
+      await tester.pump(const Duration(milliseconds: 200));
+      final file = await recording.stop();
+      expect(file.path, endsWith('.gif'));
+      final handle = file.openSync();
+      final header = String.fromCharCodes(handle.readSync(6));
+      handle.closeSync();
+      expect(header, 'GIF89a');
+
+      // Sampling playback at 10 fps shows how long each color is on screen.
+      // 1/60 s frames would round to delays browsers and decoders stretch,
+      // so a GIF that kept them would play several times too slowly.
+      final pixels = await tester.runAsync(() async {
+        final result = await Process.run('ffmpeg', [
+          '-v',
+          'error',
+          '-i',
+          file.path,
+          '-vf',
+          'fps=10',
+          '-f',
+          'rawvideo',
+          '-pix_fmt',
+          'rgba',
+          '-',
+        ], stdoutEncoding: null);
+        if (result.exitCode != 0) throw StateError('${result.stderr}');
+        return result.stdout as Uint8List;
+      });
+      const stride = 32 * 24 * 4;
+      final reds = <bool>[
+        for (var offset = 0; offset < pixels!.length; offset += stride)
+          pixels[offset] > pixels[offset + 2],
+      ];
+      expect(reds, [true, true, false, false]);
+    });
+
     for (final limit in ['frames', 'duration', 'bytes']) {
       testWidgets('truncates and retains metadata at the $limit limit', (
         tester,

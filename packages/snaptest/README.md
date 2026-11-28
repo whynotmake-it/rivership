@@ -190,7 +190,7 @@ testWidgets('open details', (tester) async {
   await tester.tap(find.text('Details'));
   await tester.pumpAndSettle();
 
-  final file = await recording.stop(); // .mp4 by default; .webm for VP9
+  final file = await recording.stop(); // .mp4 by default; .webm for VP9, .gif for GIF
 });
 ```
 
@@ -206,6 +206,7 @@ final recording = await snap.recordVideo(
     timing: VideoTiming.smooth,           // or VideoTiming.observed
     encoding: VideoEncoding.h264(crf: 20),// H.264 MP4, yuv420p, +faststart
     // encoding: VideoEncoding.vp9(),     // WebM with alpha (yuva420p)
+    // encoding: VideoEncoding.gif(),     // looping GIF, plays inline anywhere
     // backgroundColor: Color(0xFF000000), // behind the frame; null = transparent
                                          // on alpha codecs, opaque white otherwise
     includeDeviceFrame: true,             // render inside the device frame
@@ -220,6 +221,7 @@ final recording = await snap.recordVideo(
 - **`VideoTiming.observed`** (default): every pump runs unchanged; painted states are shown at their test-clock timestamps and the last state is held across gaps. Zero impact on test execution — best for debugging.
 - **`VideoTiming.smooth`**: positive-duration pumps are subdivided into frame-sized steps so animations appear smooth at the simulated speed. This runs more frames than the test otherwise would (listeners, timers, and physics may behave differently) — best for demos and documentation.
 - **`VideoEncoding.vp9()`** produces a WebM with an alpha channel (`libvpx-vp9` + `yuva420p`, CRF default 32). H.264 is better for sharing everywhere; VP9 for compositing or posting to tools that preserve transparency.
+- **`VideoEncoding.gif()`** produces a looping animated GIF, which READMEs, pull requests and chat show inline where they don't play videos. Each frame gets its own palette (`maxColors`, up to 256), so frames still stream to FFmpeg as they are captured. GIF delays count in hundredths of a second, so frame rates above 50 fps are resampled to 50 and the GIF still plays at the recorded speed. Use a lower `frameRate` (e.g. 25) for smaller files. GIF transparency is all or nothing per pixel, so the background defaults to white; pass a transparent `backgroundColor` to get a transparent GIF anyway.
 - **`backgroundColor`** defaults to transparent on alpha-capable encodings (VP9) and opaque white otherwise. Pass any color to flatten the video onto it.
 - **`overlay`** is a widget drawn over every captured frame; `null` (the default) draws none. Pass `SnapPointerOverlay.builder` to show pointers like a screen recorder's "show touches": a soft dot while a mouse or stylus hovers, a filled circle with a stroked outline that eases in on press (`Curves.easeOutBack`) and follows the pointer, and a fade-out on release. Pointers are only tracked while an overlay is set. See [Custom overlays](#custom-overlays).
 - **`minimumPointerDuration`** keeps a released pointer in the frame (as `SnapPointerPhase.released`) until that much simulated time has passed since pointer-down, so quick taps between pumps become visible. A mouse or stylus still over the view goes back to `hovering` afterwards. This is overlay-only: it never pumps, changes input events or the test clock, and never extends the video. Use `finalHold` explicitly for taps near the end; cancellation removes a pointer immediately.
