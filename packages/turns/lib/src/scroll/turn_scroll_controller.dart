@@ -79,7 +79,9 @@ abstract interface class TurnScrollDelegate {
   ///
   /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
-  /// or unable to scroll (e.g. empty list or detached position).
+  /// or unable to scroll (e.g. empty list or detached position), once the
+  /// motion has settled. [TurnScrollController] derives
+  /// [TurnScrollFuture.ended] from the flight the view starts.
   Future<bool> scrollToBottom({required bool animate, Motion? motion});
 
   /// Scrolls to the item identified by [itemId].
@@ -90,7 +92,9 @@ abstract interface class TurnScrollDelegate {
   ///
   /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
-  /// or [itemId] was not found.
+  /// or [itemId] was not found, once the motion has settled.
+  /// [TurnScrollController] derives [TurnScrollFuture.ended] from the flight
+  /// the view starts.
   Future<bool> scrollTo(
     Object itemId, {
     required double alignment,
@@ -254,12 +258,14 @@ class TurnScrollController extends ScrollController {
   /// flight. Under `MediaQuery.disableAnimationsOf(context)`, the transition
   /// always jumps instantaneously.
   ///
-  /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
+  /// The returned [TurnScrollFuture] completes once the motion has settled,
+  /// with `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// the list is empty / unattached.
   ///
-  /// The returned [TurnScrollFuture] also has [TurnScrollFuture.ended], which
-  /// completes when the motion looks finished rather than when it settles.
+  /// Its [TurnScrollFuture.ended] completes earlier, as soon as the motion's
+  /// perceived duration has passed: await it to follow up when the scroll
+  /// looks finished rather than when the spring comes to rest.
   TurnScrollFuture scrollToBottom({bool animate = true, Motion? motion}) =>
       _fly(() => _delegate?.scrollToBottom(animate: animate, motion: motion));
 
@@ -274,12 +280,20 @@ class TurnScrollController extends ScrollController {
   /// flight. Under `MediaQuery.disableAnimationsOf(context)`, the transition
   /// always jumps instantaneously.
   ///
-  /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
+  /// The returned [TurnScrollFuture] completes once the motion has settled,
+  /// with `true` if the scroll arrived cleanly on [itemId], or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// [itemId] was not found.
   ///
-  /// The returned [TurnScrollFuture] also has [TurnScrollFuture.ended], which
-  /// completes when the motion looks finished rather than when it settles.
+  /// Its [TurnScrollFuture.ended] completes earlier, as soon as the motion's
+  /// perceived duration has passed: await it to follow up (highlight the
+  /// item, focus a field) when the scroll looks finished rather than when the
+  /// spring comes to rest.
+  ///
+  /// ```dart
+  /// final flight = controller.scrollTo(messageId, alignment: 0.25);
+  /// if (await flight.ended) highlight(messageId);
+  /// ```
   TurnScrollFuture scrollTo(
     Object itemId, {
     double alignment = 0,
@@ -412,6 +426,10 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
   /// Automatically cancels if the user starts dragging, wheeling, or scrolling.
   /// Returns `true` if the spring settled cleanly on the target, or `false` if
   /// interrupted or unresolvable.
+  ///
+  /// When a [TurnScrollController] navigation is underway ([endedSink] is
+  /// set), the activity's [TargetTrackingScrollActivity.ended] completes that
+  /// navigation's [TurnScrollFuture.ended].
   Future<bool> animateToTarget({
     required double? Function() resolveTarget,
     required Motion motion,

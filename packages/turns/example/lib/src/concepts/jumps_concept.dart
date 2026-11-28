@@ -55,6 +55,10 @@ class _JumpsConceptState extends State<JumpsConcept> {
 
   /// The jump underway or last finished.
   _Jump? _jump;
+
+  /// When the last flight looked done ([TurnScrollFuture.ended]) and when
+  /// it came to rest, in milliseconds after the call.
+  ({int ended, int settled})? _timing;
   Set<int>? _building;
   int? _target;
 
@@ -86,19 +90,28 @@ class _JumpsConceptState extends State<JumpsConcept> {
   Future<void> _go(int? index) async {
     final from = _visible.value ?? (_count - 1, _count - 1);
     final target = index ?? _count - 1;
-    _code.value = index == null
-        ? 'controller.scrollToBottom(animate: $_animate);'
-        : 'controller.scrollTo($index, alignment: 0.3, animate: $_animate);';
+    final call = index == null
+        ? 'controller.scrollToBottom(animate: $_animate)'
+        : 'controller.scrollTo($index, alignment: 0.3, animate: $_animate)';
+    _code.value =
+        'final flight = $call;\n'
+        'await flight.ended; // looks done: highlight, focus, follow up\n'
+        'await flight;       // the spring has come to rest';
     final built = <int>{};
     setState(() {
       _building = built;
       _target = target;
       _jump = _Jump(from: from, to: target, built: built, trail: [from]);
     });
+    final clock = Stopwatch()..start();
+    setState(() => _timing = null);
     final flight = index == null
         ? _controller.scrollToBottom(animate: _animate)
         : _controller.scrollTo(index, alignment: 0.3, animate: _animate);
+    final ended = flight.ended.then((_) => clock.elapsedMilliseconds);
     await flight;
+    final settled = clock.elapsedMilliseconds;
+    _timing = (ended: await ended, settled: settled);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     setState(() => _building = null);
@@ -204,8 +217,13 @@ class _JumpsConceptState extends State<JumpsConcept> {
             tone: ConceptTone.good,
           ),
           ConceptStat(
-            label: 'Frames',
-            value: jump == null ? '–' : n(jump.trail.length - 1),
+            label: 'Looks done (ended)',
+            value: _timing == null ? '–' : '${_timing!.ended} ms',
+            tone: ConceptTone.good,
+          ),
+          ConceptStat(
+            label: 'Settled',
+            value: _timing == null ? '–' : '${_timing!.settled} ms',
           ),
         ],
       ),

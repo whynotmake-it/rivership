@@ -9,6 +9,9 @@
 ///   `SliverPersistentHeader`) with offscreen `scrollTo` and `scrollToBottom`.
 /// - [TurnScrollController], [TurnScrollNotification], [TurnScrollScope],
 ///   [TurnScrollItem], [SliverTurnStage], and [TurnAnchorConfig].
+/// - [TurnScrollFuture]: what `scrollTo` and `scrollToBottom` return, with
+///   [TurnScrollFuture.ended] for when the motion looks finished, before the
+///   spring settles.
 ///
 /// @docImport 'package:turns/scroll.dart';
 library;

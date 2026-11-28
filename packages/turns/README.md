@@ -40,6 +40,7 @@ Flutter AI chat transcripts, streaming timelines, and messaging feeds.
   - **`0.0px`-shift prepend pagination** with preserved child widget `State`.
   - **Single-pass `SliverTurnStage` turn pinning**: pass `pinnedId` to reserve a viewport stage for the active prompt so `maxScrollExtent` stays flat while tokens stream.
   - **Zero-fight user control**: any drag, wheel, or trackpad gesture disengages auto-pinning immediately.
+  - **Perceived-end futures**: `scrollTo` and `scrollToBottom` return a `TurnScrollFuture` whose `ended` completes when the motion looks finished (motor's `MotionFuture.ended`), so follow-ups don't wait for the spring to settle.
   - **Synchronous keyboard-inset anchoring**: shifts scroll offset by the exact bottom-edge delta during layout without a 1-frame flash.
 - **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with an `isPinned` flag (hairline divider inline vs elevated floating pill when pinned), automatic `alignment: 0` clearance, and pointer pass-through (`stickyHeaderIgnoresPointer`).
 - **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: escape hatch for bounded feeds that need arbitrary Flutter slivers (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s) while keeping Motor-driven offscreen `scrollTo()` and `scrollToBottom()`.
@@ -135,7 +136,16 @@ final flight = controller.scrollTo(quotedMessageId, alignment: 0.25);
 if (await flight.ended && mounted) {
   highlightMessage(quotedMessageId);
 }
+
+// When it must have come to rest (e.g. before measuring layout):
+final settled = await flight;
 ```
+
+`ended` resolves `false` when the flight is interrupted (a user drag, another
+`scrollTo`) and never hangs. A jump (`animate: false`, or reduced motion)
+ends when it lands. A flight that retargets on the way, as offscreen rows
+measure in, or a long flight that recenters and glides its last viewport,
+ends with its final motion.
 
 ### 3. Composing Native Flutter Slivers (Bounded Feeds)
 
@@ -178,6 +188,7 @@ final doc = session.update(streamedText, streaming: true);
 - `package:turns/scroll.dart` — `TurnScrollView`, `TurnScrollView.sectioned`,
   `TurnSectionHeaderBuilder`, `CustomTurnScrollView`, `SliverTurnList`,
   `SliverTurnStage`, `TurnAnchorConfig`, `TurnScrollController`,
+  `TurnScrollFuture`,
   `TurnScrollNotification`, `TurnScrollScope`, `TurnScrollItem`,
   `defaultTurnAutoScrollMotion`.
 - `package:turns/markdown.dart` — `MarkdownSession`, `MarkdownDocument`,
