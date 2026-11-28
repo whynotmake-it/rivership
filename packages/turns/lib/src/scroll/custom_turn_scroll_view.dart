@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
@@ -35,6 +36,9 @@ class CustomTurnScrollView extends StatefulWidget {
     this.physics,
     this.scrollCacheExtent,
     this.followBottom = false,
+    this.clipBehavior = Clip.hardEdge,
+    this.keyboardDismissBehavior,
+    this.dragStartBehavior = DragStartBehavior.start,
   });
 
   /// Slivers placed inside the viewport.
@@ -106,6 +110,19 @@ class CustomTurnScrollView extends StatefulWidget {
   /// Any scroll by the user releases it; coming to rest at the bottom again
   /// re-arms it. Defaults to `false`.
   final bool followBottom;
+
+  /// How the scroll view clips its content (see
+  /// [CustomScrollView.clipBehavior]).
+  final Clip clipBehavior;
+
+  /// How a drag dismisses the keyboard (see
+  /// [CustomScrollView.keyboardDismissBehavior]); `null` leaves it to the
+  /// ambient [ScrollConfiguration].
+  final ScrollViewKeyboardDismissBehavior? keyboardDismissBehavior;
+
+  /// How a drag gesture is recognized (see
+  /// [CustomScrollView.dragStartBehavior]).
+  final DragStartBehavior dragStartBehavior;
 
   @override
   State<CustomTurnScrollView> createState() => CustomTurnScrollViewState();
@@ -543,6 +560,9 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
           center: widget.center,
           physics: widget.physics,
           scrollCacheExtent: widget.scrollCacheExtent,
+          clipBehavior: widget.clipBehavior,
+          keyboardDismissBehavior: widget.keyboardDismissBehavior,
+          dragStartBehavior: widget.dragStartBehavior,
           slivers: slivers,
         ),
       ),

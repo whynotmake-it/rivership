@@ -381,11 +381,32 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   }
 
   /// Wraps [child] to dispatch a [TurnScrollNotification] alongside Flutter's
-  /// standard [ScrollUpdateNotification] on every scroll update.
+  /// standard scroll notifications:
+  ///
+  /// - on every [ScrollUpdateNotification];
+  /// - on every [OverscrollNotification] (a drag against a clamped edge, where
+  ///   the offset itself does not move);
+  /// - on every [ScrollMetricsNotification] (the content or viewport changed
+  ///   size without scrolling, for example a first page that is shorter than
+  ///   the viewport and so can never be scrolled to its edge).
+  ///
+  /// The notification is dispatched from this state's own context, above this
+  /// listener, so it never reaches it again. Notifications from scrollables
+  /// nested in an item (a horizontal code block) are not turned into one.
   Widget wrapWithTurnNotification(Widget child) =>
-      NotificationListener<ScrollUpdateNotification>(
+      NotificationListener<Notification>(
         onNotification: (notification) {
-          final metrics = notification.metrics;
+          final ScrollMetrics metrics;
+          switch (notification) {
+            case ScrollUpdateNotification(depth: 0):
+              metrics = notification.metrics;
+            case OverscrollNotification(depth: 0):
+              metrics = notification.metrics;
+            case ScrollMetricsNotification(depth: 0):
+              metrics = notification.metrics;
+            default:
+              return false;
+          }
           TurnScrollNotification(
             metrics: metrics,
             context: context,

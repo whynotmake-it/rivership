@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
@@ -67,6 +68,9 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.physics,
     this.scrollCacheExtent,
     this.followBottom = false,
+    this.clipBehavior = Clip.hardEdge,
+    this.keyboardDismissBehavior,
+    this.dragStartBehavior = DragStartBehavior.start,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
        sectionId = null,
@@ -115,6 +119,9 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.physics,
     this.scrollCacheExtent,
     this.followBottom = false,
+    this.clipBehavior = Clip.hardEdge,
+    this.keyboardDismissBehavior,
+    this.dragStartBehavior = DragStartBehavior.start,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
        assert(
@@ -246,6 +253,19 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// re-arms it. Defaults to `false`: content that grows at the bottom then
   /// leaves the offset alone, which is what [pinnedId] relies on.
   final bool followBottom;
+
+  /// How the scroll view clips its content (see
+  /// [CustomScrollView.clipBehavior]).
+  final Clip clipBehavior;
+
+  /// How a drag dismisses the keyboard (see
+  /// [CustomScrollView.keyboardDismissBehavior]); `null` leaves it to the
+  /// ambient [ScrollConfiguration].
+  final ScrollViewKeyboardDismissBehavior? keyboardDismissBehavior;
+
+  /// How a drag gesture is recognized (see
+  /// [CustomScrollView.dragStartBehavior]).
+  final DragStartBehavior dragStartBehavior;
 
   bool get _isSectioned => sectionId != null && sectionHeaderBuilder != null;
 
@@ -1563,6 +1583,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       center: center,
       physics: widget.physics,
       scrollCacheExtent: widget.scrollCacheExtent,
+      clipBehavior: widget.clipBehavior,
+      keyboardDismissBehavior: widget.keyboardDismissBehavior,
+      dragStartBehavior: widget.dragStartBehavior,
       slivers: slivers,
     );
 
