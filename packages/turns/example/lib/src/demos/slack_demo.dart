@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
+import 'package:turns_example/src/shell/turns_action_strip.dart';
 
 /// Slack-style channel demo showcasing [TurnScrollView.sectioned] across a
 /// 3,000-message O(1) timeline with `isPinned` section headers (hairline rule
@@ -67,17 +68,10 @@ class _SlackDemoState extends State<SlackDemo> {
     return 0;
   }
 
-  Future<bool> _jumpToMessage(
-    String id, {
-    double alignment = 0.08,
-    bool animate = true,
-  }) async {
+  Future<bool> _jumpToMessage(String id, {double alignment = 0.08}) async {
     _highlightTimer?.cancel();
-    if (!await _controller.scrollTo(
-      id,
-      alignment: alignment,
-      animate: animate,
-    )) {
+    // Highlight as soon as the flight looks done, not once it settles.
+    if (!await _controller.scrollTo(id, alignment: alignment).ended) {
       return false;
     }
     if (!mounted) return false;
@@ -99,10 +93,9 @@ class _SlackDemoState extends State<SlackDemo> {
     }
   }
 
-  Future<void> _scrollToBottom() async {
-    final farAway = _controller.distanceFromBottom.value > 6000;
-    await _controller.scrollToBottom(animate: !farAway);
-  }
+  // Any distance animates: long flights recenter next to the bottom and glide
+  // the last viewport, so jumping back from the Feb 1 kickoff stays cheap.
+  Future<void> _scrollToBottom() => _controller.scrollToBottom();
 
   void _dismissUnread() {
     if (!_showUnreadPill) return;
@@ -263,9 +256,8 @@ class _SlackDemoState extends State<SlackDemo> {
                   onJumpDeploy: () =>
                       unawaited(_jumpToMessage(_deployMessageId)),
                   onJumpUnread: () => unawaited(_jumpToUnread()),
-                  onJumpKickoff: () => unawaited(
-                    _jumpToMessage(_kickoffMessageId, animate: false),
-                  ),
+                  onJumpKickoff: () =>
+                      unawaited(_jumpToMessage(_kickoffMessageId)),
                 ),
                 Expanded(
                   child: MediaQuery.removePadding(
@@ -601,49 +593,40 @@ class _BookmarksBar extends StatelessWidget {
       ),
       child: SizedBox(
         height: _height,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              Icon(
-                LucideIcons.bookmark,
-                size: 13,
-                color: colors.mutedForeground,
-              ),
-              const SizedBox(width: 6),
-              Text('Bookmarks', style: text.muted.micro),
-              const SizedBox(width: 10),
-              _BookmarkChip(
-                key: const Key('slack.jump_rfc'),
-                icon: LucideIcons.fileText,
-                label: 'RFC #42 · May 13',
-                onPressed: onJumpRfc,
-              ),
-              const SizedBox(width: 6),
-              _BookmarkChip(
-                key: const Key('slack.jump_deploy'),
-                icon: LucideIcons.rocket,
-                label: 'Deploy checklist · May 14',
-                onPressed: onJumpDeploy,
-              ),
-              const SizedBox(width: 6),
-              _BookmarkChip(
-                key: const Key('slack.jump_unread'),
-                icon: LucideIcons.sparkles,
-                label: 'First unread · May 14',
-                accent: true,
-                onPressed: onJumpUnread,
-              ),
-              const SizedBox(width: 6),
-              _BookmarkChip(
-                key: const Key('slack.jump_kickoff'),
-                icon: LucideIcons.history,
-                label: 'Kickoff · #420 · Feb 1',
-                onPressed: onJumpKickoff,
-              ),
-            ],
-          ),
+        child: TurnsActionStrip(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [
+            Icon(LucideIcons.bookmark, size: 13, color: colors.mutedForeground),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 4),
+              child: Text('Bookmarks', style: text.muted.micro),
+            ),
+            _BookmarkChip(
+              key: const Key('slack.jump_rfc'),
+              icon: LucideIcons.fileText,
+              label: 'RFC #42 · May 13',
+              onPressed: onJumpRfc,
+            ),
+            _BookmarkChip(
+              key: const Key('slack.jump_deploy'),
+              icon: LucideIcons.rocket,
+              label: 'Deploy checklist · May 14',
+              onPressed: onJumpDeploy,
+            ),
+            _BookmarkChip(
+              key: const Key('slack.jump_unread'),
+              icon: LucideIcons.sparkles,
+              label: 'First unread · May 14',
+              accent: true,
+              onPressed: onJumpUnread,
+            ),
+            _BookmarkChip(
+              key: const Key('slack.jump_kickoff'),
+              icon: LucideIcons.history,
+              label: 'Kickoff · #420 · Feb 1',
+              onPressed: onJumpKickoff,
+            ),
+          ],
         ),
       ),
     );
@@ -1399,7 +1382,14 @@ class _ThreadSummaryPill extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text('Last reply $lastReplyLabel', style: text.muted.micro),
+              Flexible(
+                child: Text(
+                  'Last reply $lastReplyLabel',
+                  style: text.muted.micro,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const SizedBox(width: 4),
               Icon(
                 expanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
@@ -2124,8 +2114,9 @@ List<_SlackMessage> _buildInitialMessages() {
       timestamp: '9:18 AM',
       markdown:
           'Tested jumping from Today straight up to **RFC #42** on May 13 '
-          'or O(1) back to **Kickoff · #420** in February — smooth Motor '
-          'springs for nearby jumps, instant recenter across thousands.',
+          'or all the way back to **Kickoff · #420** in February. Long '
+          'jumps recenter next to the target and glide the last screen, so '
+          'they cost the same as short ones.',
       reactions: [const _SlackReaction(kind: _ReactionKind.target, count: 3)],
     ),
     _SlackMessage(

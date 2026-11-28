@@ -508,7 +508,8 @@ void main() {
       // Re-enable animations and test cancelAutoScroll mid-flight.
       _update(state, (s) => s.disableAnimations = false);
       await tester.pump();
-      final startPixels = controller.position.pixels;
+      final startDistance =
+          controller.position.maxScrollExtent - controller.position.pixels;
 
       final jumpFuture = controller.scrollToBottom();
       await _pumpFrames(tester, 4);
@@ -516,11 +517,12 @@ void main() {
       await tester.pump();
       expect(await jumpFuture, isFalse);
 
-      expect(controller.position.pixels, greaterThan(startPixels));
-      expect(
-        controller.position.pixels,
-        lessThan(controller.position.maxScrollExtent - 100),
-      );
+      // A long flight may recenter (new coordinate frame), so compare the
+      // distance to the bottom rather than raw pixels.
+      final distance =
+          controller.position.maxScrollExtent - controller.position.pixels;
+      expect(distance, lessThan(startDistance));
+      expect(distance, greaterThan(100));
       expect(
         (controller.position as TurnScrollPosition).isTrackingTarget,
         isFalse,

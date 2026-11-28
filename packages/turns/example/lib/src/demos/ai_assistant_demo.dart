@@ -8,12 +8,13 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
+import 'package:turns_example/src/shell/turns_action_strip.dart';
+import 'package:turns_example/src/shell/turns_playground.dart';
 
-/// Flagship AI assistant demo exercising [TurnScrollView] with `pinnedId`
-/// ([SliverTurnStage] active-turn reservation), [CoilThinkingSteps],
-/// [CoilMarkdown] streaming completion, [MarkdownSession] telemetry,
-/// `0.0px`-shift prepend pagination, and a measured [CoilInputMessage]
-/// composer.
+/// AI assistant playground: a [TurnScrollView] transcript whose `pinnedId`
+/// pins each new prompt while the reply streams, with a settings panel for
+/// the anchor, the scroll motion, the stream and the spacing, and an overlay
+/// that draws the [SliverTurnStage] and the space it reserves.
 class AiAssistantDemo extends StatefulWidget {
   /// Creates the AI assistant demo.
   const AiAssistantDemo({super.key});
@@ -23,6 +24,42 @@ class AiAssistantDemo extends StatefulWidget {
 }
 
 enum _Role { user, assistant }
+
+/// Starting points for the two [TurnAnchorConfig] sliders.
+enum _AnchorPreset {
+  standard('Standard', TurnAnchorConfig.standard),
+  top('Top', TurnAnchorConfig.top);
+
+  const _AnchorPreset(this.label, this.config);
+
+  final String label;
+  final TurnAnchorConfig config;
+}
+
+/// Starting points for the scroll spring's two sliders.
+enum _MotionPreset {
+  smooth('Smooth', 360, 0),
+  snappy('Snappy', 240, 0.12),
+  bouncy('Bouncy', 520, 0.32);
+
+  const _MotionPreset(this.label, this.milliseconds, this.bounce);
+
+  final String label;
+  final double milliseconds;
+  final double bounce;
+}
+
+enum _StreamSpeed {
+  slow('Slow', 3, Duration(milliseconds: 40)),
+  normal('Normal', 9, Duration(milliseconds: 24)),
+  fast('Fast', 28, Duration(milliseconds: 16));
+
+  const _StreamSpeed(this.label, this.chunkSize, this.tick);
+
+  final String label;
+  final int chunkSize;
+  final Duration tick;
+}
 
 class _ThinkingStepData {
   const _ThinkingStepData({
@@ -86,6 +123,36 @@ class _AiMessage {
 
 class _AiAssistantDemoState extends State<AiAssistantDemo> {
   final _controller = TurnScrollController();
+  final _scrollViewKey = GlobalKey(debugLabel: 'AiAssistant.scrollView');
+
+  /// Whether a new prompt becomes `pinnedId`; off, the view follows the
+  /// bottom like a log.
+  var _pinning = true;
+  var _anchor = TurnAnchorConfig.standard;
+  var _motionMilliseconds = _MotionPreset.smooth.milliseconds;
+  var _motionBounce = _MotionPreset.smooth.bounce;
+
+  /// autoScrollMotion from the two sliders; zero duration jumps.
+  Motion get _motion => _motionMilliseconds < 1
+      ? const Motion.instant()
+      : Motion.cupertino(
+          duration: Duration(milliseconds: _motionMilliseconds.round()),
+          bounce: _motionBounce,
+        );
+
+  _MotionPreset? get _matchingPreset => _MotionPreset.values
+      .where(
+        (p) =>
+            (p.milliseconds - _motionMilliseconds).abs() < 1 &&
+            (p.bounce - _motionBounce).abs() < 0.005,
+      )
+      .firstOrNull;
+  var _speed = _StreamSpeed.normal;
+  var _showThinking = true;
+  var _showStage = false;
+  var _itemSpacing = 24.0;
+
+  TurnAnchorConfig get _anchorConfig => _anchor;
   final _composerController = TextEditingController();
   final _composerFocus = FocusNode();
   final _session = MarkdownSession();
@@ -222,8 +289,34 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
         ),
       ],
       reply: _shortStreamingReply,
-      chunkSize: 7,
-      tick: const Duration(milliseconds: 24),
+    );
+  }
+
+  /// A prompt taller than the view: the anchor's minimum trailing space
+  /// scrolls it up so the reply still gets room below it.
+  void _sendQuickTall() {
+    _startTurn(
+      prompt:
+          'Can you review this incident log and tell me what went wrong?'
+          '\n\n${_incidentLog()}',
+      steps: const [
+        _ThinkingStepData(
+          id: 'read-log',
+          title: 'Reading 28 log lines',
+          detail: 'Groups the retries by upstream.',
+          sources: ['incident.log'],
+          status: CoilThinkingStepStatus.running,
+        ),
+      ],
+      reply:
+          'The **cache node in eu-west** started refusing connections at '
+          '09:17, and every retry after that piled onto the primary until '
+          'its pool ran dry at 09:31.\n\n'
+          '- **Root cause:** a config push that halved the pool size.\n'
+          '- **Fix:** restore the pool size and cap retries at three.\n\n'
+          'Notice how your message scrolled up when it was sent: it is '
+          'taller than the view, so the anchor keeps half the view free '
+          'below it for this reply (minTrailingFraction: 0.5).',
     );
   }
 
@@ -257,8 +350,6 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
         ),
       ],
       reply: _longStreamingReply,
-      chunkSize: 11,
-      tick: const Duration(milliseconds: 22),
     );
   }
 
@@ -284,8 +375,6 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
         ),
       ],
       reply: _buildCustomReply(trimmed),
-      chunkSize: 9,
-      tick: const Duration(milliseconds: 24),
     );
   }
 
@@ -293,9 +382,9 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
     required String prompt,
     required List<_ThinkingStepData> steps,
     required String reply,
-    required int chunkSize,
-    required Duration tick,
   }) {
+    final chunkSize = _speed.chunkSize;
+    final tick = _speed.tick;
     if (_isStreaming) {
       _stopStreaming();
     }
@@ -316,8 +405,8 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
       role: _Role.assistant,
       text: '',
       time: time,
-      thinkingLabel: 'Thinking…',
-      thinkingSteps: [steps.first],
+      thinkingLabel: _showThinking ? 'Thinking…' : null,
+      thinkingSteps: _showThinking ? [steps.first] : const [],
       streaming: true,
     );
 
@@ -331,6 +420,17 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
       _streamingMessageId = assistantId;
       _syncSessionTelemetry('', streaming: true);
     });
+    _followBottomIfUnpinned(force: true);
+
+    if (!_showThinking) {
+      _beginTokenStream(
+        assistantId: assistantId,
+        fullReply: reply,
+        chunkSize: chunkSize,
+        tick: tick,
+      );
+      return;
+    }
 
     // Advance thinking steps cleanly with Timers, then stream markdown tokens.
     var revealedSteps = 1;
@@ -410,10 +510,22 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
           _streamingMessageId = null;
         }
       });
+      _followBottomIfUnpinned();
       if (done) {
         timer.cancel();
         _streamTimer = null;
       }
+    });
+  }
+
+  /// With pinning off the transcript behaves like a log: it follows the
+  /// bottom while you are there, and stays put once you scroll up.
+  void _followBottomIfUnpinned({bool force = false}) {
+    if (_pinning) return;
+    if (!force && _controller.isAwayFromBottom.value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_controller.scrollToBottom(animate: force));
     });
   }
 
@@ -439,20 +551,10 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
     final text = CoilTheme.textOf(context);
     final remainingPages = _maxOlderPages - _olderPagesLoaded;
 
-    return ColoredBox(
+    final body = ColoredBox(
       color: colors.background,
       child: Column(
         children: [
-          _AiHeaderBar(
-            isStreaming: _isStreaming,
-            pinActive: _controller.isPinActive,
-            stableBlocks: _stableBlockCount,
-            hasPendingBlock: _hasPendingBlock,
-            remainingOlderPages: remainingPages,
-            onQuickShort: _sendQuickShort,
-            onQuickLong: _sendQuickLong,
-            onLoadOlder: remainingPages > 0 ? _loadOlderTurns : null,
-          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -463,6 +565,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                 return Stack(
                   children: [
                     CoilScrollArea(
+                      key: _scrollViewKey,
                       controller: _controller,
                       edgeFades: CoilEdgeFades.none,
                       keyboard: false,
@@ -470,7 +573,10 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                         controller: _controller,
                         itemCount: _messages.length,
                         itemId: (i) => _messages[i].id,
-                        pinnedId: _pinnedId,
+                        pinnedId: _pinning ? _pinnedId : null,
+                        anchorConfig: _anchorConfig,
+                        autoScrollMotion: _motion,
+                        itemSpacing: _itemSpacing,
                         padding: EdgeInsets.fromLTRB(
                           horizontal,
                           16,
@@ -499,6 +605,12 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                             _buildMessageItem(context, _messages[index]),
                       ),
                     ),
+                    if (_showStage)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: _StageOverlay(scrollViewKey: _scrollViewKey),
+                        ),
+                      ),
                     Positioned(
                       left: 0,
                       right: 0,
@@ -539,6 +651,16 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                             ),
                             ColoredBox(
                               color: colors.background,
+                              child: _Suggestions(
+                                visible: !_isStreaming,
+                                horizontal: horizontal,
+                                onShort: _sendQuickShort,
+                                onLong: _sendQuickLong,
+                                onTall: _sendQuickTall,
+                              ),
+                            ),
+                            ColoredBox(
+                              color: colors.background,
                               child: Padding(
                                 padding: EdgeInsets.fromLTRB(
                                   horizontal,
@@ -550,7 +672,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                                   controller: _composerController,
                                   focusNode: _composerFocus,
                                   placeholder: Text(
-                                    'Ask a follow-up — pins your turn at top…',
+                                    'Ask anything, your turn pins to the top',
                                     style: text.muted.field,
                                   ),
                                   status: _isStreaming
@@ -572,6 +694,153 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
           ),
         ],
       ),
+    );
+
+    return PlaygroundLayout(
+      settingsKey: const Key('ai.settings'),
+      body: body,
+      settings: [
+        PlaygroundSection(
+          title: 'Live',
+          children: [
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _StageBadge(
+                  isStreaming: _isStreaming,
+                  pinActive: _controller.isPinActive,
+                  stableBlocks: _stableBlockCount,
+                  hasPendingBlock: _hasPendingBlock,
+                ),
+              ],
+            ),
+            PlaygroundToggle(
+              key: const Key('ai.show_stage'),
+              label: 'Show the stage',
+              hint: 'Outlines the pinned turn and the space reserved below it.',
+              value: _showStage,
+              onChanged: (v) => setState(() => _showStage = v),
+            ),
+          ],
+        ),
+        PlaygroundSection(
+          title: 'Pinning',
+          children: [
+            PlaygroundToggle(
+              label: 'Pin new prompts',
+              hint:
+                  'Off, there is no pinnedId and the view follows the '
+                  'bottom like a log.',
+              value: _pinning,
+              onChanged: (v) => setState(() => _pinning = v),
+            ),
+            if (_pinning) ...[
+              PlaygroundPresets<_AnchorPreset>(
+                presets: {for (final p in _AnchorPreset.values) p: p.label},
+                selected: _AnchorPreset.values
+                    .where((p) => p.config == _anchor)
+                    .firstOrNull,
+                onPick: (p) => setState(() => _anchor = p.config),
+              ),
+              PlaygroundSlider(
+                label: 'Alignment',
+                hint: 'Where the prompt rests: 0 at the top, 1 at the bottom.',
+                value: _anchor.alignment,
+                min: 0,
+                max: 1,
+                divisions: 20,
+                format: (v) => v.toStringAsFixed(2),
+                onChanged: (v) =>
+                    setState(() => _anchor = _anchor.copyWith(alignment: v)),
+              ),
+              PlaygroundSlider(
+                label: 'Min trailing',
+                hint:
+                    'Share of the view kept free below the prompt for the '
+                    'reply; tall prompts scroll up to make room.',
+                value: _anchor.minTrailingFraction ?? 0,
+                min: 0,
+                max: 1,
+                divisions: 20,
+                format: (v) => v == 0 ? 'Off' : '${(v * 100).round()} %',
+                onChanged: (v) => setState(
+                  () => _anchor = _anchor.copyWith(
+                    minTrailingFraction: v == 0 ? null : v,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        PlaygroundSection(
+          title: 'Scroll motion',
+          children: [
+            PlaygroundPresets<_MotionPreset>(
+              presets: {for (final p in _MotionPreset.values) p: p.label},
+              selected: _matchingPreset,
+              onPick: (p) => setState(() {
+                _motionMilliseconds = p.milliseconds;
+                _motionBounce = p.bounce;
+              }),
+            ),
+            PlaygroundSlider(
+              label: 'Duration',
+              value: _motionMilliseconds,
+              min: 0,
+              max: 900,
+              divisions: 36,
+              format: (v) => v < 1 ? 'Instant' : '${v.round()} ms',
+              onChanged: (v) => setState(() => _motionMilliseconds = v),
+            ),
+            PlaygroundSlider(
+              label: 'Bounce',
+              hint:
+                  'autoScrollMotion for pins and jumps; a duration of 0 '
+                  'jumps. Send a prompt to feel it.',
+              value: _motionBounce,
+              min: 0,
+              max: 0.5,
+              divisions: 20,
+              format: (v) => v.toStringAsFixed(2),
+              onChanged: (v) => setState(() => _motionBounce = v),
+            ),
+          ],
+        ),
+        PlaygroundSection(
+          title: 'Reply',
+          children: [
+            PlaygroundChoice<_StreamSpeed>(
+              label: 'Stream speed',
+              value: _speed,
+              options: {
+                for (final speed in _StreamSpeed.values) speed: speed.label,
+              },
+              onChanged: (v) => setState(() => _speed = v),
+            ),
+            PlaygroundToggle(
+              label: 'Thinking steps',
+              hint: 'Grow the turn before the reply starts.',
+              value: _showThinking,
+              onChanged: (v) => setState(() => _showThinking = v),
+            ),
+          ],
+        ),
+        PlaygroundSection(
+          title: 'Layout',
+          children: [
+            PlaygroundSlider(
+              label: 'Item spacing',
+              value: _itemSpacing,
+              min: 8,
+              max: 48,
+              divisions: 10,
+              format: (v) => '${v.round()} px',
+              onChanged: (v) => setState(() => _itemSpacing = v),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -659,117 +928,111 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
   }
 }
 
-class _AiHeaderBar extends StatelessWidget {
-  const _AiHeaderBar({
+/// Live state of the [MarkdownSession] behind the streaming reply: how many
+/// blocks are frozen, and whether the prompt's stage is pinned.
+class _StageBadge extends StatelessWidget {
+  const _StageBadge({
     required this.isStreaming,
     required this.pinActive,
     required this.stableBlocks,
     required this.hasPendingBlock,
-    required this.remainingOlderPages,
-    required this.onQuickShort,
-    required this.onQuickLong,
-    required this.onLoadOlder,
   });
 
   final bool isStreaming;
   final ValueListenable<bool> pinActive;
   final int stableBlocks;
   final bool hasPendingBlock;
-  final int remainingOlderPages;
-  final VoidCallback onQuickShort;
-  final VoidCallback onQuickLong;
-  final VoidCallback? onLoadOlder;
 
   @override
   Widget build(BuildContext context) {
-    final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: pinActive,
+      builder: (context, isPinned, _) {
+        final label = isStreaming
+            ? 'Streaming · $stableBlocks stable'
+                  '${hasPendingBlock ? ' + tail' : ''}'
+            : isPinned
+            ? 'Stage pinned · $stableBlocks blocks'
+            : 'MarkdownSession · $stableBlocks blocks';
+        return CoilBadge(
+          variant: CoilBadgeVariant.dot,
+          color: isStreaming
+              ? CoilBadgeColor.emerald
+              : isPinned
+              ? CoilBadgeColor.brand
+              : CoilBadgeColor.gray,
+          shape: CoilBadgeShape.pill,
+          size: CoilSize.compact,
+          child: Text(label, style: text.micro.tabular),
+        );
+      },
+    );
+  }
+}
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surfaces[1],
-        border: Border(bottom: BorderSide(color: colors.border)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(LucideIcons.sparkles, size: 16, color: colors.brandInk),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'AI Assistant',
-                    style: text.subtitle.copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ValueListenableBuilder<bool>(
-                  valueListenable: pinActive,
-                  builder: (context, isPinned, _) {
-                    final stageLabel = isStreaming
-                        ? 'Streaming · $stableBlocks stable'
-                              '${hasPendingBlock ? ' + tail' : ''}'
-                        : isPinned
-                        ? 'Stage pinned · $stableBlocks blocks'
-                        : 'MarkdownSession · $stableBlocks blocks';
-                    return CoilBadge(
-                      variant: CoilBadgeVariant.dot,
-                      color: isStreaming
-                          ? CoilBadgeColor.emerald
-                          : isPinned
-                          ? CoilBadgeColor.brand
-                          : CoilBadgeColor.gray,
-                      shape: CoilBadgeShape.pill,
-                      size: CoilSize.compact,
-                      child: Text(stageLabel, style: text.micro.tabular),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                CoilButton(
-                  key: const Key('ai.quick_short'),
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.zap, size: 14),
-                  onPressed: onQuickShort,
-                  child: const Text('Quick short reply'),
-                ),
-                CoilButton(
-                  key: const Key('ai.quick_long'),
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.fileCode2, size: 14),
-                  onPressed: onQuickLong,
-                  child: const Text('Deep-dive GFM stream'),
-                ),
-                CoilButton(
-                  key: const Key('ai.load_older'),
-                  variant: CoilButtonVariant.tertiary,
-                  size: CoilSize.compact,
-                  leading: const Icon(LucideIcons.history, size: 14),
-                  onPressed: onLoadOlder,
-                  child: Text(
-                    remainingOlderPages > 0
-                        ? 'Load older ($remainingOlderPages left)'
-                        : 'History complete',
-                  ),
-                ),
-              ],
-            ),
-          ],
+/// Prompts to try, above the composer while nothing is streaming.
+class _Suggestions extends StatelessWidget {
+  const _Suggestions({
+    required this.visible,
+    required this.horizontal,
+    required this.onShort,
+    required this.onLong,
+    required this.onTall,
+  });
+
+  final bool visible;
+  final double horizontal;
+  final VoidCallback onShort;
+  final VoidCallback onLong;
+  final VoidCallback onTall;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CoilTheme.motionOf(context);
+    return SingleMotionBuilder(
+      value: visible ? 1 : 0,
+      motion: visible ? motion.standard : motion.fadeExit,
+      // Hidden suggestions keep their room, so the composer (and the
+      // bottom inset the transcript reads) never moves when they fade.
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0.0, 1.0),
+        child: IgnorePointer(
+          ignoring: !visible,
+          child: ExcludeSemantics(excluding: !visible, child: child),
         ),
+      ),
+      child: TurnsActionStrip(
+        padding: EdgeInsets.fromLTRB(horizontal, 2, horizontal, 4),
+        children: [
+          CoilButton(
+            key: const Key('ai.quick_short'),
+            variant: CoilButtonVariant.secondary,
+            size: CoilSize.compact,
+            style: const CoilButtonStyle(radius: 999),
+            leading: const Icon(LucideIcons.zap, size: 14),
+            onPressed: onShort,
+            child: const Text('How does pinning avoid jumps?'),
+          ),
+          CoilButton(
+            key: const Key('ai.quick_long'),
+            variant: CoilButtonVariant.secondary,
+            size: CoilSize.compact,
+            style: const CoilButtonStyle(radius: 999),
+            leading: const Icon(LucideIcons.fileCode2, size: 14),
+            onPressed: onLong,
+            child: const Text('Walk me through the architecture'),
+          ),
+          CoilButton(
+            key: const Key('ai.quick_tall'),
+            variant: CoilButtonVariant.secondary,
+            size: CoilSize.compact,
+            style: const CoilButtonStyle(radius: 999),
+            leading: const Icon(LucideIcons.clipboardPaste, size: 14),
+            onPressed: onTall,
+            child: const Text('Paste a very long message'),
+          ),
+        ],
       ),
     );
   }
@@ -920,6 +1183,22 @@ class _RenderHeightObserver extends RenderProxyBox {
   }
 }
 
+const _incidentLines = [
+  'WARN  cache-eu-west  connection refused, retrying (1/5)',
+  'WARN  cache-eu-west  connection refused, retrying (2/5)',
+  'INFO  api            falling back to primary for session reads',
+  'WARN  primary        pool at 92% (46/50)',
+  'ERROR cache-eu-west  giving up after 5 retries',
+  'WARN  primary        pool at 100% (50/50), queueing',
+  'ERROR api            session read timed out after 3000 ms',
+];
+
+/// Twenty-eight log lines, enough to make a prompt taller than the view.
+String _incidentLog() => [
+  for (var i = 0; i < 28; i++)
+    '09:${(14 + i).toString().padLeft(2, '0')}  ${_incidentLines[i % 7]}',
+].join('\n');
+
 String _formatClock(int turnNumber) {
   final minutes = (14 + turnNumber * 2) % 60;
   final mm = minutes.toString().padLeft(2, '0');
@@ -978,7 +1257,7 @@ Two separate layout invariants break in a plain `ListView`:
     role: _Role.assistant,
     time: '10:12 AM',
     text: '''
-Try tapping **Quick short reply**, **Deep-dive GFM stream**, or typing in the composer below:
+Pick a suggestion above the composer, or type your own question:
 
 - Your new prompt becomes `pinnedId`, so `SliverTurnStage` wraps it as the anchor sliver and reserves a full viewport stage beneath it.
 - Motor springs the prompt cleanly to top clearance (`defaultTurnAutoScrollMotion`), leaving room for `CoilThinkingSteps` and the streaming reply — and any touch drag or wheel scroll disengages auto-pinning immediately.''',
@@ -1117,3 +1396,214 @@ TurnScrollView(
 ### 4. Follow-Up From the Bottom
 
 Because this reply is now taller than the viewport, `actualContentExtent` has cleanly overtaken `minExtent`. Send another prompt from the composer below and `SliverTurnStage` will hand off to your new turn seamlessly — springing it right back to the top edge with zero jank.''';
+
+/// Draws the active [SliverTurnStage] over the transcript: the turn it lays
+/// out (the prompt and its reply) and the empty space it reserves below so
+/// the prompt can stay pinned while the reply is still short.
+///
+/// Reads the stage's render object after every frame; nothing here feeds
+/// back into layout.
+class _StageOverlay extends StatefulWidget {
+  const _StageOverlay({required this.scrollViewKey});
+
+  final GlobalKey scrollViewKey;
+
+  @override
+  State<_StageOverlay> createState() => _StageOverlayState();
+}
+
+class _StageOverlayState extends State<_StageOverlay> {
+  ({Rect turn, Rect reserved, double reservedExtent})? _geometry;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(_measure);
+  }
+
+  RenderViewport? _findViewport(RenderObject node) {
+    if (node is RenderViewport) return node;
+    RenderViewport? found;
+    node.visitChildren((child) {
+      found ??= _findViewport(child);
+    });
+    return found;
+  }
+
+  void _measure(Duration _) {
+    if (!mounted) return;
+    // Every frame, for as long as the overlay is shown.
+    WidgetsBinding.instance.addPostFrameCallback(_measure);
+    final root = widget.scrollViewKey.currentContext?.findRenderObject();
+    final self = context.findRenderObject();
+    final viewport = root == null ? null : _findViewport(root);
+    RenderSliverTurnStage? stage;
+    viewport?.visitChildren((child) {
+      if (child is RenderSliverTurnStage) stage = child;
+    });
+    final next = _geometryOf(viewport, stage, self);
+    if (next != _geometry) setState(() => _geometry = next);
+  }
+
+  ({Rect turn, Rect reserved, double reservedExtent})? _geometryOf(
+    RenderViewport? viewport,
+    RenderSliverTurnStage? stage,
+    RenderObject? self,
+  ) {
+    if (viewport == null ||
+        stage == null ||
+        self is! RenderBox ||
+        !self.hasSize ||
+        stage.geometry == null ||
+        stage.geometry!.paintExtent <= 0) {
+      return null;
+    }
+    final parentData = stage.parentData;
+    if (parentData is! SliverPhysicalParentData) return null;
+    // Where the stage's leading edge sits in the viewport, even when it has
+    // scrolled partly off the top.
+    final top = parentData.paintOffset.dy - stage.constraints.scrollOffset;
+    final origin = self.globalToLocal(viewport.localToGlobal(Offset(0, top)));
+    final width = self.size.width;
+    final content = stage.actualContentExtent;
+    final total = math.max(stage.minExtent, content);
+    return (
+      turn: Rect.fromLTWH(8, origin.dy, width - 16, content),
+      reserved: Rect.fromLTWH(
+        8,
+        origin.dy + content,
+        width - 16,
+        total - content,
+      ),
+      reservedExtent: total - content,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final geometry = _geometry;
+    if (geometry == null) return const SizedBox.expand();
+    final colors = CoilTheme.of(context).colors;
+    final text = CoilTheme.textOf(context);
+    return ClipRect(
+      child: CustomPaint(
+        painter: _StagePainter(
+          turn: geometry.turn,
+          reserved: geometry.reserved,
+          stroke: colors.brandMark,
+          fill: colors.brandWash,
+          labelStyle: text.micro.copyWith(
+            color: colors.brandInk,
+            fontWeight: text.emphasis,
+          ),
+          turnLabel: 'SliverTurnStage · pinned turn',
+          reservedLabel: geometry.reservedExtent < 1
+              ? null
+              : 'Reserved ${geometry.reservedExtent.round()} px · shrinks as '
+                    'the reply grows',
+        ),
+        size: Size.infinite,
+      ),
+    );
+  }
+}
+
+class _StagePainter extends CustomPainter {
+  const _StagePainter({
+    required this.turn,
+    required this.reserved,
+    required this.stroke,
+    required this.fill,
+    required this.labelStyle,
+    required this.turnLabel,
+    required this.reservedLabel,
+  });
+
+  final Rect turn;
+  final Rect reserved;
+  final Color stroke;
+  final Color fill;
+  final TextStyle labelStyle;
+  final String turnLabel;
+  final String? reservedLabel;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = stroke
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.25;
+    _dashedRect(canvas, turn, line);
+    if (reserved.height > 0.5) {
+      canvas.drawRect(
+        reserved,
+        Paint()..color = fill.withValues(alpha: fill.a * 0.55),
+      );
+      _hatch(canvas, reserved, stroke.withValues(alpha: 0.18));
+      _dashedRect(canvas, reserved, line);
+    }
+    _label(canvas, turnLabel, turn.topLeft + const Offset(6, 4));
+    if (reservedLabel case final label?) {
+      _label(canvas, label, reserved.topLeft + const Offset(6, 6));
+    }
+  }
+
+  void _label(Canvas canvas, String label, Offset at) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: labelStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final box = (at & painter.size).inflate(4);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(box, const Radius.circular(4)),
+      Paint()..color = fill,
+    );
+    painter.paint(canvas, at);
+  }
+
+  void _hatch(Canvas canvas, Rect rect, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    canvas
+      ..save()
+      ..clipRect(rect);
+    for (var x = rect.left - rect.height; x < rect.right; x += 10) {
+      canvas.drawLine(
+        Offset(x, rect.bottom),
+        Offset(x + rect.height, rect.top),
+        paint,
+      );
+    }
+    canvas.restore();
+  }
+
+  void _dashedRect(Canvas canvas, Rect rect, Paint paint) {
+    void dashed(Offset a, Offset b) {
+      final length = (b - a).distance;
+      if (length <= 0) return;
+      final dir = (b - a) / length;
+      for (var d = 0.0; d < length; d += 9) {
+        canvas.drawLine(
+          a + dir * d,
+          a + dir * math.min(d + 5, length),
+          paint,
+        );
+      }
+    }
+
+    dashed(rect.topLeft, rect.topRight);
+    dashed(rect.topRight, rect.bottomRight);
+    dashed(rect.bottomRight, rect.bottomLeft);
+    dashed(rect.bottomLeft, rect.topLeft);
+  }
+
+  @override
+  bool shouldRepaint(_StagePainter old) =>
+      old.turn != turn ||
+      old.reserved != reserved ||
+      old.stroke != stroke ||
+      old.fill != fill ||
+      old.turnLabel != turnLabel ||
+      old.reservedLabel != reservedLabel;
+}

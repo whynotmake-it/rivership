@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
+import 'package:turns/src/scroll/turn_child_delegate.dart';
 import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_engine.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
@@ -273,10 +274,27 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   static const _initialTailWindow = 12;
   static const _maxInitialPasses = 4;
 
+  /// Animated flights longer than this many viewports teleport (recenter with
+  /// fresh lists) to [_glideViewports] short of the target before animating,
+  /// so a 3,000-item flight builds ~2 viewports of items, not all 3,000.
+  static const _maxFlightViewports = 3.0;
+
+  /// Distance, in viewports, left to animate after a long-flight teleport.
+  static const _glideViewports = 1.0;
+
   final _topKey = GlobalKey(debugLabel: 'TurnScrollView.top');
-  final _belowKey = GlobalKey(debugLabel: 'TurnScrollView.below');
-  final _belowListKey = GlobalKey(debugLabel: 'TurnScrollView.belowList');
+  var _belowKey = GlobalKey(debugLabel: 'TurnScrollView.below');
+  var _belowListKey = GlobalKey(debugLabel: 'TurnScrollView.belowList');
   final _afterListKey = GlobalKey(debugLabel: 'TurnScrollView.afterList');
+
+  /// Bumped (with fresh [_belowKey]/[_belowListKey]) to give both item lists
+  /// new render objects on a teleport.
+  ///
+  /// `RenderSliverList` has no index-to-offset map: moving its scroll offset
+  /// far from its current children lays out every child in between. Fresh
+  /// lists start empty at the new center, so a jump lays out only what lands
+  /// in the viewport.
+  var _listGeneration = 0;
 
   /// Split index between above-center (reverse) and below-center (forward)
   /// slivers.
@@ -482,13 +500,17 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return index == 0 || sectionOf(index) != sectionOf(index - 1);
   }
 
+  /// Running sum of [_sectionHeaderExtents] values (O(1) mean).
+  double _sectionHeaderExtentSum = 0;
+
   double get _meanSectionHeaderExtent {
     if (_sectionHeaderExtents.isEmpty) return 32;
-    var sum = 0.0;
-    for (final v in _sectionHeaderExtents.values) {
-      sum += v;
-    }
-    return sum / _sectionHeaderExtents.length;
+    return _sectionHeaderExtentSum / _sectionHeaderExtents.length;
+  }
+
+  void _clearSectionHeaderExtents() {
+    _sectionHeaderExtents.clear();
+    _sectionHeaderExtentSum = 0;
   }
 
   double _sectionHeaderExtraFor(int index) {
@@ -499,6 +521,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   }
 
   void _onSectionHeaderLayout(Object itemId, double height, RenderBox box) {
+    _sectionHeaderExtentSum += height - (_sectionHeaderExtents[itemId] ?? 0);
     _sectionHeaderExtents[itemId] = height;
     _mountedSectionHeaders[itemId] = box;
     if (_hasStickyHeaders) _scheduleStickySync();
@@ -729,8 +752,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   void _reconcileCenter(TurnScrollView<S> oldWidget) {
     final count = widget.itemCount;
     if (count == 0) {
-      extents.clear();
-      _sectionHeaderExtents.clear();
+      clearExtents();
+      _clearSectionHeaderExtents();
       _indexHints.clear();
       _initCenter(initial: false);
       return;
@@ -749,8 +772,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     if (nextCenter < 0) {
       final sameThread = _hasAnyKnownItem();
       if (!sameThread) {
-        extents.clear();
-        _sectionHeaderExtents.clear();
+        clearExtents();
+        _clearSectionHeaderExtents();
         _indexHints.clear();
         _initCenter(initial: widget.pinnedId == null);
         return;
@@ -802,6 +825,23 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       if (widget.itemId(i) == id) return i;
     }
     return -1;
+  }
+
+  /// What one unbuilt item adds to its list's extent, from every item
+  /// measured so far: its mean height, the spacing after it, and its share
+  /// of section headers. See [TurnChildDelegate].
+  double _slotExtent() {
+    var slot = meanExtent + widget.itemSpacing;
+    if (widget._isSectioned && extents.isNotEmpty) {
+      final headerShare = math.min(
+        1,
+        _sectionHeaderExtents.length / extents.length,
+      );
+      slot +=
+          headerShare *
+          (_meanSectionHeaderExtent + widget.sectionHeaderSpacing);
+    }
+    return slot;
   }
 
   double _estimatedExtentOf(int index) =>
@@ -1093,6 +1133,147 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return math.max(pos.minScrollExtent, total - pos.viewportDimension);
   }
 
+  /// Swaps in fresh item lists so the next layout starts at the new center
+  /// instead of walking from the old children. Call inside `setState`.
+  void _resetItemLists() {
+    _listGeneration++;
+    _belowKey = GlobalKey(debugLabel: 'TurnScrollView.below');
+    _belowListKey = GlobalKey(debugLabel: 'TurnScrollView.belowList');
+  }
+
+  /// Index the bottom is laid out from on a teleport: the tail window, or the
+  /// pinned item if that comes first.
+  int _tailCenterIndex() {
+    final count = widget.itemCount;
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
+    final tailStart = count <= _initialTailWindow
+        ? 0
+        : count - _initialTailWindow;
+    return pinnedIndex >= 0 ? math.min(tailStart, pinnedIndex) : tailStart;
+  }
+
+  /// Jumps to the bottom, teleporting when the last item isn't laid out.
+  ///
+  /// Cost is O(viewport) layout however far away the bottom is.
+  Future<bool> _jumpToBottom(TurnScrollPosition pos, int epoch) async {
+    if (_hasExactBottomExtent()) {
+      programmaticJumpTo(pos, pos.maxScrollExtent);
+      return true;
+    }
+    final nextCenter = _tailCenterIndex();
+    // Lay the fresh lists out from the new center's top edge; the initial
+    // bottom passes then settle on the exact maxScrollExtent.
+    pos.correctPixels(0);
+    setState(() {
+      _resetItemLists();
+      _centerIndex = nextCenter;
+      _centerItemId = widget.itemId(nextCenter);
+      _builtWithAbove = nextCenter > 0;
+      _pendingCenterShift = 0;
+      needsInitialBottomJump = true;
+      initialBottomPasses = 0;
+    });
+    syncAutoScrolling();
+    await nextFrame();
+    if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+      return false;
+    }
+    programmaticJumpTo(pos, pos.maxScrollExtent);
+    return mounted && epoch == navEpoch;
+  }
+
+  /// Jumps to [itemId] at [alignment], teleporting when it isn't laid out.
+  ///
+  /// Cost is O(viewport) layout plus an O(distance) arithmetic estimate over
+  /// cached extents, however far away the item is.
+  Future<bool> _jumpToItem(
+    TurnScrollPosition pos,
+    int epoch,
+    Object itemId,
+    int targetIndex,
+    double alignment,
+  ) async {
+    final exact = exactOffsetFor(
+      itemId,
+      alignment: alignment,
+      minScrollExtent: pos.minScrollExtent,
+      maxScrollExtent: pos.maxScrollExtent,
+      viewportDimension: pos.viewportDimension,
+    );
+    if (exact != null) {
+      programmaticJumpTo(pos, exact);
+      return true;
+    }
+
+    final pinnedIndex = widget.pinnedId == null
+        ? -1
+        : _indexOfId(widget.pinnedId!);
+    final nextCenter = pinnedIndex >= 0
+        ? math.min(targetIndex, pinnedIndex)
+        : targetIndex;
+    final initialOffset = _estimatedOffsetFor(
+      targetIndex,
+      alignment: alignment,
+      minScrollExtent: pos.minScrollExtent,
+      maxScrollExtent: pos.maxScrollExtent,
+      viewportDimension: pos.viewportDimension,
+      centerIndex: nextCenter,
+      clamp: false,
+    );
+
+    pos.correctPixels(initialOffset);
+    setState(() {
+      _resetItemLists();
+      _centerIndex = nextCenter;
+      _centerItemId = widget.itemId(nextCenter);
+      _builtWithAbove = nextCenter > 0;
+      _pendingCenterShift = 0;
+      _pendingInstantOffset = initialOffset;
+    });
+    await nextFrame();
+    if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+      return false;
+    }
+    final refined =
+        exactOffsetFor(
+          itemId,
+          alignment: alignment,
+          minScrollExtent: pos.minScrollExtent,
+          maxScrollExtent: pos.maxScrollExtent,
+          viewportDimension: pos.viewportDimension,
+        ) ??
+        _estimatedOffsetFor(
+          _indexOfId(itemId, hint: targetIndex),
+          alignment: alignment,
+          minScrollExtent: pos.minScrollExtent,
+          maxScrollExtent: pos.maxScrollExtent,
+          viewportDimension: pos.viewportDimension,
+        );
+    if ((refined - pos.pixels).abs() > 0.5) {
+      programmaticJumpTo(pos, refined);
+    } else {
+      syncAutoScrolling();
+    }
+    _pendingInstantOffset = null;
+    return mounted && epoch == navEpoch;
+  }
+
+  /// After a long-flight teleport, steps back [_glideViewports] against
+  /// [travel] so the remaining flight still reads as motion.
+  void _backOffForGlide(TurnScrollPosition pos, double travel) {
+    final back =
+        pos.pixels - travel.sign * pos.viewportDimension * _glideViewports;
+    programmaticJumpTo(
+      pos,
+      back.clamp(pos.minScrollExtent, pos.maxScrollExtent),
+    );
+  }
+
+  bool _isLongFlight(TurnScrollPosition pos, double travel) =>
+      travel.abs() > pos.viewportDimension * _maxFlightViewports;
+
   @override
   Future<bool> scrollToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
@@ -1105,38 +1286,17 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
     final flightMotion = motion ?? resolvedMotion;
 
-    if (!shouldAnimate) {
-      if (_hasExactBottomExtent()) {
-        programmaticJumpTo(pos, pos.maxScrollExtent);
-        return true;
+    if (!shouldAnimate) return _jumpToBottom(pos, epoch);
+
+    final travel = pos.maxScrollExtent - pos.pixels;
+    if (!_hasExactBottomExtent() && _isLongFlight(pos, travel)) {
+      beginNavigation(epoch);
+      final landed = await _jumpToBottom(pos, epoch);
+      if (!landed) {
+        endNavigation(epoch);
+        return false;
       }
-      final count = widget.itemCount;
-      final pinnedIndex = widget.pinnedId == null
-          ? -1
-          : _indexOfId(widget.pinnedId!);
-      final tailStart = count <= _initialTailWindow
-          ? 0
-          : count - _initialTailWindow;
-      final nextCenter = pinnedIndex >= 0
-          ? math.min(tailStart, pinnedIndex)
-          : tailStart;
-      if (nextCenter != _centerIndex) {
-        setState(() {
-          _centerIndex = nextCenter;
-          _centerItemId = widget.itemId(nextCenter);
-          _builtWithAbove = nextCenter > 0;
-          _pendingCenterShift = 0;
-          needsInitialBottomJump = true;
-          initialBottomPasses = 0;
-        });
-        syncAutoScrolling();
-        await nextFrame();
-        if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
-          return false;
-        }
-      }
-      programmaticJumpTo(pos, pos.maxScrollExtent);
-      return mounted && epoch == navEpoch;
+      _backOffForGlide(pos, travel);
     }
 
     double? frozenTarget;
@@ -1158,6 +1318,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         return _cachedBottomOffset(pos) ?? pos.maxScrollExtent;
       },
     );
+    endNavigation(epoch);
     if (!pos.isTrackingTarget) {
       syncAutoScrolling();
     }
@@ -1205,50 +1366,35 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     }
 
     if (!shouldAnimate) {
-      final ex = exact(itemId);
-      if (ex != null) {
-        programmaticJumpTo(pos, ex);
-        return true;
-      }
+      return _jumpToItem(pos, epoch, itemId, targetIndex, clampedAlignment);
+    }
 
-      final pinnedIndex = widget.pinnedId == null
-          ? -1
-          : _indexOfId(widget.pinnedId!);
-      final nextCenter = pinnedIndex >= 0
-          ? math.min(targetIndex, pinnedIndex)
-          : targetIndex;
-      if (nextCenter != _centerIndex) {
-        final initialOffset = _estimatedOffsetFor(
+    if (exact(itemId) == null) {
+      final travel =
+          _estimatedOffsetFor(
+            targetIndex,
+            alignment: clampedAlignment,
+            minScrollExtent: pos.minScrollExtent,
+            maxScrollExtent: pos.maxScrollExtent,
+            viewportDimension: pos.viewportDimension,
+            clamp: false,
+          ) -
+          pos.pixels;
+      if (_isLongFlight(pos, travel)) {
+        beginNavigation(epoch);
+        final landed = await _jumpToItem(
+          pos,
+          epoch,
+          itemId,
           targetIndex,
-          alignment: clampedAlignment,
-          minScrollExtent: pos.minScrollExtent,
-          maxScrollExtent: pos.maxScrollExtent,
-          viewportDimension: pos.viewportDimension,
-          centerIndex: nextCenter,
-          clamp: false,
+          clampedAlignment,
         );
-
-        pos.correctPixels(initialOffset);
-        setState(() {
-          _centerIndex = nextCenter;
-          _centerItemId = widget.itemId(nextCenter);
-          _builtWithAbove = nextCenter > 0;
-          _pendingCenterShift = 0;
-          _pendingInstantOffset = initialOffset;
-        });
-        await nextFrame();
-        if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
+        if (!landed) {
+          endNavigation(epoch);
           return false;
         }
+        _backOffForGlide(pos, travel);
       }
-      final refined = estimated(targetIndex);
-      if ((refined - pos.pixels).abs() > 0.5) {
-        programmaticJumpTo(pos, refined);
-      } else {
-        syncAutoScrolling();
-      }
-      _pendingInstantOffset = null;
-      return mounted && epoch == navEpoch;
     }
 
     final future = pos.animateToTarget(
@@ -1263,6 +1409,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         return estimated(currentIndex);
       },
     );
+    endNavigation(epoch);
     if (!pos.isTrackingTarget) {
       syncAutoScrolling();
     }
@@ -1374,10 +1521,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       ...leading,
 
       SliverPadding(
-        key: const ValueKey('TurnScrollView.above'),
+        key: ValueKey(('TurnScrollView.above', _listGeneration)),
         padding: horizontal,
         sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
+          delegate: TurnChildDelegate(
+            slotExtent: _slotExtent,
             (context, reverseIndex) {
               final index = centerIndex - 1 - reverseIndex;
               return _buildObservedItem(
@@ -1397,7 +1545,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         padding: horizontal,
         sliver: SliverList(
           key: _belowListKey,
-          delegate: SliverChildBuilderDelegate(
+          delegate: TurnChildDelegate(
+            slotExtent: _slotExtent,
             (context, localIndex) {
               final index = centerIndex + localIndex;
               final isLastBeforePin =
@@ -1454,7 +1603,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
             padding: horizontal,
             sliver: SliverList(
               key: _afterListKey,
-              delegate: SliverChildBuilderDelegate(
+              delegate: TurnChildDelegate(
+                slotExtent: _slotExtent,
                 (context, localIndex) {
                   final index = pinnedIndex + 1 + localIndex;
                   return _buildObservedItem(

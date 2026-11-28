@@ -7,6 +7,68 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 
+/// What [TurnScrollController.scrollTo] and
+/// [TurnScrollController.scrollToBottom] return: a [Future] of whether the
+/// scroll arrived cleanly, which completes once the motion has settled, and
+/// [ended], which completes as soon as the motion's duration has passed.
+///
+/// A spring keeps settling for a while after it looks done. Await [ended] to
+/// follow up when the scroll *looks* finished (highlight the target, open a
+/// keyboard), and the future itself when it must have come to rest.
+///
+/// ```dart
+/// final flight = controller.scrollTo(messageId);
+/// if (await flight.ended) highlight(messageId);
+/// ```
+class TurnScrollFuture implements Future<bool> {
+  /// Wraps `settled`, which completes when the flight comes to rest, with the
+  /// [ended] future of the same flight.
+  TurnScrollFuture(this._settled, {required this.ended});
+
+  /// A flight that is already over, as when nothing could be scrolled.
+  TurnScrollFuture.value({required bool arrived})
+    : _settled = Future.value(arrived),
+      ended = Future.value(arrived);
+
+  final Future<bool> _settled;
+
+  /// Completes with `true` once the motion's perceived duration has passed
+  /// (the motor [MotionFuture.ended] of the flight), even while a spring is
+  /// still settling, or with `false` if the flight was interrupted or
+  /// superseded before then.
+  ///
+  /// Jumps and instant motions end when they land. A flight that retargets
+  /// on the way (offscreen rows measuring in) ends with its last motion.
+  final Future<bool> ended;
+
+  @override
+  Stream<bool> asStream() => _settled.asStream();
+
+  @override
+  Future<bool> catchError(
+    Function onError, {
+    bool Function(Object error)? test,
+  }) => _settled.catchError(onError, test: test);
+
+  @override
+  Future<R> then<R>(
+    // Future's own signature.
+    // ignore: avoid_positional_boolean_parameters
+    FutureOr<R> Function(bool value) onValue, {
+    Function? onError,
+  }) => _settled.then(onValue, onError: onError);
+
+  @override
+  Future<bool> timeout(
+    Duration timeLimit, {
+    FutureOr<bool> Function()? onTimeout,
+  }) => _settled.timeout(timeLimit, onTimeout: onTimeout);
+
+  @override
+  Future<bool> whenComplete(FutureOr<void> Function() action) =>
+      _settled.whenComplete(action);
+}
+
 /// Delegate connecting [TurnScrollController] to its attached scroll view.
 abstract interface class TurnScrollDelegate {
   /// Scrolls to where the bottom was when called.
@@ -17,7 +79,9 @@ abstract interface class TurnScrollDelegate {
   ///
   /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
-  /// or unable to scroll (e.g. empty list or detached position).
+  /// or unable to scroll (e.g. empty list or detached position), once the
+  /// motion has settled. [TurnScrollController] derives
+  /// [TurnScrollFuture.ended] from the flight the view starts.
   Future<bool> scrollToBottom({required bool animate, Motion? motion});
 
   /// Scrolls to the item identified by [itemId].
@@ -28,7 +92,9 @@ abstract interface class TurnScrollDelegate {
   ///
   /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
   /// interrupted by a user gesture, superseded by another programmatic scroll,
-  /// or [itemId] was not found.
+  /// or [itemId] was not found, once the motion has settled.
+  /// [TurnScrollController] derives [TurnScrollFuture.ended] from the flight
+  /// the view starts.
   Future<bool> scrollTo(
     Object itemId, {
     required double alignment,
@@ -192,14 +258,16 @@ class TurnScrollController extends ScrollController {
   /// flight. Under `MediaQuery.disableAnimationsOf(context)`, the transition
   /// always jumps instantaneously.
   ///
-  /// Returns `true` if the scroll arrived cleanly at the bottom, or `false` if
+  /// The returned [TurnScrollFuture] completes once the motion has settled,
+  /// with `true` if the scroll arrived cleanly at the bottom, or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// the list is empty / unattached.
-  Future<bool> scrollToBottom({bool animate = true, Motion? motion}) async {
-    final delegate = _delegate;
-    if (delegate == null) return false;
-    return delegate.scrollToBottom(animate: animate, motion: motion);
-  }
+  ///
+  /// Its [TurnScrollFuture.ended] completes earlier, as soon as the motion's
+  /// perceived duration has passed: await it to follow up when the scroll
+  /// looks finished rather than when the spring comes to rest.
+  TurnScrollFuture scrollToBottom({bool animate = true, Motion? motion}) =>
+      _fly(() => _delegate?.scrollToBottom(animate: animate, motion: motion));
 
   /// Scrolls to the item identified by [itemId], even if it is currently
   /// offscreen/virtualized.
@@ -212,23 +280,58 @@ class TurnScrollController extends ScrollController {
   /// flight. Under `MediaQuery.disableAnimationsOf(context)`, the transition
   /// always jumps instantaneously.
   ///
-  /// Returns `true` if the scroll arrived cleanly on [itemId], or `false` if
+  /// The returned [TurnScrollFuture] completes once the motion has settled,
+  /// with `true` if the scroll arrived cleanly on [itemId], or `false` if
   /// interrupted by a user scroll, superseded by another navigation call, or
   /// [itemId] was not found.
-  Future<bool> scrollTo(
+  ///
+  /// Its [TurnScrollFuture.ended] completes earlier, as soon as the motion's
+  /// perceived duration has passed: await it to follow up (highlight the
+  /// item, focus a field) when the scroll looks finished rather than when the
+  /// spring comes to rest.
+  ///
+  /// ```dart
+  /// final flight = controller.scrollTo(messageId, alignment: 0.25);
+  /// if (await flight.ended) highlight(messageId);
+  /// ```
+  TurnScrollFuture scrollTo(
     Object itemId, {
     double alignment = 0,
     bool animate = true,
     Motion? motion,
-  }) async {
-    final delegate = _delegate;
-    if (delegate == null) return false;
-    return delegate.scrollTo(
+  }) => _fly(
+    () => _delegate?.scrollTo(
       itemId,
       alignment: alignment,
       animate: animate,
       motion: motion,
-    );
+    ),
+  );
+
+  /// Runs one navigation and collects the `ended` of whichever motion the
+  /// view starts for it (possibly frames later, after a recenter).
+  TurnScrollFuture _fly(Future<bool>? Function() start) {
+    final ended = Completer<bool>();
+    for (final position in positions) {
+      if (position is TurnScrollPosition) position.endedSink = ended;
+    }
+    final settled = start();
+    if (settled == null) {
+      ended.complete(false);
+      return TurnScrollFuture.value(arrived: false);
+    }
+    final result = settled.then((arrived) {
+      // Jumps, instant motions and early exits end when they land.
+      if (!ended.isCompleted) ended.complete(arrived);
+      for (final position in positions) {
+        if (position is TurnScrollPosition &&
+            identical(position.endedSink, ended)) {
+          position.endedSink = null;
+        }
+      }
+      return arrived;
+    });
+    return TurnScrollFuture(result, ended: ended.future);
   }
 
   /// Cancels any active pin or programmatic scroll animation immediately.
@@ -312,6 +415,10 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
   /// Owning view delegate.
   TurnScrollDelegate? delegate;
 
+  /// Receives the `ended` of the next flight this position starts, for the
+  /// [TurnScrollFuture] of the navigation that is underway.
+  Completer<bool>? endedSink;
+
   var _applyingDimensions = false;
 
   /// Runs a live-target Motor spring activity toward [resolveTarget].
@@ -319,6 +426,10 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
   /// Automatically cancels if the user starts dragging, wheeling, or scrolling.
   /// Returns `true` if the spring settled cleanly on the target, or `false` if
   /// interrupted or unresolvable.
+  ///
+  /// When a [TurnScrollController] navigation is underway ([endedSink] is
+  /// set), the activity's [TargetTrackingScrollActivity.ended] completes that
+  /// navigation's [TurnScrollFuture.ended].
   Future<bool> animateToTarget({
     required double? Function() resolveTarget,
     required Motion motion,
@@ -340,6 +451,15 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
       motion: motion,
       vsync: vsync ?? context.vsync,
     );
+    final sink = endedSink;
+    if (sink != null) {
+      endedSink = null;
+      unawaited(
+        activity.ended.then((value) {
+          if (!sink.isCompleted) sink.complete(value);
+        }),
+      );
+    }
     beginActivity(activity);
     activity.start();
     return activity.done;
@@ -514,6 +634,10 @@ class TargetTrackingScrollActivity extends ScrollActivity {
 
   late final SingleMotionController _controller;
   final _completer = Completer<bool>();
+  final _ended = Completer<bool>();
+
+  /// The motor future of the latest retarget; only its `ended` counts.
+  MotionFuture? _flight;
   double _target;
   var _disposed = false;
   var _retargeting = false;
@@ -521,6 +645,11 @@ class TargetTrackingScrollActivity extends ScrollActivity {
   /// Completes with `true` when the scroll arrives cleanly, or `false` when
   /// interrupted or unresolvable.
   Future<bool> get done => _completer.future;
+
+  /// Completes with `true` once the motion's perceived duration has passed
+  /// (the latest retarget's [MotionFuture.ended]), even while it is still
+  /// settling, or `false` if interrupted before then.
+  Future<bool> get ended => _ended.future;
 
   @override
   bool get shouldIgnorePointer => false;
@@ -566,10 +695,17 @@ class TargetTrackingScrollActivity extends ScrollActivity {
     _target = nextTarget;
     _retargeting = true;
     try {
-      _controller.animateTo(
+      final flight = _flight = _controller.animateTo(
         nextTarget,
         from: from,
         withVelocity: withVelocity,
+      );
+      unawaited(
+        flight.ended.then((_) {
+          if (identical(_flight, flight) && !_ended.isCompleted) {
+            _ended.complete(true);
+          }
+        }),
       );
     } finally {
       _retargeting = false;
@@ -643,6 +779,7 @@ class TargetTrackingScrollActivity extends ScrollActivity {
 
   void _finish({required bool arrived}) {
     if (_disposed) return;
+    if (!_ended.isCompleted) _ended.complete(arrived);
     if (!_completer.isCompleted) _completer.complete(arrived);
     delegate.goIdle();
   }
@@ -655,6 +792,7 @@ class TargetTrackingScrollActivity extends ScrollActivity {
         ..removeListener(_tick)
         ..removeStatusListener(_onStatus)
         ..dispose();
+      if (!_ended.isCompleted) _ended.complete(false);
       if (!_completer.isCompleted) _completer.complete(false);
     }
     super.dispose();

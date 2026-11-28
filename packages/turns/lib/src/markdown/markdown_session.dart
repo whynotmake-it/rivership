@@ -37,10 +37,16 @@ final class MarkdownSegment {
   /// its first part becomes stable.
   final int id;
 
-  /// The markdown it was parsed from.
+  /// Its markdown, exactly as it appears in the source text.
+  ///
+  /// For the pending tail of a streaming update this is the raw text, half
+  /// written syntax and all; [nodes] were parsed from
+  /// `completeMarkdown(source)` instead.
   final String source;
 
-  /// Its top-level nodes.
+  /// Its top-level nodes. For the pending tail of a streaming update, these
+  /// come from `completeMarkdown(source)`, so unfinished emphasis, code and
+  /// links already render closed.
   final List<md.Node> nodes;
 }
 

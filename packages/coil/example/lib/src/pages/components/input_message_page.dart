@@ -221,7 +221,7 @@ class _MessageItem {
   );
 }
 
-/// A live [TurnScrollView] conversation: attach files, tap a quick prompt, or
+/// A live [TurnScrollView] conversation: attach files, or
 /// type a reply and watch the assistant think and stream markdown back.
 class _Conversation extends StatefulWidget {
   const _Conversation();
@@ -332,7 +332,40 @@ class _ConversationState extends State<_Conversation> {
     ];
   }
 
-  void _send(String text, {String? cannedReply}) {
+  /// A reply that fits what was typed, so the demo answers like a chat
+  /// instead of from buttons. Null falls back to the general pass.
+  static String? _replyFor(String prompt) {
+    final words = [
+      for (final m in RegExp('[a-z]+').allMatches(prompt.toLowerCase())) m[0]!,
+    ];
+    bool mentions(List<String> stems) =>
+        stems.any((stem) => words.any((w) => w.startsWith(stem)));
+    if (mentions(['pric', 'plan', 'tier', 'seat', 'cost'])) {
+      return '### Suggested pricing copy\n\n'
+          '- **Starter:** Free for solo builders and up to 3 projects.\n'
+          r'- **Team:** $18 / seat / month, billed annually (save 20%).'
+          '\n'
+          '- **Enterprise:** Custom SSO, audit logs, and dedicated support.';
+    }
+    if (mentions([
+      'timeline',
+      'milestone',
+      'owner',
+      'schedul',
+      'date',
+      'week',
+    ])) {
+      return '### Launch week owners\n\n'
+          '| Milestone | Owner | Target |\n'
+          '| :--- | :--- | :--- |\n'
+          '| Pricing page sign-off | Maya | Tue 14:00 |\n'
+          '| QA & accessibility pass | Devon | Wed 17:00 |\n'
+          '| Production rollout | Priya | Thu 10:00 |';
+    }
+    return null;
+  }
+
+  void _send(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     if (_isStreaming) _stop();
@@ -366,7 +399,7 @@ class _ConversationState extends State<_Conversation> {
     ];
 
     final reply =
-        cannedReply ??
+        (attached.isEmpty ? _replyFor(trimmed) : null) ??
         (attached.isEmpty
             ? 'Here is a focused pass on '
                   '**"${trimmed.replaceAll('"', "'")}"**:\n\n'
@@ -581,53 +614,11 @@ class _ConversationState extends State<_Conversation> {
     final touch = CoilTheme.tierOf(context) == CoilTier.touch;
     final motion = CoilTheme.motionOf(context);
     return SizedBox(
-      height: touch ? 440 : 400,
+      height: touch ? 460 : 420,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 10,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            primary: false,
-            child: Row(
-              spacing: 6,
-              children: [
-                CoilButton(
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const CatalogIcon(Glyph.tag),
-                  onPressed: () => _send(
-                    'Tighten the pricing section',
-                    cannedReply:
-                        '### Suggested pricing copy\n\n'
-                        '- **Starter:** Free for solo builders and up to 3 '
-                        'projects.\n'
-                        r'- **Team:** $18 / seat / month, billed annually '
-                        '(save 20%).\n'
-                        '- **Enterprise:** Custom SSO, audit logs, and '
-                        'dedicated support.',
-                  ),
-                  child: const Text('Audit pricing'),
-                ),
-                CoilButton(
-                  variant: CoilButtonVariant.secondary,
-                  size: CoilSize.compact,
-                  leading: const CatalogIcon(Glyph.calendar),
-                  onPressed: () => _send(
-                    'Draft milestone owners for launch week',
-                    cannedReply:
-                        '### Launch week owners\n\n'
-                        '| Milestone | Owner | Target |\n'
-                        '| :--- | :--- | :--- |\n'
-                        '| Pricing page sign-off | Maya | Tue 14:00 |\n'
-                        '| QA & accessibility pass | Devon | Wed 17:00 |\n'
-                        '| Production rollout | Priya | Thu 10:00 |',
-                  ),
-                  child: const Text('Draft timeline'),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: Stack(
               children: [
@@ -665,7 +656,9 @@ class _ConversationState extends State<_Conversation> {
             status: _isStreaming
                 ? CoilMessageStatus.streaming
                 : CoilMessageStatus.idle,
-            placeholder: const Text('Reply to the assistant'),
+            placeholder: const Text(
+              'Ask about pricing, owners or the timeline…',
+            ),
             onSend: _send,
             onStop: _stop,
             attachments: _files.isEmpty
@@ -688,6 +681,7 @@ class _ConversationState extends State<_Conversation> {
               onChanged: (files) => setState(() => _files = files),
             ),
           ),
+          const ChatTurnsCredit(),
         ],
       ),
     );

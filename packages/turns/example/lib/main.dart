@@ -1,6 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:coil/coil.dart';
 import 'package:flutter/widgets.dart';
+import 'package:turns_example/src/concepts/jumps_concept.dart';
+import 'package:turns_example/src/concepts/pagination_concept.dart';
+import 'package:turns_example/src/concepts/pinning_concept.dart';
+import 'package:turns_example/src/concepts/prepend_concept.dart';
+import 'package:turns_example/src/concepts/streaming_concept.dart';
 import 'package:turns_example/src/demos/ai_assistant_demo.dart';
 import 'package:turns_example/src/demos/imessage_demo.dart';
 import 'package:turns_example/src/demos/onboarding_demo.dart';
@@ -80,6 +85,19 @@ List<AutoRoute> turnsRoutesFor({VoidCallback? onHome}) => [
         type: _pageRouteType,
         builder: (context, state) => const OnboardingDemo(),
       ),
+      for (final (concept, page) in <(TurnsDemoEntry, Widget Function())>[
+        (turnsConcepts[0], PinningConcept.new),
+        (turnsConcepts[1], PrependConcept.new),
+        (turnsConcepts[2], PaginationConcept.new),
+        (turnsConcepts[3], JumpsConcept.new),
+        (turnsConcepts[4], StreamingConcept.new),
+      ])
+        NamedRouteDef(
+          name: concept.routeName,
+          path: concept.path,
+          type: _pageRouteType,
+          builder: (context, state) => page(),
+        ),
       NamedRouteDef(
         name: turnsOverviewRouteName,
         path: 'overview',

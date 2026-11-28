@@ -524,6 +524,10 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     }
   }
 
+  // A method tear-off compares equal across builds, so the scope doesn't
+  // notify on every build.
+  double _meanItemExtent() => meanExtent;
+
   @override
   Widget build(BuildContext context) {
     resolveClearances(
@@ -549,6 +553,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
       onTurnStageDetach: onTurnStageDetach,
       onListAttach: _onListAttach,
       onListDetach: _onListDetach,
+      meanItemExtent: _meanItemExtent,
       child: wrapWithTurnNotification(
         CustomScrollView(
           controller: turnController,
