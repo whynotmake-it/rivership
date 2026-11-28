@@ -371,6 +371,9 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     if (_activeNavigationEpoch != epoch) return;
     _activeNavigationEpoch = null;
     syncAutoScrolling();
+    // A flight that ended at the bottom may have come to rest before it was
+    // over as far as the engine is concerned.
+    _armFollowBottomIfAtBottom();
   }
 
   /// Performs a programmatic `jumpTo` so any resulting [TurnScrollNotification]
@@ -378,7 +381,7 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   void programmaticJumpTo(TurnScrollPosition pos, double value) {
     _inProgrammaticJump = true;
     try {
-      pos.jumpTo(value);
+      pos.internalJumpTo(value);
     } finally {
       _inProgrammaticJump = false;
     }

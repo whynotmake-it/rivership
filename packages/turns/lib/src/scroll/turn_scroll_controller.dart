@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/motor.dart';
 
 /// What [TurnScrollController.scrollTo] and
@@ -458,7 +459,7 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
     if (initialTarget == null) return Future.value(false);
     final clamped = initialTarget.clamp(minScrollExtent, maxScrollExtent);
     if ((pixels - clamped).abs() <= 0.5) {
-      if (pixels != clamped) jumpTo(clamped);
+      if (pixels != clamped) internalJumpTo(clamped);
       return Future.value(true);
     }
     final activity = TargetTrackingScrollActivity(
@@ -509,6 +510,7 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
     }
     super.beginActivity(newActivity);
     if (!_applyingDimensions &&
+        !_inJump &&
         newActivity is IdleScrollActivity &&
         hasPixels &&
         hasContentDimensions) {
@@ -620,11 +622,39 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
     return overscroll;
   }
 
+  var _internalJump = false;
+  var _inJump = false;
+
+  /// A jump made by the scroll view itself (a teleport, a settling pass):
+  /// unlike an app's [jumpTo], it does not release what the view holds on to.
+  @internal
+  void internalJumpTo(double value) {
+    final wasInternal = _internalJump;
+    _internalJump = true;
+    try {
+      jumpTo(value);
+    } finally {
+      _internalJump = wasInternal;
+    }
+  }
+
   @override
   void jumpTo(double value) {
-    super.jumpTo(value);
+    // A jump from the app is neither a user scroll nor ours: release the
+    // anchor (a bottom to follow, a settled pin) like moveTo does.
+    if (!_internalJump && !_applyingDimensions) delegate?.onUserScroll();
+    // jumpTo goes idle before it sets the pixels: keep the idle hook from
+    // seeing the old offset, and report the idle once the new one is set.
+    _inJump = true;
+    try {
+      super.jumpTo(value);
+    } finally {
+      _inJump = false;
+    }
     if (hasPixels && hasContentDimensions) {
-      delegate?.onMetricsChanged(pixels, maxScrollExtent);
+      delegate
+        ?..onScrollIdle()
+        ..onMetricsChanged(pixels, maxScrollExtent);
     }
   }
 }

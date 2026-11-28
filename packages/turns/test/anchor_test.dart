@@ -227,4 +227,33 @@ void main() {
       expect(lastBottom, lessThanOrEqualTo(_viewport.height - 300 + 1));
     },
   );
+
+  testWidgets(
+    'an app jumpTo while followBottom is armed stays where the app put it',
+    (tester) async {
+      final h = await _pump(
+        tester,
+        _Scene(heights: List.filled(30, 150), followBottom: true),
+      );
+      expect(h.distanceFromBottom, closeTo(0, 1));
+
+      h.controller.jumpTo(h.controller.position.pixels - 700);
+      await tester.pump();
+      final before = h.top('m24');
+      final pixels = h.controller.position.pixels;
+
+      h.update((s) => s.heights.add(150));
+      await tester.pumpAndSettle();
+      expect(h.controller.position.pixels, closeTo(pixels, 1));
+      expect(h.top('m24'), closeTo(before, 1));
+      expect(h.distanceFromBottom, greaterThan(100));
+
+      // Jumping back to the bottom by hand follows again.
+      h.controller.jumpTo(h.controller.position.maxScrollExtent);
+      await tester.pump();
+      h.update((s) => s.heights.add(150));
+      await tester.pump();
+      expect(h.distanceFromBottom, closeTo(0, 1));
+    },
+  );
 }
