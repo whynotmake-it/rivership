@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/src/scroll/turn_child_delegate.dart';
+import 'package:turns/src/scroll/turn_extent_estimator.dart';
 import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_engine.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
@@ -318,6 +319,13 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   /// id.
   final _sectionHeaderExtents = <Object, double>{};
 
+  /// The one estimate of unbuilt extents: sliver delegates, jump offsets and
+  /// the bottom all ask it. It is rebuilt (O(n)) when the item set changes and
+  /// updated (O(log n)) on every measurement; see [TurnExtentEstimator].
+  final _estimator = TurnExtentEstimator();
+  ({int count, Object? first, Object? last, double spacing, double header})?
+  _estimatorSignature;
+
   /// Currently attached inline section header boxes keyed by first item id.
   final _mountedSectionHeaders = <Object, RenderBox>{};
 
@@ -402,6 +410,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   void didUpdateWidget(TurnScrollView<S> oldWidget) {
     super.didUpdateWidget(oldWidget);
     updateEngineController(oldWidget.controller);
+    _syncEstimator();
     _syncStickyListener();
     _reconcileCenter(oldWidget);
     updateEnginePinnedId(oldWidget.pinnedId);
@@ -519,19 +528,68 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   void _clearSectionHeaderExtents() {
     _sectionHeaderExtents.clear();
     _sectionHeaderExtentSum = 0;
+    _estimator.markStale();
   }
 
-  double _sectionHeaderExtraFor(int index) {
-    if (!_isSectionStart(index)) return 0;
-    final id = widget.itemId(index);
-    final h = _sectionHeaderExtents[id] ?? _meanSectionHeaderExtent;
-    return h + widget.sectionHeaderSpacing;
+  TurnExtentEstimator get _extents {
+    if (_estimator.isStale) {
+      _estimator.rebuild(
+        count: widget.itemCount,
+        itemId: widget.itemId,
+        spacing: widget.itemSpacing,
+        extentOf: (id) => extents[id],
+        headerExtentOf: (id) => _sectionHeaderExtents[id],
+        isSectionStart: _isSectionStart,
+        headerSpacing: widget.sectionHeaderSpacing,
+      );
+    }
+    return _estimator;
+  }
+
+  /// Marks the estimate stale when the item set (or what shapes an item's
+  /// slot) changed.
+  void _syncEstimator() {
+    final count = widget.itemCount;
+    final next = (
+      count: count,
+      first: count == 0 ? null : widget.itemId(0),
+      last: count == 0 ? null : widget.itemId(count - 1),
+      spacing: widget.itemSpacing,
+      header: widget._isSectioned ? widget.sectionHeaderSpacing : -1.0,
+    );
+    if (_estimatorSignature != next) {
+      _estimatorSignature = next;
+      _estimator.markStale();
+    }
+  }
+
+  /// Records a measurement, or notices the item moved from where it was
+  /// built (an insert or removal), which makes the estimate stale.
+  void _recordMeasurement(
+    Object id,
+    double extent, {
+    required bool isHeader,
+  }) {
+    if (_estimator.isStale) return;
+    final index = _indexHints[id];
+    if (index == null ||
+        index >= widget.itemCount ||
+        widget.itemId(index) != id) {
+      _estimator.markStale();
+      return;
+    }
+    if (isHeader) {
+      _estimator.setHeaderExtent(index, extent);
+    } else {
+      _estimator.setItemExtent(index, extent);
+    }
   }
 
   void _onSectionHeaderLayout(Object itemId, double height, RenderBox box) {
     _sectionHeaderExtentSum += height - (_sectionHeaderExtents[itemId] ?? 0);
     _sectionHeaderExtents[itemId] = height;
     _mountedSectionHeaders[itemId] = box;
+    _recordMeasurement(itemId, height, isHeader: true);
     if (_hasStickyHeaders) _scheduleStickySync();
   }
 
@@ -551,6 +609,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   @override
   void onItemLayout(Object id, double extent, RenderBox box) {
     super.onItemLayout(id, extent, box);
+    _recordMeasurement(id, extent, isHeader: false);
     if (_hasStickyHeaders) _scheduleStickySync();
   }
 
@@ -792,12 +851,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         ? -1
         : _indexOfId(widget.pinnedId!);
     if (pinnedIndex >= 0 && nextCenter > pinnedIndex) {
-      for (var i = pinnedIndex; i < nextCenter; i++) {
-        _pendingCenterShift +=
-            _sectionHeaderExtraFor(i) +
-            _estimatedExtentOf(i) +
-            widget.itemSpacing;
-      }
+      _pendingCenterShift += _extents.rangeExtent(pinnedIndex, nextCenter);
       nextCenter = pinnedIndex;
     }
 
@@ -833,32 +887,6 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final id = key.value;
     final index = _indexOfId(id, hint: _indexHints[id]);
     return index < 0 ? null : index;
-  }
-
-  /// What one unbuilt item adds to its list's extent, from every item
-  /// measured so far: its mean height, the spacing after it, and its share
-  /// of section headers. See [TurnChildDelegate].
-  double _slotExtent() {
-    var slot = meanExtent + widget.itemSpacing;
-    if (widget._isSectioned && extents.isNotEmpty) {
-      final headerShare = math.min(
-        1,
-        _sectionHeaderExtents.length / extents.length,
-      );
-      slot +=
-          headerShare *
-          (_meanSectionHeaderExtent + widget.sectionHeaderSpacing);
-    }
-    return slot;
-  }
-
-  double _estimatedExtentOf(int index) =>
-      extents[widget.itemId(index)] ?? meanExtent;
-
-  @override
-  void onMetricsChanged(double pixels, double maxScrollExtent) {
-    super.onMetricsChanged(pixels, maxScrollExtent);
-    if (_hasStickyHeaders) _scheduleStickySync();
   }
 
   /// Returns the rendered total scroll extent of `widget.leadingSlivers`
@@ -935,19 +963,13 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     bool clamp = true,
   }) {
     final split = centerIndex ?? _centerIndex;
-    final spacing = widget.itemSpacing;
+    final estimate = _extents;
     var coord = split == 0 ? _topSpacer + _leadingSliversExtent() : 0.0;
-    if (index >= split) {
-      for (var i = split; i < index; i++) {
-        coord += _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
-      }
-    } else {
-      for (var i = split - 1; i >= index; i--) {
-        coord -= _sectionHeaderExtraFor(i) + _estimatedExtentOf(i) + spacing;
-      }
-    }
-    coord += _sectionHeaderExtraFor(index);
-    final estHeight = _estimatedExtentOf(index);
+    coord += index >= split
+        ? estimate.rangeExtent(split, index)
+        : -estimate.rangeExtent(index, split);
+    coord += estimate.headerExtraAt(index);
+    final estHeight = estimate.itemExtentAt(index);
     final topInset = effectiveTop + extraTopObstruction;
     final usable = math.max<double>(
       0,
@@ -1024,43 +1046,31 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return _sliverListReachedEnd(_belowListKey, count - centerIndex);
   }
 
-  double? _cachedBottomOffset(TurnScrollPosition pos) {
+  /// The offset of the bottom as estimated from what has been measured.
+  double _estimatedBottomOffset(TurnScrollPosition pos) {
     final count = widget.itemCount;
     if (count == 0) return pos.minScrollExtent;
     final pinnedIndex = _pinnedIndex;
     final centerIndex = _clampedCenterIndex(pinnedIndex);
-    final spacing = widget.itemSpacing;
+    final estimate = _extents;
 
-    double? sectionExtra(int index) {
-      if (!_isSectionStart(index)) return 0;
-      final h = _sectionHeaderExtents[widget.itemId(index)];
-      if (h == null) return null;
-      return h + widget.sectionHeaderSpacing;
-    }
-
-    var total = centerIndex == 0 ? _topSpacer + _leadingSliversExtent() : 0.0;
-    double? anchorTop;
-    double? anchorHeight;
-    for (var i = centerIndex; i < count; i++) {
-      final h = extents[widget.itemId(i)];
-      final sh = sectionExtra(i);
-      if (h == null || sh == null) return null;
-      total += sh;
-      if (i == pinnedIndex) {
-        anchorTop = total;
-        anchorHeight = h;
-      }
-      total += h + (i < count - 1 ? spacing : 0);
-    }
-
-    if (anchorTop != null && anchorHeight != null) {
+    // The last item has no gap below it.
+    var total =
+        (centerIndex == 0 ? _topSpacer + _leadingSliversExtent() : 0.0) +
+        estimate.rangeExtent(centerIndex, count) -
+        widget.itemSpacing;
+    if (pinnedIndex >= centerIndex) {
+      final anchorTop =
+          (centerIndex == 0 ? _topSpacer + _leadingSliversExtent() : 0.0) +
+          estimate.rangeExtent(centerIndex, pinnedIndex) +
+          estimate.headerExtraAt(pinnedIndex);
       final usable = math.max<double>(
         0,
         pos.viewportDimension - effectiveTop - effectiveBottom,
       );
       final minTurn = RenderSliverTurnStage.computeMinExtent(
         usableExtent: usable,
-        anchorExtent: anchorHeight,
+        anchorExtent: estimate.itemExtentAt(pinnedIndex),
         anchorConfig: widget.anchorConfig,
       );
       total = math.max(total, anchorTop + minTurn);
@@ -1254,7 +1264,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         if (frozenContentEnd case final end?) {
           return bottomOffsetFor(pos, end);
         }
-        return _cachedBottomOffset(pos) ?? pos.maxScrollExtent;
+        return _estimatedBottomOffset(pos);
       },
     );
     endNavigation(epoch);
@@ -1465,7 +1475,10 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         padding: horizontal,
         sliver: SliverList(
           delegate: TurnChildDelegate(
-            slotExtent: _slotExtent,
+            // Local reverse indices `[from, to)` are the global indices
+            // `[centerIndex - to, centerIndex - from)`.
+            unbuiltExtent: (from, to) =>
+                _extents.rangeExtent(centerIndex - to, centerIndex - from),
             findChildIndexCallback: (key) {
               final index = _indexOfKey(key);
               if (index == null) return null;
@@ -1499,7 +1512,10 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
             sliver: SliverList(
               key: _belowListKey,
               delegate: TurnChildDelegate(
-                slotExtent: _slotExtent,
+                // The last item of the list has no gap below it.
+                unbuiltExtent: (from, to) =>
+                    _extents.rangeExtent(centerIndex + from, centerIndex + to) -
+                    (to >= belowCount ? spacing : 0),
                 findChildIndexCallback: (key) {
                   final index = _indexOfKey(key);
                   if (index == null) return null;

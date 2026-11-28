@@ -1,6 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:turns/src/scroll/turn_child_delegate.dart';
+import 'package:turns/src/scroll/turn_extent_estimator.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
 
 /// Drop-in indexed sliver list for `CustomTurnScrollView` that automatically
@@ -42,6 +43,9 @@ class _SliverTurnListState extends State<SliverTurnList>
     implements TurnListRegistration {
   final _listKey = GlobalKey(debugLabel: 'SliverTurnList');
   final _indexHints = <Object, int>{};
+  final _estimator = TurnExtentEstimator();
+  TurnScrollScope? _scope;
+  ({int count, Object? first, Object? last, double spacing})? _signature;
   void Function(TurnListRegistration list)? _detachCallback;
 
   @override
@@ -68,6 +72,55 @@ class _SliverTurnListState extends State<SliverTurnList>
   );
 
   @override
+  double estimateExtent(int from, int to) {
+    final estimator = _estimator;
+    if (estimator.isStale) {
+      final extentOf = _scope?.extentOf;
+      estimator.rebuild(
+        count: widget.itemCount,
+        itemId: widget.itemId,
+        spacing: widget.itemSpacing,
+        extentOf: (id) => extentOf?.call(id),
+      );
+    }
+    // Until this list has measured anything, borrow the view's mean.
+    estimator.fallbackItemExtent = _scope?.meanItemExtent?.call() ?? 72;
+    return estimator.rangeExtent(from, to);
+  }
+
+  void _recordExtent(Object id, double extent) {
+    if (_estimator.isStale) return;
+    final index = _indexHints[id];
+    if (index == null ||
+        index >= widget.itemCount ||
+        widget.itemId(index) != id) {
+      _estimator.markStale();
+      return;
+    }
+    _estimator.setItemExtent(index, extent);
+  }
+
+  void _syncSignature() {
+    final count = widget.itemCount;
+    final next = (
+      count: count,
+      first: count == 0 ? null : widget.itemId(0),
+      last: count == 0 ? null : widget.itemId(count - 1),
+      spacing: widget.itemSpacing,
+    );
+    if (_signature != next) {
+      _signature = next;
+      _estimator.markStale();
+    }
+  }
+
+  @override
+  void didUpdateWidget(SliverTurnList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncSignature();
+  }
+
+  @override
   bool get reachedEnd {
     final count = widget.itemCount;
     if (count <= 0) return true;
@@ -81,7 +134,8 @@ class _SliverTurnListState extends State<SliverTurnList>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final scope = TurnScrollScope.maybeOf(context);
+    final scope = _scope = TurnScrollScope.maybeOf(context);
+    _syncSignature();
     final nextDetach = scope?.onListDetach;
     if (_detachCallback != nextDetach) {
       _detachCallback?.call(this);
@@ -101,11 +155,11 @@ class _SliverTurnListState extends State<SliverTurnList>
   Widget build(BuildContext context) {
     final spacing = widget.itemSpacing;
     final count = widget.itemCount;
-    final mean = TurnScrollScope.maybeOf(context)?.meanItemExtent;
+    final scope = TurnScrollScope.maybeOf(context);
     return SliverList(
       key: _listKey,
       delegate: TurnChildDelegate(
-        slotExtent: () => (mean?.call() ?? 72) + spacing,
+        unbuiltExtent: estimateExtent,
         findChildIndexCallback: (key) {
           if (key is! ValueKey<Object>) return null;
           final index = indexOfId(key.value);
@@ -114,10 +168,20 @@ class _SliverTurnListState extends State<SliverTurnList>
         (context, index) {
           final id = widget.itemId(index);
           _indexHints[id] = index;
-          Widget child = TurnScrollItem(
-            id: id,
-            child: widget.itemBuilder(context, index),
-          );
+          var child = widget.itemBuilder(context, index);
+          if (scope != null) {
+            // Observes the item like a TurnScrollItem, and also records the
+            // extent for this list's own estimate.
+            child = TurnItemExtentObserver(
+              itemId: id,
+              onLayout: (id, extent, box) {
+                scope.onItemLayout(id, extent, box);
+                _recordExtent(id, extent);
+              },
+              onDetach: scope.onItemDetach,
+              child: child,
+            );
+          }
           if (spacing > 0 && index < count - 1) {
             child = Padding(
               padding: EdgeInsets.only(bottom: spacing),

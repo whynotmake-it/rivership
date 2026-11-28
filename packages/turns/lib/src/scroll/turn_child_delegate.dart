@@ -1,26 +1,28 @@
 import 'package:flutter/widgets.dart';
 
 /// A [SliverChildBuilderDelegate] that estimates the children it hasn't built
-/// from a stable average.
+/// from what has been measured of them.
 ///
 /// `SliverList`'s default estimate multiplies the average extent of the
 /// children currently built by the number not built. With rows of different
 /// heights that average changes on nearly every frame, and over thousands of
 /// unbuilt rows (all the history above a `TurnScrollView`'s center) that
 /// swings the scroll extent by thousands of pixels: the scrollbar thumb
-/// jumps backwards and changes size while you scroll. [slotExtent] comes
-/// from every item measured so far instead, so it barely moves.
+/// jumps backwards and changes size while you scroll. [unbuiltExtent] comes
+/// from every item measured so far instead (see `TurnExtentEstimator`): the
+/// real height of those that were measured, the mean of the rest.
 class TurnChildDelegate extends SliverChildBuilderDelegate {
   /// Creates the delegate.
   TurnChildDelegate(
     super.builder, {
     required int super.childCount,
-    required this.slotExtent,
+    required this.unbuiltExtent,
     super.findChildIndexCallback,
   });
 
-  /// The estimated extent of one unbuilt child, spacing included.
-  final double Function() slotExtent;
+  /// The estimated extent of the children `[from, to)` of this list, spacing
+  /// included.
+  final double Function(int from, int to) unbuiltExtent;
 
   @override
   double? estimateMaxScrollOffset(
@@ -31,7 +33,7 @@ class TurnChildDelegate extends SliverChildBuilderDelegate {
   ) {
     final count = childCount!;
     if (lastIndex >= count - 1) return trailingScrollOffset;
-    return trailingScrollOffset + (count - 1 - lastIndex) * slotExtent();
+    return trailingScrollOffset + unbuiltExtent(lastIndex + 1, count);
   }
 }
 

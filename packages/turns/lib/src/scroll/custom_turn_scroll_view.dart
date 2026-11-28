@@ -245,7 +245,6 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     double estItemExtent(int index) =>
         extents[targetList!.itemId(index)] ?? meanExtent;
 
-    final spacing = targetList.itemSpacing;
     final sliverStart = sliver.constraints.precedingScrollExtent;
     final firstChild = sliver.firstChild;
     final lastChild = sliver.lastChild;
@@ -259,11 +258,11 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
             (firstChild.parentData! as SliverMultiBoxAdaptorParentData)
                 .layoutOffset ??
             0;
-        var offset = firstLayoutOffset;
-        for (var i = firstIndex - 1; i >= targetIndex; i--) {
-          offset -= estItemExtent(i) + spacing;
-        }
-        itemOffsetInSliver = math.max(0, offset);
+        itemOffsetInSliver = math.max(
+          0,
+          firstLayoutOffset -
+              targetList.estimateExtent(targetIndex, firstIndex),
+        );
       } else if (targetIndex > lastIndex) {
         final lastLayoutOffset =
             (lastChild.parentData! as SliverMultiBoxAdaptorParentData)
@@ -272,25 +271,16 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
         final lastExtent = sliver.constraints.axis == Axis.vertical
             ? lastChild.size.height
             : lastChild.size.width;
-        var offset = lastLayoutOffset + lastExtent;
-        for (var i = lastIndex + 1; i < targetIndex; i++) {
-          offset += estItemExtent(i) + spacing;
-        }
-        itemOffsetInSliver = offset;
+        itemOffsetInSliver =
+            lastLayoutOffset +
+            lastExtent +
+            targetList.estimateExtent(lastIndex + 1, targetIndex);
       } else {
-        // Should normally be mounted, fall back to linear estimate.
-        var offset = 0.0;
-        for (var i = 0; i < targetIndex; i++) {
-          offset += estItemExtent(i) + spacing;
-        }
-        itemOffsetInSliver = offset;
+        // Should normally be mounted, fall back to an estimate from the top.
+        itemOffsetInSliver = targetList.estimateExtent(0, targetIndex);
       }
     } else {
-      var offset = 0.0;
-      for (var i = 0; i < targetIndex; i++) {
-        offset += estItemExtent(i) + spacing;
-      }
-      itemOffsetInSliver = offset;
+      itemOffsetInSliver = targetList.estimateExtent(0, targetIndex);
     }
 
     final estHeight = estItemExtent(targetIndex);
@@ -518,6 +508,8 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   // notify on every build.
   double _meanItemExtent() => meanExtent;
 
+  double? _extentOf(Object id) => extents[id];
+
   @override
   Widget build(BuildContext context) {
     resolveClearances(
@@ -544,6 +536,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
       onListAttach: _onListAttach,
       onListDetach: _onListDetach,
       meanItemExtent: _meanItemExtent,
+      extentOf: _extentOf,
       child: wrapWithTurnNotification(
         CustomScrollView(
           controller: turnController,

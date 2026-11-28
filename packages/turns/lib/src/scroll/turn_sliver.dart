@@ -28,6 +28,10 @@ abstract interface class TurnListRegistration {
 
   /// Whether the last item of this list is currently laid out in the sliver.
   bool get reachedEnd;
+
+  /// The estimated scroll extent of the items `[from, to)` (measured heights
+  /// where known, the mean elsewhere, spacing included).
+  double estimateExtent(int from, int to);
 }
 
 /// Ambient layout clearances and item-registration callbacks provided by
@@ -46,6 +50,7 @@ class TurnScrollScope extends InheritedWidget {
     this.onListAttach,
     this.onListDetach,
     this.meanItemExtent,
+    this.extentOf,
     super.key,
   });
 
@@ -78,6 +83,9 @@ class TurnScrollScope extends InheritedWidget {
   /// not yet built (stable while scrolling, unlike the built window's).
   final double Function()? meanItemExtent;
 
+  /// The extent measured for an item id, or `null` if it was never measured.
+  final double? Function(Object id)? extentOf;
+
   /// Returns the nearest [TurnScrollScope], if any.
   static TurnScrollScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<TurnScrollScope>();
@@ -92,7 +100,8 @@ class TurnScrollScope extends InheritedWidget {
       onTurnStageDetach != oldWidget.onTurnStageDetach ||
       onListAttach != oldWidget.onListAttach ||
       onListDetach != oldWidget.onListDetach ||
-      meanItemExtent != oldWidget.meanItemExtent;
+      meanItemExtent != oldWidget.meanItemExtent ||
+      extentOf != oldWidget.extentOf;
 }
 
 /// Marks an item inside any sliver of a `TurnScrollView` or
