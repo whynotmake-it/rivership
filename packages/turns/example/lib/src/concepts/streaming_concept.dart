@@ -134,6 +134,42 @@ class _StreamingConceptState extends State<StreamingConcept> {
     });
   }
 
+  /// Moves to the next point in the stream where the tail has something
+  /// half written for completeMarkdown to repair.
+  void _nextRepair() {
+    bool needsRepair(int c) {
+      final streamed = _reply.substring(0, c);
+      return completeMarkdown(streamed) != streamed;
+    }
+
+    var c = _cursor + 1;
+    // Past the span being repaired now, to the start of the next one.
+    while (c < _reply.length && needsRepair(_cursor) && needsRepair(c)) {
+      c++;
+    }
+    for (; c < _reply.length; c++) {
+      if (needsRepair(c)) {
+        setState(() => _seek(c));
+        return;
+      }
+    }
+  }
+
+  static String _repairNote(String raw, String completed) {
+    if (raw == completed) return 'Nothing half written here.';
+    var p = 0;
+    while (p < raw.length && p < completed.length && raw[p] == completed[p]) {
+      p++;
+    }
+    final added = completed.substring(p).trim();
+    final dropped = raw.substring(p).trim();
+    if (added.isNotEmpty && dropped.isEmpty) return 'Closed with $added';
+    if (dropped.isNotEmpty && added.isEmpty) {
+      return 'Dropped a lone $dropped until text follows it';
+    }
+    return 'Repaired: $dropped → $added';
+  }
+
   Widget _stable(MarkdownSegment segment) => _cache[segment.id] ??= _Segment(
     key: ValueKey(segment.id),
     id: segment.id,
@@ -152,6 +188,10 @@ class _StreamingConceptState extends State<StreamingConcept> {
     );
     final rawTail = streamed.substring(math.min(stableLength, streamed.length));
     final pending = _doc.pending;
+    // MarkdownSegment.source is the raw tail; the session parses this.
+    final completed = _cursor < _reply.length
+        ? completeMarkdown(rawTail)
+        : rawTail;
 
     final segments = ListView(
       controller: _scroll,
@@ -180,9 +220,17 @@ class _StreamingConceptState extends State<StreamingConcept> {
         spacing: 8,
         children: [
           Text('The pending tail, as streamed', style: text.muted.micro),
-          _Source(rawTail.isEmpty ? '·' : rawTail, color: colors.destructive),
-          Text('After completeMarkdown', style: text.muted.micro),
-          _Source(pending?.source ?? '·', color: colors.brandInk),
+          _Source(
+            raw: rawTail,
+            completed: completed,
+            showCompleted: false,
+          ),
+          Text(
+            'After completeMarkdown, what gets parsed',
+            style: text.muted.micro,
+          ),
+          _Source(raw: rawTail, completed: completed, showCompleted: true),
+          Text(_repairNote(rawTail, completed), style: text.muted.micro),
         ],
       ),
     );
@@ -212,7 +260,16 @@ class _StreamingConceptState extends State<StreamingConcept> {
                 ),
                 onPressed: _togglePlay,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 6),
+              CoilButton(
+                key: const Key('concept.streaming.next_repair'),
+                variant: CoilButtonVariant.ghost,
+                size: CoilSize.compact,
+                leading: const Icon(LucideIcons.wrench, size: 14),
+                onPressed: _nextRepair,
+                child: const Text('Next repair'),
+              ),
+              const SizedBox(width: 6),
               Expanded(
                 child: CoilSlider(
                   key: const Key('concept.streaming.scrubber'),
@@ -335,16 +392,47 @@ class _Segment extends StatelessWidget {
   }
 }
 
+/// The tail as streamed or as completeMarkdown repaired it, with the part
+/// that differs highlighted: what gets dropped in the raw text, what gets
+/// added in the repaired text.
 class _Source extends StatelessWidget {
-  const _Source(this.source, {required this.color});
+  const _Source({
+    required this.raw,
+    required this.completed,
+    required this.showCompleted,
+  });
 
-  final String source;
-  final Color color;
+  final String raw;
+  final String completed;
+  final bool showCompleted;
+
+  static const _window = 220;
 
   @override
   Widget build(BuildContext context) {
     final colors = CoilTheme.of(context).colors;
     final text = CoilTheme.textOf(context);
+    final shown = showCompleted ? completed : raw;
+    var same = 0;
+    while (same < raw.length &&
+        same < completed.length &&
+        raw[same] == completed[same]) {
+      same++;
+    }
+    // Only the end of a long tail, where the repair happens.
+    final start = shown.length > _window ? shown.length - _window : 0;
+    final base = text.micro.copyWith(
+      fontFamily: 'JetBrains Mono',
+      fontFamilyFallback: const ['monospace'],
+      color: colors.foreground,
+    );
+    final changed = base.copyWith(
+      color: showCompleted ? colors.brandInk : colors.destructive,
+      fontWeight: text.emphasis,
+      backgroundColor: (showCompleted ? colors.brandWash : colors.muted),
+      decoration: showCompleted ? null : TextDecoration.lineThrough,
+    );
+    final cut = same.clamp(start, shown.length);
     return DecoratedBox(
       decoration: ShapeDecoration(
         color: colors.background,
@@ -355,14 +443,15 @@ class _Source extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Text(
-          source.length > 220
-              ? '…${source.substring(source.length - 220)}'
-              : source,
-          style: text.micro.copyWith(
-            fontFamily: 'JetBrains Mono',
-            fontFamilyFallback: const ['monospace'],
-            color: color,
+        child: Text.rich(
+          TextSpan(
+            style: base,
+            children: [
+              if (shown.isEmpty) const TextSpan(text: '·'),
+              if (start > 0) const TextSpan(text: '…'),
+              TextSpan(text: shown.substring(start, cut)),
+              TextSpan(text: shown.substring(cut), style: changed),
+            ],
           ),
         ),
       ),
