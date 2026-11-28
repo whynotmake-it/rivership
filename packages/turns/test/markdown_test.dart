@@ -73,10 +73,8 @@ void main() {
 
       // Streaming on through a line that would be a definition outside a fence.
       for (final text in [
-        '$head'
-            'Three\n\n```ts\ntype T = {\n  [key: string]: nu',
-        '$head'
-            'Three\n\n```ts\ntype T = {\n  [key: string]: number;\n}',
+        '${head}Three\n\n```ts\ntype T = {\n  [key: string]: nu',
+        '${head}Three\n\n```ts\ntype T = {\n  [key: string]: number;\n}',
       ]) {
         final doc = session.update(text, streaming: true);
         expect(doc.reset, isFalse);
