@@ -66,8 +66,8 @@ void main() {
         itemCount: ids.length,
         itemId: (i) => ids[i],
         sectionId: (i) => int.parse(ids[i].substring(1)) ~/ perSection,
-        sectionHeaderBuilder: (context, section, isPinned) =>
-            SizedBox(height: 24, child: Text('day $section')),
+        sectionHeaderBuilder: (context, details) =>
+            SizedBox(height: 24, child: Text('day ${details.section}')),
         pinnedId: pinnedId,
         autoScrollMotion: const Motion.instant(),
         itemBuilder: (context, i) => _Probe(ids[i]),
@@ -115,8 +115,8 @@ void main() {
       itemId: (i) => 'm$i',
       sectionId: (i) => i ~/ 10,
       stickySectionHeaders: sticky,
-      sectionHeaderBuilder: (context, section, isPinned) =>
-          SizedBox(height: 24, child: Text('day $section')),
+      sectionHeaderBuilder: (context, details) =>
+          SizedBox(height: 24, child: Text('day ${details.section}')),
       autoScrollMotion: const Motion.instant(),
       itemBuilder: (context, i) => _Probe('m$i'),
     );

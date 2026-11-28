@@ -30,8 +30,8 @@ void main() {
             itemCount: 600,
             itemId: (i) => i,
             sectionId: (i) => i ~/ 25,
-            sectionHeaderBuilder: (context, day, isPinned) =>
-                SizedBox(height: 28, child: Text('Day $day')),
+            sectionHeaderBuilder: (context, details) =>
+                SizedBox(height: 28, child: Text('Day ${details.section}')),
             itemBuilder: (context, i) =>
                 SizedBox(height: 40.0 + (i * 7919 % 5) * 30),
           ),

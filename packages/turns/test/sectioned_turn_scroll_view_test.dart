@@ -64,18 +64,27 @@ void main() {
               itemSpacing: 20,
               sectionHeaderSpacing: 12,
               autoScrollMotion: const Motion.instant(),
-              sectionHeaderBuilder: (context, DateTime day, bool isPinned) =>
-                  SizedBox(
-                    key: ValueKey(
-                      'hdr:${_formatDay(day)}:'
-                      '${isPinned ? 'pinned' : 'inline'}',
-                    ),
-                    height: 32,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(_formatDay(day)),
-                    ),
+              sectionHeaderBuilder: (context, details) {
+                final day = details.section;
+                final header = SizedBox(
+                  key: ValueKey(
+                    'hdr:${_formatDay(day)}:'
+                    '${details.isSticky ? 'pinned' : 'inline'}',
                   ),
+                  height: 32,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(_formatDay(day)),
+                  ),
+                );
+                // The app hides the inline header the overlay covers.
+                return details.isSticky
+                    ? header
+                    : Visibility.maintain(
+                        visible: !details.isCovered,
+                        child: header,
+                      );
+              },
               itemBuilder: (context, i) => SizedBox(
                 key: ValueKey('box:${items[i].id}'),
                 height: items[i].height,
@@ -92,7 +101,7 @@ void main() {
       expect(find.byKey(const ValueKey('box:m4999')), findsNothing);
 
       // 2. Immediately pins section 342 at topClearance (60) with
-      //    isPinned == true even though item 3420 (section 342's start) was
+      //    the sticky overlay even though item 3420 (section 342's start) was
       //    above center, and clears m3421 below the sticky header
       //    (60 + 32 + 12 = 104).
       final day342 = _formatDay(baseDate.add(const Duration(days: 342)));
@@ -120,7 +129,7 @@ void main() {
 
       // 3. scrollTo section-start item 'm3430' lands cleanly below the sticky
       //    header (60 + 32 + 12 = 104) while hiding its inline header via
-      //    Visibility.maintain so floating pills never double-render.
+      //    isCovered so floating pills never double-render.
       final to3430 = controller.scrollTo('m3430', animate: false);
       await tester.pumpAndSettle();
       expect(await to3430, isTrue);
@@ -142,9 +151,9 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Now day342 is active with isPinned == true and pushed up by -16px
+      // Now day342 is active in the sticky overlay and pushed up by -16px
       // (top at 60 - 16 = 44), flush against day343's visible inline header
-      // (isPinned == false) at 76.
+      // (inline) at 76.
       final day342Pinned = find.byKey(ValueKey('hdr:$day342:pinned'));
       final day343Inline = find.byKey(ValueKey('hdr:$day343:inline'));
       expect(day342Pinned, findsOneWidget);
@@ -199,11 +208,22 @@ void main() {
             leadingSlivers: const [
               SliverToBoxAdapter(child: SizedBox(height: 150)),
             ],
-            sectionHeaderBuilder: (context, section, isPinned) => SizedBox(
-              key: ValueKey('sec:$section:${isPinned ? 'pinned' : 'inline'}'),
-              height: 30,
-              child: Text(section),
-            ),
+            sectionHeaderBuilder: (context, details) {
+              final header = SizedBox(
+                key: ValueKey(
+                  'sec:${details.section}:'
+                  '${details.isSticky ? 'pinned' : 'inline'}',
+                ),
+                height: 30,
+                child: Text(details.section),
+              );
+              return details.isSticky
+                  ? header
+                  : Visibility.maintain(
+                      visible: !details.isCovered,
+                      child: header,
+                    );
+            },
             itemBuilder: (context, i) => SizedBox(
               key: ValueKey('item:i$i'),
               height: 80,
@@ -217,7 +237,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Leading sliver (150px) pushes 'Older' inline header to y = 170.
-      // Only the inline header (isPinned == false) exists — no sticky overlay!
+      // Only the inline header (not sticky) exists — no sticky overlay!
       expect(find.byKey(const ValueKey('sec:Older:inline')), findsOneWidget);
       expect(find.byKey(const ValueKey('sec:Older:pinned')), findsNothing);
       expect(
@@ -226,7 +246,7 @@ void main() {
       );
 
       // Scroll down 200px so 'Older' passes topClearance (20): sticky overlay
-      // pins 'Older' (isPinned == true) at y = 20.
+      // pins 'Older' (sticky) at y = 20.
       controller.jumpTo(200);
       await tester.pump();
       await tester.pump();
@@ -235,11 +255,16 @@ void main() {
       expect(tester.getTopLeft(olderPinned).dy, closeTo(20, 1));
 
       // Disable sticky headers: no sticky overlay rendered
-      // (`isPinned` is never true).
+      // (nothing is ever covered, so nothing is hidden).
       await tester.pumpWidget(buildView(sticky: false));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('sec:Older:pinned')), findsNothing);
-      expect(find.byType(Visibility), findsNothing);
+      expect(
+        tester
+            .widgetList<Visibility>(find.byType(Visibility))
+            .where((v) => !v.visible),
+        isEmpty,
+      );
     },
   );
 
@@ -274,12 +299,13 @@ void main() {
               applyBottomPadding: false,
               padding: const EdgeInsets.only(bottom: 100),
               itemSpacing: 16,
-              sectionHeaderBuilder: (context, section, isPinned) => SizedBox(
+              sectionHeaderBuilder: (context, details) => SizedBox(
                 key: ValueKey(
-                  'pill:$section:${isPinned ? 'pinned' : 'inline'}',
+                  'pill:${details.section}:'
+                  '${details.isSticky ? 'pinned' : 'inline'}',
                 ),
                 height: 32,
-                child: Text(section),
+                child: Text(details.section),
               ),
               itemBuilder: (context, i) => SizedBox(
                 key: ValueKey('msg:m$i'),

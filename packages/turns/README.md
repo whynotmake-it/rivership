@@ -22,7 +22,7 @@ flutter pub add 'turns:^0.1.0-dev.0'
     <td align="center" width="33%">
       <img src="doc/ai_turn_pin.gif" alt="AI Assistant active-turn pinning and streaming GFM markdown" width="240" /><br />
       <b>AI Assistant</b><br />
-      <code>TurnScrollView</code> + <code>SliverTurnStage</code> pins the sent
+      <code>TurnScrollView</code> with <code>pinnedId</code> pins the sent
       prompt to the top while GFM markdown streams token-by-token, with
       zero-fight disengagement on user scroll.
     </td>
@@ -37,8 +37,8 @@ flutter pub add 'turns:^0.1.0-dev.0'
       <img src="doc/slack_sections.gif" alt="Slack 3,000-message channel built with TurnScrollView.sectioned" width="240" /><br />
       <b>Slack Channel (3,000 msgs)</b><br />
       <code>TurnScrollView.sectioned</code> across 3,000 messages using
-      <code>isPinned</code> to switch between inline date hairlines and
-      transparent floating pills, <code>0.0px</code>-shift prepend pagination,
+      <code>details.isSticky</code> to switch between inline date hairlines
+      and transparent floating pills, <code>0.0px</code>-shift prepend pagination,
       and an unread jump pill landing on the inline <code>New</code> divider.
     </td>
   </tr>
@@ -48,13 +48,15 @@ flutter pub add 'turns:^0.1.0-dev.0'
 
 - **Bidirectional `Viewport(center:)` timelines (`TurnScrollView`)**:
   - **O(1) open** at the bottom or at any `initialItemId` without laying out earlier items.
-  - **Viewport-sized jumps**: `scrollTo` and `scrollToBottom` across thousands of items recenter next to the target and lay out only what lands on screen. Animated flights longer than three viewports do the same, then glide the last viewport. (Picking the target costs an O(distance) sum over cached extents: plain arithmetic, no layout.)
+  - **Viewport-sized jumps**: `scrollTo` and `scrollToBottom` across thousands of items recenter next to the target and lay out only what lands on screen. Animated flights longer than three viewports do the same, then glide the last viewport. (Picking the target is an O(log n) estimate over the extents measured so far: plain arithmetic, no layout.)
   - **`0.0px`-shift prepend pagination** with preserved child widget `State`.
-  - **Single-pass `SliverTurnStage` turn pinning**: pass `pinnedId` to reserve a viewport stage for the active prompt so `maxScrollExtent` stays flat while tokens stream.
+  - **Turn pinning without remounts**: pass `pinnedId` and the active prompt rests at the top while blank trailing space is reserved after the list, so `maxScrollExtent` stays flat while tokens stream and no item changes sliver (or `State`) when a turn is pinned or unpinned.
+  - **`followBottom`**: opt in to stay at the bottom while the user is there and content grows (a new message, an embed finishing) or shrinks; any user scroll releases it and coming to rest at the bottom re-arms it.
+  - **Honest scroll extents**: estimates for items that are not built use their measured heights, and the mean only for items never measured, so the scrollbar and jump targets stay close to the real extent after scrolling away.
   - **Zero-fight user control**: any drag, wheel, or trackpad gesture disengages auto-pinning immediately.
   - **Perceived-end futures**: `scrollTo` and `scrollToBottom` return a `TurnScrollFuture` whose `ended` completes when the motion looks finished (motor's `MotionFuture.ended`), so follow-ups don't wait for the spring to settle.
   - **Synchronous keyboard-inset anchoring**: shifts scroll offset by the exact bottom-edge delta during layout without a 1-frame flash.
-- **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with an `isPinned` flag (hairline divider inline vs elevated floating pill when pinned), automatic `alignment: 0` clearance, and pointer pass-through (`stickyHeaderIgnoresPointer`).
+- **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with a `TurnSectionHeaderDetails` (is this the inline header or the sticky overlay, and is the inline one currently covered, so you can hide only the part the overlay repeats), automatic `alignment: 0` clearance, a `stickyHeaderTopOffset`, and pointer pass-through (`stickyHeaderIgnoresPointer`).
 - **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: escape hatch for bounded feeds that need arbitrary Flutter slivers (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s) while keeping Motor-driven offscreen `scrollTo()` and `scrollToBottom()`.
 - **Pure-Dart streaming markdown (`MarkdownSession`)**: freezes settled top-level blocks by identity and repairs unfinished inline syntax (`completeMarkdown`) while tokens arrive, plus pure-Dart LaTeX math syntaxes (`latexMathSyntaxes`).
 
@@ -74,7 +76,7 @@ an inline `SliverGrid`.
 | **Viewport model** | Bidirectional `Viewport(center:)` | Forward-only `Viewport` (walks from sliver `0`) |
 | **O(1) open at bottom or `initialItemId`** | **Yes** — opens at message `#10,000` without laying out earlier items. | **No** — walks forward from sliver `0` to reach deep targets. |
 | **Prepend pagination above viewport** | **`0.0px` shift** with preserved child widget `State`, plus bidirectional `TurnScrollNotification`. | **Shifts scroll position** when prepending above the viewport. |
-| **Sticky section headers** | Built-in via `TurnScrollView.sectioned` with `isPinned` styling and smooth push-up across the center seam. | Manual (`SliverMainAxisGroup` + `SliverPersistentHeader`). |
+| **Sticky section headers** | Built-in via `TurnScrollView.sectioned` with sticky/inline styling and smooth push-up across the center seam. | Manual (`SliverMainAxisGroup` + `SliverPersistentHeader`). |
 | **Arbitrary mixed slivers** | `leadingSlivers` above item `0` and `tailSliver` below the last item — **no collapsing `SliverAppBar` or `SliverGrid` inside the list**. | **Full Flutter sliver composition** (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s). |
 
 ## Quick Start
@@ -130,8 +132,11 @@ NotificationListener<TurnScrollNotification>(
     itemId: (i) => messages[i].id,
     sectionId: (i) => messages[i].day,
     initialItemId: deepLinkedMessageId, // O(1) open + frame-1 sticky header
-    sectionHeaderBuilder: (context, day, isPinned) =>
-        DatePill(day, isPinned: isPinned),
+    sectionHeaderBuilder: (context, details) => Visibility.maintain(
+      // The sticky overlay repeats a covered inline header: hide that one.
+      visible: !details.isCovered,
+      child: DatePill(details.section, floating: details.isSticky),
+    ),
     itemBuilder: (context, i) => MessageBubble(messages[i]),
   ),
 );
@@ -198,7 +203,8 @@ final doc = session.update(streamedText, streaming: true);
 
 - `package:turns/turns.dart` — full public API (scroll + markdown).
 - `package:turns/scroll.dart` — `TurnScrollView`, `TurnScrollView.sectioned`,
-  `TurnSectionHeaderBuilder`, `CustomTurnScrollView`, `SliverTurnList`,
+  `TurnSectionHeaderBuilder`, `TurnSectionHeaderDetails`,
+  `CustomTurnScrollView`, `SliverTurnList`,
   `SliverTurnStage`, `TurnAnchorConfig`, `TurnScrollController`,
   `TurnScrollFuture`,
   `TurnScrollNotification`, `TurnScrollScope`, `TurnScrollItem`,

@@ -154,7 +154,7 @@ const turnsDemos = <TurnsDemoEntry>[
     primitive: 'TurnScrollView.sectioned (3,000 msgs)',
     description:
         '3,000-message O(1) channel with inline date dividers vs transparent '
-        'floating pinned pills via isPinned, 0px-shift prepend pagination, and '
+        'floating sticky pills, 0px-shift prepend pagination, and '
         'unread divider jumps.',
     glyph: TurnsGlyph.hash,
   ),

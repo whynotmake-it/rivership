@@ -8,7 +8,7 @@ import 'package:turns/scroll.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
 
 /// Slack-style channel demo showcasing [TurnScrollView.sectioned] across a
-/// 3,000-message O(1) timeline with `isPinned` section headers (hairline rule
+/// 3,000-message O(1) timeline with sticky section headers (hairline rule
 /// inline vs transparent elevated date pill when pinned), `0.0px`-shift
 /// prepend pagination via [TurnScrollNotification] and `"Load earlier days"`,
 /// `"10 new messages"` unread jump landing on the inline `"New"` divider,
@@ -192,14 +192,14 @@ class _SlackDemoState extends State<SlackDemo> {
 
   void _insertMarkdownSnippet() {
     const snippet =
-        'Verified `TurnScrollView.sectioned` `isPinned` date header:\n'
+        'Verified `TurnScrollView.sectioned` sticky date header:\n'
         '```dart\n'
         'TurnScrollView<DateTime>.sectioned(\n'
         '  itemCount: messages.length,\n'
         '  itemId: (i) => messages[i].id,\n'
         '  sectionId: (i) => messages[i].day,\n'
-        '  sectionHeaderBuilder: (context, day, isPinned) =>\n'
-        '      DayHeader(day: day, isPinned: isPinned),\n'
+        '  sectionHeaderBuilder: (context, details) =>\n'
+        '      DayHeader(day: details.section, sticky: details.isSticky),\n'
         '  itemBuilder: buildRow,\n'
         ');\n'
         '```';
@@ -292,10 +292,15 @@ class _SlackDemoState extends State<SlackDemo> {
                                   ),
                                 ),
                               ],
-                              sectionHeaderBuilder: (context, day, isPinned) =>
-                                  _DaySectionHeader(
-                                    label: _formatDay(day),
-                                    isPinned: isPinned,
+                              sectionHeaderBuilder: (context, details) =>
+                                  // The sticky overlay repeats the covered
+                                  // inline header, so hide that one.
+                                  Visibility.maintain(
+                                    visible: !details.isCovered,
+                                    child: _DaySectionHeader(
+                                      label: _formatDay(details.section),
+                                      isPinned: details.isSticky,
+                                    ),
                                   ),
                               itemBuilder: (context, i) {
                                 final message = _messages[i];
@@ -544,7 +549,7 @@ class _ChannelHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'TurnScrollView.sectioned · O(1) open · isPinned headers',
+                    'TurnScrollView.sectioned · O(1) open · sticky headers',
                     style: text.muted.micro,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -792,7 +797,7 @@ class _ChannelWelcomeBanner extends StatelessWidget {
                 'Backed by TurnScrollView<DateTime>.sectioned for O(1) open, '
                 '0.0px-shift prepend pagination, and section headers that '
                 'adapt between hairline rules inline and transparent floating '
-                'pills when isPinned == true.',
+                'pills when details.isSticky is true.',
                 style: text.muted.caption,
               ),
               const SizedBox(height: 12),
@@ -1625,7 +1630,7 @@ const _historyAuthors = <_SlackAuthor>[
 const _historyTopics = <String>[
   'Benchmarked `Viewport(center:)` open at `#3,000` — sub-millisecond layout.',
   'Verified `0.0px`-shift prepend pagination inserting 40 older messages.',
-  'Checked sticky push-up across the seam: inline vs `isPinned: true`.',
+  'Checked sticky push-up across the seam: inline vs `isSticky: true`.',
   'Confirmed `MarkdownSession` freezes settled blocks by identity.',
   'Tested trackpad fling mid-spring: `onUserScroll()` cancels immediately.',
   'Reviewed `TurnScrollNotification.leadingExtent` threshold (`160px`).',
@@ -1803,7 +1808,7 @@ List<List<_SlackMessage>> _buildArchivePages() {
         markdown:
             'Typography & spacing review for the Slack channel demo: keep '
             'inline date pills centered on a `1px` rule and float a shadowed '
-            'pill with no rule whenever `isPinned == true`.',
+            'pill with no rule whenever `details.isSticky`.',
         reactions: [
           const _SlackReaction(kind: _ReactionKind.sparkles, count: 2),
         ],
@@ -1863,7 +1868,7 @@ List<_SlackMessage> _buildInitialMessages() {
       timestamp: '9:05 AM',
       markdown:
           'Morning team! Ready to walk through the `TurnSectionHeaderBuilder` '
-          '`isPinned` API before we freeze `0.1.0`.',
+          'section header API before we freeze `0.1.0`.',
     ),
     _SlackMessage(
       id: _SlackDemoState._rfcMessageId,
@@ -1872,8 +1877,8 @@ List<_SlackMessage> _buildInitialMessages() {
       timestamp: '9:24 AM',
       bookmarkTag: 'RFC #42',
       markdown:
-          '**RFC #42: `TurnScrollView.sectioned` with `isPinned` headers**\n\n'
-          'Passing `bool isPinned` into `TurnSectionHeaderBuilder<S>` lets '
+          '**RFC #42: `TurnScrollView.sectioned` with sticky headers**\n\n'
+          'Passing `TurnSectionHeaderDetails<S>` into the header builder lets '
           'Slack-scale 3,000+ message channels stay on the O(1) bidirectional '
           '`Viewport(center:)` without forward-only slivers:\n\n'
           '```dart\n'
@@ -1882,13 +1887,13 @@ List<_SlackMessage> _buildInitialMessages() {
           '  itemCount: messages.length,\n'
           '  itemId: (i) => messages[i].id,\n'
           '  sectionId: (i) => messages[i].day,\n'
-          '  sectionHeaderBuilder: (context, day, isPinned) =>\n'
-          '      DayHeader(day: day, isPinned: isPinned),\n'
+          '  sectionHeaderBuilder: (context, details) =>\n'
+          '      DayHeader(day: details.section, sticky: details.isSticky),\n'
           '  itemBuilder: buildRow,\n'
           ')\n'
           '```\n\n'
-          '- `isPinned: false` renders the `1px` hairline rule + date pill\n'
-          '- `isPinned: true` floats only the transparent elevated pill on top',
+          '- `isSticky: false` renders the `1px` hairline rule + date pill\n'
+          '- `isSticky: true` floats only the transparent elevated pill on top',
       reactions: [
         const _SlackReaction(
           kind: _ReactionKind.rocket,
@@ -2139,7 +2144,7 @@ List<_SlackMessage> _buildInitialMessages() {
           '1. Fixed bookmarks bar right below the channel header\n'
           '2. `TurnScrollView<DateTime>.sectioned` on O(1) '
           '`Viewport(center:)`\n'
-          '3. `isPinned` date headers (hairline inline vs floating pill)\n'
+          '3. sticky date headers (hairline inline vs floating pill)\n'
           '4. `leadingSlivers` welcome banner + `0.0px`-shift top pagination\n'
           '5. Inline red `"New"` marker + floating `"10 new messages"` pill',
       reactions: [

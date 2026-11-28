@@ -321,10 +321,15 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                           ),
                         ),
                       ],
-                      sectionHeaderBuilder: (context, day, isPinned) =>
-                          _DatePillHeader(
-                            label: _formatDay(day),
-                            isPinned: isPinned,
+                      sectionHeaderBuilder: (context, details) =>
+                          // The sticky overlay repeats the covered inline
+                          // header, so hide that one.
+                          Visibility.maintain(
+                            visible: !details.isCovered,
+                            child: _DatePillHeader(
+                              label: _formatDay(details.section),
+                              isPinned: details.isSticky,
+                            ),
                           ),
                       itemBuilder: (context, index) {
                         final message = _messages[index];

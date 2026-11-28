@@ -2,8 +2,8 @@
 ///
 /// - [TurnScrollView] and [TurnScrollView.sectioned]: bidirectional
 ///   `Viewport(center:)` timeline with O(1) open at bottom or any
-///   `initialItemId`, `0.0px`-shift prepend pagination, single-pass
-///   [SliverTurnStage] turn pinning, and optional sticky section headers.
+///   `initialItemId`, `0.0px`-shift prepend pagination, turn pinning that
+///   reserves trailing space, and optional sticky section headers.
 /// - [CustomTurnScrollView] and [SliverTurnList]: forward-only sliver viewport
 ///   for arbitrary Flutter slivers (`SliverAppBar`, `SliverMainAxisGroup`,
 ///   `SliverPersistentHeader`) with offscreen `scrollTo` and `scrollToBottom`.

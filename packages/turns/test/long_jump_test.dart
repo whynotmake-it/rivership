@@ -31,8 +31,8 @@ void main() {
             itemId: (i) => 'm$i',
             sectionId: (i) => i ~/ 40,
             autoScrollMotion: const CupertinoMotion.smooth(),
-            sectionHeaderBuilder: (context, day, isPinned) =>
-                SizedBox(height: 28, child: Text('Day $day')),
+            sectionHeaderBuilder: (context, details) =>
+                SizedBox(height: 28, child: Text('Day ${details.section}')),
             itemBuilder: (context, i) {
               built.add(i);
               return SizedBox(
