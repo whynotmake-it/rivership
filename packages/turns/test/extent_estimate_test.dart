@@ -25,7 +25,8 @@ void main() {
       const spacing = 12.0;
       const bottomPadding = 20.0;
       final heights = [
-        for (var i = 0; i < count; i++) i < 100 ? 40.0 : 400.0 + i % 7 * 40,
+        for (var i = 0; i < count; i++)
+          if (i < 100) 40.0 else 400.0 + i % 7 * 40,
       ];
       await tester.pumpWidget(
         Directionality(
