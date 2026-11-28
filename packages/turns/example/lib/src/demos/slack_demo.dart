@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
+import 'package:turns_example/src/shell/turns_keyboard.dart';
 
 /// Slack-style channel demo showcasing [TurnScrollView.sectioned] across a
 /// 3,000-message O(1) timeline with `isSticky` section headers (hairline rule
@@ -161,6 +162,7 @@ class _SlackDemoState extends State<SlackDemo> {
   }
 
   void _handleSend(String text) {
+    dismissKeyboardOnMobile();
     final now = DateTime.now();
     final hour12 = now.hour % 12 == 0 ? 12 : now.hour % 12;
     final minute = now.minute.toString().padLeft(2, '0');
@@ -427,7 +429,14 @@ class _SlackDemoState extends State<SlackDemo> {
                   child: SafeArea(
                     top: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      // The composer sits below the channel, so lifting it
+                      // above the keyboard shortens the message list.
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        10,
+                        12,
+                        10 + keyboardInsetOf(context),
+                      ),
                       child: CoilInputMessage(
                         controller: _composerController,
                         placeholder: const Text(

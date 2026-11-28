@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:turns/turns.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
+import 'package:turns_example/src/shell/turns_keyboard.dart';
 
 /// A three-step onboarding built as one [CustomTurnScrollView], where each
 /// step is a different kind of sliver: a collapsing hero
@@ -139,6 +140,7 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
   void _send(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    dismissKeyboardOnMobile();
     final canned = _suggestions.where((s) => s.$1 == trimmed).firstOrNull;
     final id = 'me-${_turn++}';
     setState(() {
@@ -201,6 +203,7 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final gutter = math.max<double>(16, (constraints.maxWidth - 640) / 2);
+          final keyboard = keyboardInsetOf(context);
           return Stack(
             children: [
               CoilScrollArea(
@@ -217,7 +220,9 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
                   // sticky step header.
                   padding: EdgeInsets.only(
                     top: _heroMin + _stepHeader + 8,
-                    bottom: _bottomBarHeight + 16,
+                    // The bottom bar floats over the feed, above the
+                    // keyboard: keep both clear below the last message.
+                    bottom: keyboard + _bottomBarHeight + 16,
                   ),
                   slivers: _slivers(context, gutter),
                 ),
@@ -225,7 +230,7 @@ class _OnboardingDemoState extends State<OnboardingDemo> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
+                bottom: keyboard,
                 child: _MeasureHeight(
                   onHeight: (h) {
                     if ((h - _bottomBarHeight).abs() > 0.5) {

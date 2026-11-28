@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/scroll.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
+import 'package:turns_example/src/shell/turns_keyboard.dart';
 
 /// Interactive WhatsApp-style group chat demo showcasing
 /// `TurnScrollView<DateTime>.sectioned` with sticky push-up date pills,
@@ -201,6 +202,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
   void _sendMessage(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    dismissKeyboardOnMobile();
     _sentCounter++;
     final minute = 45 + (_sentCounter % 14);
     final next = _WaMessage(
@@ -271,6 +273,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
     final wallpaperMarkColor = colors.foreground.withValues(
       alpha: isDark ? 0.032 : 0.045,
     );
+    final keyboard = keyboardInsetOf(context);
 
     return ColoredBox(
       color: colors.background,
@@ -310,7 +313,9 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                         12,
                         10,
                         12,
-                        _composerHeight + 16,
+                        // The composer floats over the thread, above the
+                        // keyboard: keep both clear below the last message.
+                        keyboard + _composerHeight + 16,
                       ),
                       leadingSlivers: [
                         SliverToBoxAdapter(
@@ -357,7 +362,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                   ),
                   Positioned(
                     right: 16,
-                    bottom: _composerHeight + 14,
+                    bottom: keyboard + _composerHeight + 14,
                     child: ListenableBuilder(
                       listenable: Listenable.merge([
                         _controller.isAwayFromBottom,
@@ -375,7 +380,7 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: 0,
+                    bottom: keyboard,
                     child: _MeasureSize(
                       onChange: _onComposerSizeChanged,
                       child: _buildComposerBar(context, colors),

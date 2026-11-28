@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
+import 'package:turns_example/src/shell/turns_keyboard.dart';
 
 /// iMessage-style 1:1 thread over two years of history (about 1,900
 /// messages), built on [TurnScrollView.sectioned] with
@@ -234,6 +235,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
   void _handleSend(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    dismissKeyboardOnMobile();
     final seq = _nextOutgoingNumber++;
     final section = DateTime(2026, 5, 14, 14, 15);
     final newMsg = _IMessage(
@@ -341,6 +343,9 @@ class _IMessageDemoState extends State<IMessageDemo> {
                   12,
                   _composerHeight + 8 - safeBottom,
                 );
+                // The view keeps the keyboard clear below the thread by
+                // itself; the composer is lifted above it here.
+                final keyboard = keyboardInsetOf(context);
                 return Stack(
                   children: [
                     NotificationListener<TurnScrollNotification>(
@@ -433,7 +438,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: _composerHeight + 12,
+                      bottom: keyboard + _composerHeight + 12,
                       child: Center(
                         child: _IMessageJumpPill(
                           awayFromBottom: _controller.isAwayFromBottom,
@@ -445,7 +450,7 @@ class _IMessageDemoState extends State<IMessageDemo> {
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: 0,
+                      bottom: keyboard,
                       child: _IMessageHeightObserver(
                         onHeight: _onComposerHeight,
                         child: Column(

@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/turns.dart';
 import 'package:turns_example/src/shell/turns_action_strip.dart';
+import 'package:turns_example/src/shell/turns_keyboard.dart';
 import 'package:turns_example/src/shell/turns_playground.dart';
 
 /// AI assistant playground: a [TurnScrollView] transcript whose `pinnedId`
@@ -356,6 +357,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
   void _handleComposerSend(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    dismissKeyboardOnMobile();
     _startTurn(
       prompt: trimmed,
       steps: const [
@@ -562,6 +564,9 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                   16,
                   (constraints.maxWidth - 740) / 2,
                 );
+                // The view keeps the keyboard clear below the transcript by
+                // itself; the composer is lifted above it here.
+                final keyboard = keyboardInsetOf(context);
                 return Stack(
                   children: [
                     CoilScrollArea(
@@ -614,7 +619,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: _composerHeight + 14,
+                      bottom: keyboard + _composerHeight + 14,
                       child: Center(
                         child: _JumpToBottomButton(
                           buttonKey: const Key('ai.jump_bottom'),
@@ -627,7 +632,7 @@ class _AiAssistantDemoState extends State<AiAssistantDemo> {
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: 0,
+                      bottom: keyboard,
                       child: _HeightObserver(
                         onHeight: _onComposerHeight,
                         child: Column(
