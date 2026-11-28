@@ -1462,7 +1462,10 @@ class _StageOverlayState extends State<_StageOverlay> {
     if (parentData is! SliverPhysicalParentData) return null;
     // Where the stage's leading edge sits in the viewport, even when it has
     // scrolled partly off the top.
-    final top = parentData.paintOffset.dy - stage.constraints.scrollOffset;
+    final top =
+        parentData.paintOffset.dy -
+        stage.constraints.scrollOffset +
+        stage.anchorOffset;
     final origin = self.globalToLocal(viewport.localToGlobal(Offset(0, top)));
     final width = self.size.width;
     final content = stage.actualContentExtent;

@@ -22,4 +22,4 @@ export 'src/scroll/turn_scroll_controller.dart';
 export 'src/scroll/turn_scroll_motion.dart';
 export 'src/scroll/turn_scroll_notification.dart';
 export 'src/scroll/turn_scroll_view.dart';
-export 'src/scroll/turn_sliver.dart';
+export 'src/scroll/turn_sliver.dart' hide SliverTurnReserve;

@@ -55,7 +55,8 @@ void main() {
   setUp(_mounts.clear);
 
   testWidgets(
-    'item state survives a sectioned prepend and a mid-list insert',
+    'item state survives a sectioned prepend, a mid-list insert and a pin '
+    'being set and cleared',
     (tester) async {
       Widget view(
         List<String> ids, {
@@ -92,6 +93,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(_mounts['m22'], 1, reason: 'mid-list insert remounted m22');
       expect(_mounts['m24'], 1);
+
+      // Pinning and unpinning must not rebuild the prompt or the reply.
+      await _pump(tester, view(inserted, pinnedId: 'm22'));
+      await tester.pumpAndSettle();
+      await _pump(tester, view(inserted));
+      await tester.pumpAndSettle();
+      expect(_mounts['m22'], 1, reason: 'pin/unpin remounted the prompt');
+      expect(_mounts['m23'], 1, reason: 'pin/unpin remounted the reply');
     },
   );
 

@@ -318,6 +318,27 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     effectiveRight = safe.right + contentPadding.right;
   }
 
+  /// The mounted, laid-out box of item [id], or `null` when it is not
+  /// mounted (or only kept alive offscreen, where its offsets are stale).
+  RenderBox? mountedBoxFor(Object id) {
+    final box = mountedBoxes[id];
+    if (box == null ||
+        !box.attached ||
+        !box.hasSize ||
+        isKeptAliveOffscreen(box)) {
+      return null;
+    }
+    return box;
+  }
+
+  /// [mountedBoxFor] with the item's measured extent, for
+  /// [RenderSliverTurnStage.anchorBoxOf].
+  ({RenderBox box, double extent})? anchorFor(Object id) {
+    final box = mountedBoxFor(id);
+    final extent = extents[id];
+    return box == null || extent == null ? null : (box: box, extent: extent);
+  }
+
   /// Callback passed to [TurnScrollScope.onItemLayout].
   void onItemLayout(Object id, double extent, RenderBox box) {
     _extentSum += extent - (extents[id] ?? 0);

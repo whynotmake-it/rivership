@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 
 /// Registration handle connecting a `SliverTurnList` to its enclosing
 /// [TurnScrollScope] so offscreen `scrollTo` and exact `scrollToBottom` work
@@ -283,6 +284,83 @@ class SliverTurnStage extends MultiChildRenderObjectWidget {
   }
 }
 
+/// Resolves the mounted, laid-out box of the item with the given id and its
+/// measured main-axis extent, or `null` when it is not mounted.
+///
+/// The extent is passed along because a box's size may not be read from
+/// another object's layout.
+typedef TurnAnchorBoxResolver =
+    ({RenderBox box, double extent})? Function(Object id);
+
+/// Lays out the whole item list of a `TurnScrollView` (and its tail sliver) and
+/// reserves blank scroll extent after it, so the pinned turn can rest at its
+/// anchor position without anything moving.
+///
+/// Unlike [SliverTurnStage], the anchor is not a child: it is one of the items
+/// of the list inside [children], found through [anchorBoxOf]. Pinning or
+/// unpinning therefore never changes which sliver an item lives in, and no
+/// item is remounted.
+///
+/// The reserve is `max(0, minExtent - (contentEnd - anchorTop))`, where
+/// `minExtent` comes from [RenderSliverTurnStage.computeMinExtent]. It is
+/// computed in the same layout pass as the list. This is one sliver around
+/// the list, not a sibling after it, because a sibling is skipped when its own
+/// constraints are unchanged, even though the anchor moved or resized (for
+/// example one item growing while another shrinks). Layout dirtiness of the
+/// list propagates to its parent, so the reserve is always recomputed when
+/// the anchor can have changed.
+@internal
+class SliverTurnReserve extends MultiChildRenderObjectWidget {
+  /// Creates a reserve around [children] (the item list and an optional tail).
+  const SliverTurnReserve({
+    required super.children,
+    required this.anchorBoxOf,
+    this.anchorId,
+    this.anchorConfig = TurnAnchorConfig.standard,
+    super.key,
+  });
+
+  /// Identity of the pinned anchor item, or `null` when nothing is pinned
+  /// (nothing is reserved).
+  final Object? anchorId;
+
+  /// Finds the mounted box of the anchor item.
+  final TurnAnchorBoxResolver anchorBoxOf;
+
+  /// Where the anchor rests and how much room is kept below it.
+  final TurnAnchorConfig anchorConfig;
+
+  @override
+  RenderSliverTurnStage createRenderObject(BuildContext context) {
+    final scope = TurnScrollScope.maybeOf(context);
+    return RenderSliverTurnStage(
+      topClearance: scope?.topClearance ?? 0,
+      bottomClearance: scope?.bottomClearance ?? 0,
+      anchorConfig: anchorConfig,
+      anchorBoxOf: anchorBoxOf,
+      anchorId: anchorId,
+      onAttach: scope?.onTurnStageAttach,
+      onDetach: scope?.onTurnStageDetach,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderSliverTurnStage renderObject,
+  ) {
+    final scope = TurnScrollScope.maybeOf(context);
+    renderObject
+      ..topClearance = scope?.topClearance ?? 0
+      ..bottomClearance = scope?.bottomClearance ?? 0
+      ..anchorConfig = anchorConfig
+      ..anchorBoxOf = anchorBoxOf
+      ..anchorId = anchorId
+      ..onAttach = scope?.onTurnStageAttach
+      ..onDetach = scope?.onTurnStageDetach;
+  }
+}
+
 class _TurnSliverParentData extends SliverPhysicalParentData
     with ContainerParentDataMixin<RenderSliver> {
   double layoutOffset = 0;
@@ -300,9 +378,12 @@ class RenderSliverTurnStage extends RenderSliver
     TurnAnchorConfig anchorConfig = TurnAnchorConfig.standard,
     this.onAttach,
     this.onDetach,
+    this.anchorBoxOf,
+    Object? anchorId,
   }) : _topClearance = topClearance,
        _bottomClearance = bottomClearance,
-       _anchorConfig = anchorConfig;
+       _anchorConfig = anchorConfig,
+       _anchorId = anchorId;
 
   /// Computes the minimum reserved scroll extent for a turn stage given
   /// [usableExtent], [anchorExtent], and [anchorConfig].
@@ -357,10 +438,30 @@ class RenderSliverTurnStage extends RenderSliver
     markNeedsLayout();
   }
 
+  /// Finds the mounted box of the pinned item when this sliver wraps the item
+  /// list ([SliverTurnReserve]). When `null`, the first child is the anchor
+  /// ([SliverTurnStage]).
+  TurnAnchorBoxResolver? anchorBoxOf;
+
+  Object? _anchorId;
+
+  /// Identity of the anchor item when this sliver wraps the item list.
+  Object? get anchorId => _anchorId;
+
+  set anchorId(Object? value) {
+    if (_anchorId == value) return;
+    _anchorId = value;
+    _reserved = 0;
+    _anchorOffset = 0;
+    _actualContentExtent = 0;
+    _minExtent = 0;
+    markNeedsLayout();
+  }
+
   double _actualContentExtent = 0;
 
-  /// Last computed actual content height (anchor + after + tail) before
-  /// applying [minExtent].
+  /// Last computed height of the turn: from the anchor's top to the end of
+  /// the content, before applying [minExtent].
   double get actualContentExtent => _actualContentExtent;
 
   double _minExtent = 0;
@@ -368,9 +469,70 @@ class RenderSliverTurnStage extends RenderSliver
   /// Last computed reserved minimum extent for this turn.
   double get minExtent => _minExtent;
 
+  double _anchorOffset = 0;
+
+  /// Where the anchor's top sits from the leading edge of this sliver, in
+  /// scroll offset terms: `0` for a [SliverTurnStage], whose first child is
+  /// the anchor.
+  double get anchorOffset => _anchorOffset;
+
+  double _reserved = 0;
+
   /// Current trailing empty space reserved below the turn's content.
-  double get reservedTrailingSpace =>
-      math.max(0, _minExtent - _actualContentExtent);
+  ///
+  /// While the anchor is not mounted (scrolled far out of the cache) the last
+  /// value is kept.
+  double get reservedTrailingSpace => _reserved;
+
+  /// Measures the anchor item's top (from this sliver's leading edge) and
+  /// height, or `null` when it is not mounted and laid out.
+  ///
+  /// The top is the top of the item's own box, below any inline section
+  /// header that shares its list entry. Works in the same layout pass as the
+  /// list: the list is laid out before this is called.
+  ({double top, double height})? _measureAnchor() {
+    final id = _anchorId;
+    final resolve = anchorBoxOf;
+    if (id == null || resolve == null) return null;
+    final anchor = resolve(id);
+    if (anchor == null) return null;
+    final box = anchor.box;
+    if (!box.attached || !box.hasSize) return null;
+    RenderObject entry = box;
+    while (entry.parent != null && entry.parent is! RenderSliver) {
+      entry = entry.parent!;
+    }
+    final list = entry.parent;
+    final parentData = entry.parentData;
+    if (list is! RenderSliverMultiBoxAdaptor ||
+        parentData is! SliverMultiBoxAdaptorParentData ||
+        parentData.keptAlive ||
+        parentData.layoutOffset == null ||
+        entry is! RenderBox ||
+        !_isDescendantOfThis(list)) {
+      return null;
+    }
+    final inEntry = MatrixUtils.transformPoint(
+      box.getTransformTo(entry),
+      Offset.zero,
+    );
+    final within = constraints.axis == Axis.vertical ? inEntry.dy : inEntry.dx;
+    final top =
+        list.constraints.precedingScrollExtent +
+        parentData.layoutOffset! +
+        within -
+        constraints.precedingScrollExtent;
+    return (top: top, height: anchor.extent);
+  }
+
+  bool _isDescendantOfThis(RenderObject node) {
+    RenderObject? current = node;
+    while (current != null) {
+      if (identical(current, this)) return true;
+      current = current.parent;
+    }
+    return false;
+  }
 
   @override
   void attach(PipelineOwner owner) {
@@ -487,13 +649,33 @@ class RenderSliverTurnStage extends RenderSliver
       childIndex++;
     }
 
-    _actualContentExtent = offset;
-    _minExtent = computeMinExtent(
-      usableExtent: usable,
-      anchorExtent: anchorExtent,
-      anchorConfig: _anchorConfig,
-    );
-    final totalScrollExtent = math.max(_minExtent, _actualContentExtent);
+    if (anchorBoxOf == null) {
+      // The first child is the anchor and starts this sliver.
+      _anchorOffset = 0;
+      _actualContentExtent = offset;
+      _minExtent = computeMinExtent(
+        usableExtent: usable,
+        anchorExtent: anchorExtent,
+        anchorConfig: _anchorConfig,
+      );
+      _reserved = math.max(0, _minExtent - _actualContentExtent);
+    } else if (_anchorId == null) {
+      _anchorOffset = 0;
+      _actualContentExtent = offset;
+      _minExtent = 0;
+      _reserved = 0;
+    } else if (_measureAnchor() case final anchor?) {
+      _anchorOffset = anchor.top;
+      _actualContentExtent = offset - anchor.top;
+      _minExtent = computeMinExtent(
+        usableExtent: usable,
+        anchorExtent: anchor.height,
+        anchorConfig: _anchorConfig,
+      );
+      _reserved = math.max(0, _minExtent - _actualContentExtent);
+    }
+    // Otherwise the anchor is not mounted: the last reserve stays.
+    final totalScrollExtent = offset + _reserved;
 
     final paintExtent = math.min(
       calculatePaintOffset(constraints, from: 0, to: totalScrollExtent),

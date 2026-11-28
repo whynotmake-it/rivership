@@ -31,7 +31,8 @@ typedef TurnSectionHeaderBuilder<S> =
 ///
 /// Backed by a two-sliver `Viewport(center:)` for O(1) open at bottom or any
 /// [initialItemId], `0.0px`-shift prepend pagination with preserved widget
-/// `State`, and single-pass [SliverTurnStage] turn pinning.
+/// `State`, and turn pinning that reserves blank trailing space instead of
+/// moving items between slivers.
 ///
 /// Use the unnamed constructor for flat chronological lists, or
 /// [TurnScrollView.sectioned] for typed section headers (e.g. date dividers)
@@ -218,8 +219,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// Controls where a pinned anchor rests within the usable viewport and how
   /// much trailing space is preserved below tall anchors.
   ///
-  /// Forwarded to the internal [SliverTurnStage]. Defaults to
-  /// [TurnAnchorConfig.standard].
+  /// Defaults to [TurnAnchorConfig.standard].
   final TurnAnchorConfig anchorConfig;
 
   /// Motor spring used for automatic and programmatic scroll flights
@@ -283,12 +283,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   static const _glideViewports = 1.0;
 
   final _topKey = GlobalKey(debugLabel: 'TurnScrollView.top');
-  var _belowKey = GlobalKey(debugLabel: 'TurnScrollView.below');
+  final _belowKey = GlobalKey(debugLabel: 'TurnScrollView.below');
   var _belowListKey = GlobalKey(debugLabel: 'TurnScrollView.belowList');
-  final _afterListKey = GlobalKey(debugLabel: 'TurnScrollView.afterList');
 
-  /// Bumped (with fresh [_belowKey]/[_belowListKey]) to give both item lists
-  /// new render objects on a teleport.
+  /// Bumped (with a fresh [_belowListKey]) to give both item lists new render
+  /// objects on a teleport.
   ///
   /// `RenderSliverList` has no index-to-offset map: moving its scroll offset
   /// far from its current children lays out every child in between. Fresh
@@ -1024,20 +1023,24 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     );
   }
 
-  bool _sliverListReachedEnd(
-    GlobalKey listKey,
-    int childCount, {
-    bool requirePositiveExtent = false,
-  }) {
+  bool _sliverListReachedEnd(GlobalKey listKey, int childCount) {
     if (childCount <= 0) return true;
     final list = listKey.currentContext?.findRenderObject();
     if (list is! RenderSliverList) return false;
     final last = list.lastChild;
-    if (last == null || list.indexOf(last) != childCount - 1) return false;
-    if (requirePositiveExtent && (list.geometry?.scrollExtent ?? 0) <= 0) {
-      return false;
-    }
-    return true;
+    return last != null && list.indexOf(last) == childCount - 1;
+  }
+
+  int get _pinnedIndex =>
+      widget.pinnedId == null ? -1 : _indexOfId(widget.pinnedId!);
+
+  /// The center index, never past the pinned item (the anchor lives in the
+  /// forward list).
+  int _clampedCenterIndex(int pinnedIndex) {
+    final count = widget.itemCount;
+    return count == 0
+        ? 0
+        : _centerIndex.clamp(0, pinnedIndex >= 0 ? pinnedIndex : count - 1);
   }
 
   bool _hasExactBottomExtent() {
@@ -1051,42 +1054,15 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         isKeptAliveOffscreen(lastBox)) {
       return false;
     }
-
-    final pinnedIndex = widget.pinnedId == null
-        ? -1
-        : _indexOfId(widget.pinnedId!);
-    final centerIndex = _centerIndex.clamp(
-      0,
-      pinnedIndex >= 0 ? pinnedIndex : count - 1,
-    );
-    final belowPrePinEnd = pinnedIndex >= 0 ? pinnedIndex : count;
-    final belowPrePinCount = math.max(0, belowPrePinEnd - centerIndex);
-
-    if (!_sliverListReachedEnd(_belowListKey, belowPrePinCount)) return false;
-    if (pinnedIndex >= 0) {
-      final afterPinCount = math.max(0, count - pinnedIndex - 1);
-      if (!_sliverListReachedEnd(
-        _afterListKey,
-        afterPinCount,
-        requirePositiveExtent: true,
-      )) {
-        return false;
-      }
-    }
-    return true;
+    final centerIndex = _clampedCenterIndex(_pinnedIndex);
+    return _sliverListReachedEnd(_belowListKey, count - centerIndex);
   }
 
   double? _cachedBottomOffset(TurnScrollPosition pos) {
     final count = widget.itemCount;
     if (count == 0) return pos.minScrollExtent;
-    final pinnedIndex = widget.pinnedId == null
-        ? -1
-        : _indexOfId(widget.pinnedId!);
-    final centerIndex = _centerIndex.clamp(
-      0,
-      pinnedIndex >= 0 ? pinnedIndex : count - 1,
-    );
-    final belowPrePinEnd = pinnedIndex >= 0 ? pinnedIndex : count;
+    final pinnedIndex = _pinnedIndex;
+    final centerIndex = _clampedCenterIndex(pinnedIndex);
     final spacing = widget.itemSpacing;
 
     double? sectionExtra(int index) {
@@ -1097,37 +1073,31 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     }
 
     var total = centerIndex == 0 ? _topSpacer + _leadingSliversExtent() : 0.0;
-    for (var i = centerIndex; i < belowPrePinEnd; i++) {
+    double? anchorTop;
+    double? anchorHeight;
+    for (var i = centerIndex; i < count; i++) {
       final h = extents[widget.itemId(i)];
       final sh = sectionExtra(i);
       if (h == null || sh == null) return null;
-      final isLastBeforePin = pinnedIndex >= 0 && i == pinnedIndex - 1;
-      final hasNext = i < belowPrePinEnd - 1 || isLastBeforePin;
-      total += sh + h + (hasNext ? spacing : 0);
+      total += sh;
+      if (i == pinnedIndex) {
+        anchorTop = total;
+        anchorHeight = h;
+      }
+      total += h + (i < count - 1 ? spacing : 0);
     }
 
-    if (pinnedIndex >= 0) {
-      final pinSectionH = sectionExtra(pinnedIndex);
-      final anchorH = extents[widget.itemId(pinnedIndex)];
-      if (pinSectionH == null || anchorH == null) return null;
-      total += pinSectionH;
-      var actualTurn = anchorH;
-      for (var i = pinnedIndex + 1; i < count; i++) {
-        final h = extents[widget.itemId(i)];
-        final sh = sectionExtra(i);
-        if (h == null || sh == null) return null;
-        actualTurn += spacing + sh + h;
-      }
+    if (anchorTop != null && anchorHeight != null) {
       final usable = math.max<double>(
         0,
         pos.viewportDimension - effectiveTop - effectiveBottom,
       );
       final minTurn = RenderSliverTurnStage.computeMinExtent(
         usableExtent: usable,
-        anchorExtent: anchorH,
+        anchorExtent: anchorHeight,
         anchorConfig: widget.anchorConfig,
       );
-      total += math.max(minTurn, actualTurn);
+      total = math.max(total, anchorTop + minTurn);
     }
 
     total += _bottomSpacer;
@@ -1138,7 +1108,6 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   /// instead of walking from the old children. Call inside `setState`.
   void _resetItemLists() {
     _listGeneration++;
-    _belowKey = GlobalKey(debugLabel: 'TurnScrollView.below');
     _belowListKey = GlobalKey(debugLabel: 'TurnScrollView.belowList');
   }
 
@@ -1208,9 +1177,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       return true;
     }
 
-    final pinnedIndex = widget.pinnedId == null
-        ? -1
-        : _indexOfId(widget.pinnedId!);
+    final pinnedIndex = _pinnedIndex;
     final nextCenter = pinnedIndex >= 0
         ? math.min(targetIndex, pinnedIndex)
         : targetIndex;
@@ -1451,9 +1418,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   Widget _buildObservedItem(
     BuildContext context,
     int index, {
-    required double topGap,
     required double bottomGap,
-    bool includeInlineHeader = true,
   }) {
     final id = widget.itemId(index);
     _indexHints[id] = index;
@@ -1462,7 +1427,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       child: widget.itemBuilder(context, index),
     );
     if (widget._isSectioned) {
-      final hasHeader = includeInlineHeader && _isSectionStart(index);
+      final hasHeader = _isSectionStart(index);
       child = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1484,7 +1449,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     return KeyedSubtree(
       key: ValueKey(id),
       child: Padding(
-        padding: EdgeInsets.only(top: topGap, bottom: bottomGap),
+        padding: EdgeInsets.only(bottom: bottomGap),
         child: child,
       ),
     );
@@ -1496,21 +1461,10 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       right: effectiveRight,
     );
     final count = widget.itemCount;
-    final pinnedIndex = widget.pinnedId == null
-        ? -1
-        : _indexOfId(widget.pinnedId!);
-    final centerIndex = count == 0
-        ? 0
-        : _centerIndex.clamp(
-            0,
-            pinnedIndex >= 0 ? pinnedIndex : count - 1,
-          );
+    final pinnedIndex = _pinnedIndex;
+    final centerIndex = _clampedCenterIndex(pinnedIndex);
     final aboveCount = centerIndex;
-    final belowPrePinEnd = pinnedIndex >= 0 ? pinnedIndex : count;
-    final belowPrePinCount = math.max(0, belowPrePinEnd - centerIndex);
-    final afterPinCount = pinnedIndex >= 0
-        ? math.max(0, count - pinnedIndex - 1)
-        : 0;
+    final belowCount = count - centerIndex;
 
     final spacing = widget.itemSpacing;
     final topSpacer = _topSpacer;
@@ -1526,8 +1480,6 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final leading = hasAbove
         ? widget.leadingSlivers.reversed
         : widget.leadingSlivers;
-    final pinnedHasInlineHeader =
-        pinnedIndex >= 0 && _isSectionStart(pinnedIndex);
 
     final slivers = <Widget>[
       SliverToBoxAdapter(
@@ -1554,7 +1506,6 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
               return _buildObservedItem(
                 context,
                 index,
-                topGap: 0,
                 bottomGap: spacing,
               );
             },
@@ -1563,108 +1514,46 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         ),
       ),
 
-      SliverPadding(
+      // Always the whole forward list, pinned or not, so pinning and unpinning
+      // never move an item to another sliver (which would remount it). The
+      // reserve after the list is what a pinned turn rests in.
+      SliverTurnReserve(
         key: _belowKey,
-        padding: horizontal,
-        sliver: SliverList(
-          key: _belowListKey,
-          delegate: TurnChildDelegate(
-            slotExtent: _slotExtent,
-            findChildIndexCallback: (key) {
-              final index = _indexOfKey(key);
-              if (index == null) return null;
-              final local = index - centerIndex;
-              return local >= 0 && local < belowPrePinCount ? local : null;
-            },
-            (context, localIndex) {
-              final index = centerIndex + localIndex;
-              final isLastBeforePin =
-                  pinnedIndex >= 0 && index == pinnedIndex - 1;
-              final hasNext = index < belowPrePinEnd - 1 || isLastBeforePin;
-              return _buildObservedItem(
-                context,
-                index,
-                topGap: 0,
-                bottomGap: hasNext ? spacing : 0,
-              );
-            },
-            childCount: belowPrePinCount,
-          ),
-        ),
-      ),
-
-      if (pinnedHasInlineHeader)
-        SliverPadding(
-          padding: EdgeInsets.only(
-            left: effectiveLeft,
-            right: effectiveRight,
-            bottom: widget.sectionHeaderSpacing,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: Builder(
-              builder: (context) => _buildInlineHeader(
-                context,
-                pinnedIndex,
-                widget.itemId(pinnedIndex),
-              ),
-            ),
-          ),
-        ),
-
-      if (pinnedIndex >= 0)
-        SliverTurnStage(
-          anchorConfig: widget.anchorConfig,
-          anchorSliver: SliverPadding(
-            padding: horizontal,
-            sliver: SliverToBoxAdapter(
-              child: Builder(
-                builder: (context) => _buildObservedItem(
-                  context,
-                  pinnedIndex,
-                  topGap: 0,
-                  bottomGap: 0,
-                  includeInlineHeader: false,
-                ),
-              ),
-            ),
-          ),
-          afterSliver: SliverPadding(
+        anchorId: pinnedIndex >= 0 ? widget.pinnedId : null,
+        anchorBoxOf: anchorFor,
+        anchorConfig: widget.anchorConfig,
+        children: [
+          SliverPadding(
             padding: horizontal,
             sliver: SliverList(
-              key: _afterListKey,
+              key: _belowListKey,
               delegate: TurnChildDelegate(
                 slotExtent: _slotExtent,
                 findChildIndexCallback: (key) {
                   final index = _indexOfKey(key);
                   if (index == null) return null;
-                  final local = index - pinnedIndex - 1;
-                  return local >= 0 && local < afterPinCount ? local : null;
+                  final local = index - centerIndex;
+                  return local >= 0 && local < belowCount ? local : null;
                 },
                 (context, localIndex) {
-                  final index = pinnedIndex + 1 + localIndex;
+                  final index = centerIndex + localIndex;
                   return _buildObservedItem(
                     context,
                     index,
-                    topGap: spacing,
-                    bottomGap: 0,
+                    bottomGap: index < count - 1 ? spacing : 0,
                   );
                 },
-                childCount: afterPinCount,
+                childCount: belowCount,
               ),
             ),
           ),
-          tailSliver: widget.tailSliver == null
-              ? null
-              : SliverPadding(
-                  padding: horizontal,
-                  sliver: widget.tailSliver,
-                ),
-        )
-      else if (widget.tailSliver != null)
-        SliverPadding(
-          padding: horizontal,
-          sliver: widget.tailSliver,
-        ),
+          if (widget.tailSliver != null)
+            SliverPadding(
+              padding: horizontal,
+              sliver: widget.tailSliver,
+            ),
+        ],
+      ),
 
       if (bottomSpacer > 0)
         SliverToBoxAdapter(child: SizedBox(height: bottomSpacer)),
