@@ -34,6 +34,7 @@ class CustomTurnScrollView extends StatefulWidget {
     this.autoScrollMotion,
     this.physics,
     this.scrollCacheExtent,
+    this.followBottom = false,
   });
 
   /// Slivers placed inside the viewport.
@@ -99,6 +100,13 @@ class CustomTurnScrollView extends StatefulWidget {
   /// Optional viewport cache extent.
   final ScrollCacheExtent? scrollCacheExtent;
 
+  /// Whether the view stays at the bottom when the user is at the bottom and
+  /// the content grows or shrinks.
+  ///
+  /// Any scroll by the user releases it; coming to rest at the bottom again
+  /// re-arms it. Defaults to `false`.
+  final bool followBottom;
+
   @override
   State<CustomTurnScrollView> createState() => CustomTurnScrollViewState();
 }
@@ -120,6 +128,12 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   Object? get widgetPinnedId => widget.pinnedId;
 
   @override
+  bool get widgetFollowBottom => widget.followBottom;
+
+  @override
+  int get maxBottomSettlePasses => _maxInitialPasses;
+
+  @override
   double get widgetJumpThreshold => widget.jumpThreshold;
 
   @override
@@ -131,8 +145,9 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   @override
   void initState() {
     super.initState();
-    needsInitialBottomJump = widget.initialAtBottom && widget.pinnedId == null;
-    initialBottomPasses = 0;
+    if (widget.initialAtBottom && widget.pinnedId == null) {
+      setAnchor(BottomAnchor(settling: true), sync: false);
+    }
     initEngine();
   }
 
@@ -141,6 +156,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     super.didUpdateWidget(oldWidget);
     updateEngineController(oldWidget.controller);
     updateEnginePinnedId(oldWidget.pinnedId);
+    updateEngineFollowBottom(wasFollowing: oldWidget.followBottom);
   }
 
   @override
@@ -160,7 +176,8 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     _registeredLists.remove(list);
   }
 
-  bool _hasExactBottomExtent() {
+  @override
+  bool hasExactBottomExtent() {
     final turnStage = activeTurnStage;
     if (turnStage != null &&
         turnStage.attached &&
@@ -290,37 +307,6 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
   }
 
   @override
-  double? adjustPixelsOnDimensions({
-    required double pixels,
-    required double minScrollExtent,
-    required double maxScrollExtent,
-    required double viewportDimension,
-  }) {
-    final usableBottom = viewportDimension - effectiveBottom;
-    final prevUsableBottom = lastUsableBottom;
-    lastUsableBottom = usableBottom;
-
-    if (needsInitialBottomJump) {
-      initialBottomPasses++;
-      if (_hasExactBottomExtent() ||
-          maxScrollExtent <= minScrollExtent ||
-          initialBottomPasses >= _maxInitialPasses) {
-        needsInitialBottomJump = false;
-      }
-      return maxScrollExtent;
-    }
-
-    return applyBottomEdgeDelta(
-      nextPixels: pixels,
-      shifted: false,
-      prevUsableBottom: prevUsableBottom,
-      usableBottom: usableBottom,
-      minScrollExtent: minScrollExtent,
-      maxScrollExtent: maxScrollExtent,
-    );
-  }
-
-  @override
   Future<bool> scrollToBottom({required bool animate, Motion? motion}) async {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions) return false;
@@ -330,7 +316,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
     final shouldAnimate = animate && !MediaQuery.disableAnimationsOf(context);
     final flightMotion = motion ?? resolvedMotion;
 
-    if (_hasExactBottomExtent() &&
+    if (hasExactBottomExtent() &&
         (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
       syncAutoScrolling();
       return true;
@@ -344,12 +330,12 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
           if ((pos.maxScrollExtent - pos.pixels).abs() > 0.5) {
             programmaticJumpTo(pos, pos.maxScrollExtent);
           }
-          if (_hasExactBottomExtent()) return true;
+          if (hasExactBottomExtent()) return true;
           await nextFrame();
           if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
             return false;
           }
-          if (_hasExactBottomExtent() &&
+          if (hasExactBottomExtent() &&
               (pos.maxScrollExtent - pos.pixels).abs() <= 0.5) {
             return true;
           }
@@ -361,9 +347,11 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
         return mounted && epoch == navEpoch;
       }
 
-      double? frozenTarget;
-      if (_hasExactBottomExtent()) {
-        frozenTarget = pos.maxScrollExtent;
+      // Freeze where the content ends, not the offset, so a bottom inset that
+      // is still growing counts when the flight lands.
+      double? frozenContentEnd;
+      if (hasExactBottomExtent()) {
+        frozenContentEnd = contentEndOf(pos);
       }
 
       for (var pass = 0; pass < _maxConvergencePasses; pass++) {
@@ -374,9 +362,11 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
             if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
               return null;
             }
-            if (frozenTarget != null) return frozenTarget;
-            if (_hasExactBottomExtent()) {
-              return frozenTarget = pos.maxScrollExtent;
+            if (frozenContentEnd == null && hasExactBottomExtent()) {
+              frozenContentEnd = contentEndOf(pos);
+            }
+            if (frozenContentEnd case final end?) {
+              return bottomOffsetFor(pos, end);
             }
             return pos.maxScrollExtent;
           },
@@ -387,7 +377,7 @@ class CustomTurnScrollViewState extends State<CustomTurnScrollView>
             !pos.hasContentDimensions) {
           return false;
         }
-        if (frozenTarget != null || _hasExactBottomExtent()) return true;
+        if (frozenContentEnd != null || hasExactBottomExtent()) return true;
         final prevMax = pos.maxScrollExtent;
         await nextFrame();
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {

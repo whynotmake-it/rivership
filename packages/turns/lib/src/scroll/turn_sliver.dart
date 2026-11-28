@@ -476,6 +476,12 @@ class RenderSliverTurnStage extends RenderSliver
   /// the anchor.
   double get anchorOffset => _anchorOffset;
 
+  var _anchorMeasured = false;
+
+  /// Whether the anchor was mounted and measured in the last layout, so
+  /// [anchorOffset] is current.
+  bool get anchorMeasured => _anchorMeasured;
+
   double _reserved = 0;
 
   /// Current trailing empty space reserved below the turn's content.
@@ -649,6 +655,7 @@ class RenderSliverTurnStage extends RenderSliver
       childIndex++;
     }
 
+    _anchorMeasured = false;
     if (anchorBoxOf == null) {
       // The first child is the anchor and starts this sliver.
       _anchorOffset = 0;
@@ -665,6 +672,7 @@ class RenderSliverTurnStage extends RenderSliver
       _minExtent = 0;
       _reserved = 0;
     } else if (_measureAnchor() case final anchor?) {
+      _anchorMeasured = true;
       _anchorOffset = anchor.top;
       _actualContentExtent = offset - anchor.top;
       _minExtent = computeMinExtent(

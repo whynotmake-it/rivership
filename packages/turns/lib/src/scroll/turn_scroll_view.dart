@@ -65,6 +65,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.autoScrollMotion,
     this.physics,
     this.scrollCacheExtent,
+    this.followBottom = false,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
        sectionId = null,
@@ -112,6 +113,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     this.autoScrollMotion,
     this.physics,
     this.scrollCacheExtent,
+    this.followBottom = false,
   }) : assert(itemCount >= 0, 'itemCount must be non-negative'),
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
        assert(
@@ -236,6 +238,14 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// Optional viewport cache extent.
   final ScrollCacheExtent? scrollCacheExtent;
 
+  /// Whether the view stays at the bottom when the user is at the bottom and
+  /// the content grows (a new item, an embed finishing loading) or shrinks.
+  ///
+  /// Any scroll by the user releases it; coming to rest at the bottom again
+  /// re-arms it. Defaults to `false`: content that grows at the bottom then
+  /// leaves the offset alone, which is what [pinnedId] relies on.
+  final bool followBottom;
+
   bool get _isSectioned => sectionId != null && sectionHeaderBuilder != null;
 
   @override
@@ -332,16 +342,17 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   /// yet when computing center shifts or split-0 coordinate estimates.
   double _lastLeadingExtent = 0;
 
-  /// One-shot synchronous pixel offset applied on recenter
-  /// (`scrollTo(animate: false)`).
-  double? _pendingInstantOffset;
-  ({Object id, double alignment})? _pendingInitialAlign;
-
   @override
   TurnScrollController? get widgetController => widget.controller;
 
   @override
   Object? get widgetPinnedId => widget.pinnedId;
+
+  @override
+  bool get widgetFollowBottom => widget.followBottom;
+
+  @override
+  int get maxBottomSettlePasses => _maxInitialPasses;
 
   @override
   double get widgetJumpThreshold => widget.jumpThreshold;
@@ -393,10 +404,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     updateEngineController(oldWidget.controller);
     _syncStickyListener();
     _reconcileCenter(oldWidget);
-    updateEnginePinnedId(
-      oldWidget.pinnedId,
-      onPinActivated: () => _pendingInitialAlign = null,
-    );
+    updateEnginePinnedId(oldWidget.pinnedId);
+    updateEngineFollowBottom(wasFollowing: oldWidget.followBottom);
     syncAutoScrolling();
     if (_hasStickyHeaders) {
       if (widget.itemCount == 0) {
@@ -682,23 +691,18 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 
   void _initCenter({required bool initial}) {
     _pendingCenterShift = 0;
-    _pendingInstantOffset = null;
-    _pendingInitialAlign = null;
-    initialBottomPasses = 0;
+    _releaseUnlessPinned();
 
     final count = widget.itemCount;
     if (count == 0) {
       _centerIndex = 0;
       _centerItemId = null;
       _builtWithAbove = false;
-      needsInitialBottomJump = false;
       lastUsableBottom = null;
       return;
     }
 
-    final pinnedIndex = widget.pinnedId == null
-        ? -1
-        : _indexOfId(widget.pinnedId!);
+    final pinnedIndex = _pinnedIndex;
     final initialIndex =
         initial && pinnedIndex < 0 && widget.initialItemId != null
         ? _indexOfId(widget.initialItemId!)
@@ -719,20 +723,19 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     _builtWithAbove = index > 0;
 
     if (initialIndex >= 0) {
-      needsInitialBottomJump = false;
-      _pendingInitialAlign = (
-        id: widget.initialItemId!,
-        alignment: widget.initialAlignment.clamp(0, 1),
+      final target = ItemAnchor(
+        widget.initialItemId!,
+        widget.initialAlignment.clamp(0, 1),
       );
+      setAnchor(target, sync: false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _pendingInitialAlign == null) return;
-        final align = _pendingInitialAlign!;
-        _pendingInitialAlign = null;
+        if (!mounted || !identical(anchor, target)) return;
+        setAnchor(const FreeAnchor());
         final pos = turnPosition;
         if (pos == null || !pos.hasContentDimensions) return;
         final exact = exactOffsetFor(
-          align.id,
-          alignment: align.alignment,
+          target.id,
+          alignment: target.alignment,
           minScrollExtent: pos.minScrollExtent,
           maxScrollExtent: pos.maxScrollExtent,
           viewportDimension: pos.viewportDimension,
@@ -742,10 +745,15 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         }
         if (_hasStickyHeaders) _syncStickyHeader();
       });
-    } else {
-      needsInitialBottomJump =
-          initial && widget.initialAtBottom && pinnedIndex < 0;
+    } else if (initial && widget.initialAtBottom && pinnedIndex < 0) {
+      setAnchor(BottomAnchor(settling: true), sync: false);
     }
+  }
+
+  /// Drops whatever the view was holding on to, except a pin (which belongs to
+  /// `pinnedId`, not to the thread).
+  void _releaseUnlessPinned() {
+    if (anchor is! PinAnchor) setAnchor(const FreeAnchor(), sync: false);
   }
 
   void _reconcileCenter(TurnScrollView<S> oldWidget) {
@@ -846,13 +854,6 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 
   double _estimatedExtentOf(int index) =>
       extents[widget.itemId(index)] ?? meanExtent;
-
-  @override
-  void resetAutoScrollState() {
-    super.resetAutoScrollState();
-    _pendingInstantOffset = null;
-    _pendingInitialAlign = null;
-  }
 
   @override
   void onMetricsChanged(double pixels, double maxScrollExtent) {
@@ -957,70 +958,34 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   }
 
   @override
-  double? adjustPixelsOnDimensions({
-    required double pixels,
+  double takePendingCenterShift() {
+    final shift = _pendingCenterShift;
+    _pendingCenterShift = 0;
+    return shift;
+  }
+
+  @override
+  double? resolveItemAnchor(
+    ItemAnchor anchor, {
     required double minScrollExtent,
     required double maxScrollExtent,
     required double viewportDimension,
   }) {
-    final usableBottom = viewportDimension - effectiveBottom;
-    final prevUsableBottom = lastUsableBottom;
-    lastUsableBottom = usableBottom;
-
-    if (_pendingInitialAlign case final align?) {
-      final idx = _indexOfId(align.id);
-      if (idx >= 0) {
-        final target = _estimatedOffsetFor(
-          idx,
-          alignment: align.alignment,
-          minScrollExtent: minScrollExtent,
-          maxScrollExtent: maxScrollExtent,
-          viewportDimension: viewportDimension,
-        );
-        if (align.alignment == 0 &&
-            !_isSectionStart(idx) &&
-            !_hasStickyHeaders) {
-          _pendingInitialAlign = null;
-        }
-        _pendingCenterShift = 0;
-        return target;
-      }
-      _pendingInitialAlign = null;
-    }
-
-    if (_pendingInstantOffset case final offset?) {
-      _pendingInstantOffset = null;
-      _pendingCenterShift = 0;
-      return offset;
-    }
-
-    if (needsInitialBottomJump) {
-      initialBottomPasses++;
-      if (_hasExactBottomExtent() ||
-          maxScrollExtent <= minScrollExtent ||
-          initialBottomPasses >= _maxInitialPasses) {
-        needsInitialBottomJump = false;
-      }
-      _pendingCenterShift = 0;
-      return maxScrollExtent;
-    }
-
-    var nextPixels = pixels;
-    var shifted = false;
-    if (_pendingCenterShift != 0) {
-      nextPixels += _pendingCenterShift;
-      _pendingCenterShift = 0;
-      shifted = true;
-    }
-
-    return applyBottomEdgeDelta(
-      nextPixels: nextPixels,
-      shifted: shifted,
-      prevUsableBottom: prevUsableBottom,
-      usableBottom: usableBottom,
+    final idx = _indexOfId(anchor.id, hint: _indexHints[anchor.id]);
+    if (idx < 0) return null;
+    final target = _estimatedOffsetFor(
+      idx,
+      alignment: anchor.alignment,
       minScrollExtent: minScrollExtent,
       maxScrollExtent: maxScrollExtent,
+      viewportDimension: viewportDimension,
     );
+    // An item at the top that has no header above it is placed exactly by the
+    // first estimate: nothing left to measure.
+    if (anchor.alignment == 0 && !_isSectionStart(idx) && !_hasStickyHeaders) {
+      setAnchor(const FreeAnchor(), sync: false);
+    }
+    return target;
   }
 
   bool _sliverListReachedEnd(GlobalKey listKey, int childCount) {
@@ -1043,7 +1008,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         : _centerIndex.clamp(0, pinnedIndex >= 0 ? pinnedIndex : count - 1);
   }
 
-  bool _hasExactBottomExtent() {
+  @override
+  bool hasExactBottomExtent() {
     final count = widget.itemCount;
     if (count == 0) return true;
     final lastId = widget.itemId(count - 1);
@@ -1128,7 +1094,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   ///
   /// Cost is O(viewport) layout however far away the bottom is.
   Future<bool> _jumpToBottom(TurnScrollPosition pos, int epoch) async {
-    if (_hasExactBottomExtent()) {
+    if (hasExactBottomExtent()) {
       programmaticJumpTo(pos, pos.maxScrollExtent);
       return true;
     }
@@ -1142,8 +1108,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       _centerItemId = widget.itemId(nextCenter);
       _builtWithAbove = nextCenter > 0;
       _pendingCenterShift = 0;
-      needsInitialBottomJump = true;
-      initialBottomPasses = 0;
+      setAnchor(BottomAnchor(settling: true), sync: false);
     });
     syncAutoScrolling();
     await nextFrame();
@@ -1191,6 +1156,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       clamp: false,
     );
 
+    final target = ItemAnchor(itemId, alignment);
     pos.correctPixels(initialOffset);
     setState(() {
       _resetItemLists();
@@ -1198,7 +1164,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       _centerItemId = widget.itemId(nextCenter);
       _builtWithAbove = nextCenter > 0;
       _pendingCenterShift = 0;
-      _pendingInstantOffset = initialOffset;
+      setAnchor(target, sync: false);
     });
     await nextFrame();
     if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
@@ -1224,7 +1190,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     } else {
       syncAutoScrolling();
     }
-    _pendingInstantOffset = null;
+    if (identical(anchor, target)) setAnchor(const FreeAnchor());
     return mounted && epoch == navEpoch;
   }
 
@@ -1257,7 +1223,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     if (!shouldAnimate) return _jumpToBottom(pos, epoch);
 
     final travel = pos.maxScrollExtent - pos.pixels;
-    if (!_hasExactBottomExtent() && _isLongFlight(pos, travel)) {
+    if (!hasExactBottomExtent() && _isLongFlight(pos, travel)) {
       beginNavigation(epoch);
       final landed = await _jumpToBottom(pos, epoch);
       if (!landed) {
@@ -1267,9 +1233,12 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       _backOffForGlide(pos, travel);
     }
 
-    double? frozenTarget;
-    if (_hasExactBottomExtent()) {
-      frozenTarget = pos.maxScrollExtent;
+    // Freeze where the content ends, not the offset: the bottom inset may
+    // still be growing (a keyboard opening) and must count when it lands. A
+    // frozen end also keeps a streaming reply from being chased.
+    double? frozenContentEnd;
+    if (hasExactBottomExtent()) {
+      frozenContentEnd = contentEndOf(pos);
     }
 
     final future = pos.animateToTarget(
@@ -1279,9 +1248,11 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         if (!mounted || epoch != navEpoch || !pos.hasContentDimensions) {
           return null;
         }
-        if (frozenTarget != null) return frozenTarget;
-        if (_hasExactBottomExtent()) {
-          return frozenTarget = pos.maxScrollExtent;
+        if (frozenContentEnd == null && hasExactBottomExtent()) {
+          frozenContentEnd = contentEndOf(pos);
+        }
+        if (frozenContentEnd case final end?) {
+          return bottomOffsetFor(pos, end);
         }
         return _cachedBottomOffset(pos) ?? pos.maxScrollExtent;
       },

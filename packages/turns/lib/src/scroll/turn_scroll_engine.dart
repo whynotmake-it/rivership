@@ -3,11 +3,79 @@ import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 import 'package:motor/motor.dart';
 import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_motion.dart';
 import 'package:turns/src/scroll/turn_scroll_notification.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
+
+/// What the scroll position is holding on to while content and insets change.
+///
+/// One of these is current at a time (see [TurnScrollEngineMixin.anchor]) and
+/// is resolved in one place, [TurnScrollEngineMixin.adjustPixelsOnDimensions],
+/// every time the scrollable's dimensions are applied.
+@internal
+sealed class TurnViewAnchor {
+  const TurnViewAnchor();
+}
+
+/// Nothing is held: the offset stays where the user left it, apart from
+/// keeping content glued above a moving bottom inset.
+@internal
+final class FreeAnchor extends TurnViewAnchor {
+  /// Creates the free anchor.
+  const FreeAnchor();
+}
+
+/// The bottom: the offset follows `maxScrollExtent`.
+///
+/// While [settling] (the first layout, or after a teleport) the extent is
+/// still being measured, so the view jumps to the bottom for a few passes
+/// until it is exact. Afterwards the anchor is dropped, or, when the view
+/// follows the bottom, kept so growth at the bottom stays in view.
+@internal
+final class BottomAnchor extends TurnViewAnchor {
+  /// Creates a bottom anchor.
+  BottomAnchor({required this.settling});
+
+  /// Whether the bottom extent is still being measured.
+  bool settling;
+
+  /// Number of passes spent settling.
+  int passes = 0;
+}
+
+/// A pinned turn: its prompt flies to the anchor position once, then stays
+/// there while earlier content changes, until the user scrolls.
+@internal
+final class PinAnchor extends TurnViewAnchor {
+  /// Creates a pin anchor for the item [id].
+  PinAnchor(this.id);
+
+  /// Identity of the pinned item.
+  final Object id;
+
+  /// Whether the flight to the anchor position has not started yet.
+  bool flightPending = true;
+
+  /// Number of times the flight was postponed for lack of dimensions.
+  int retries = 0;
+}
+
+/// An item at an alignment in the usable viewport, kept until the view has
+/// measured enough to place it exactly (an initial open, or after a teleport).
+@internal
+final class ItemAnchor extends TurnViewAnchor {
+  /// Creates an item anchor.
+  const ItemAnchor(this.id, this.alignment);
+
+  /// Identity of the item.
+  final Object id;
+
+  /// Usable-viewport alignment, `0.0` top to `1.0` bottom.
+  final double alignment;
+}
 
 /// Shared scroll engine mixin backing `TurnScrollView` and
 /// `CustomTurnScrollView` so controller lifecycle, Motor spring pinning,
@@ -44,6 +112,23 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   /// Optional content padding.
   EdgeInsetsGeometry? get widgetPadding;
 
+  /// Whether the bottom extent is exact: the last item is laid out, so
+  /// `maxScrollExtent` no longer depends on estimates.
+  bool hasExactBottomExtent();
+
+  /// Where an [ItemAnchor] wants the offset to be, or `null` when the item is
+  /// unknown (the anchor is then dropped).
+  double? resolveItemAnchor(
+    ItemAnchor anchor, {
+    required double minScrollExtent,
+    required double maxScrollExtent,
+    required double viewportDimension,
+  }) => null;
+
+  /// Pixels to add to the offset because the viewport's center moved (taken,
+  /// so it applies once).
+  double takePendingCenterShift() => 0;
+
   /// Whether [id] can currently be pinned by this view.
   bool canPinId(Object id) => true;
 
@@ -60,26 +145,36 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   /// Currently attached item render boxes.
   final mountedBoxes = <Object, RenderBox>{};
 
+  TurnViewAnchor _anchor = const FreeAnchor();
+
+  /// What the view is currently holding on to.
+  TurnViewAnchor get anchor => _anchor;
+
+  /// Replaces the current [anchor].
+  void setAnchor(TurnViewAnchor next, {bool sync = true}) {
+    _anchor = next;
+    if (!sync) return;
+    turnController.updatePinActive(active: next is PinAnchor);
+    syncAutoScrolling();
+  }
+
   /// Whether the current [widgetPinnedId] still owns auto-pinning (cleared
   /// immediately on any user scroll).
-  bool pinnedActive = false;
+  bool get pinnedActive => _anchor is PinAnchor;
 
-  /// Pending pin animation queued for after the new pinned item's first layout.
-  bool pendingPinScroll = false;
-
-  /// Monotonic counter invalidating superseded post-frame pin callbacks.
-  int pinEpoch = 0;
-  var _pinRetries = 0;
+  /// Whether the view keeps the bottom in view as content grows while the
+  /// user is at the bottom.
+  bool get widgetFollowBottom;
 
   /// Monotonic counter invalidating in-flight async navigation coroutines.
   int navEpoch = 0;
   int? _activeNavigationEpoch;
 
-  /// Whether the first layout should open scrolled to the bottom.
-  bool needsInitialBottomJump = false;
+  /// How many passes a bottom anchor may spend settling.
+  int get maxBottomSettlePasses;
 
-  /// Number of initial bottom-jump passes attempted so far.
-  int initialBottomPasses = 0;
+  /// Distance from the bottom within which the user counts as at the bottom.
+  static const bottomTolerance = 2.0;
 
   /// Effective clearances resolved from MediaQuery + [widgetPadding].
   double effectiveTop = 0;
@@ -142,18 +237,12 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     _extentSum = 0;
   }
 
-  void _setPinnedActive({required bool active}) {
-    pinnedActive = active;
-    turnController.updatePinActive(active: active);
-  }
-
   /// Initializes controller attachment and initial pin state.
   void initEngine() {
     turnController.attachDelegate(this);
     final pin = widgetPinnedId;
     if (pin != null && canPinId(pin)) {
-      _setPinnedActive(active: true);
-      pendingPinScroll = true;
+      setAnchor(PinAnchor(pin));
       schedulePinScroll();
     } else {
       turnController.updatePinActive(active: false);
@@ -180,19 +269,11 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   }
 
   /// Reconciles [widgetPinnedId] transitions during `didUpdateWidget`.
-  void updateEnginePinnedId(
-    Object? oldPinnedId, {
-    VoidCallback? onPinActivated,
-  }) {
+  void updateEnginePinnedId(Object? oldPinnedId) {
     if (widgetPinnedId == oldPinnedId) return;
     final pin = widgetPinnedId;
     if (pin != null && canPinId(pin)) {
-      _setPinnedActive(active: true);
-      pendingPinScroll = true;
-      _pinRetries = 0;
-      needsInitialBottomJump = false;
-      syncAutoScrolling();
-      onPinActivated?.call();
+      setAnchor(PinAnchor(pin));
       schedulePinScroll();
     } else {
       final pos = turnPosition;
@@ -200,15 +281,39 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
           pos != null &&
           pos.hasPixels &&
           pos.hasContentDimensions &&
-          (pos.maxScrollExtent - pos.pixels) <= 2;
-      _setPinnedActive(active: false);
-      pendingPinScroll = false;
-      pinEpoch++;
-      if (oldPinnedId != null && wasAtBottom) {
-        needsInitialBottomJump = true;
-        initialBottomPasses = 0;
-      }
-      syncAutoScrolling();
+          (pos.maxScrollExtent - pos.pixels) <= bottomTolerance;
+      // Clearing the pin at the bottom stays at the bottom, whatever the
+      // reserved space gives back.
+      setAnchor(
+        oldPinnedId != null && wasAtBottom
+            ? BottomAnchor(settling: true)
+            : const FreeAnchor(),
+      );
+      navEpoch++;
+    }
+  }
+
+  /// Reconciles [widgetFollowBottom] changes during `didUpdateWidget`.
+  void updateEngineFollowBottom({required bool wasFollowing}) {
+    if (widgetFollowBottom == wasFollowing) return;
+    final current = _anchor;
+    if (widgetFollowBottom) {
+      _armFollowBottomIfAtBottom();
+    } else if (current is BottomAnchor && !current.settling) {
+      setAnchor(const FreeAnchor());
+    }
+  }
+
+  void _armFollowBottomIfAtBottom() {
+    if (!widgetFollowBottom ||
+        _anchor is! FreeAnchor ||
+        _activeNavigationEpoch != null) {
+      return;
+    }
+    final pos = turnPosition;
+    if (pos == null || !pos.hasPixels || !pos.hasContentDimensions) return;
+    if ((pos.maxScrollExtent - pos.pixels).abs() <= bottomTolerance) {
+      setAnchor(BottomAnchor(settling: false));
     }
   }
 
@@ -229,11 +334,13 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
   /// Whether this view is currently executing a programmatic scroll flight
   /// (`scrollTo`, `scrollToBottom`, active `pinnedId` scroll, or initial
   /// bottom positioning).
-  bool get isAutoScrolling =>
-      _activeNavigationEpoch != null ||
-      needsInitialBottomJump ||
-      pendingPinScroll ||
-      (turnPosition?.isTrackingTarget ?? false);
+  bool get isAutoScrolling {
+    final current = _anchor;
+    return _activeNavigationEpoch != null ||
+        (current is BottomAnchor && current.settling) ||
+        (current is PinAnchor && current.flightPending) ||
+        (turnPosition?.isTrackingTarget ?? false);
+  }
 
   /// Whether this view is currently driven by programmatic scrolling
   /// (`scrollTo`, `scrollToBottom`, pin animation, initial positioning, or
@@ -367,30 +474,32 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     }
   }
 
-  /// Schedules a post-frame pin scroll for [widgetPinnedId].
+  /// Schedules a post-frame flight of the current pin anchor to its resting
+  /// position.
   void schedulePinScroll() {
-    final epoch = ++pinEpoch;
+    final pin = _anchor;
+    if (pin is! PinAnchor) return;
+    pin.flightPending = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || epoch != pinEpoch || !pinnedActive || !pendingPinScroll) {
-        return;
-      }
-      _runPinScroll();
+      if (!mounted || !identical(_anchor, pin) || !pin.flightPending) return;
+      _runPinScroll(pin);
     });
   }
 
-  void _runPinScroll() {
+  void _runPinScroll(PinAnchor pin) {
     final pos = turnPosition;
     if (pos == null || !pos.hasContentDimensions || !pos.hasPixels) {
-      if (++_pinRetries <= _maxPinRetries) {
+      if (++pin.retries <= _maxPinRetries) {
         schedulePinScroll();
       } else {
-        pendingPinScroll = false;
+        pin.flightPending = false;
         syncAutoScrolling();
       }
       return;
     }
-    pendingPinScroll = false;
-    _pinRetries = 0;
+    pin
+      ..flightPending = false
+      ..retries = 0;
     final target = pinTargetOffset() ?? pos.maxScrollExtent;
     final animate = !MediaQuery.disableAnimationsOf(context);
     if (!animate) {
@@ -398,15 +507,12 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
       syncAutoScrolling();
       return;
     }
-    final pinnedId = widgetPinnedId;
     unawaited(
       pos.animateToTarget(
         motion: resolvedMotion,
         vsync: this,
         resolveTarget: () {
-          if (!mounted || !pinnedActive || widgetPinnedId != pinnedId) {
-            return null;
-          }
+          if (!mounted || !identical(_anchor, pin)) return null;
           return pinTargetOffset() ?? pos.maxScrollExtent;
         },
       ),
@@ -442,6 +548,42 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     return obstruction;
   }
 
+  /// The pin offset from what the turn stage measured in its last layout.
+  ///
+  /// Reads no render box sizes, so it is safe to call while the viewport is
+  /// applying its dimensions (mid-layout), unlike a reveal offset. Only
+  /// available when the stage wraps the item list (`SliverTurnReserve`).
+  double? _measuredPinTarget(Object pinnedId, TurnScrollPosition pos) {
+    final stage = activeTurnStage;
+    final extent = extents[pinnedId];
+    if (stage == null ||
+        extent == null ||
+        !stage.attached ||
+        stage.anchorBoxOf == null ||
+        stage.anchorId != pinnedId ||
+        !stage.anchorMeasured) {
+      return null;
+    }
+    final viewport = stage.parent;
+    if (viewport is! RenderViewport) return null;
+    final obstruction = pinnedObstructionFor(stage);
+    final topInset = math.max(effectiveTop + extraTopObstruction, obstruction);
+    final usable = math.max<double>(
+      0,
+      pos.viewportDimension - topInset - effectiveBottom,
+    );
+    final minExtent = RenderSliverTurnStage.computeMinExtent(
+      usableExtent: usable,
+      anchorExtent: extent,
+      anchorConfig: effectiveAnchorConfig,
+    );
+    final itemTop = viewport.scrollOffsetOf(stage, stage.anchorOffset);
+    return (itemTop + (minExtent - usable) - topInset).clamp(
+      pos.minScrollExtent,
+      pos.maxScrollExtent,
+    );
+  }
+
   /// Computes the ideal scroll offset to pin [widgetPinnedId] inside the usable
   /// viewport.
   double? pinTargetOffset() {
@@ -453,6 +595,8 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
         !pos.hasContentDimensions) {
       return null;
     }
+    final measured = _measuredPinTarget(pinnedId, pos);
+    if (measured != null) return measured;
     final box = mountedBoxes[pinnedId];
     if (box == null ||
         !box.attached ||
@@ -531,11 +675,77 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     return raw.clamp(minScrollExtent, maxScrollExtent);
   }
 
-  /// Applies keyboard/bottom-edge inset anchoring after subclass-specific
-  /// dimension adjustments.
+  @override
+  double? adjustPixelsOnDimensions({
+    required double pixels,
+    required double minScrollExtent,
+    required double maxScrollExtent,
+    required double viewportDimension,
+    double? previousMaxScrollExtent,
+  }) {
+    final usableBottom = viewportDimension - effectiveBottom;
+    final prevUsableBottom = lastUsableBottom;
+    lastUsableBottom = usableBottom;
+    final centerShift = takePendingCenterShift();
+    final pos = turnPosition;
+
+    // The one place the current anchor decides where the offset goes.
+    switch (_anchor) {
+      case final ItemAnchor item:
+        final target = resolveItemAnchor(
+          item,
+          minScrollExtent: minScrollExtent,
+          maxScrollExtent: maxScrollExtent,
+          viewportDimension: viewportDimension,
+        );
+        if (target != null) return target;
+        setAnchor(const FreeAnchor(), sync: false);
+      case final BottomAnchor bottom:
+        if (bottom.settling) {
+          bottom.passes++;
+          if (hasExactBottomExtent() ||
+              maxScrollExtent <= minScrollExtent ||
+              bottom.passes >= maxBottomSettlePasses) {
+            bottom.settling = false;
+            if (!widgetFollowBottom) {
+              setAnchor(const FreeAnchor(), sync: false);
+            }
+          }
+        }
+        return maxScrollExtent;
+      case final PinAnchor pin:
+        // Once the flight has settled the pinned item holds its place while
+        // content around it changes.
+        if (!pin.flightPending && pos != null && !pos.isTrackingTarget) {
+          final target = _measuredPinTarget(pin.id, pos);
+          if (target != null) return target;
+        }
+      case FreeAnchor():
+        break;
+    }
+
+    final wasAtMax =
+        previousMaxScrollExtent != null &&
+        pixels >= previousMaxScrollExtent - bottomTolerance;
+    return applyBottomEdgeDelta(
+      nextPixels: pixels + centerShift,
+      shifted: centerShift != 0,
+      wasAtMax: wasAtMax,
+      prevUsableBottom: prevUsableBottom,
+      usableBottom: usableBottom,
+      minScrollExtent: minScrollExtent,
+      maxScrollExtent: maxScrollExtent,
+    );
+  }
+
+  /// Applies keyboard/bottom-edge inset anchoring for a free (unanchored)
+  /// view.
+  ///
+  /// A view that was at the bottom stays at the bottom when the inset moves.
   double? applyBottomEdgeDelta({
     required double nextPixels,
     required bool shifted,
+    required bool wasAtMax,
     required double? prevUsableBottom,
     required double usableBottom,
     required double minScrollExtent,
@@ -560,26 +770,37 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     final atTop =
         nextPixels <= minScrollExtent + 0.5 &&
         maxScrollExtent > minScrollExtent;
-    if (atTop || pendingPinScroll || (pos != null && pos.isTrackingTarget)) {
+    final current = _anchor;
+    if (atTop ||
+        (current is PinAnchor && current.flightPending) ||
+        (pos != null && pos.isTrackingTarget)) {
       return shifted
           ? nextPixels.clamp(minScrollExtent, maxScrollExtent)
           : null;
     }
 
-    if (pinnedActive) {
-      final turnStage = activeTurnStage;
-      if (turnStage != null &&
-          turnStage.attached &&
-          turnStage.reservedTrailingSpace > 0.5) {
-        return maxScrollExtent;
-      }
-    }
+    // At the bottom before, at the bottom after: with trailing space reserved
+    // for a pinned turn the maximum does not move by the inset, so shifting by
+    // the inset would carry the reader away from the bottom.
+    if (wasAtMax) return maxScrollExtent;
 
     return (nextPixels + bottomEdgeDelta).clamp(
       minScrollExtent,
       maxScrollExtent,
     );
   }
+
+  /// Everything above the bottom clearance, in scroll offset terms: what
+  /// `maxScrollExtent` leaves once the bottom inset is taken out. A flight
+  /// that freezes this (rather than `maxScrollExtent`) still lands at the true
+  /// bottom when the inset changes mid-flight.
+  double contentEndOf(TurnScrollPosition pos) =>
+      pos.maxScrollExtent + pos.viewportDimension - effectiveBottom;
+
+  /// The offset of the bottom for a [contentEnd] from [contentEndOf], with the
+  /// bottom clearance as it is now.
+  double bottomOffsetFor(TurnScrollPosition pos, double contentEnd) =>
+      contentEnd + effectiveBottom - pos.viewportDimension;
 
   /// Waits for the end of the next frame.
   Future<void> nextFrame() {
@@ -590,14 +811,12 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     return completer.future;
   }
 
-  /// Clears active pinning and invalidates pending pin/navigation epochs
-  /// without syncing [TurnScrollController.isAutoScrolling] yet.
+  /// Releases whatever the view was holding on to and invalidates pending
+  /// navigation, without syncing [TurnScrollController.isAutoScrolling] yet.
   void resetAutoScrollState() {
-    _setPinnedActive(active: false);
-    pendingPinScroll = false;
-    needsInitialBottomJump = false;
+    setAnchor(const FreeAnchor(), sync: false);
+    turnController.updatePinActive(active: false);
     _activeNavigationEpoch = null;
-    pinEpoch++;
     navEpoch++;
   }
 
@@ -606,6 +825,9 @@ mixin TurnScrollEngineMixin<T extends StatefulWidget>
     resetAutoScrollState();
     syncAutoScrolling();
   }
+
+  @override
+  void onScrollIdle() => _armFollowBottomIfAtBottom();
 
   @override
   void onMetricsChanged(double pixels, double maxScrollExtent) {

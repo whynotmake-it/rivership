@@ -109,12 +109,20 @@ abstract interface class TurnScrollDelegate {
   /// Called synchronously during [ScrollPosition.applyContentDimensions] so
   /// initial positioning, center shifts, and keyboard-inset anchoring can
   /// adjust pixels without a 1-frame flash.
+  ///
+  /// [previousMaxScrollExtent] is the maximum before this update, or `null`
+  /// for the first one.
   double? adjustPixelsOnDimensions({
     required double pixels,
     required double minScrollExtent,
     required double maxScrollExtent,
     required double viewportDimension,
+    double? previousMaxScrollExtent,
   });
+
+  /// Called when the position comes to rest (no drag, fling or flight is
+  /// running).
+  void onScrollIdle();
 
   /// Called whenever scroll metrics or pixels change so `isAwayFromBottom` and
   /// `distanceFromBottom` stay current.
@@ -490,6 +498,12 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
       delegate?.onUserScroll();
     }
     super.beginActivity(newActivity);
+    if (!_applyingDimensions &&
+        newActivity is IdleScrollActivity &&
+        hasPixels &&
+        hasContentDimensions) {
+      delegate?.onScrollIdle();
+    }
     if (wasTracking != isTrackingTarget && hasPixels && hasContentDimensions) {
       delegate?.onMetricsChanged(pixels, maxScrollExtent);
     }
@@ -550,6 +564,7 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
       // deltas (e.g. keyboard closing) don't double-subtract an already-clamped
       // offset.
       final preClampPixels = hasPixels ? pixels : null;
+      final previousMax = hasContentDimensions ? maxScrollExtent : null;
       final result = super.applyContentDimensions(
         minScrollExtent,
         maxScrollExtent,
@@ -560,6 +575,7 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
           minScrollExtent: minScrollExtent,
           maxScrollExtent: maxScrollExtent,
           viewportDimension: viewportDimension,
+          previousMaxScrollExtent: previousMax,
         );
         if (adjusted != null) {
           final clamped = adjusted.clamp(minScrollExtent, maxScrollExtent);
