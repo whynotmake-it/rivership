@@ -9,7 +9,7 @@ Rivership is a set of opinionated tools that will get you shipping your Flutter 
 
 This monorepo contains Rivership, and all its associated packages. Check out the `packages/` directory to explore them, or jump straight to the [Rivership README](./packages/rivership/README.md).
 
-Try the examples of Heroine, Motor, Coil, and Stupid Simple Sheet in your browser at [whynotmake-it.github.io/rivership](https://whynotmake-it.github.io/rivership/).
+Try the examples of Heroine, Motor, Turns, Coil, and Stupid Simple Sheet in your browser at [whynotmake-it.github.io/rivership](https://whynotmake-it.github.io/rivership/).
 
 ## Package overview
 
@@ -27,6 +27,7 @@ Try the examples of Heroine, Motor, Coil, and Stupid Simple Sheet in your browse
 | [fixed_ticker](./packages/fixed_ticker) | [![Pub Version](https://img.shields.io/pub/v/fixed_ticker)](https://pub.dev/packages/fixed_ticker) | A drop-in Ticker replacement that uses Timer.periodic to gate frame callbacks at a fixed interval. |  |
 | [coil](./packages/coil) | Not published yet | A Flutter design system built on Motor motion. Works under any WidgetsApp. | [Open Example](https://whynotmake-it.github.io/rivership/#/coil) |
 | [coil_cli](./packages/coil_cli) | Not published yet | Ejects Coil components into a Flutter app, merges upstream changes into local copies, and tests their interaction patterns. |  |
+| [turns](./packages/turns) | Not published yet | Turn-anchored scroll views with O(1) timelines, sticky section headers, and sliver composition, plus incremental streaming markdown for Flutter chat UIs. | [Open Example](https://whynotmake-it.github.io/rivership/#/turns) |
 
 
 ---

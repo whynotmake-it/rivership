@@ -1,8 +1,7 @@
 name: turns
 description: >-
-  Turn-anchored scroll views (bidirectional O(1) timelines, sticky sectioned
-  headers, sliver composability) and incremental streaming markdown parsing for
-  Flutter chat and AI interfaces.
+  Turn-anchored scroll views with O(1) timelines, sticky section headers, and
+  sliver composition, plus incremental streaming markdown for Flutter chat UIs.
 version: 0.1.0-dev.0
 resolution: workspace
 repository: https://github.com/whynotmake-it/rivership/tree/main/packages/turns
@@ -16,7 +15,6 @@ environment:
   flutter: ">=3.32.0"
 
 dependencies:
-  fixed_ticker: ^0.2.0
   flutter:
     sdk: flutter
   markdown: ^7.3.1

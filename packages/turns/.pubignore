@@ -1,0 +1,15 @@
+# Not part of the package: build output, tests, goldens, and doc GIFs.
+build/
+coverage/
+coverage.svg
+test/
+example/build/
+example/coverage/
+example/test/
+**/.snaptest/
+**/golden/
+**/goldens/
+
+# Doc assets (gifs are referenced in README via relative paths,
+# but they bloat the pub.dev package archive)
+doc/

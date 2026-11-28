@@ -3,6 +3,18 @@
 Turn-anchored scroll primitives and incremental streaming markdown parsing for
 Flutter AI chat transcripts, streaming timelines, and messaging feeds.
 
+[Try the interactive gallery in your browser](https://whynotmake-it.github.io/rivership/#/turns).
+
+> **Pre-release:** `turns` is in active pre-release development and builds on
+> [Motor](https://pub.dev/packages/motor) 2.0 pre-releases. APIs may change
+> before `1.0.0`.
+
+## Installation
+
+```sh
+flutter pub add 'turns:^0.1.0-dev.0'
+```
+
 ## Demos
 
 <table>
