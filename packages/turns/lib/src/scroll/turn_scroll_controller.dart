@@ -70,6 +70,9 @@ class TurnScrollFuture implements Future<bool> {
 }
 
 /// Delegate connecting [TurnScrollController] to its attached scroll view.
+///
+/// Implemented by the turn scroll views; not for use outside this package.
+@internal
 abstract interface class TurnScrollDelegate {
   /// Scrolls to where the bottom was when called.
   ///
@@ -176,6 +179,7 @@ class TurnScrollController extends ScrollController {
   ValueListenable<bool> get isAutoScrolling => _isAutoScrolling;
 
   /// Attaches the owning view's delegate. Internal to turn scroll views.
+  @internal
   void attachDelegate(TurnScrollDelegate delegate) {
     _delegate = delegate;
     for (final position in positions) {
@@ -186,6 +190,7 @@ class TurnScrollController extends ScrollController {
   }
 
   /// Detaches the owning view's delegate. Internal to turn scroll views.
+  @internal
   void detachDelegate(TurnScrollDelegate delegate) {
     if (!identical(_delegate, delegate)) return;
     _delegate = null;
@@ -198,6 +203,7 @@ class TurnScrollController extends ScrollController {
 
   /// Updates the observable bottom-distance notifiers. Internal to turn scroll
   /// views.
+  @internal
   void updateBottomDistance(double distance, {required double threshold}) {
     if (_disposed) return;
     _pendingDistanceBottom = math.max(0, distance);
@@ -206,6 +212,7 @@ class TurnScrollController extends ScrollController {
   }
 
   /// Updates [isPinActive]. Internal to turn scroll views.
+  @internal
   void updatePinActive({required bool active}) {
     if (_disposed) return;
     _pendingPinActive = active;
@@ -213,6 +220,7 @@ class TurnScrollController extends ScrollController {
   }
 
   /// Updates [isAutoScrolling]. Internal to turn scroll views.
+  @internal
   void updateAutoScrolling({required bool active}) {
     if (_disposed) return;
     _pendingAutoScrolling = active;
@@ -421,10 +429,12 @@ class TurnScrollPosition extends ScrollPositionWithSingleContext {
   });
 
   /// Owning view delegate.
+  @internal
   TurnScrollDelegate? delegate;
 
   /// Receives the `ended` of the next flight this position starts, for the
   /// [TurnScrollFuture] of the navigation that is underway.
+  @internal
   Completer<bool>? endedSink;
 
   var _applyingDimensions = false;

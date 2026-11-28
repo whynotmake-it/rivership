@@ -81,6 +81,10 @@ final class ItemAnchor extends TurnViewAnchor {
 /// `CustomTurnScrollView` so controller lifecycle, Motor spring pinning,
 /// keyboard inset anchoring, item extent tracking, and `TurnScrollScope`
 /// wiring are never duplicated.
+///
+/// Every member is internal to this package, even those the public state
+/// classes expose by mixing this in.
+@internal
 mixin TurnScrollEngineMixin<T extends StatefulWidget>
     on State<T>, FixedTickerProviderStateMixin<T>
     implements TurnScrollDelegate {

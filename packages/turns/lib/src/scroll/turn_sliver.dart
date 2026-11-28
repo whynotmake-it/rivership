@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 /// Registration handle connecting a `SliverTurnList` to its enclosing
 /// [TurnScrollScope] so offscreen `scrollTo` and exact `scrollToBottom` work
 /// across multiple sliver lists.
+@internal
 abstract interface class TurnListRegistration {
   /// The underlying sliver multi-box adaptor render object, if attached.
   RenderSliverMultiBoxAdaptor? get renderSliver;
@@ -450,11 +451,13 @@ class RenderSliverTurnStage extends RenderSliver
   /// Finds the mounted box of the pinned item when this sliver wraps the item
   /// list ([SliverTurnReserve]). When `null`, the first child is the anchor
   /// ([SliverTurnStage]).
+  @internal
   TurnAnchorBoxResolver? anchorBoxOf;
 
   Object? _anchorId;
 
   /// Identity of the anchor item when this sliver wraps the item list.
+  @internal
   Object? get anchorId => _anchorId;
 
   set anchorId(Object? value) {
@@ -489,6 +492,7 @@ class RenderSliverTurnStage extends RenderSliver
 
   /// Whether the anchor was mounted and measured in the last layout, so
   /// [anchorOffset] is current.
+  @internal
   bool get anchorMeasured => _anchorMeasured;
 
   double _reserved = 0;
@@ -780,6 +784,7 @@ class RenderSliverTurnStage extends RenderSliver
 
 /// Reports a list item's laid-out main-axis extent and mounted [RenderBox]
 /// directly during layout, with zero `GlobalKey`s or post-frame callbacks.
+@internal
 class TurnItemExtentObserver extends SingleChildRenderObjectWidget {
   /// Creates an observer for item [itemId].
   const TurnItemExtentObserver({
@@ -820,6 +825,7 @@ class TurnItemExtentObserver extends SingleChildRenderObjectWidget {
 }
 
 /// Render proxy box for [TurnItemExtentObserver].
+@internal
 class RenderTurnItemExtentObserver extends RenderProxyBox {
   /// Creates the proxy box.
   RenderTurnItemExtentObserver({
