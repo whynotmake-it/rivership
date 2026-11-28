@@ -13,57 +13,25 @@ import 'package:turns/src/scroll/turn_scroll_controller.dart';
 import 'package:turns/src/scroll/turn_scroll_engine.dart';
 import 'package:turns/src/scroll/turn_sliver.dart';
 
-/// What [TurnScrollView.sectioned] tells a section header builder about the
-/// header it is building.
-@immutable
-class TurnSectionHeaderDetails<S> {
-  /// Creates section header details.
-  const TurnSectionHeaderDetails({
-    required this.section,
-    required this.isSticky,
-    required this.isCovered,
-  });
-
-  /// The section the header is for.
-  final S section;
-
-  /// Whether this build is the sticky overlay (`true`) or the inline header
-  /// that scrolls with the timeline (`false`).
-  ///
-  /// Use it to adapt the presentation between the two: a hairline divider
-  /// inline while only a shadowed pill floats as the sticky overlay, say.
-  final bool isSticky;
-
-  /// For an inline header: whether the sticky overlay currently shows this
-  /// same section's header right over it.
-  ///
-  /// The inline header is not hidden for you. Hide it (or just the part the
-  /// overlay repeats, such as the date pill of a divider that also has a rule
-  /// and a label) when this is `true`, so the two never double-render. Always
-  /// `false` for the sticky overlay itself.
-  final bool isCovered;
-
-  @override
-  bool operator ==(Object other) =>
-      other is TurnSectionHeaderDetails<S> &&
-      other.section == section &&
-      other.isSticky == isSticky &&
-      other.isCovered == isCovered;
-
-  @override
-  int get hashCode => Object.hash(section, isSticky, isCovered);
-}
-
 /// Signature for building a section header in [TurnScrollView.sectioned].
 ///
-/// Called for each inline section header that scrolls with the timeline, and,
-/// when [TurnScrollView.stickySectionHeaders] is `true`, for the sticky
-/// overlay pinned at the top (see [TurnSectionHeaderDetails.isSticky]).
+/// Called with `isSticky: false` for each inline section header that scrolls
+/// with the timeline, and, when [TurnScrollView.stickySectionHeaders] is
+/// `true`, with `isSticky: true` for the sticky copy kept at the top.
+///
+/// Use [isSticky] to adapt the presentation between the two: a hairline
+/// divider with a date pill inline, say, while only a shadowed pill is sticky.
+// Callback signature intentionally mirrors Flutter sliver/header builders with
+// a trailing positional boolean state flag (`isSticky`).
 typedef TurnSectionHeaderBuilder<S> =
-    Widget Function(
-      BuildContext context,
-      TurnSectionHeaderDetails<S> details,
-    );
+    // ignore: avoid_positional_boolean_parameters
+    Widget Function(BuildContext context, S section, bool isSticky);
+
+/// Signature for building what an inline section header shows while it is
+/// stuck: while the sticky copy of the same section is shown at the top in its
+/// place (see [TurnScrollView.stuckSectionHeaderBuilder]).
+typedef TurnStuckSectionHeaderBuilder<S> =
+    Widget Function(BuildContext context, S section);
 
 /// A first-principles, turn-anchored bidirectional scroll view built for AI
 /// chat transcripts, streaming timelines, and messaging feeds.
@@ -112,6 +80,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
        assert(itemSpacing >= 0, 'itemSpacing must be non-negative'),
        sectionId = null,
        sectionHeaderBuilder = null,
+       stuckSectionHeaderBuilder = null,
        stickySectionHeaders = false,
        stickyHeaderIgnoresPointer = true,
        stickyHeaderTopOffset = null,
@@ -127,10 +96,10 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// When [stickySectionHeaders] is `true`, a scroll-synced header overlay pins
   /// at top clearance (or [stickyHeaderTopOffset]), derives the active section
   /// from the top visible item (preserving O(1) open at any [initialItemId]),
-  /// smoothly pushes up as the next section's inline header approaches, and
-  /// tells the underlying inline header it is covered
-  /// ([TurnSectionHeaderDetails.isCovered]) while pinned, so the app can hide
-  /// it and floating pills never double-render.
+  /// smoothly pushes up as the next section's inline header approaches. The
+  /// inline header of that section is stuck meanwhile: it is hidden (keeping
+  /// its space) so the header never shows twice, or shows what
+  /// [stuckSectionHeaderBuilder] builds.
   const TurnScrollView.sectioned({
     required this.itemCount,
     required this.itemId,
@@ -138,6 +107,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
     required S Function(int index) this.sectionId,
     required TurnSectionHeaderBuilder<S> this.sectionHeaderBuilder,
     super.key,
+    this.stuckSectionHeaderBuilder,
     this.stickySectionHeaders = true,
     this.stickyHeaderIgnoresPointer = true,
     this.stickyHeaderTopOffset,
@@ -182,14 +152,28 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// [TurnScrollView.sectioned]).
   final S Function(int index)? sectionId;
 
-  /// Builds the inline and the sticky overlay header widget for a section (set
-  /// by [TurnScrollView.sectioned]; see [TurnSectionHeaderDetails]).
+  /// Builds the inline (`isSticky: false`) and the sticky (`isSticky: true`)
+  /// header widget for a section (set by [TurnScrollView.sectioned]).
   ///
   /// When [stickySectionHeaders] is `true`, the sticky overlay is clipped with
   /// [ClipRect] during push-up transitions; floating pills with drop shadows
   /// should include small vertical padding inside the header widget so shadows
   /// are not clipped.
   final TurnSectionHeaderBuilder<S>? sectionHeaderBuilder;
+
+  /// Builds what an inline section header shows while it is stuck: while the
+  /// sticky copy of the same section is shown at the top in its place.
+  ///
+  /// Defaults to `null`: the stuck inline header is hidden (it keeps its
+  /// space), so a header never shows twice. Pass a builder when only part of
+  /// the inline header is repeated by the sticky copy: a divider with a rule,
+  /// a label and a date pill, whose sticky copy is only the pill, returns the
+  /// rule and the label here.
+  ///
+  /// What it builds must be as tall as the inline header, or the timeline
+  /// shifts when a header sticks. Return the same widget type as
+  /// [sectionHeaderBuilder] does inline to keep the header's `State`.
+  final TurnStuckSectionHeaderBuilder<S>? stuckSectionHeaderBuilder;
 
   /// Whether to pin the active section header at the top clearance while
   /// scrolling.
@@ -209,7 +193,7 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
   /// `padding.top`), where items rest at `alignment: 0`. Set it to float the
   /// overlay somewhere else, such as under a translucent app bar that is
   /// taller or shorter than the content padding. The point where an inline
-  /// header counts as covered, how the next header pushes the overlay up and
+  /// header counts as stuck, how the next header pushes the overlay up and
   /// the clearance [TurnScrollController.scrollTo] leaves below it all follow
   /// this offset.
   final double? stickyHeaderTopOffset;
@@ -328,24 +312,24 @@ class TurnScrollView<S extends Object> extends StatefulWidget {
 class _StickyHeaderState<S extends Object> {
   const _StickyHeaderState({
     this.section,
-    this.hiddenHeaderItemId,
+    this.stuckHeaderItemId,
     this.pushOffset = 0,
   });
 
   final S? section;
-  final Object? hiddenHeaderItemId;
+  final Object? stuckHeaderItemId;
   final double pushOffset;
 
   @override
   bool operator ==(Object other) =>
       other is _StickyHeaderState<S> &&
       other.section == section &&
-      other.hiddenHeaderItemId == hiddenHeaderItemId &&
+      other.stuckHeaderItemId == stuckHeaderItemId &&
       (other.pushOffset - pushOffset).abs() <= 0.25;
 
   @override
   int get hashCode =>
-      Object.hash(section, hiddenHeaderItemId, pushOffset.round());
+      Object.hash(section, stuckHeaderItemId, pushOffset.round());
 }
 
 /// State of [TurnScrollView].
@@ -404,7 +388,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   double _stickyHeaderHeight = 0;
 
   /// Reactive sticky header state driving the overlay and which inline header
-  /// is covered by it.
+  /// is stuck under it.
   final _stickyState = ValueNotifier<_StickyHeaderState<S>>(
     const _StickyHeaderState(),
   );
@@ -450,7 +434,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
   bool canPinId(Object id) => _indexOfId(id) >= 0;
 
   /// Where the sticky overlay sits (and where an inline header counts as
-  /// covered by it).
+  /// stuck under it).
   double get _stickyTop => widget.stickyHeaderTopOffset ?? effectiveTop;
 
   @override
@@ -502,7 +486,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         _scheduleStickySync();
       }
     } else if (_stickyState.value.section != null ||
-        _stickyState.value.hiddenHeaderItemId != null) {
+        _stickyState.value.stuckHeaderItemId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_hasStickyHeaders) {
           _stickyState.value = const _StickyHeaderState();
@@ -547,7 +531,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
             : null;
         _stickyState.value = _StickyHeaderState<S>(
           section: sectionOf(idx),
-          hiddenHeaderItemId: hidden,
+          stuckHeaderItemId: hidden,
         );
         return;
       }
@@ -557,7 +541,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
         widget.leadingSlivers.isEmpty) {
       _stickyState.value = _StickyHeaderState<S>(
         section: sectionOf(0),
-        hiddenHeaderItemId: widget.itemId(0),
+        stuckHeaderItemId: widget.itemId(0),
       );
     }
   }
@@ -779,19 +763,19 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     final activeEntry = entries[activePos];
     final activeSection = sectionOf(activeEntry.index);
 
-    Object? hiddenHeaderItemId;
+    Object? stuckHeaderItemId;
     for (var i = activePos; i >= 0; i--) {
       final e = entries[i];
       if (sectionOf(e.index) != activeSection) break;
       if (e.hasHeader && e.slotTop <= pinY + 0.5) {
-        hiddenHeaderItemId = e.id;
+        stuckHeaderItemId = e.id;
         break;
       }
     }
 
     final fallbackHeight =
-        (hiddenHeaderItemId != null
-            ? _sectionHeaderExtents[hiddenHeaderItemId]
+        (stuckHeaderItemId != null
+            ? _sectionHeaderExtents[stuckHeaderItemId]
             : null) ??
         _meanSectionHeaderExtent;
     final pushOffset = _computePushOffset(
@@ -804,7 +788,7 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
     _setStickyState(
       _StickyHeaderState<S>(
         section: activeSection,
-        hiddenHeaderItemId: hiddenHeaderItemId,
+        stuckHeaderItemId: stuckHeaderItemId,
         pushOffset: pushOffset,
       ),
     );
@@ -1457,18 +1441,24 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
       itemId: itemId,
       onLayout: _onSectionHeaderLayout,
       onDetach: _onSectionHeaderDetach,
-      child: _CoveredHeader<S>(
+      child: _StuckHeader<S>(
         sticky: _stickyState,
         itemId: itemId,
-        builder: (context, {required isCovered}) =>
-            widget.sectionHeaderBuilder!(
-              context,
-              TurnSectionHeaderDetails<S>(
-                section: section,
-                isSticky: false,
-                isCovered: isCovered && _hasStickyHeaders,
-              ),
-            ),
+        builder: (context, {required isStuck}) {
+          final stuck = isStuck && _hasStickyHeaders;
+          final whileStuck = widget.stuckSectionHeaderBuilder;
+          if (whileStuck != null) {
+            return stuck
+                ? whileStuck(context, section)
+                : widget.sectionHeaderBuilder!(context, section, false);
+          }
+          // The sticky copy stands in for a stuck inline header: hide it,
+          // keeping its space and its state.
+          return Visibility.maintain(
+            visible: !stuck,
+            child: widget.sectionHeaderBuilder!(context, section, false),
+          );
+        },
       ),
     );
   }
@@ -1680,11 +1670,8 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
                           onHeight: _onStickyHeaderHeight,
                           child: widget.sectionHeaderBuilder!(
                             context,
-                            TurnSectionHeaderDetails<S>(
-                              section: section,
-                              isSticky: true,
-                              isCovered: false,
-                            ),
+                            section,
+                            true,
                           ),
                         ),
                       ),
@@ -1712,9 +1699,9 @@ class TurnScrollViewState<S extends Object> extends State<TurnScrollView<S>>
 }
 
 /// Builds an inline section header, rebuilding it only when the sticky
-/// overlay starts or stops covering it (not on every push-up frame).
-class _CoveredHeader<S extends Object> extends StatefulWidget {
-  const _CoveredHeader({
+/// overlay starts or stops standing in for it (not on every push-up frame).
+class _StuckHeader<S extends Object> extends StatefulWidget {
+  const _StuckHeader({
     required this.sticky,
     required this.itemId,
     required this.builder,
@@ -1722,18 +1709,17 @@ class _CoveredHeader<S extends Object> extends StatefulWidget {
 
   final ValueListenable<_StickyHeaderState<S>> sticky;
   final Object itemId;
-  final Widget Function(BuildContext context, {required bool isCovered})
-  builder;
+  final Widget Function(BuildContext context, {required bool isStuck}) builder;
 
   @override
-  State<_CoveredHeader<S>> createState() => _CoveredHeaderState<S>();
+  State<_StuckHeader<S>> createState() => _StuckHeaderState<S>();
 }
 
-class _CoveredHeaderState<S extends Object> extends State<_CoveredHeader<S>> {
-  late bool _isCovered = _computeCovered();
+class _StuckHeaderState<S extends Object> extends State<_StuckHeader<S>> {
+  late bool _isStuck = _computeStuck();
 
-  bool _computeCovered() =>
-      widget.sticky.value.hiddenHeaderItemId == widget.itemId;
+  bool _computeStuck() =>
+      widget.sticky.value.stuckHeaderItemId == widget.itemId;
 
   @override
   void initState() {
@@ -1742,13 +1728,13 @@ class _CoveredHeaderState<S extends Object> extends State<_CoveredHeader<S>> {
   }
 
   @override
-  void didUpdateWidget(_CoveredHeader<S> oldWidget) {
+  void didUpdateWidget(_StuckHeader<S> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sticky != widget.sticky) {
       oldWidget.sticky.removeListener(_onSticky);
       widget.sticky.addListener(_onSticky);
     }
-    _isCovered = _computeCovered();
+    _isStuck = _computeStuck();
   }
 
   @override
@@ -1758,13 +1744,13 @@ class _CoveredHeaderState<S extends Object> extends State<_CoveredHeader<S>> {
   }
 
   void _onSticky() {
-    final covered = _computeCovered();
-    if (covered != _isCovered) setState(() => _isCovered = covered);
+    final stuck = _computeStuck();
+    if (stuck != _isStuck) setState(() => _isStuck = stuck);
   }
 
   @override
   Widget build(BuildContext context) =>
-      widget.builder(context, isCovered: _isCovered);
+      widget.builder(context, isStuck: _isStuck);
 }
 
 class _StickyHeightObserver extends SingleChildRenderObjectWidget {

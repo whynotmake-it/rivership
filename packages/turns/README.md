@@ -37,8 +37,8 @@ flutter pub add 'turns:^0.1.0-dev.0'
       <img src="doc/slack_sections.gif" alt="Slack 3,000-message channel built with TurnScrollView.sectioned" width="240" /><br />
       <b>Slack Channel (3,000 msgs)</b><br />
       <code>TurnScrollView.sectioned</code> across 3,000 messages using
-      <code>details.isSticky</code> to switch between inline date hairlines
-      and transparent floating pills, <code>0.0px</code>-shift prepend pagination,
+      <code>isSticky</code> to switch between inline date hairlines and
+      transparent floating pills, <code>0.0px</code>-shift prepend pagination,
       and an unread jump pill landing on the inline <code>New</code> divider.
     </td>
   </tr>
@@ -56,7 +56,7 @@ flutter pub add 'turns:^0.1.0-dev.0'
   - **Zero-fight user control**: any drag, wheel, or trackpad gesture disengages auto-pinning immediately.
   - **Perceived-end futures**: `scrollTo` and `scrollToBottom` return a `TurnScrollFuture` whose `ended` completes when the motion looks finished (motor's `MotionFuture.ended`), so follow-ups don't wait for the spring to settle.
   - **Synchronous keyboard-inset anchoring**: shifts scroll offset by the exact bottom-edge delta during layout without a 1-frame flash.
-- **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with a `TurnSectionHeaderDetails` (is this the inline header or the sticky overlay, and is the inline one currently covered, so you can hide only the part the overlay repeats), automatic `alignment: 0` clearance, a `stickyHeaderTopOffset`, and pointer pass-through (`stickyHeaderIgnoresPointer`).
+- **Typed section headers (`TurnScrollView.sectioned`)**: inline or sticky push-up headers with an `isSticky` flag (hairline divider inline vs elevated pill when sticky), an optional `stuckSectionHeaderBuilder` for what the inline header shows while its sticky copy stands in for it (hidden by default, so a header never shows twice), automatic `alignment: 0` clearance, a `stickyHeaderTopOffset`, and pointer pass-through (`stickyHeaderIgnoresPointer`).
 - **Composable native slivers (`CustomTurnScrollView` + `SliverTurnList`)**: escape hatch for bounded feeds that need arbitrary Flutter slivers (`SliverAppBar`, `SliverGrid`, stacked `SliverPersistentHeader`s) while keeping Motor-driven offscreen `scrollTo()` and `scrollToBottom()`.
 - **Pure-Dart streaming markdown (`MarkdownSession`)**: freezes settled top-level blocks by identity and repairs unfinished inline syntax (`completeMarkdown`) while tokens arrive, plus pure-Dart LaTeX math syntaxes (`latexMathSyntaxes`).
 
@@ -132,11 +132,8 @@ NotificationListener<TurnScrollNotification>(
     itemId: (i) => messages[i].id,
     sectionId: (i) => messages[i].day,
     initialItemId: deepLinkedMessageId, // O(1) open + frame-1 sticky header
-    sectionHeaderBuilder: (context, details) => Visibility.maintain(
-      // The sticky overlay repeats a covered inline header: hide that one.
-      visible: !details.isCovered,
-      child: DatePill(details.section, floating: details.isSticky),
-    ),
+    sectionHeaderBuilder: (context, day, isSticky) =>
+        DatePill(day, isSticky: isSticky),
     itemBuilder: (context, i) => MessageBubble(messages[i]),
   ),
 );
@@ -203,7 +200,7 @@ final doc = session.update(streamedText, streaming: true);
 
 - `package:turns/turns.dart` — full public API (scroll + markdown).
 - `package:turns/scroll.dart` — `TurnScrollView`, `TurnScrollView.sectioned`,
-  `TurnSectionHeaderBuilder`, `TurnSectionHeaderDetails`,
+  `TurnSectionHeaderBuilder`, `TurnStuckSectionHeaderBuilder`,
   `CustomTurnScrollView`, `SliverTurnList`,
   `SliverTurnStage`, `TurnAnchorConfig`, `TurnScrollController`,
   `TurnScrollFuture`,

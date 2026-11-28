@@ -321,15 +321,10 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
                           ),
                         ),
                       ],
-                      sectionHeaderBuilder: (context, details) =>
-                          // The sticky overlay repeats the covered inline
-                          // header, so hide that one.
-                          Visibility.maintain(
-                            visible: !details.isCovered,
-                            child: _DatePillHeader(
-                              label: _formatDay(details.section),
-                              isPinned: details.isSticky,
-                            ),
+                      sectionHeaderBuilder: (context, day, isSticky) =>
+                          _DatePillHeader(
+                            label: _formatDay(day),
+                            isSticky: isSticky,
                           ),
                       itemBuilder: (context, index) {
                         final message = _messages[index];
@@ -679,10 +674,10 @@ class _WhatsAppDemoState extends State<WhatsAppDemo> {
 }
 
 class _DatePillHeader extends StatelessWidget {
-  const _DatePillHeader({required this.label, required this.isPinned});
+  const _DatePillHeader({required this.label, required this.isSticky});
 
   final String label;
-  final bool isPinned;
+  final bool isSticky;
 
   @override
   Widget build(BuildContext context) {
@@ -704,7 +699,7 @@ class _DatePillHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               side: BorderSide(color: colors.border),
             ),
-            shadows: isPinned
+            shadows: isSticky
                 ? [
                     BoxShadow(
                       color: colors.shadowColor,

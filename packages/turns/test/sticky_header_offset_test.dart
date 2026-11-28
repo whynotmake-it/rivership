@@ -31,10 +31,8 @@ void main() {
             stickyHeaderTopOffset: offset,
             padding: const EdgeInsets.only(top: 100),
             autoScrollMotion: const Motion.instant(),
-            sectionHeaderBuilder: (context, details) => SizedBox(
-              key: ValueKey(
-                'hdr:${details.section}:${details.isSticky ? 's' : 'i'}',
-              ),
+            sectionHeaderBuilder: (context, section, isSticky) => SizedBox(
+              key: ValueKey('hdr:$section:${isSticky ? 's' : 'i'}'),
               height: 30,
             ),
             itemBuilder: (context, i) =>

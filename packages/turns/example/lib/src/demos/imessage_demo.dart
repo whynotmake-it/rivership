@@ -390,15 +390,8 @@ class _IMessageDemoState extends State<IMessageDemo> {
                                   ),
                                 )
                               : null,
-                          sectionHeaderBuilder: (_, details) =>
-                              // The sticky overlay repeats the covered
-                              // inline header, so hide that one.
-                              Visibility.maintain(
-                                visible: !details.isCovered,
-                                child: _InlineTimestampHeader(
-                                  section: details.section,
-                                ),
-                              ),
+                          sectionHeaderBuilder: (_, date, _) =>
+                              _InlineTimestampHeader(section: date),
                           itemBuilder: (context, index) {
                             final message = _messages[index];
                             final isSectionFirst =
